@@ -15,8 +15,6 @@
 
 namespace rpc {
   
-  using namespace boost;
-  
   using boost::optional;
   
   using std::cerr;
@@ -28,7 +26,7 @@ namespace rpc {
   
   
   
-  mpi::environment* env = nullptr;
+  boost::mpi::environment* env = nullptr;
   
   
   
@@ -60,8 +58,8 @@ namespace rpc {
       // Receive
       for (;;) {
         func_id_t id;
-        mpi::request req = comm.irecv(mpi::any_source, tag, id);
-        optional<mpi::status> st = req.test();
+        boost::mpi::request req = comm.irecv(boost::mpi::any_source, tag, id);
+        optional<boost::mpi::status> st = req.test();
         if (!st) break;
         if (id == id_stop) terminate(0);
         int source = st->source();
@@ -83,15 +81,18 @@ namespace rpc {
     cout << "[main()=" << iret << "]\n";
     // TODO: pass iret
     // for (int dest=0; dest<comm.size(); ++dest) comm.send(1, tag, id_stop);
-    mpi::environment::abort(iret);
+    boost::mpi::environment::abort(iret);
   }
   
   void init(int (&user_main)(int argc, char** argv),
             int argc, char** argv)
   {
-    env = new mpi::environment(argc, argv);
-    comm = mpi::communicator(MPI_COMM_WORLD, mpi::comm_duplicate);
+    env = new boost::mpi::environment(argc, argv);
+    comm = boost::mpi::communicator(MPI_COMM_WORLD, boost::mpi::comm_duplicate);
     cout << "hardware concurrency: " << thread::hardware_concurrency() << "\n";
+    
+#warning "TODO: not running event loop"
+    run_application(user_main, argc, argv);
     
     if (comm.rank() == 0) {
       // std::async(run_application, user_main, argc, argv);

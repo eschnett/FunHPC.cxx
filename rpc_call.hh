@@ -23,11 +23,13 @@ namespace rpc {
   using std::cout;
   using std::enable_if;
   using std::flush;
+  using std::future;
   using std::is_void;
   using std::istringstream;
   using std::make_shared;
   using std::mutex;
   using std::ostringstream;
+  using std::promise;
   using std::shared_future;
   using std::shared_ptr;
   using std::string;
@@ -35,6 +37,7 @@ namespace rpc {
   
   
   
+#if 0
   // Futures, re-implemented
   
   template<typename T>
@@ -93,13 +96,14 @@ namespace rpc {
       cout << "rpc_future.get.1\n";
     }
   };
+#endif
   
   
   
   // Base class for all callable RPC objects
   struct callable_base {
     virtual ~callable_base() {}
-    virtual void operator()() const = 0;
+    virtual void operator()() = 0;
   private:
     friend class boost::serialization::access;
     template<typename Archive>
@@ -177,7 +181,7 @@ namespace rpc {
     }
   };
   
-#else
+#elif 0
   
   template<typename R>
   struct action_finish: public callable_base {
@@ -308,37 +312,123 @@ namespace rpc {
     }
   };
   
+#else
+  
+  template<typename R>
+  struct action_finish: public callable_base {
+    global_ptr<promise<R>> p;
+    R res;
+    action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
+    void operator()()
+    {
+      p.get()->set_value(res);
+      delete p.get();
+      p = nullptr;
+    }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & p & res;
+    }
+  };
+  template<>
+  struct action_finish<void>: public callable_base {
+    global_ptr<promise<void>> p;
+    action_finish(const global_ptr<promise<void>>& p): p(p) {}
+    void operator()()
+    {
+      p.get()->set_value();
+      delete p.get();
+      p = nullptr;
+    }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & p;
+    }
+  };
+  
+  template<typename F, typename R, typename... As>
+  struct action_evaluate: public callable_base {
+    global_ptr<promise<R>> p;
+    tuple<As...> args;
+    action_evaluate(promise<R>* p, As... args):
+      p(p), args(args...)
+    {
+    }
+    void operator()()
+    {
+      action_finish<R>(p, tuple_map<F, As...>(F(), args))();
+    }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & p & args;
+    }
+  };
+  template<typename F, typename... As>
+  struct action_evaluate<F, void, As...>: public callable_base {
+    global_ptr<promise<void>> p;
+    tuple<As...> args;
+    action_evaluate(promise<void>* p, As... args):
+      p(p), args(args...)
+    {
+    }
+    void operator()()
+    {
+      tuple_map<F, As...>(F(), args);
+      (action_finish<void>(p))();
+    }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & p & args;
+    }
+  };
+  
 #endif
   
   
   
-  // TODO: use enable_if to ensure func is derived from action_base
+  // Could also use thread.detach instead of async
   
   template<typename F, typename... As>
   void apply(const F& func, As... args)
   {
     // TODO: omit continuation
     typedef decltype(func(args...)) R;
-    action_call<F, R, As...>()(args...).get();
+    auto p = new promise<R>;
+    std::async(action_evaluate<F, R, As...>(p, args...));
   }
   template<typename F, typename... As>
-  auto async(const F& func, As... args) ->
-    shared_future<decltype(func(args...))>
+  auto async(const F& func, As... args) -> future<decltype(func(args...))>
   {
     typedef decltype(func(args...)) R;
-    return action_call<F, R, As...>()(args...);
+    auto p = new promise<R>;
+    auto f = p->get_future();
+    std::async(action_evaluate<F, R, As...>(p, args...));
+    return f;
   }
   template<typename F, typename... As>
   auto sync(const F& func, As... args) -> decltype(func(args...))
   {
     typedef decltype(func(args...)) R;
-    // return action_call<F, R, As...>()(args...).get();
-    cout << "sync.0\n";
-    auto f = make_shared<rpc_future<R>>();
-    cout << "sync.1\n";
-    action_evaluate<F, R, As...>(f.get(), args...)();
-    cout << "sync.2\n";
-    return f.get()->get();
+    auto p = new promise<R>;
+    auto f = p->get_future();
+    action_evaluate<F, R, As...>(p, args...)();
+    return f.get();
   }
   
 }

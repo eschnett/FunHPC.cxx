@@ -1,2 +1,4 @@
 demo
 *.o
+Makefile.bak
+demo.dSYM

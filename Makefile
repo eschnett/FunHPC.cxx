@@ -1,13 +1,13 @@
 CC       = openmpicc
 CXX      = openmpic++
-CPPFLAGS = -I/opt/local/include
+CPPFLAGS = -I/opt/local/include -DBOOST_MPI_HOMOGENEOUS
 CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99 -march=native
 CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native
 LDFLAGS  = -L/opt/local/lib
 LIBS     = -lboost_mpi-mt
 
-HDRS = constant_id.hh global_ptr.hh mpi_rpc.hh rpc_call.hh  rpc_defs.hh rpc_main.hh
-OBJS = rpc_defs.o rpc_main.o demo.o
+SRCS = rpc_defs.cc rpc_main.cc demo.cc
+OBJS = ${SRCS:.o=.cc}
 EXE  = demo
 
 
@@ -23,9 +23,18 @@ ${EXE}: ${OBJS}
 %.o: %.cc
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} -c $*.cc
 
-${OBJS}: ${HDRS}
-
 clean:
 	${RM} ${OBJS} ${EXE}
 
-.PHONY: all clean
+depend:
+	makedepend ${SRCS}
+
+.PHONY: all clean depend
+
+
+
+# DO NOT DELETE
+
+rpc_defs.o: rpc_defs.hh
+rpc_main.o: rpc_main.hh rpc_defs.hh
+demo.o: mpi_rpc.hh rpc_call.hh rpc_defs.hh rpc_main.hh

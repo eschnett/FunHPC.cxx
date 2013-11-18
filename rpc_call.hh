@@ -15,7 +15,7 @@ namespace rpc {
   using std::is_void;
   using std::make_shared;
   using std::mutex;
-  // using std::shared_future;
+  using std::shared_future;
   using std::shared_ptr;
   using std::unique_lock;
   
@@ -24,95 +24,69 @@ namespace rpc {
   // Futures, re-implemented
   
   template<typename T>
-  class shared_future {
-    struct state_t {
-      T value;
-      bool ready;
-      // std::shared_future<void> f;
-      mutex mtx;
-      condition_variable cv;
-      state_t(): ready(false) {}
-      // void remember_thread(const std::shared_future<void>& f_) { f=f_; }
-      void set(const T& value_)
-      {
-        assert(!ready);
-        unique_lock<mutex> lck(mtx);
-        value = value_;
-        ready = true;
-        cv.notify_all();
-      }
-      T& get()
-      {
-        unique_lock<mutex> lck(mtx);
-        while (!ready) cv.wait(lck);
-        return value;
-      }
-    };
-    shared_ptr<state_t> state;
+  class rpc_future {
+    T value;
+    bool ready;
+    // shared_future<void> f;
+    mutable mutex mtx;
+    mutable condition_variable cv;
   public:
-    shared_future(): state(make_shared<state_t>()) {}
-    // void remember_thread(const std::shared_future<void>& f) const
-    // {
-    //   state->remember_thread(f);
-    // }
-    void set(const T& value) const { state->set(value); }
-    T& get() const { return state->get(); }
+    rpc_future(): ready(false) {}
+    // void remember_thread(const shared_future<void>& f_) { f=f_; }
+    void set(const T& value_)
+    {
+      assert(!ready);
+      unique_lock<mutex> lck(mtx);
+      value = value_;
+      ready = true;
+      cv.notify_all();
+    }
+    T get() const
+    {
+      unique_lock<mutex> lck(mtx);
+      while (!ready) cv.wait(lck);
+      return value;
+    }
   };
   
   template<>
-  class shared_future<void> {
-    struct state_t {
-      bool ready;
-      // std::shared_future<void> f;
-      mutex mtx;
-      condition_variable cv;
-      state_t(): ready(false) {}
-      // void remember_thread(const std::shared_future<void>& f_) { f=f_; }
-      void set()
-      {
-        assert(!ready);
-        unique_lock<mutex> lck(mtx);
-        ready = true;
-        cv.notify_all();
-      }
-      void get()
-      {
-        unique_lock<mutex> lck(mtx);
-        while (!ready) cv.wait(lck);
-      }
-    };
-    shared_ptr<state_t> state;
+  class rpc_future<void> {
+    bool ready;
+    // shared_future<void> f;
+    mutable mutex mtx;
+    mutable condition_variable cv;
   public:
-    shared_future(): state(make_shared<state_t>()) {}
-    // void remember_thread(const std::shared_future<void>& f) const
-    // {
-    //   state->remember_thread(f);
-    // }
-    void set() const { state->set(); }
-    void get() const { return state->get(); }
+    rpc_future(): ready(false) {}
+    // void remember_thread(const shared_future<void>& f_) { f=f_; }
+    void set()
+    {
+      assert(!ready);
+      unique_lock<mutex> lck(mtx);
+      ready = true;
+      cv.notify_all();
+    }
+    void get() const
+    {
+      unique_lock<mutex> lck(mtx);
+      while (!ready) cv.wait(lck);
+    }
   };
   
   
   
   template<typename R>
   struct action_finish {
-    void operator()(const shared_future<R>& f, R res) const
-    {
-      f.set(res);
-    }
+    void operator()(rpc_future<R>* f, R res) const { f->set(res); }
   };
   template<>
   struct action_finish<void> {
-    void operator()(const shared_future<void>& f) const
-    {
-      f.set();
-    }
+    void operator()(rpc_future<void>* f) const { f->set(); }
   };
   
   template<typename action, typename R, typename... As>
   struct action_evaluate {
     void operator()(const action_finish<R>& cont,
-                    const shared_future<R>& f,
+                    rpc_future<R>* f,
                     As... args)
       const
     {
@@ -122,7 +96,7 @@ namespace rpc {
   template<typename action, typename... As>
   struct action_evaluate<action, void, As...> {
     void operator()(const action_finish<void>& cont,
-                    const shared_future<void>& f,
+                    rpc_future<void>* f,
                     As... args)
       const
     {
@@ -135,12 +109,16 @@ namespace rpc {
   struct action_call {
     shared_future<R> operator()(As... args) const
     {
-      shared_future<R> f;
-      // f.remember_thread(async(evaluate(), action_finish(), f, args...));
+      auto f = make_shared<rpc_future<R>>();
+      // f->remember_thread(async(evaluate(), action_finish(), f, args...));
       std::async(action_evaluate<action, R, As...>(),
-                 action_finish<R>(), f,
+                 action_finish<R>(), f.get(),
                  args...);
-      return f;
+      // Object lifetime: The lambda expression below will block until
+      // the continuation has set the value; at this time, the
+      // rpc_future is not needed any more. Once the lambda expression
+      // returns, the shared_ptr will destruct the rpc_future.
+      return std::async([=](){ return f->get(); });
     }
   };
   
@@ -150,6 +128,8 @@ namespace rpc {
   
   
   
+  // TODO: use enable_if to ensure func is derived from action_base
+  
   template<typename F, typename... As>
   void apply(const F& func, As... args)
   {
@@ -157,7 +137,6 @@ namespace rpc {
     typedef decltype(func(args...)) R;
     action_call<F, R, As...>()(args...).get();
   }
-  
   template<typename F, typename... As>
   auto async(const F& func, As... args) ->
     shared_future<decltype(func(args...))>
@@ -165,7 +144,6 @@ namespace rpc {
     typedef decltype(func(args...)) R;
     return action_call<F, R, As...>()(args...);
   }
-  
   template<typename F, typename... As>
   auto sync(const F& func, As... args) -> decltype(func(args...))
   {

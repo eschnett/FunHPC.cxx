@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <future>
 #include <iostream>
-#include <unistd.h>
 
 using std::cout;
 using std::flush;
@@ -50,7 +49,6 @@ int rpc_main(int argc, char** argv)
   cout << rpc::sync(f_action(), 40) << "\n";
   cout << "Calling f applicatively...\n" << flush;
   rpc::apply(f_action(), 50);
-  // sleep(1);
   cout << "Done calling f\n";
   
   cout << "Calling add directly... " << flush;

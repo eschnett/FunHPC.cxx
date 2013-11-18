@@ -4,6 +4,8 @@
 
 #include <mpi.h>
 
+#include <boost/optional.hpp>
+
 #include <algorithm>
 #include <future>
 #include <iostream>
@@ -15,6 +17,8 @@ namespace rpc {
   
   using namespace boost;
   
+  using boost::optional;
+  
   using std::cerr;
   using std::cout;
   using std::flush;
@@ -24,31 +28,27 @@ namespace rpc {
   
   
   
-  int initialized;
+  mpi::environment* env = nullptr;
   
   
   
-  void init(int& argc, char**& argv)
+  void send_termination_signal()
   {
-    MPI_Initialized(&initialized);
-    if (!initialized) {
-      int provided;
-      MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-      if (provided != MPI_THREAD_MULTIPLE) {
-        cerr << "MPI does not support multi-threading\n";
-        exit(1);
-      }
-    }
-    cout << "hello\n" << flush;
-    
-    comm = mpi::communicator(MPI_COMM_WORLD, mpi::comm_duplicate);
+    // // Propagate termination in a tree
+    // const int fan_out = 2;
+    // const int min_dest = fan_out * (comm.rank()+1) - 1;
+    // const int max_dest = min(comm.size(), min_dest + fan_out);
+    // assert(min_dest > comm.rank());
+    // for (int dest = min_dest; dest < max_dest; ++dest) {
+    //   comm.send(dest, tag, id_stop);
+    // }
   }
   
-  void finalize()
+  void terminate(int iret)
   {
-    if (!initialized) {
-      MPI_Finalize();
-    }
+    delete env;
+    env = nullptr;
+    exit(iret);
   }
   
   const int tag = 0;
@@ -57,66 +57,48 @@ namespace rpc {
   void event_loop()
   {
     for (;;) {
-      func_id_t id;
-      mpi::status st = comm.recv(mpi::any_source, tag, id);
-      if (id == id_stop) break;
-      int source = st.source();
-      // const any_action_t* func = actions().lookup(id);
-      // assert(func);
-      // async(func);
-    }
-    
-    // Propagate termination in a tree
-    const int fan_out = 2;
-    const int min_dest = fan_out * (comm.rank()+1) - 1;
-    const int max_dest = min(comm.size(), min_dest + fan_out);
-    assert(min_dest > comm.rank());
-    for (int dest = min_dest; dest < max_dest; ++dest) {
-      comm.send(dest, tag, id_stop);
+      // Receive
+      for (;;) {
+        func_id_t id;
+        mpi::request req = comm.irecv(mpi::any_source, tag, id);
+        optional<mpi::status> st = req.test();
+        if (!st) break;
+        if (id == id_stop) terminate(0);
+        int source = st->source();
+        // const any_action_t* func = actions().lookup(id);
+        // assert(func);
+        // async(func);
+      }
+      // Send
+      // while (!sendqueue.empty()) {
+      //   ...
+      // }
     }
   }
   
-  int call_user_main(int (&user_main)(int argc, char** argv),
-                     int argc, char** argv)
+  void run_application(int (&user_main)(int argc, char** argv),
+                        int argc, char** argv)
   {
     int iret = user_main(argc, argv);
-    comm.send(0, tag, id_stop);
-    return iret;
+    cout << "[main()=" << iret << "]\n";
+    // TODO: pass iret
+    // for (int dest=0; dest<comm.size(); ++dest) comm.send(1, tag, id_stop);
+    mpi::environment::abort(iret);
   }
   
-  int main1(int (&user_main)(int argc, char** argv),
+  void init(int (&user_main)(int argc, char** argv),
             int argc, char** argv)
   {
-    init(argc, argv);
-    
+    env = new mpi::environment(argc, argv);
+    comm = mpi::communicator(MPI_COMM_WORLD, mpi::comm_duplicate);
     cout << "hardware concurrency: " << thread::hardware_concurrency() << "\n";
     
-    const proc_t root = 0;
-    shared_future<int> iretf;
-    if (comm.rank() == root) {
-      cout << "[root 0]\n" << flush;
-      // iretf = std::async(call_user_main, user_main, argc, argv);
-      iretf =
-        std::async([=]() { return call_user_main(user_main, argc, argv); });
-      cout << "[root 1]\n" << flush;
+    if (comm.rank() == 0) {
+      // std::async(run_application, user_main, argc, argv);
+      std::async([=]() { return run_application(user_main, argc, argv); });
     }
     
-    cout << "[event 0]\n" << flush;
     event_loop();
-    cout << "[event 1]\n" << flush;
-    
-    int iret;
-    if (comm.rank() == root) {
-      cout << "[root 0]\n" << flush;
-      iret = iretf.get();
-      cout << "[root 1]\n" << flush;
-    }
-    cout << "[broadcast 0]\n" << flush;
-    mpi::broadcast(comm, iret, root);
-    cout << "[broadcast 1]\n" << flush;
-    
-    finalize();
-    return iret;
   }
   
 }
@@ -127,5 +109,6 @@ int rpc_main(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
-  return rpc::main1(rpc_main, argc, argv);
+  rpc::init(rpc_main, argc, argv);
+  return 1;                     // unreachable
 }

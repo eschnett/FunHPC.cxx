@@ -7,7 +7,7 @@ LDFLAGS  = -L/opt/local/lib
 LIBS     = -lboost_mpi-mt
 
 SRCS = rpc_defs.cc rpc_main.cc demo.cc
-OBJS = ${SRCS:.o=.cc}
+OBJS = ${SRCS:.cc=.o}
 EXE  = demo
 
 

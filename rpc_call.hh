@@ -4,12 +4,14 @@
 #include "rpc_defs.hh"
 
 #include <cassert>
+#include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
 
 namespace rpc {
   
+  using std::bind;
   using std::condition_variable;
   using std::enable_if;
   using std::is_void;
@@ -74,6 +76,8 @@ namespace rpc {
   
   
   
+#if 0
+  
   template<typename R>
   struct action_finish {
     void operator()(rpc_future<R>* f, R res) const { f->set(res); }
@@ -121,6 +125,63 @@ namespace rpc {
       return std::async([=](){ return f->get(); });
     }
   };
+  
+#else
+  
+  template<typename R>
+  struct action_finish {
+    rpc_future<R>* f;
+    R res;
+    action_finish(rpc_future<R>* f, R res): f(f), res(res) {}
+    void operator()() const { f->set(res); }
+  };
+  template<>
+  struct action_finish<void> {
+    rpc_future<void>* f;
+    action_finish(rpc_future<void>* f): f(f) {}
+    void operator()() const { f->set(); }
+  };
+  
+  template<typename action, typename R, typename... As>
+  struct action_evaluate {
+    rpc_future<R>* f;
+    tuple<As...> args;
+    action_evaluate(rpc_future<R>* f, As... args): f(f), args(args...) {}
+    void operator()() const
+    {
+      action_finish<R>(f, tuple_map<action, As...>(action(), args))();
+    }
+  };
+  template<typename action, typename... As>
+  struct action_evaluate<action, void, As...> {
+    rpc_future<void>* f;
+    tuple<As...> args;
+    action_evaluate(rpc_future<void>* f, As... args): f(f), args(args...) {}
+    void operator()() const
+    {
+      tuple_map<action, As...>(action(), args);
+      (action_finish<void>(f))();
+    }
+  };
+  
+  template<typename action, typename R, typename... As>
+  struct action_call {
+    shared_future<R> operator()(As... args) const
+    {
+      auto f = make_shared<rpc_future<R>>();
+      // f->remember_thread(async(evaluate(), f, args...));
+      std::async(action_evaluate<action, R, As...>(f.get(), args...));
+      // Object lifetime: The lambda expression below will block until
+      // the continuation has set the value; at this time, the
+      // rpc_future is not needed any more. Once the lambda expression
+      // returns, the shared_ptr will destruct the rpc_future.
+      return std::async([=](){ return f->get(); });
+    }
+  };
+  
+#endif
+  
+  
   
   template<typename action>
   struct action_base {

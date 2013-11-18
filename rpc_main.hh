@@ -3,9 +3,6 @@
 
 namespace rpc {
   
-  void init(int& argc, char**& argv);
-  void finalize();
-  
 }
 
 #endif  // RPC_MAIN_HH

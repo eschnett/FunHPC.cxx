@@ -3,6 +3,9 @@
 
 #include "rpc_defs.hh"
 
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/export.hpp>
+
 #include <cassert>
 #include <functional>
 #include <future>
@@ -13,6 +16,7 @@ namespace rpc {
   
   using std::bind;
   using std::condition_variable;
+  using std::cout;
   using std::enable_if;
   using std::is_void;
   using std::make_shared;
@@ -76,6 +80,31 @@ namespace rpc {
   
   
   
+  // Base class for all callable RPC objects
+  struct callable_base {
+    virtual ~callable_base() {}
+    virtual void operator()() const = 0;
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+    }
+  };
+  
+  template<typename action>
+  struct action_base: public callable_base {
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+    }
+  };
+  
+  
+  
 #if 0
   
   template<typename R>
@@ -129,21 +158,37 @@ namespace rpc {
 #else
   
   template<typename R>
-  struct action_finish {
+  struct action_finish: public callable_base {
     rpc_future<R>* f;
     R res;
     action_finish(rpc_future<R>* f, R res): f(f), res(res) {}
     void operator()() const { f->set(res); }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & f & res;
+    }
   };
   template<>
-  struct action_finish<void> {
+  struct action_finish<void>: public callable_base {
     rpc_future<void>* f;
     action_finish(rpc_future<void>* f): f(f) {}
     void operator()() const { f->set(); }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & f;
+    }
   };
   
   template<typename action, typename R, typename... As>
-  struct action_evaluate {
+  struct action_evaluate: public callable_base {
     rpc_future<R>* f;
     tuple<As...> args;
     action_evaluate(rpc_future<R>* f, As... args): f(f), args(args...) {}
@@ -151,9 +196,17 @@ namespace rpc {
     {
       action_finish<R>(f, tuple_map<action, As...>(action(), args))();
     }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & f & args;
+    }
   };
   template<typename action, typename... As>
-  struct action_evaluate<action, void, As...> {
+  struct action_evaluate<action, void, As...>: public callable_base {
     rpc_future<void>* f;
     tuple<As...> args;
     action_evaluate(rpc_future<void>* f, As... args): f(f), args(args...) {}
@@ -161,6 +214,14 @@ namespace rpc {
     {
       tuple_map<action, As...>(action(), args);
       (action_finish<void>(f))();
+    }
+  private:
+    friend class boost::serialization::access;
+    template<typename Archive>
+    void serialize(Archive& ar, unsigned int file_version)
+    {
+      ar & boost::serialization::base_object<callable_base>(*this);
+      ar & f & args;
     }
   };
   
@@ -180,12 +241,6 @@ namespace rpc {
   };
   
 #endif
-  
-  
-  
-  template<typename action>
-  struct action_base {
-  };
   
   
   

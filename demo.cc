@@ -1,11 +1,17 @@
 #include "mpi_rpc.hh"
 
+#include <boost/archive/polymorphic_text_iarchive.hpp>
+#include <boost/archive/polymorphic_text_oarchive.hpp>
+
 #include <cstdio>
 #include <future>
 #include <iostream>
+#include <sstream>
 
 using std::cout;
 using std::flush;
+using std::istringstream;
+using std::ostringstream;
 using std::printf;
 
 
@@ -15,7 +21,17 @@ int f(int n)
   cout << "--> Called f(n=" << n << ") on process " << rpc::comm.rank() << "\n";
   return n+1;
 }
-struct f_action: public rpc::action_base<f_action> {
+// struct f_action: public rpc::action_base<f_action> {
+//   int operator()(int arg0) const { return f(arg0); }
+// private:
+//   friend class boost::serialization::access;
+//   template<typename Archive>
+//   void serialize(Archive& ar, unsigned int file_version)
+//   {
+//     ar & boost::serialization::base_object<action_base<f_action>>(*this);
+//   }
+// };
+struct f_action {
   int operator()(int arg0) const { return f(arg0); }
 };
 
@@ -23,7 +39,10 @@ int add(int m, int n)
 {
   return m+n;
 }
-struct add_action: public rpc::action_base<add_action> {
+// struct add_action: public rpc::action_base<add_action> {
+//   int operator()(int arg0, int arg1) const { return add(arg0, arg1); }
+// };
+struct add_action {
   int operator()(int arg0, int arg1) const { return add(arg0, arg1); }
 };
 
@@ -31,7 +50,10 @@ void out(const char* str)
 {
   printf("%s\n", str);
 }
-struct out_action: public rpc::action_base<out_action> {
+// struct out_action: public rpc::action_base<out_action> {
+//   void operator()(const char* arg0) const { return out(arg0); }
+// };
+struct out_action {
   void operator()(const char* arg0) const { return out(arg0); }
 };
 

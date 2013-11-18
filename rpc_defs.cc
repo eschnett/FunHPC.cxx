@@ -2,6 +2,6 @@
 
 namespace rpc {
   
-  mpi::communicator comm;
+  boost::mpi::communicator comm;
   
 }

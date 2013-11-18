@@ -7,11 +7,7 @@
 
 namespace rpc {
   
-  using namespace boost;
-  
-  using std::enable_if;
   using std::tuple;
-  using std::tuple_size;
   
   
   
@@ -55,7 +51,7 @@ namespace rpc {
   
   
   typedef int proc_t;
-  extern mpi::communicator comm;
+  extern boost::mpi::communicator comm;
   
 }
 

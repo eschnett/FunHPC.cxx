@@ -37,4 +37,5 @@ depend:
 
 rpc_defs.o: rpc_defs.hh
 rpc_main.o: rpc_main.hh rpc_defs.hh
-demo.o: mpi_rpc.hh rpc_call.hh rpc_defs.hh rpc_global_ptr.hh rpc_main.hh
+demo.o: mpi_rpc.hh rpc_call.hh rpc_defs.hh rpc_global_ptr.hh rpc_tuple.hh
+demo.o: rpc_main.hh

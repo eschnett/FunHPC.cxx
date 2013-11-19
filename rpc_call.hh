@@ -3,6 +3,7 @@
 
 #include "rpc_defs.hh"
 #include "rpc_global_ptr.hh"
+#include "rpc_tuple.hh"
 
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -20,9 +21,7 @@ namespace rpc {
   
   using std::bind;
   using std::condition_variable;
-  using std::cout;
   using std::enable_if;
-  using std::flush;
   using std::future;
   using std::is_void;
   using std::istringstream;
@@ -37,69 +36,6 @@ namespace rpc {
   
   
   
-#if 0
-  // Futures, re-implemented
-  
-  template<typename T>
-  class rpc_future {
-    T value;
-    bool ready;
-    // shared_future<void> f;
-    mutable mutex mtx;
-    mutable condition_variable cv;
-  public:
-    rpc_future(): ready(false) {}
-    // void remember_thread(const shared_future<void>& f_) { f=f_; }
-    void set(const T& value_)
-    {
-      assert(!ready);
-      cout << "rpc_future.set.0\n";
-      unique_lock<mutex> lck(mtx);
-      value = value_;
-      ready = true;
-      cv.notify_all();
-      cout << "rpc_future.set.1\n";
-    }
-    T get() const
-    {
-      unique_lock<mutex> lck(mtx);
-      cout << "rpc_future.get.0\n";
-      while (!ready) cv.wait(lck);
-      cout << "rpc_future.get.1\n";
-      return value;
-    }
-  };
-  
-  template<>
-  class rpc_future<void> {
-    bool ready;
-    // shared_future<void> f;
-    mutable mutex mtx;
-    mutable condition_variable cv;
-  public:
-    rpc_future(): ready(false) {}
-    // void remember_thread(const shared_future<void>& f_) { f=f_; }
-    void set()
-    {
-      cout << "rpc_future.set.0\n";
-      assert(!ready);
-      unique_lock<mutex> lck(mtx);
-      ready = true;
-      cv.notify_all();
-      cout << "rpc_future.set.1\n";
-    }
-    void get() const
-    {
-      unique_lock<mutex> lck(mtx);
-      cout << "rpc_future.get.0\n";
-      while (!ready) cv.wait(lck);
-      cout << "rpc_future.get.1\n";
-    }
-  };
-#endif
-  
-  
-  
   // Base class for all callable RPC objects
   struct callable_base {
     virtual ~callable_base() {}
@@ -109,215 +45,16 @@ namespace rpc {
     template<typename Archive>
     void serialize(Archive& ar, unsigned int file_version)
     {
-      cout << "callable_base.serialize.0\n";
-    }
-  };
-// }
-// BOOST_CLASS_EXPORT(rpc::callable_base);
-// namespace rpc{
-  
-  struct callable_ptr {
-    callable_base* ptr;
-  private:
-    friend class boost::serialization::access;
-    template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-      cout << "callable_ptr.serialize.0\n" << flush;
-      ar & ptr;
-      cout << "callable_ptr.serialize.1\n" << flush;
     }
   };
   
   
   
-#if 0
-  
-  template<typename R>
-  struct action_finish {
-    void operator()(rpc_future<R>* f, R res) const { f->set(res); }
-  };
-  template<>
-  struct action_finish<void> {
-    void operator()(rpc_future<void>* f) const { f->set(); }
-  };
-  
-  template<typename action, typename R, typename... As>
-  struct action_evaluate {
-    void operator()(const action_finish<R>& cont,
-                    rpc_future<R>* f,
-                    As... args)
-      const
-    {
-      cont(f, action()(args...));
-    }
-  };
-  template<typename action, typename... As>
-  struct action_evaluate<action, void, As...> {
-    void operator()(const action_finish<void>& cont,
-                    rpc_future<void>* f,
-                    As... args)
-      const
-    {
-      action()(args...);
-      cont(f);
-    }
-  };
-  
-  template<typename action, typename R, typename... As>
-  struct action_call {
-    shared_future<R> operator()(As... args) const
-    {
-      auto f = make_shared<rpc_future<R>>();
-      // f->remember_thread(async(evaluate(), action_finish(), f, args...));
-      std::async(action_evaluate<action, R, As...>(),
-                 action_finish<R>(), f.get(),
-                 args...);
-      // Object lifetime: The lambda expression below will block until
-      // the continuation has set the value; at this time, the
-      // rpc_future is not needed any more. Once the lambda expression
-      // returns, the shared_ptr will destruct the rpc_future.
-      return std::async([=](){ return f->get(); });
-    }
-  };
-  
-#elif 0
-  
-  template<typename R>
-  struct action_finish: public callable_base {
-    global_ptr<rpc_future<R>> f;
-    R res;
-    action_finish(global_ptr<rpc_future<R>> f, R res): f(f), res(res) {}
-    void operator()() const { f.get()->set(res); }
-  private:
-    friend class boost::serialization::access;
-    template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-      ar & boost::serialization::base_object<callable_base>(*this);
-      ar & f & res;
-    }
-  };
-  template<>
-  struct action_finish<void>: public callable_base {
-    rpc_future<void>* f;
-    action_finish(rpc_future<void>* f): f(f) {}
-    void operator()() const { f->set(); }
-  private:
-    friend class boost::serialization::access;
-    template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-      ar & boost::serialization::base_object<callable_base>(*this);
-      ar & f;
-    }
-  };
-  
-  template<typename action, typename R, typename... As>
-  struct action_evaluate: public callable_base {
-    global_ptr<rpc_future<R>> f;
-    tuple<As...> args;
-    action_evaluate(rpc_future<R>* f, As... args): f(f), args(args...) {}
-    void operator()() const
-    {
-#if 1
-      cout << "action_evaluate.0\n";
-      action_finish<R>(f, tuple_map<action, As...>(action(), args))();
-      cout << "action_evaluate.1\n";
-#elif 0
-      auto cont = action_finish<R>(f, tuple_map<action, As...>(action(), args));
-      cont();
-#else
-      cout << "action_evaluate.0\n";
-      auto cont = action_finish<R>(f, tuple_map<action, As...>(action(), args));
-      cout << "action_evaluate.1\n";
-      callable_base* callable = &cont;
-      cout << "action_evaluate.2\n";
-      ostringstream os;
-      cout << "action_evaluate.3\n";
-      boost::archive::text_oarchive ar(os);
-      cout << "action_evaluate.4\n";
-      // ar << callable;
-      callable_ptr ptr;
-      ptr.ptr = &cont;
-      ar << ptr;
-      cout << "action_evaluate.5\n";
-      string call = os.str();
-      cout << "action_evaluate.6\n";
-      cout << "[archived call: " << call << "]\n";
-      cout << "action_evaluate.7\n";
-      istringstream is(call);
-      cout << "action_evaluate.8\n";
-      boost::archive::text_iarchive ar1(is);
-      cout << "action_evaluate.9\n";
-      callable_base* callable1;
-      cout << "action_evaluate.10\n";
-      ar1 >> callable1;
-      cout << "action_evaluate.11\n";
-      callable1->operator()();
-      cout << "action_evaluate.12\n";
-      // (*callable1)();
-      cout << "action_evaluate.13\n";
-#endif
-    }
-  private:
-    friend class boost::serialization::access;
-    template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-      cout << "action_evaluate.serialize.0\n";
-      ar & boost::serialization::base_object<callable_base>(*this);
-      cout << "action_evaluate.serialize.1\n";
-      ar & f & args;
-      cout << "action_evaluate.serialize.2\n";
-    }
-  };
-  template<typename action, typename... As>
-  struct action_evaluate<action, void, As...>: public callable_base {
-    rpc_future<void>* f;
-    tuple<As...> args;
-    action_evaluate(rpc_future<void>* f, As... args): f(f), args(args...) {}
-    void operator()() const
-    {
-      tuple_map<action, As...>(action(), args);
-#if 1
-      (action_finish<void>(f))();
-#else
-      auto cont = action_finish<void>(f);
-      cont();
-#endif
-    }
-  private:
-    friend class boost::serialization::access;
-    template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-      ar & boost::serialization::base_object<callable_base>(*this);
-      ar & f & args;
-    }
-  };
-  
-  template<typename action, typename R, typename... As>
-  struct action_call {
-    shared_future<R> operator()(As... args) const
-    {
-      auto f = make_shared<rpc_future<R>>();
-      // f->remember_thread(async(evaluate(), f, args...));
-      std::async(action_evaluate<action, R, As...>(f.get(), args...));
-      // Object lifetime: The lambda expression below will block until
-      // the continuation has set the value; at this time, the
-      // rpc_future is not needed any more. Once the lambda expression
-      // returns, the shared_ptr will destruct the rpc_future.
-      return std::async([=](){ return f->get(); });
-    }
-  };
-  
-#else
-  
-  template<typename R>
+  template<typename F, typename R>
   struct action_finish: public callable_base {
     global_ptr<promise<R>> p;
     R res;
+    action_finish() {}          // only for boost::serialize
     action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
     void operator()()
     {
@@ -334,9 +71,10 @@ namespace rpc {
       ar & p & res;
     }
   };
-  template<>
-  struct action_finish<void>: public callable_base {
+  template<typename F>
+  struct action_finish<F, void>: public callable_base {
     global_ptr<promise<void>> p;
+    action_finish() {}          // only for boost::serialize
     action_finish(const global_ptr<promise<void>>& p): p(p) {}
     void operator()()
     {
@@ -358,13 +96,26 @@ namespace rpc {
   struct action_evaluate: public callable_base {
     global_ptr<promise<R>> p;
     tuple<As...> args;
-    action_evaluate(promise<R>* p, As... args):
-      p(p), args(args...)
-    {
-    }
+    action_evaluate() {}        // only for boost::serialize
+    action_evaluate(promise<R>* p, As... args): p(p), args(args...) {}
     void operator()()
     {
-      action_finish<R>(p, tuple_map<F, As...>(F(), args))();
+#if 0
+      action_finish<F, R>(p, tuple_map<F, As...>(F(), args))();
+#else
+      auto cont = action_finish<F, R>(p, tuple_map<F, As...>(F(), args));
+      callable_base* callable = &cont;
+      ostringstream os;
+      boost::archive::text_oarchive ar(os);
+      ar << callable;
+      string call = os.str();
+      // std::cout << "[archived call: " << call << "]\n";
+      istringstream is(call);
+      boost::archive::text_iarchive ar1(is);
+      callable_base* callable1;
+      ar1 >> callable1;
+      (*callable1)();
+#endif
     }
   private:
     friend class boost::serialization::access;
@@ -379,14 +130,12 @@ namespace rpc {
   struct action_evaluate<F, void, As...>: public callable_base {
     global_ptr<promise<void>> p;
     tuple<As...> args;
-    action_evaluate(promise<void>* p, As... args):
-      p(p), args(args...)
-    {
-    }
+    action_evaluate() {}        // only for boost::serialize
+    action_evaluate(promise<void>* p, As... args): p(p), args(args...) {}
     void operator()()
     {
       tuple_map<F, As...>(F(), args);
-      (action_finish<void>(p))();
+      (action_finish<F, void>(p))();
     }
   private:
     friend class boost::serialization::access;
@@ -397,8 +146,6 @@ namespace rpc {
       ar & p & args;
     }
   };
-  
-#endif
   
   
   
@@ -427,7 +174,22 @@ namespace rpc {
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
+#if 0
     action_evaluate<F, R, As...>(p, args...)();
+#else
+    auto cont = action_evaluate<F, R, As...>(p, args...);
+    callable_base* callable = &cont;
+    ostringstream os;
+    boost::archive::text_oarchive ar(os);
+    ar << callable;
+    string call = os.str();
+    // std::cout << "[archived call: " << call << "]\n";
+    istringstream is(call);
+    boost::archive::text_iarchive ar1(is);
+    callable_base* callable1;
+    ar1 >> callable1;
+    (*callable1)();
+#endif
     return f.get();
   }
   

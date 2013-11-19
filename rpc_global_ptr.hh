@@ -4,13 +4,14 @@
 #include "rpc_defs.hh"
 
 #include <boost/serialization/access.hpp>
-#include <boost/serialization/ephemeral.hpp>
+#include <boost/serialization/split_member.hpp>
 
+#include <cstdint>
 #include <iostream>
 
 namespace rpc {
   
-  using std::cout;
+  using std::intptr_t;
   
   // A local pointer, valid only in one process, and represented as an
   // opaque bit pattern on all other processes
@@ -27,8 +28,7 @@ namespace rpc {
     void save(Archive& ar, unsigned int version) const
     {
       // TODO: use serialization::binary_object instead?
-      intptr_t iptr = (intptr_t)ptr;
-      ar << iptr;
+      { intptr_t iptr = (intptr_t)ptr; ar << iptr; }
     }
     template<class Archive>
     void load(Archive& ar, unsigned int version)
@@ -53,11 +53,9 @@ namespace rpc {
   private:
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive& ar, unsigned int version) const
+    void serialize(Archive& ar, unsigned int version)
     {
-      cout << "global_ptr.serialize.0\n";
       ar & ptr & proc;
-      cout << "global_ptr.serialize.1\n";
     }
   };
   

@@ -14,25 +14,20 @@
 #include <functional>
 #include <future>
 #include <memory>
-#include <mutex>
 #include <sstream>
+#include <type_traits>
 
 namespace rpc {
   
-  using std::bind;
-  using std::condition_variable;
   using std::enable_if;
   using std::future;
-  using std::is_void;
+  using std::is_base_of;
   using std::istringstream;
   using std::make_shared;
-  using std::mutex;
   using std::ostringstream;
   using std::promise;
-  using std::shared_future;
   using std::shared_ptr;
   using std::string;
-  using std::unique_lock;
   
   
   
@@ -101,9 +96,9 @@ namespace rpc {
     void operator()()
     {
 #if 0
-      action_finish<F, R>(p, tuple_map<F, As...>(F(), args))();
+      typename F::finish(p, tuple_map<F, As...>(F(), args))();
 #else
-      auto cont = action_finish<F, R>(p, tuple_map<F, As...>(F(), args));
+      auto cont = typename F::finish(p, tuple_map<F, As...>(F(), args));
       callable_base* callable = &cont;
       ostringstream os;
       boost::archive::text_oarchive ar(os);
@@ -135,7 +130,7 @@ namespace rpc {
     void operator()()
     {
       tuple_map<F, As...>(F(), args);
-      (action_finish<F, void>(p))();
+      (typename F::finish(p))();
     }
   private:
     friend class boost::serialization::access;
@@ -149,35 +144,76 @@ namespace rpc {
   
   
   
+  // Base type for all actions
+  template<typename F>
+  struct action_base {
+  };
+  
+  // Example for a wrapper for a function
+  // struct wrap_f {
+  //   static constexpr decltype(&f) value = f;
+  // };
+  
+  // Template for an action
+  template<typename F, typename W, typename... As>
+  struct action_impl_t: public action_base<F> {
+    typedef decltype(W::value(As()...)) R;
+    R operator()(As... args) const { return W::value(args...); }
+    typedef action_evaluate<F, R, As...> evaluate;
+    typedef action_finish<F, R> finish;
+  };
+  
+  // Get the action implementation (with its template arguments) for a
+  // function wrapper
+  template<typename F, typename W, typename R, typename... As>
+  action_impl_t<F, W, As...> get_action_impl_t(R(As...));
+  
+  template<typename F, typename W>
+  struct action_impl {
+    typedef decltype(get_action_impl_t<F, W>(W::value)) type;
+  };
+  
+  // Example action definition
+  // struct f_action: public rpc::action_impl<f_action, wrap_f>::type
+  // {
+  // };
+  
+  
+  
   // Could also use thread.detach instead of async
   
   template<typename F, typename... As>
-  void apply(const F& func, As... args)
+  auto apply(const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     // TODO: omit continuation
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
-    std::async(action_evaluate<F, R, As...>(p, args...));
+    std::async(typename F::evaluate(p, args...));
   }
   template<typename F, typename... As>
-  auto async(const F& func, As... args) -> future<decltype(func(args...))>
+  auto async(const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value,
+                       future<decltype(func(args...))>>::type
   {
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
-    std::async(action_evaluate<F, R, As...>(p, args...));
+    std::async(typename F::evaluate(p, args...));
     return f;
   }
   template<typename F, typename... As>
-  auto sync(const F& func, As... args) -> decltype(func(args...))
+  auto sync(const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value,
+                       decltype(func(args...))>::type
   {
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
 #if 0
-    action_evaluate<F, R, As...>(p, args...)();
+    typename F::evaluate(p, args...)();
 #else
-    auto cont = action_evaluate<F, R, As...>(p, args...);
+    auto cont = typename F::evaluate(p, args...);
     callable_base* callable = &cont;
     ostringstream os;
     boost::archive::text_oarchive ar(os);

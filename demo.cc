@@ -1,10 +1,9 @@
 #include "mpi_rpc.hh"
 
 #include <boost/serialization/string.hpp>
-#include <boost/serialization/strong_typedef.hpp>
-#include <boost/utility/identity_type.hpp>
 
 #include <cstdio>
+#include <functional>
 #include <future>
 #include <iostream>
 #include <string>
@@ -12,8 +11,11 @@
 
 using std::cout;
 using std::flush;
+using std::function;
 using std::printf;
 using std::string;
+using std::tuple;
+using std::tuple_element;
 
 
 
@@ -22,19 +24,17 @@ int f(int n)
   cout << "--> Called f(n=" << n << ") on process " << rpc::comm.rank() << "\n";
   return n+1;
 }
-struct f_action {
-  int operator()(int arg0) const { return f(arg0); }
-};
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_evaluate<f_action, int, int>)));
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_finish<f_action, int>)));
 
-// BOOST_STRONG_TYPEDEF(decltype(&f), f_type);
-// f_type f1(&f);
-// auto f2 = *f1;
-// auto f3 = *f_type(&f);
-// const f_type& f4(*f_type(&f));
-// typedef const f_type& f_type2;
-// f_type2 f5(*f_type(&f));
+// Wrap the function f into a new type
+struct wrap_f {
+  static constexpr decltype(&(f)) value = f;
+};
+
+struct f_action: public rpc::action_impl<f_action, wrap_f>::type
+{
+};
+BOOST_CLASS_EXPORT(f_action::evaluate);
+BOOST_CLASS_EXPORT(f_action::finish);
 
 
 
@@ -42,11 +42,13 @@ int add(int m, int n)
 {
   return m+n;
 }
-struct add_action {
+struct add_action: public rpc::action_base<add_action> {
   int operator()(int arg0, int arg1) const { return add(arg0, arg1); }
+  typedef rpc::action_evaluate<add_action, int, int, int> evaluate;
+  typedef rpc::action_finish<add_action, int> finish;
 };
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_evaluate<add_action, int, int, int>)));
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_finish<add_action, int>)));
+BOOST_CLASS_EXPORT(add_action::evaluate);
+BOOST_CLASS_EXPORT(add_action::finish);
 
 
 
@@ -54,11 +56,13 @@ void out(string str)
 {
   printf("%s\n", str.c_str());
 }
-struct out_action {
+struct out_action: public rpc::action_base<out_action> {
   void operator()(string arg0) const { return out(arg0); }
+  typedef rpc::action_evaluate<out_action, void, string> evaluate;
+  typedef rpc::action_finish<out_action, void> finish;
 };
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_evaluate<out_action, void, string>)));
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::action_finish<out_action, void>)));
+BOOST_CLASS_EXPORT(out_action::evaluate);
+BOOST_CLASS_EXPORT(out_action::finish);
 
 
 
@@ -94,15 +98,15 @@ int rpc_main(int argc, char** argv)
   cout << "Done calling add\n";
   
   cout << "Calling out directly...\n" << flush;
-  out(string("hello"));
+  out("hello");
   cout << "Calling out as action...\n" << flush;
-  out_action()(string("hello"));
+  out_action()("hello");
   cout << "Calling out synchronously...\n" << flush;
-  rpc::sync(out_action(), string("hello"));
+  rpc::sync(out_action(), "hello");
   cout << "Calling out asynchronously...\n" << flush;
-  rpc::async(out_action(), string("hello")).get();
+  rpc::async(out_action(), "hello").get();
   cout << "Calling out applicatively...\n" << flush;
-  rpc::apply(out_action(), string("hello"));
+  rpc::apply(out_action(), "hello");
   cout << "Done calling out\n";
   
   // int dest = (rpc::rank() + 1) % rpc::size();

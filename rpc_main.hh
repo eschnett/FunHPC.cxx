@@ -2,7 +2,6 @@
 #define RPC_MAIN_HH
 
 namespace rpc {
-  
 }
 
 #endif  // RPC_MAIN_HH

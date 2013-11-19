@@ -1,10 +1,10 @@
-#ifndef MPI_RPC_HH
-#define MPI_RPC_HH
+#ifndef RPC_HH
+#define RPC_HH
 
 #include "rpc_call.hh"
-#include "rpc_defs.hh"
 #include "rpc_global_ptr.hh"
 #include "rpc_main.hh"
+#include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
-#endif  // MPI_RPC_HH
+#endif  // RPC_HH

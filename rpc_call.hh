@@ -1,8 +1,8 @@
 #ifndef RPC_CALL
 #define RPC_CALL
 
-#include "rpc_defs.hh"
 #include "rpc_global_ptr.hh"
+#include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
 #include <boost/archive/text_iarchive.hpp>
@@ -149,10 +149,11 @@ namespace rpc {
   struct action_base {
   };
   
-  // Example for a wrapper for a function
-  // struct wrap_f {
-  //   static constexpr decltype(&f) value = f;
-  // };
+  // Wrapper for a function, turning a function into a type
+  template<typename FT, const FT& FV>
+  struct wrap {
+    static constexpr FT& value = FV;
+  };
   
   // Template for an action
   template<typename F, typename W, typename... As>
@@ -169,12 +170,11 @@ namespace rpc {
   action_impl_t<F, W, As...> get_action_impl_t(R(As...));
   
   template<typename F, typename W>
-  struct action_impl {
-    typedef decltype(get_action_impl_t<F, W>(W::value)) type;
-  };
+  using action_impl = decltype(get_action_impl_t<F, W>(W::value));
   
   // Example action definition
-  // struct f_action: public rpc::action_impl<f_action, wrap_f>::type
+  // struct f_action:
+  //   public rpc::action_impl<f_action, rpc::wrap<decltype(f), f>>
   // {
   // };
   
@@ -183,7 +183,7 @@ namespace rpc {
   // Could also use thread.detach instead of async
   
   template<typename F, typename... As>
-  auto apply(const F& func, As... args) ->
+  auto apply(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     // TODO: omit continuation
@@ -192,7 +192,7 @@ namespace rpc {
     std::async(typename F::evaluate(p, args...));
   }
   template<typename F, typename... As>
-  auto async(const F& func, As... args) ->
+  auto async(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
@@ -203,7 +203,7 @@ namespace rpc {
     return f;
   }
   template<typename F, typename... As>
-  auto sync(const F& func, As... args) ->
+  auto sync(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(func(args...))>::type
   {

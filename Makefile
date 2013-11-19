@@ -6,7 +6,7 @@ CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native
 LDFLAGS  = -L/opt/local/lib
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt
 
-SRCS = rpc_defs.cc rpc_main.cc demo.cc
+SRCS = rpc_main.cc rpc_server.cc demo.cc
 OBJS = ${SRCS:.cc=.o}
 EXE  = demo
 
@@ -35,7 +35,8 @@ depend:
 
 # DO NOT DELETE
 
-rpc_defs.o: rpc_defs.hh
-rpc_main.o: rpc_main.hh rpc_defs.hh
-demo.o: mpi_rpc.hh rpc_call.hh rpc_defs.hh rpc_global_ptr.hh rpc_tuple.hh
+rpc_main.o: rpc_main.hh rpc_server.hh rpc_server_mpi.hh rpc_call.hh
+rpc_main.o: rpc_global_ptr.hh rpc_tuple.hh
+rpc_server.o: rpc_server.hh
+demo.o: rpc.hh rpc_call.hh rpc_global_ptr.hh rpc_server.hh rpc_tuple.hh
 demo.o: rpc_main.hh

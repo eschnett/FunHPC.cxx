@@ -1,7 +1,7 @@
 #ifndef RPC_GLOBAL_PTR_HH
 #define RPC_GLOBAL_PTR_HH
 
-#include "rpc_defs.hh"
+#include "rpc_server.hh"
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
@@ -47,9 +47,9 @@ namespace rpc {
     int proc;
   public:
     global_ptr(): proc(-1) {}
-    global_ptr(T* ptr): ptr(ptr), proc(comm.rank()) {}
-    T* get() const { return comm.rank()==proc ? ptr.get() : nullptr; }
-    proc_t get_proc() const { return proc; }
+    global_ptr(T* ptr): ptr(ptr), proc(server->rank()) {}
+    T* get() const { return server->rank()==proc ? ptr.get() : nullptr; }
+    int get_proc() const { return proc; }
   private:
     friend class boost::serialization::access;
     template<class Archive>

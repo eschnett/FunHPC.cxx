@@ -222,22 +222,8 @@ namespace rpc {
     
     virtual void call(int dest, shared_ptr<callable_base> func)
     {
-      if (we_should_terminate()) {
-        if (typeid(*func) == typeid(rpc::terminate_stage_1_action::finish) ||
-            typeid(*func) == typeid(rpc::terminate_stage_2_action::finish))
-        {
-          // Ignore confirmation messages for termination messages
-          // TODO: Use apply to send, avoid sending continuation for apply
-          return;
-        }
-      }
       assert(!we_should_terminate());
       assert(func);
-      // TODO: allow disabling this for testing
-      // if (dest == rank()) {
-      //   thread([=](){ (*func)(); }).detach();
-      //   return;
-      // }
       assert(dest != rank());
       with_lock(send_queue_mutex,
                 [&](){ send_queue.push_back(send_item_t{ dest, func }); });

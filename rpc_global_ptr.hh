@@ -48,7 +48,9 @@ namespace rpc {
   public:
     global_ptr(): proc(-1) {}
     global_ptr(T* ptr): ptr(ptr), proc(server->rank()) {}
-    T* get() const { return server->rank()==proc ? ptr.get() : nullptr; }
+    bool is_valid() const { return proc>=0; }
+    bool is_local() const { return proc==server->rank(); }
+    T* get() const { return is_local() ? ptr.get() : nullptr; }
     int get_proc() const { return proc; }
   private:
     friend class boost::serialization::access;
@@ -59,6 +61,7 @@ namespace rpc {
     }
   };
   
+  template<typename T> global_ptr<T> make_global(T* t) { return t; }
 }
 
 #endif  // #ifndef RPC_GLOBAL_PTR_HH

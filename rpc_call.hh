@@ -99,10 +99,12 @@ namespace rpc {
     global_ptr<promise<R>> p;
     tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(promise<R>* p, As... args): p(p), args(args...) {}
+    action_evaluate(global_ptr<promise<R>> p, As... args):
+      p(p), args(args...) {}
     void operator()()
     {
       auto cont = tuple_map<F, As...>(F(), args);
+      if (!p.is_valid()) return;
       // typename F::finish(p, cont)();
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
     }
@@ -120,10 +122,12 @@ namespace rpc {
     global_ptr<promise<void>> p;
     tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(promise<void>* p, As... args): p(p), args(args...) {}
+    action_evaluate(global_ptr<promise<void>> p, As... args):
+      p(p), args(args...) {}
     void operator()()
     {
       tuple_map<F, As...>(F(), args);
+      if (!p.is_valid()) return;
       // (typename F::finish(p))();
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
     }
@@ -180,14 +184,11 @@ namespace rpc {
   auto apply(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
-    // TODO: allow disabling this for testing
     if (dest == server->rank()) {
       return thread(func, args...).detach();
     }
-    // TODO: omit continuation
     typedef decltype(func(args...)) R;
-    auto p = new promise<R>;
-    // thread(typename F::evaluate(p, args...)).detach();
+    auto p = global_ptr<promise<R>>();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
   }
   template<typename F, typename... As>
@@ -195,14 +196,12 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
-    // TODO: allow disabling this for testing
     if (dest == server->rank()) {
       return std::async(func, args...);
     }
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
-    // thread(typename F::evaluate(p, args...)).detach();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f;
   }
@@ -211,14 +210,12 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(func(args...))>::type
   {
-    // TODO: allow disabling this for testing
     if (dest == server->rank()) {
       return func(args...);
     }
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
-    // typename F::evaluate(p, args...)();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f.get();
   }

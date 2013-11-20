@@ -14,6 +14,10 @@
 #include <thread>
 #include <vector>
 
+// TODO
+#include <boost/archive/text_oarchive.hpp>
+#include <sstream>
+
 
 
 namespace rpc {
@@ -22,7 +26,6 @@ namespace rpc {
   
   using std::async;
   using std::atomic;
-  using std::cout;
   using std::min;
   using std::mutex;
   using std::lock_guard;
@@ -67,8 +70,8 @@ namespace rpc {
     boost::mpi::communicator comm;
     
     struct send_item_t {
-      callable_base* call;
       int dest;
+      shared_ptr<callable_base> call;
     };
     typedef vector<send_item_t> send_queue_t;
     send_queue_t send_queue;
@@ -87,8 +90,11 @@ namespace rpc {
     {
       comm = boost::mpi::communicator(MPI_COMM_WORLD,
                                       boost::mpi::comm_duplicate);
-      cout << "hardware concurrency: "
-           << thread::hardware_concurrency() << "\n";
+      rank_ = comm.rank();
+      size_ = comm.size();
+      
+      std::cout << "hardware concurrency: "
+                << thread::hardware_concurrency() << "\n";
     }
     
     virtual ~server_mpi()
@@ -128,9 +134,6 @@ namespace rpc {
       termination_stage = 1;
       stage_1_counter = 0;
       for (int proc = child_min(); proc < child_max(); ++proc) {
-        // call(erminate_stage_1_action(this), proc);
-        // terminate_stage_1_action act(this);
-        // call(act, proc);
         sync(proc, terminate_stage_1_action());
       }
       terminate_stage_2();
@@ -166,32 +169,43 @@ namespace rpc {
     {
       // Start main program, but only on process 0
       if (comm.rank() == 0) {
-        async([=]() { run_application(user_main); });
+        thread([=]() { run_application(user_main); }).detach();
       }
       
       // Post first receive
       const int tag = 0;
       // TODO: send/recv several messages combined
-      callable_base* recv_call;
+      shared_ptr<callable_base> recv_call;
       boost::mpi::request req =
         comm.irecv(boost::mpi::any_source, tag, recv_call);
       
+      bool did_recv = true, did_send = true;
       while (!we_should_terminate()) {
         // TODO: If there is nothing to do, maybe wait for some time
         // Receive
+        did_recv = false;
         for (;;) {
           optional<boost::mpi::status> st = req.test();
           if (!st) break;
-          async([=](){ recv_call->operator()(); });
+          did_recv = true;
+          thread([=](){ (*recv_call)(); }).detach();
           // Post next receive
+          recv_call = nullptr;
           req = comm.irecv(boost::mpi::any_source, tag, recv_call);
         }
         // Send
         send_queue_t my_queue;
         with_lock(send_queue_mutex, [&](){ send_queue.swap(my_queue); });
+        did_send = false;
         for (const auto& send_item: my_queue) {
+          did_send = true;
           // TODO: use isend
           comm.send(send_item.dest, tag, send_item.call);
+        }
+        // Wait
+        if (!did_recv && !did_send) {
+          std::this_thread::yield();
+          // this_thread::sleep_for();
         }
       }
       
@@ -205,13 +219,17 @@ namespace rpc {
     
     
     
-    virtual int rank() const { return comm.rank(); }
-    virtual int size() const { return comm.size(); }
-    virtual void call(callable_base& func, int dest)
+    virtual void call(int dest, shared_ptr<callable_base> func)
     {
       assert(!we_should_terminate());
+      assert(func);
+      // TODO: allow disabling this for testing
+      // if (dest == rank()) {
+      //   thread([=](){ (*func)(); }).detach();
+      //   return;
+      // }
       with_lock(send_queue_mutex,
-                [&](){ send_queue.push_back(send_item_t{ &func, dest }); });
+                [&](){ send_queue.push_back(send_item_t{ dest, func }); });
     }
   };
   

@@ -1,7 +1,7 @@
-CC       = openmpicc
-CXX      = openmpic++
+CC       = env OMPI_CC=clang openmpicc
+CXX      = env OMPI_CXX=clang++ openmpic++
 CPPFLAGS = -I/opt/local/include -DBOOST_MPI_HOMOGENEOUS
-CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99 -march=native
+CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99   -march=native
 CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native
 LDFLAGS  = -L/opt/local/lib
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt

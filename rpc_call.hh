@@ -7,27 +7,34 @@
 
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/mpi/packed_iarchive.hpp>
+#include <boost/mpi/packed_oarchive.hpp>
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/export.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <cassert>
 #include <functional>
 #include <future>
-#include <memory>
 #include <sstream>
+#include <thread>
 #include <type_traits>
 
 namespace rpc {
+  
+  using boost::make_shared;
+  using boost::shared_ptr;
   
   using std::enable_if;
   using std::future;
   using std::is_base_of;
   using std::istringstream;
-  using std::make_shared;
   using std::ostringstream;
   using std::promise;
-  using std::shared_ptr;
   using std::string;
+  using std::thread;
   
   
   
@@ -38,9 +45,7 @@ namespace rpc {
   private:
     friend class boost::serialization::access;
     template<typename Archive>
-    void serialize(Archive& ar, unsigned int file_version)
-    {
-    }
+    void serialize(Archive& ar, unsigned int file_version) {}
   };
   
   
@@ -95,22 +100,7 @@ namespace rpc {
     action_evaluate(promise<R>* p, As... args): p(p), args(args...) {}
     void operator()()
     {
-#if 0
       typename F::finish(p, tuple_map<F, As...>(F(), args))();
-#else
-      auto cont = typename F::finish(p, tuple_map<F, As...>(F(), args));
-      callable_base* callable = &cont;
-      ostringstream os;
-      boost::archive::text_oarchive ar(os);
-      ar << callable;
-      string call = os.str();
-      // std::cout << "[archived call: " << call << "]\n";
-      istringstream is(call);
-      boost::archive::text_iarchive ar1(is);
-      callable_base* callable1;
-      ar1 >> callable1;
-      (*callable1)();
-#endif
     }
   private:
     friend class boost::serialization::access;
@@ -180,26 +170,34 @@ namespace rpc {
   
   
   
-  // Could also use thread.detach instead of async
-  
   template<typename F, typename... As>
   auto apply(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
+    // TODO: allow disabling this for testing
+    if (dest == server->rank()) {
+      return thread(func, args...).detach();
+    }
     // TODO: omit continuation
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
-    std::async(typename F::evaluate(p, args...));
+    // thread(typename F::evaluate(p, args...)).detach();
+    server->call(dest, make_shared<typename F::evaluate>(p, args...));
   }
   template<typename F, typename... As>
   auto async(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
+    // TODO: allow disabling this for testing
+    if (dest == server->rank()) {
+      return std::async(func, args...);
+    }
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
-    std::async(typename F::evaluate(p, args...));
+    // thread(typename F::evaluate(p, args...)).detach();
+    server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f;
   }
   template<typename F, typename... As>
@@ -207,25 +205,15 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(func(args...))>::type
   {
+    // TODO: allow disabling this for testing
+    if (dest == server->rank()) {
+      return func(args...);
+    }
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
-#if 0
-    typename F::evaluate(p, args...)();
-#else
-    auto cont = typename F::evaluate(p, args...);
-    callable_base* callable = &cont;
-    ostringstream os;
-    boost::archive::text_oarchive ar(os);
-    ar << callable;
-    string call = os.str();
-    // std::cout << "[archived call: " << call << "]\n";
-    istringstream is(call);
-    boost::archive::text_iarchive ar1(is);
-    callable_base* callable1;
-    ar1 >> callable1;
-    (*callable1)();
-#endif
+    // typename F::evaluate(p, args...)();
+    server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f.get();
   }
   

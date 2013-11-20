@@ -182,7 +182,6 @@ namespace rpc {
       
       bool did_recv = true, did_send = true;
       while (!(we_should_terminate() && !did_recv && !did_send)) {
-        // TODO: If there is nothing to do, maybe wait for some time
         // Receive
         did_recv = false;
         for (;;) {

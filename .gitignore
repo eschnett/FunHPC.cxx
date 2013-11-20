@@ -3,3 +3,4 @@ demo
 Makefile.bak
 demo.dSYM
 OLD
+*.d

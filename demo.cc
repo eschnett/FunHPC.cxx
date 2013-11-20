@@ -60,16 +60,18 @@ BOOST_CLASS_EXPORT(out_action::finish);
 
 int rpc_main(int argc, char** argv)
 {
+  int dest = 1 % rpc::server->size();
+  
   cout << "Calling f directly... " << flush;
   cout << f(10) << "\n";
   cout << "Calling f as action... " << flush;
   cout << f_action()(20) << "\n";
   cout << "Calling f synchronously... " << flush;
-  cout << rpc::sync(0, f_action(), 40) << "\n";
+  cout << rpc::sync(dest, f_action(), 40) << "\n";
   cout << "Calling f asynchronously... " << flush;
-  cout << rpc::async(0, f_action(), 30).get() << "\n";
+  cout << rpc::async(dest, f_action(), 30).get() << "\n";
   cout << "Calling f applicatively...\n" << flush;
-  rpc::apply(0, f_action(), 50);
+  rpc::apply(dest, f_action(), 50);
   cout << "Done calling f\n";
   
   cout << "Calling add directly... " << flush;
@@ -77,11 +79,11 @@ int rpc_main(int argc, char** argv)
   cout << "Calling add as action... " << flush;
   cout << add_action()(1,2) << "\n";
   cout << "Calling add synchronously... " << flush;
-  cout << rpc::sync(0, add_action(), 1,2) << "\n";
+  cout << rpc::sync(dest, add_action(), 1,2) << "\n";
   cout << "Calling add asynchronously... " << flush;
-  cout << rpc::async(0, add_action(), 1,2).get() << "\n";
+  cout << rpc::async(dest, add_action(), 1,2).get() << "\n";
   cout << "Calling add applicatively...\n" << flush;
-  rpc::apply(0, add_action(), 1,2);
+  rpc::apply(dest, add_action(), 1,2);
   cout << "Done calling add\n";
   
   cout << "Calling out directly...\n" << flush;
@@ -89,16 +91,12 @@ int rpc_main(int argc, char** argv)
   cout << "Calling out as action...\n" << flush;
   out_action()("hello");
   cout << "Calling out synchronously...\n" << flush;
-  rpc::sync(0, out_action(), "hello");
+  rpc::sync(dest, out_action(), "hello");
   cout << "Calling out asynchronously...\n" << flush;
-  rpc::async(0, out_action(), "hello").get();
+  rpc::async(dest, out_action(), "hello").get();
   cout << "Calling out applicatively...\n" << flush;
-  rpc::apply(0, out_action(), "hello");
+  rpc::apply(dest, out_action(), "hello");
   cout << "Done calling out\n";
-  
-  // int dest = (rpc::rank() + 1) % rpc::size();
-  // cout << "Calling f synchronously on process " << dest << "...\n";
-  // sync(0, f_action, dest);
   
   return 0;
 }

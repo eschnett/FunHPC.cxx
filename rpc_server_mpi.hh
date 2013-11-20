@@ -26,6 +26,7 @@ namespace rpc {
   
   using std::async;
   using std::atomic;
+  using std::max;
   using std::min;
   using std::mutex;
   using std::lock_guard;
@@ -93,7 +94,7 @@ namespace rpc {
       rank_ = comm.rank();
       size_ = comm.size();
       
-      std::cout << "hardware concurrency: "
+      std::cout << "[" << rank() << "] Hardware concurrency: "
                 << thread::hardware_concurrency() << "\n";
     }
     
@@ -118,7 +119,7 @@ namespace rpc {
     }
     int child_count() const
     {
-      return child_max() - child_min();
+      return max(0, child_max() - child_min());
     }
     int parent() const
     {
@@ -134,7 +135,7 @@ namespace rpc {
       termination_stage = 1;
       stage_1_counter = 0;
       for (int proc = child_min(); proc < child_max(); ++proc) {
-        sync(proc, terminate_stage_1_action());
+        apply(proc, terminate_stage_1_action());
       }
       terminate_stage_2();
     }
@@ -146,7 +147,7 @@ namespace rpc {
       if (value == child_count() + 1) {
         const int proc = parent();
         if (proc >= 0) {
-          sync(proc, terminate_stage_2_action());
+          apply(proc, terminate_stage_2_action());
         }
         termination_stage = 2;
       }
@@ -180,7 +181,7 @@ namespace rpc {
         comm.irecv(boost::mpi::any_source, tag, recv_call);
       
       bool did_recv = true, did_send = true;
-      while (!we_should_terminate()) {
+      while (!(we_should_terminate() && !did_recv && !did_send)) {
         // TODO: If there is nothing to do, maybe wait for some time
         // Receive
         did_recv = false;
@@ -221,6 +222,15 @@ namespace rpc {
     
     virtual void call(int dest, shared_ptr<callable_base> func)
     {
+      if (we_should_terminate()) {
+        if (typeid(*func) == typeid(rpc::terminate_stage_1_action::finish) ||
+            typeid(*func) == typeid(rpc::terminate_stage_2_action::finish))
+        {
+          // Ignore confirmation messages for termination messages
+          // TODO: Use apply to send, avoid sending continuation for apply
+          return;
+        }
+      }
       assert(!we_should_terminate());
       assert(func);
       // TODO: allow disabling this for testing
@@ -228,6 +238,7 @@ namespace rpc {
       //   thread([=](){ (*func)(); }).detach();
       //   return;
       // }
+      assert(dest != rank());
       with_lock(send_queue_mutex,
                 [&](){ send_queue.push_back(send_item_t{ dest, func }); });
     }

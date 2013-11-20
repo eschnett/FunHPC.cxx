@@ -8,6 +8,8 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/make_shared.hpp>
+// Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
+// using the macro BOOST_CLASS_EXPORT
 #include <boost/mpi/packed_iarchive.hpp>
 #include <boost/mpi/packed_oarchive.hpp>
 #include <boost/serialization/base_object.hpp>
@@ -100,7 +102,9 @@ namespace rpc {
     action_evaluate(promise<R>* p, As... args): p(p), args(args...) {}
     void operator()()
     {
-      typename F::finish(p, tuple_map<F, As...>(F(), args))();
+      auto cont = tuple_map<F, As...>(F(), args);
+      // typename F::finish(p, cont)();
+      server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
     }
   private:
     friend class boost::serialization::access;
@@ -120,7 +124,8 @@ namespace rpc {
     void operator()()
     {
       tuple_map<F, As...>(F(), args);
-      (typename F::finish(p))();
+      // (typename F::finish(p))();
+      server->call(p.get_proc(), make_shared<typename F::finish>(p));
     }
   private:
     friend class boost::serialization::access;
@@ -167,6 +172,7 @@ namespace rpc {
   //   public rpc::action_impl<f_action, rpc::wrap<decltype(f), f>>
   // {
   // };
+  // BOOST_CLASS_EXPORT(f_action);
   
   
   

@@ -16,10 +16,13 @@ EXE  = demo
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
 # Tromey <tromey@cygnus.com>
-PROCESS_DEPENDENCIES =						\
-	cp $*.o.d $*.d &&					\
-	sed -e 's/\#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//'	\
-		-e '/^$$/ d' -e 's/$$/ :/' < $*.o.d >> $*.d &&	\
+PROCESS_DEPENDENCIES =					\
+	sed -e 's/$@.tmp/$@/g' < $*.o.d > $*.d &&	\
+	sed -e 's/\#.*//'				\
+		-e 's/^[^:]*: *//'			\
+		-e 's/ *\\$$//'				\
+		-e '/^$$/ d'				\
+		-e 's/$$/ :/' < $*.o.d >> $*.d &&	\
 	rm -f $*.o.d
 
 
@@ -30,7 +33,7 @@ ${EXE}: ${OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.o: %.c
-	${CC}) -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
+	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
 	@${PROCESS_DEPENDENCIES}
 	@mv $@.tmp $@
 

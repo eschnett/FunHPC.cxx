@@ -151,13 +151,13 @@ namespace rpc {
       global_proxy_t::add_ref(proxy);
       assert(invariant());
     }
-    // global_shared_ptr(global_shared_ptr&& other):
-    //   ptr(other.ptr), proxy(other.proxy)
-    // {
-    //   assert(invariant());
-    //   other.ptr = nullptr;
-    //   other.proxy = nullptr;
-    // }
+    global_shared_ptr(global_shared_ptr&& other):
+      ptr(other.ptr), proxy(other.proxy)
+    {
+      assert(other.invariant());
+      other = global_shared_ptr();
+      assert(invariant());
+    }
     global_shared_ptr& operator=(const global_shared_ptr& other)
     {
       assert(invariant());
@@ -175,6 +175,17 @@ namespace rpc {
       global_proxy_t::remove_ref(proxy);
       ptr = other.ptr;
       proxy = other.proxy;
+      return *this;
+    }
+    global_shared_ptr& operator=(global_shared_ptr&& other)
+    {
+      assert(invariant());
+      assert(other.invariant());
+      assert(this != &other);
+      ptr = other.ptr;
+      proxy = other.proxy;
+      other = global_shared_ptr();
+      assert(invariant());
       return *this;
     }
     ~global_shared_ptr()
@@ -226,7 +237,13 @@ namespace rpc {
       if (sender_proxy) {
         // TODO: keep one proxy per object per process, using a
         // database to look up the existing proxy (if any)
-        proxy = new global_proxy_t(owner, []{});
+        if (owner.is_local()) {
+          proxy = owner.get();
+          global_proxy_t::add_ref(proxy);
+          apply(sender_proxy.get_proc(), remove_ref_action(), sender_proxy);
+        } else {
+          proxy = new global_proxy_t(owner, []{});
+        }
       }
       assert(invariant());
       if (proxy && !sender_is_owner) {

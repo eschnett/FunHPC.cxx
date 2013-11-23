@@ -4,10 +4,8 @@
 #include "rpc_server.hh"
 
 #include <boost/serialization/access.hpp>
-#include <boost/serialization/split_member.hpp>
 
 #include <cstdint>
-#include <iostream>
 
 namespace rpc {
   
@@ -18,21 +16,54 @@ namespace rpc {
   // where the pointee lives.
   template<typename T>
   class global_ptr {
+    
     int proc;
     intptr_t iptr;
+    
   public:
+    
     global_ptr(): proc(-1) {}
     global_ptr(T* ptr): proc(server->rank()), iptr((intptr_t)ptr) {}
-    bool is_valid() const { return proc>=0; }
-    int get_proc() const { assert(is_valid()); return proc; }
-    bool is_local() const { assert(is_valid()); return proc==server->rank(); }
+    
+    bool is_empty() const
+    {
+      return proc<0;
+    }
+    int get_proc() const
+    {
+      assert(!is_empty());
+      return proc;
+    }
+    bool is_local() const
+    {
+      assert(!is_empty());
+      return proc == server->rank();
+    }
+    
+    bool operator==(const global_ptr& other) const
+    {
+      return proc == other.proc && iptr == other.iptr;
+    }
+    bool operator!=(const global_ptr& other) const
+    {
+      return ! (*this == other);
+    }
+    
+    operator bool() const
+    {
+      assert(!is_empty());
+      return (bool)(T*)iptr;
+    }
     T* get() const
     {
+      assert(!is_empty());
       assert(is_local());
       if (!is_local()) return nullptr;
       return (T*)iptr;
     }
+    
   private:
+    
     friend class boost::serialization::access;
     template<class Archive>
     void serialize(Archive& ar, unsigned int version)
@@ -41,7 +72,12 @@ namespace rpc {
     }
   };
   
-  template<typename T> global_ptr<T> make_global(T* t) { return t; }
+  template<typename T, typename... As>
+  global_ptr<T> make_global(const As&... args)
+  {
+    return new T(args...);
+  }
+  
 }
 
 #endif  // #ifndef RPC_GLOBAL_PTR_HH

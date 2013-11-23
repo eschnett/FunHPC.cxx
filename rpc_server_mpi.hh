@@ -11,12 +11,9 @@
 #include <cassert>
 #include <future>
 #include <iostream>
+#include <list>
 #include <thread>
 #include <vector>
-
-// TODO
-#include <boost/archive/text_oarchive.hpp>
-#include <sstream>
 
 
 
@@ -29,12 +26,14 @@ namespace rpc {
   using std::max;
   using std::min;
   using std::mutex;
+  using std::list;
   using std::lock_guard;
   using std::thread;
   using std::vector;
   
   
   
+  // TODO: use atomic swaps instead of a mutex
   // TODO: use invoke? make it work similar to async; improve async as
   // well so that it can call member functions.
   template<typename M, typename F, typename... As>
@@ -170,47 +169,71 @@ namespace rpc {
     {
       // Start main program, but only on process 0
       if (comm.rank() == 0) {
-        thread([=]() { run_application(user_main); }).detach();
+        thread([=]{ run_application(user_main); }).detach();
       }
       
-      // Post first receive
-      const int tag = 0;
-      // TODO: send/recv several messages combined
-      shared_ptr<callable_base> recv_call;
-      boost::mpi::request req =
-        comm.irecv(boost::mpi::any_source, tag, recv_call);
+      // const int tag = 0;
+      const int tag = 1;
+      // const int source = boost::mpi::any_source;
+      const int source = 0;
       
-      bool did_recv = true, did_send = true;
-      while (!(we_should_terminate() && !did_recv && !did_send)) {
-        // Receive
-        did_recv = false;
-        for (;;) {
-          optional<boost::mpi::status> st = req.test();
-          if (!st) break;
-          did_recv = true;
-          thread([=](){ (*recv_call)(); }).detach();
-          // Post next receive
-          recv_call = nullptr;
-          req = comm.irecv(boost::mpi::any_source, tag, recv_call);
-        }
+      // Post receives
+      // Note: Can't have multiple receives open with any_source,
+      // since Boost may break MPI messages into two that then don't
+      // match any more!
+      const int num_recvs = 1;
+      vector<shared_ptr<callable_base>> recv_calls(num_recvs);
+      vector<boost::mpi::request> recv_reqs(num_recvs);
+      for (int i=0; i<num_recvs; ++i) {
+        recv_reqs[i] = comm.irecv(source, tag, recv_calls[i]);
+      }
+      list<boost::mpi::request> send_reqs;
+      
+      bool did_communicate = true;
+      while (!we_should_terminate() || did_communicate) {
+        did_communicate = false;
         // Send
         send_queue_t my_queue;
-        with_lock(send_queue_mutex, [&](){ send_queue.swap(my_queue); });
-        did_send = false;
+        with_lock(send_queue_mutex, [&]{ send_queue.swap(my_queue); });
         for (const auto& send_item: my_queue) {
-          did_send = true;
-          // TODO: use isend
-          comm.send(send_item.dest, tag, send_item.call);
+          did_communicate = true;
+          send_reqs.push_back(comm.isend(send_item.dest, tag, send_item.call));
+        }
+        // Receive
+        for (;;) {
+#warning "in this test call, the object is deserialized, which calls the load function, which triggers a synchronous send, which doesn't happen since the event loop is still trapped in the test!"
+          optional<std::pair<boost::mpi::status,
+                             vector<boost::mpi::request>::iterator>> st =
+            boost::mpi::test_any(recv_reqs.begin(), recv_reqs.end());
+          if (!st) break;
+          did_communicate = true;
+          auto& recv_req = *st->second;
+          const int i = st->second - recv_reqs.begin();
+          auto& recv_call = recv_calls[i];
+          thread([=]{ (*recv_call)(); }).detach();
+          recv_call.reset();
+          // Post next receive
+          recv_req = comm.irecv(source, tag, recv_call);
+        }
+        // Finalize sends
+        for (;;) {
+          optional<std::pair<boost::mpi::status,
+                             list<boost::mpi::request>::iterator>> st =
+            boost::mpi::test_any(send_reqs.begin(), send_reqs.end());
+          if (!st) break;
+          did_communicate = true;
+          send_reqs.erase(st->second);
         }
         // Wait
-        if (!did_recv && !did_send) {
+        if (!did_communicate) {
           std::this_thread::yield();
-          // this_thread::sleep_for();
         }
       }
       
-      // Cancel last receive
-      req.cancel();
+      // Cancel receives
+      for (auto& recv_req: recv_reqs) recv_req.cancel();
+      // Cancel sends
+      for (auto& send_req: send_reqs) send_req.cancel();
       
       // Broadcast return value
       boost::mpi::broadcast(comm, iret, 0);
@@ -223,16 +246,24 @@ namespace rpc {
     {
       assert(!we_should_terminate());
       assert(func);
+#ifndef RPC_DISABLE_CALL_SHORTCUT
       assert(dest != rank());
+#endif
       with_lock(send_queue_mutex,
-                [&](){ send_queue.push_back(send_item_t{ dest, func }); });
+                [&]{ send_queue.push_back(send_item_t{ dest, func }); });
     }
   };
   
   
   
-  void terminate_stage_1() { ((server_mpi*)server)->terminate_stage_1(); }
-  void terminate_stage_2() { ((server_mpi*)server)->terminate_stage_2(); }
+  inline void terminate_stage_1()
+  {
+    ((server_mpi*)server)->terminate_stage_1();
+  }
+  inline void terminate_stage_2()
+  {
+    ((server_mpi*)server)->terminate_stage_2();
+  }
   
 }
 

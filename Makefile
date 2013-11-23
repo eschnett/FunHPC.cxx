@@ -1,6 +1,6 @@
 CC       = env OMPI_CC=clang openmpicc
 CXX      = env OMPI_CXX=clang++ openmpic++
-CPPFLAGS = -I/opt/local/include -DBOOST_MPI_HOMOGENEOUS
+CPPFLAGS = -I/opt/local/include -DBOOST_MPI_HOMOGENEOUS -DRPC_DISABLE_CALL_SHORTCUT
 CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99   -march=native # -Ofast
 CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native # -Ofast
 LDFLAGS  = -L/opt/local/lib
@@ -41,6 +41,8 @@ ${EXE}: ${OBJS}
 	${CXX} -MD ${CPPFLAGS} ${CXXFLAGS} -o $@.tmp -c $*.cc
 	@${PROCESS_DEPENDENCIES}
 	@mv $@.tmp $@
+
+${OBJS}: Makefile
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXE}

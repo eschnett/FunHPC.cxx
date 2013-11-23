@@ -5,8 +5,6 @@
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include <boost/make_shared.hpp>
 // Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
 // using the macro BOOST_CLASS_EXPORT
@@ -18,6 +16,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <cassert>
+#include <chrono>
 #include <functional>
 #include <future>
 #include <sstream>
@@ -31,6 +30,7 @@ namespace rpc {
   
   using std::enable_if;
   using std::future;
+  using std::future_status;
   using std::is_base_of;
   using std::istringstream;
   using std::ostringstream;
@@ -104,7 +104,7 @@ namespace rpc {
     void operator()()
     {
       auto cont = tuple_map<F, As...>(F(), args);
-      if (!p.is_valid()) return;
+      if (p.is_empty()) return;
       // typename F::finish(p, cont)();
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
     }
@@ -127,7 +127,7 @@ namespace rpc {
     void operator()()
     {
       tuple_map<F, As...>(F(), args);
-      if (!p.is_valid()) return;
+      if (p.is_empty()) return;
       // (typename F::finish(p))();
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
     }
@@ -154,10 +154,21 @@ namespace rpc {
     static constexpr FT& value = FV;
   };
   
+  // Determine the return type of a function
+  // TODO: move to a more generic place
+  template<typename T>
+  struct return_type;
+  template<typename R, typename... As>
+  struct return_type<R (*)(As...)>
+  {
+    typedef R type;
+  };
+  
   // Template for an action
   template<typename F, typename W, typename... As>
   struct action_impl_t: public action_base<F> {
-    typedef decltype(W::value(As()...)) R;
+    // typedef decltype(W::value(As()...)) R;
+    typedef typename return_type<decltype(&W::value)>::type R;
     R operator()(As... args) const { return W::value(args...); }
     typedef action_evaluate<F, R, As...> evaluate;
     typedef action_finish<F, R> finish;
@@ -168,15 +179,18 @@ namespace rpc {
   template<typename F, typename W, typename R, typename... As>
   action_impl_t<F, W, As...> get_action_impl_t(R(As...));
   
+  // TODO: don't expect a wrapper, expect the function instead
+  // TODO: determine the function's type automatically
   template<typename F, typename W>
   using action_impl = decltype(get_action_impl_t<F, W>(W::value));
   
-  // Example action definition
+  // Example action definition for a given function "f":
   // struct f_action:
   //   public rpc::action_impl<f_action, rpc::wrap<decltype(f), f>>
   // {
   // };
-  // BOOST_CLASS_EXPORT(f_action);
+  // BOOST_CLASS_EXPORT(f_action::evaluate);
+  // BOOST_CLASS_EXPORT(f_action::finish);
   
   
   
@@ -184,9 +198,11 @@ namespace rpc {
   auto apply(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
+#ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return thread(func, args...).detach();
     }
+#endif
     typedef decltype(func(args...)) R;
     auto p = global_ptr<promise<R>>();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
@@ -196,9 +212,11 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
+#ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return std::async(func, args...);
     }
+#endif
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();
@@ -210,9 +228,11 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(func(args...))>::type
   {
+#ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return func(args...);
     }
+#endif
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
     auto f = p->get_future();

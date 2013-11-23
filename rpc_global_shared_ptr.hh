@@ -183,6 +183,24 @@ namespace rpc {
       global_proxy_t::remove_ref(proxy);
     }
     
+    bool is_empty() const { return ptr.is_empty(); }
+    int get_proc() const { return ptr.get_proc(); }
+    bool is_local() const { return ptr.is_local(); }
+    
+    bool operator==(const global_shared_ptr& other) const
+    {
+      return ptr == other.ptr;
+    }
+    bool operator!=(const global_shared_ptr& other) const
+    {
+      return ! (*this == other);
+    }
+    
+    operator bool() const { return bool(ptr); }
+    T* get() const { return ptr.get(); }
+    
+    
+    
   private:
     
     friend class boost::serialization::access;

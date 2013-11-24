@@ -23,12 +23,12 @@ namespace rpc {
   
   // A global shared pointer
   
-  class global_proxy_t {
+  class global_manager_t {
     // Number of references. Serialized messages count reference.
     atomic<ptrdiff_t> refs;
-    // The proxy owning the object, necessarily located on the same
+    // The manager owning the object, necessarily located on the same
     // process as the object. The owner's owner is null.
-    global_ptr<global_proxy_t> owner;
+    global_ptr<global_manager_t> owner;
     // A function that deletes the object (if local), or does nothing
     // (if remote).
     function<void(void)> deleter;
@@ -45,47 +45,48 @@ namespace rpc {
       return true;
     }
     
-    global_proxy_t() = delete;
-    global_proxy_t(const global_proxy_t&) = delete;
-    global_proxy_t(global_proxy_t&&) = delete;
-    global_proxy_t& operator=(const global_proxy_t&) = delete;
-    global_proxy_t& operator=(global_proxy_t&&) = delete;
+    global_manager_t() = delete;
+    global_manager_t(const global_manager_t&) = delete;
+    global_manager_t(global_manager_t&&) = delete;
+    global_manager_t& operator=(const global_manager_t&) = delete;
+    global_manager_t& operator=(global_manager_t&&) = delete;
     
-    global_proxy_t(const global_ptr<global_proxy_t>& owner,
+    global_manager_t(const global_ptr<global_manager_t>& owner,
                    const function<void(void)>& deleter):
       refs(1), owner(owner), deleter(deleter)
     {
       assert(invariant());
     }
     
-    ~global_proxy_t();
+    ~global_manager_t();
     
-    static global_ptr<global_proxy_t> get_owner(const global_proxy_t* proxy)
+    static
+    global_ptr<global_manager_t> get_owner(const global_manager_t* manager)
     {
-      if (!proxy) return nullptr;
-      assert(proxy->refs);
-      return proxy->owner;
+      if (!manager) return nullptr;
+      assert(manager->refs);
+      return manager->owner;
     }
     
-    static void add_ref(global_proxy_t* proxy)
+    static void add_ref(global_manager_t* manager)
     {
-      if (proxy) {
-        assert(proxy->refs);
-        ++proxy->refs;
+      if (manager) {
+        assert(manager->refs);
+        ++manager->refs;
       }
     }
-    static void remove_ref(global_proxy_t* proxy)
+    static void remove_ref(global_manager_t* manager)
     {
-      if (proxy) {
-        assert(proxy->refs);
-        if (--proxy->refs == 0) delete proxy;
+      if (manager) {
+        assert(manager->refs);
+        if (--manager->refs == 0) delete manager;
       }
     }
   };
   
-  inline void remove_ref(global_ptr<global_proxy_t> proxy)
+  inline void remove_ref(global_ptr<global_manager_t> manager)
   {
-    global_proxy_t::remove_ref(proxy.get());
+    global_manager_t::remove_ref(manager.get());
   }
   struct remove_ref_action:
     public action_impl<remove_ref_action,
@@ -93,11 +94,11 @@ namespace rpc {
   {
   };
   
-  inline void add_remove_ref(global_ptr<global_proxy_t> owner,
-                             global_ptr<global_proxy_t> sender_proxy)
+  inline void add_remove_ref(global_ptr<global_manager_t> owner,
+                             global_ptr<global_manager_t> sender_manager)
   {
-    global_proxy_t::add_ref(owner.get());
-    apply(sender_proxy.get_proc(), remove_ref_action(), sender_proxy);
+    global_manager_t::add_ref(owner.get());
+    apply(sender_manager.get_proc(), remove_ref_action(), sender_manager);
   }
   struct add_remove_ref_action:
     public action_impl<add_remove_ref_action,
@@ -105,7 +106,7 @@ namespace rpc {
   {
   };
   
-  global_proxy_t::~global_proxy_t()
+  global_manager_t::~global_manager_t()
   {
     assert(refs == 0);
     if (owner) {
@@ -120,39 +121,39 @@ namespace rpc {
   class global_shared_ptr {
     
     global_ptr<T> ptr;
-    global_proxy_t* proxy;
+    global_manager_t* manager;
     
-    static global_proxy_t* make_ref(const global_ptr<T>& ptr)
+    static global_manager_t* make_ref(const global_ptr<T>& ptr)
     {
       if (ptr.is_empty() || !ptr) return nullptr;
       T* raw_ptr = ptr.get();
-      return new global_proxy_t(nullptr, [=]{ delete raw_ptr; });
+      return new global_manager_t(nullptr, [=]{ delete raw_ptr; });
     }
     
   public:
     
     // We don't create proxies for empty or null pointers
     bool invariant() const {
-      if (ptr.is_empty() || !ptr) return !proxy;
-      return !!proxy;
+      if (ptr.is_empty() || !ptr) return !manager;
+      return !!manager;
     };
     
-    global_shared_ptr(): proxy(nullptr) { assert(invariant()); }
+    global_shared_ptr(): manager(nullptr) { assert(invariant()); }
     global_shared_ptr(const global_ptr<T>& ptr):
-      ptr(ptr), proxy(make_ref(ptr))
+      ptr(ptr), manager(make_ref(ptr))
     {
       if (!ptr.is_empty()) assert(ptr.is_local());
       assert(invariant());
     }
     global_shared_ptr(const global_shared_ptr& other):
-      ptr(other.ptr), proxy(other.proxy)
+      ptr(other.ptr), manager(other.manager)
     {
       assert(other.invariant());
-      global_proxy_t::add_ref(proxy);
+      global_manager_t::add_ref(manager);
       assert(invariant());
     }
     global_shared_ptr(global_shared_ptr&& other):
-      ptr(other.ptr), proxy(other.proxy)
+      ptr(other.ptr), manager(other.manager)
     {
       assert(other.invariant());
       other = global_shared_ptr();
@@ -163,7 +164,7 @@ namespace rpc {
       assert(invariant());
       assert(other.invariant());
       if (this == &other) return *this;
-      if (proxy && proxy == other.proxy) {
+      if (manager && manager == other.manager) {
         assert(ptr == other.ptr);
         return *this;
       }
@@ -171,10 +172,10 @@ namespace rpc {
       // is removed. Otherwise, the destructor of our old object may
       // be triggered, and this may (indirectly) remove the last
       // reference to our new object before we register it.
-      global_proxy_t::add_ref(other.proxy);
-      global_proxy_t::remove_ref(proxy);
+      global_manager_t::add_ref(other.manager);
+      global_manager_t::remove_ref(manager);
       ptr = other.ptr;
-      proxy = other.proxy;
+      manager = other.manager;
       return *this;
     }
     global_shared_ptr& operator=(global_shared_ptr&& other)
@@ -183,7 +184,7 @@ namespace rpc {
       assert(other.invariant());
       assert(this != &other);
       ptr = other.ptr;
-      proxy = other.proxy;
+      manager = other.manager;
       other = global_shared_ptr();
       assert(invariant());
       return *this;
@@ -191,7 +192,7 @@ namespace rpc {
     ~global_shared_ptr()
     {
       assert(invariant());
-      global_proxy_t::remove_ref(proxy);
+      global_manager_t::remove_ref(manager);
     }
     
     bool is_empty() const { return ptr.is_empty(); }
@@ -219,38 +220,38 @@ namespace rpc {
     void save(Archive& ar, unsigned int version) const
     {
       assert(invariant());
-      global_ptr<global_proxy_t> sender_proxy = proxy;
-      global_ptr<global_proxy_t> owner = global_proxy_t::get_owner(proxy);
-      global_proxy_t::add_ref(proxy);
-      ar << ptr << sender_proxy << owner;
+      global_ptr<global_manager_t> sender_manager = manager;
+      global_ptr<global_manager_t> owner = global_manager_t::get_owner(manager);
+      global_manager_t::add_ref(manager);
+      ar << ptr << sender_manager << owner;
     }
     template<class Archive>
     void load(Archive& ar, unsigned int version)
     {
-      assert(!proxy);
-      global_ptr<global_proxy_t> sender_proxy, owner;
-      ar >> ptr >> sender_proxy >> owner;
-      const bool sender_is_owner = sender_proxy && !owner;
+      assert(!manager);
+      global_ptr<global_manager_t> sender_manager, owner;
+      ar >> ptr >> sender_manager >> owner;
+      const bool sender_is_owner = sender_manager && !owner;
       if (sender_is_owner) {
-        owner = sender_proxy;
+        owner = sender_manager;
       }
-      if (sender_proxy) {
-        // TODO: keep one proxy per object per process, using a
-        // database to look up the existing proxy (if any)
+      if (sender_manager) {
+        // TODO: keep one manager per object per process, using a
+        // database to look up the existing manager (if any)
         if (owner.is_local()) {
-          proxy = owner.get();
-          global_proxy_t::add_ref(proxy);
-          apply(sender_proxy.get_proc(), remove_ref_action(), sender_proxy);
+          manager = owner.get();
+          global_manager_t::add_ref(manager);
+          apply(sender_manager.get_proc(), remove_ref_action(), sender_manager);
         } else {
-          proxy = new global_proxy_t(owner, []{});
+          manager = new global_manager_t(owner, []{});
         }
       }
       assert(invariant());
-      if (proxy && !sender_is_owner) {
+      if (manager && !sender_is_owner) {
         // We need to register ourselves with the owner, and need to
         // de-register the message with the sender (in this order). We
         // don't need to do anything if the sender is the owner.
-        apply(owner.get_proc(), add_remove_ref_action(), owner, sender_proxy);
+        apply(owner.get_proc(), add_remove_ref_action(), owner, sender_manager);
       }
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER();

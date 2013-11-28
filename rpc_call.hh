@@ -207,6 +207,7 @@ namespace rpc {
     auto p = global_ptr<promise<R>>();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
   }
+  
   template<typename F, typename... As>
   auto async(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
@@ -223,6 +224,7 @@ namespace rpc {
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f;
   }
+  
   template<typename F, typename... As>
   auto sync(int dest, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,

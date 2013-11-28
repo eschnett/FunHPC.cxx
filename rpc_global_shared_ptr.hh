@@ -16,8 +16,7 @@ namespace rpc {
   
   using std::atomic;
   using std::function;
-  using std::intptr_t;
-  using std::make_shared;
+  using std::ostream;
   
   
   
@@ -211,6 +210,11 @@ namespace rpc {
     operator bool() const { return bool(ptr); }
     T* get() const { return ptr.get(); }
     
+    ostream& output(ostream& os) const
+    {
+      return os << ptr;
+    }
+    
     
     
   private:
@@ -256,6 +260,12 @@ namespace rpc {
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER();
   };
+  
+  template<typename T>
+  ostream& operator<<(ostream& os, const global_shared_ptr<T>& ptr)
+  {
+    return ptr.output(os);
+  }
   
   template<typename T, typename... As>
   global_shared_ptr<T> make_global_shared(const As&... args)

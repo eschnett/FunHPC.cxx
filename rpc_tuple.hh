@@ -3,11 +3,14 @@
 
 #include <boost/serialization/access.hpp>
 
+#include <iostream>
 #include <tuple>
 
 namespace rpc {
   
   using std::get;
+  using std::istream;
+  using std::ostream;
   using std::tuple;
   
   
@@ -57,6 +60,47 @@ namespace rpc {
   
   
   
+  template<size_t N>
+  struct input_tuple_impl {
+    template<typename... As>
+    static void input(istream& is, tuple<As...>& t)
+    {
+      input_tuple_impl<N-1>::input(is, t);
+      is >> get<N-1>(t);
+    }
+  };
+  
+  template<>
+  struct input_tuple_impl<0> {
+    template<typename... As>
+    static void input(istream& is, tuple<As...>& t)
+    {
+    }
+  };
+  
+  
+  
+  template<size_t N>
+  struct output_tuple_impl {
+    template<typename... As>
+    static void output(ostream& os, const tuple<As...>& t)
+    {
+      output_tuple_impl<N-1>::output(os, t);
+      if (N>1) os << ",";
+      os << get<N-1>(t);
+    }
+  };
+  
+  template<>
+  struct output_tuple_impl<0> {
+    template<typename... As>
+    static void output(ostream& os, const tuple<As...>& t)
+    {
+    }
+  };
+  
+  
+  
   // Inspired by Sydius at
   // <https://sydius.me/2011/02/c0x-tuple-boost-serialization/>
   template<size_t N>
@@ -80,6 +124,26 @@ namespace rpc {
 }
 
 
+
+namespace std {
+  
+  template<typename... As>
+  istream& operator>>(istream& is, std::tuple<As...>& t)
+  {
+    rpc::input_tuple_impl<sizeof...(As)>::input(is, t);
+    return is;
+  }
+  
+  template<typename... As>
+  ostream& operator<<(ostream& os, const std::tuple<As...>& t)
+  {
+    os << "(";
+    rpc::output_tuple_impl<sizeof...(As)>::output(os, t);
+    os << ")";
+    return os;
+  }
+  
+}
 
 namespace boost {
   namespace serialization {

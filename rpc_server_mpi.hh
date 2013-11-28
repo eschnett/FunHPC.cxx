@@ -25,23 +25,9 @@ namespace rpc {
   using std::atomic;
   using std::max;
   using std::min;
-  using std::mutex;
   using std::list;
-  using std::lock_guard;
   using std::thread;
   using std::vector;
-  
-  
-  
-  // TODO: use atomic swaps instead of a mutex
-  // TODO: use invoke? make it work similar to async; improve async as
-  // well so that it can call member functions.
-  template<typename M, typename F, typename... As>
-  auto with_lock(M& m, const F& f, const As&... args) -> decltype(f(args...))
-  {
-    lock_guard<decltype(m)> g(m);
-    return f(args...);
-  }
   
   
   

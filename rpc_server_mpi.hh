@@ -246,7 +246,7 @@ namespace rpc {
                  typeid(*recv_call) != typeid(rpc::terminate_stage_3_action::evaluate) &&
                  typeid(*recv_call) != typeid(rpc::terminate_stage_4_action::evaluate)))
           {
-            thread([=]{ (*recv_call)(); }).detach();
+            thread([=]{ recv_call->execute(); }).detach();
           }
           recv_call.reset();
           // Post next receive

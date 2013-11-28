@@ -43,7 +43,7 @@ namespace rpc {
   // Base class for all callable RPC objects
   struct callable_base {
     virtual ~callable_base() {}
-    virtual void operator()() = 0;
+    virtual void execute() = 0;
   private:
     friend class boost::serialization::access;
     template<typename Archive>
@@ -58,7 +58,7 @@ namespace rpc {
     R res;
     action_finish() {}          // only for boost::serialize
     action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
-    void operator()()
+    void execute()
     {
       p.get()->set_value(res);
       delete p.get();
@@ -78,7 +78,7 @@ namespace rpc {
     global_ptr<promise<void>> p;
     action_finish() {}          // only for boost::serialize
     action_finish(const global_ptr<promise<void>>& p): p(p) {}
-    void operator()()
+    void execute()
     {
       p.get()->set_value();
       delete p.get();
@@ -101,7 +101,7 @@ namespace rpc {
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(global_ptr<promise<R>> p, As... args):
       p(p), args(args...) {}
-    void operator()()
+    void execute()
     {
       auto cont = tuple_map<F, As...>(F(), args);
       if (p.is_empty()) return;
@@ -124,7 +124,7 @@ namespace rpc {
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(global_ptr<promise<void>> p, As... args):
       p(p), args(args...) {}
-    void operator()()
+    void execute()
     {
       tuple_map<F, As...>(F(), args);
       if (p.is_empty()) return;

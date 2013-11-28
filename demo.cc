@@ -6,16 +6,24 @@
 #include <boost/shared_ptr.hpp>
 
 #include <cstdio>
+#include <cstdlib>
+#include <future>
 #include <iostream>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <vector>
 
 using boost::make_shared;
 using boost::shared_ptr;
 
 using std::cout;
 using std::flush;
+using std::future;
+using std::mutex;
 using std::printf;
 using std::string;
+using std::vector;
 
 
 
@@ -161,6 +169,41 @@ struct tpc_action:
 };
 BOOST_CLASS_EXPORT(tpc_action::evaluate);
 BOOST_CLASS_EXPORT(tpc_action::finish);
+void tpc(shared_ptr<s> is,
+         rpc::global_ptr<s> ig,
+         rpc::global_shared_ptr<s> igs)
+{
+}
+
+int random_r()
+{
+  static mutex m;
+  return rpc::with_lock(m, random);
+}
+
+void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
+struct tgsp_action:
+  public rpc::action_impl<tgsp_action, rpc::wrap<decltype(tgsp), tgsp>>
+{
+};
+BOOST_CLASS_EXPORT(tgsp_action::evaluate);
+BOOST_CLASS_EXPORT(tgsp_action::finish);
+void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
+{
+  if (count == 0) return;
+  cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n";
+  int nchildren = random_r() % 4;
+  vector<future<void>> fs;
+  for (int child=0; child<nchildren; ++child) {
+    ptrdiff_t child_count = count==0 ? 0 : random_r() % count;
+    int dest = random_r() % rpc::server->size();
+    fs.push_back(async(dest, tgsp_action(), igs, child_count, level+1));
+    count -= child_count;
+  }
+  vector<rpc::global_shared_ptr<s>> locals(count, igs);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  for (auto& f: fs) f.wait();
+}
 
 
 
@@ -180,15 +223,10 @@ void test_ptr()
   
   tpc(is, ig, igs);
   rpc::sync(dest, tpc_action(), is, ig, igs);
+  tgsp(rpc::make_global_shared<s>(5), 1000000);
   
   delete ip2;
   delete ig2.get();
-}
-
-void tpc(shared_ptr<s> is,
-         rpc::global_ptr<s> ig,
-         rpc::global_shared_ptr<s> igs)
-{
 }
 
 

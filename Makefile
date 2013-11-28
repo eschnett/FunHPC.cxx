@@ -6,10 +6,10 @@ CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native # -Ofa
 LDFLAGS  = -L/opt/local/lib
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt
 
-SRCS = rpc_main.cc rpc_server.cc demo.cc
+SRCS = rpc_main.cc rpc_server.cc
 OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${SRCS}}}
 DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${SRCS}}}
-EXE  = demo
+EXES = demo bench
 
 
 
@@ -27,9 +27,11 @@ PROCESS_DEPENDENCIES =					\
 
 
 
-all: ${EXE}
+all: ${EXES}
 
-${EXE}: ${OBJS}
+bench: bench.o ${OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+demo: demo.o ${OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.o: %.c

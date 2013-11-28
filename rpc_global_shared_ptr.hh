@@ -36,11 +36,10 @@ namespace rpc {
     
     bool invariant() const
     {
-      assert(refs > 0);
       if (owner.is_empty()) return false;
       if (!owner.is_local() && !owner) return false;
-      // TODO: Do this once there is only one owner per process
-      // if (owner.is_local() && owner) return false;
+      if (owner.is_local() && owner) return false;
+      if (refs <= 0) return false;
       return true;
     }
     
@@ -63,21 +62,21 @@ namespace rpc {
     global_ptr<global_manager_t> get_owner(const global_manager_t* manager)
     {
       if (!manager) return nullptr;
-      assert(manager->refs);
+      assert(manager->invariant());
       return manager->owner;
     }
     
     static void add_ref(global_manager_t* manager)
     {
       if (manager) {
-        assert(manager->refs);
+        assert(manager->invariant());
         ++manager->refs;
       }
     }
     static void remove_ref(global_manager_t* manager)
     {
       if (manager) {
-        assert(manager->refs);
+        assert(manager->invariant());
         if (--manager->refs == 0) delete manager;
       }
     }
@@ -233,13 +232,16 @@ namespace rpc {
     void load(Archive& ar, unsigned int version)
     {
       assert(!manager);
-      global_ptr<global_manager_t> sender_manager, owner;
-      ar >> ptr >> sender_manager >> owner;
-      const bool sender_is_owner = sender_manager && !owner;
-      if (sender_is_owner) {
-        owner = sender_manager;
-      }
-      if (sender_manager) {
+      global_ptr<global_manager_t> sender_manager, sender_owner;
+      ar >> ptr >> sender_manager >> sender_owner;
+      // If there is a manager object, then there has to be an owner
+      const bool has_owner = bool(sender_manager);
+      // If the sender's owner is null, then (by definition) sender's
+      // manager is the owner
+      const bool sender_is_owner = has_owner && !sender_owner;
+      const global_ptr<global_manager_t> owner =
+        sender_is_owner ? sender_manager : sender_owner;
+      if (has_owner) {
         // TODO: keep one manager per object per process, using a
         // database to look up the existing manager (if any)
         if (owner.is_local()) {
@@ -248,15 +250,17 @@ namespace rpc {
           apply(sender_manager.get_proc(), remove_ref_action(), sender_manager);
         } else {
           manager = new global_manager_t(owner, []{});
+          if (!sender_is_owner) {
+            // We need to register ourselves with the owner, and need
+            // to de-register the message with the sender (in this
+            // order). We don't need to do anything if the sender is
+            // the owner.
+            apply(sender_owner.get_proc(),
+                  add_remove_ref_action(), sender_owner, sender_manager);
+          }
         }
       }
       assert(invariant());
-      if (manager && !sender_is_owner) {
-        // We need to register ourselves with the owner, and need to
-        // de-register the message with the sender (in this order). We
-        // don't need to do anything if the sender is the owner.
-        apply(owner.get_proc(), add_remove_ref_action(), owner, sender_manager);
-      }
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER();
   };

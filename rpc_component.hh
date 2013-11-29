@@ -1,6 +1,10 @@
 #ifndef RPC_COMPONENT_HH
 #define RPC_COMPONENT_HH
 
+// TODO: This file is misnamed. Move the contents to global_ptr and
+// global_shared_ptr, respectively. Will need to split global_ptr for
+// this.
+
 #include "rpc_call.hh"
 #include "rpc_global_ptr.hh"
 #include "rpc_global_shared_ptr.hh"

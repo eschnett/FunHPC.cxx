@@ -3,6 +3,7 @@
 
 #include "rpc_broadcast.hh"
 #include "rpc_call.hh"
+#include "rpc_component.hh"
 #include "rpc_global_ptr.hh"
 #include "rpc_global_shared_ptr.hh"
 #include "rpc_main.hh"

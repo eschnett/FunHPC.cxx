@@ -2,6 +2,7 @@
 #define RPC_CALL
 
 #include "rpc_global_ptr.hh"
+#include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
@@ -148,10 +149,23 @@ namespace rpc {
   struct action_base {
   };
   
-  // Wrapper for a function, turning a function into a type
-  template<typename FT, const FT& FV>
+  template<typename T, T F>
   struct wrap {
-    static constexpr FT& value = FV;
+    static constexpr decltype(F) value = F;
+  };
+  
+  // Determine the class type of a member function
+  template<typename T>
+  struct class_type;
+  template<typename T, typename R, typename... As>
+  struct class_type<R(T::*const)(As...)>
+  {
+    typedef T type;
+  };
+  template<typename T, typename R, typename... As>
+  struct class_type<R(T::*const)(As...)const>
+  {
+    typedef T type;
   };
   
   // Determine the return type of a function
@@ -159,7 +173,17 @@ namespace rpc {
   template<typename T>
   struct return_type;
   template<typename R, typename... As>
-  struct return_type<R (*)(As...)>
+  struct return_type<R(*const)(As...)>
+  {
+    typedef R type;
+  };
+  template<typename T, typename R, typename... As>
+  struct return_type<R(T::*const)(As...)>
+  {
+    typedef R type;
+  };
+  template<typename T, typename R, typename... As>
+  struct return_type<R(T::*const)(As...)const>
   {
     typedef R type;
   };
@@ -167,8 +191,7 @@ namespace rpc {
   // Template for an action
   template<typename F, typename W, typename... As>
   struct action_impl_t: public action_base<F> {
-    // typedef decltype(W::value(As()...)) R;
-    typedef typename return_type<decltype(&W::value)>::type R;
+    typedef typename return_type<decltype(W::value)>::type R;
     R operator()(As... args) const { return W::value(args...); }
     typedef action_evaluate<F, R, As...> evaluate;
     typedef action_finish<F, R> finish;
@@ -193,6 +216,8 @@ namespace rpc {
   // BOOST_CLASS_EXPORT(f_action::finish);
   
   
+  
+  // Call an action on a given destination
   
   template<typename F, typename... As>
   auto apply(int dest, const F& func, As... args) ->
@@ -240,6 +265,68 @@ namespace rpc {
     auto f = p->get_future();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return f.get();
+  }
+  
+  
+  
+  // Template for an action
+  template<typename F, typename W, typename... As>
+  struct member_action_impl_t: public action_base<F> {
+    typedef typename class_type<decltype(W::value)>::type T;
+    typedef typename return_type<decltype(W::value)>::type R;
+    R operator()(const global_ptr<T>& obj, As... args) const
+    {
+      return (obj.get()->*W::value)(args...);
+    }
+    typedef action_evaluate<F, R, global_ptr<T>, As...> evaluate;
+    typedef action_finish<F, R> finish;
+  };
+  
+  // Get the member action implementation (with its template
+  // arguments) for a member function wrapper
+  template<typename F, typename W, typename R, typename T, typename... As>
+  member_action_impl_t<F, W, As...> get_member_action_impl_t(R(T::*)(As...));
+  template<typename F, typename W, typename R, typename T, typename... As>
+  member_action_impl_t<F, W, As...>
+  get_const_member_action_impl_t(R(T::*)(As...)const);
+  
+  // TODO: don't expect a wrapper, expect the function instead
+  // TODO: determine the function's type automatically
+  template<typename F, typename W>
+  using member_action_impl = decltype(get_member_action_impl_t<F, W>(W::value));
+  template<typename F, typename W>
+  using const_member_action_impl =
+    decltype(get_const_member_action_impl_t<F, W>(W::value));
+  
+  
+  
+  // Call a member action via a global pointer
+  
+  template<template<typename> class P, typename T, typename F, typename... As>
+  auto apply(const P<T>& ptr, const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value,
+                       decltype(apply(ptr.get_proc(),
+                                      func, global_ptr<T>(ptr), args...))>::type
+  {
+    return apply(ptr.get_proc(), func, global_ptr<T>(ptr), args...);
+  }
+  
+  template<template<typename> class P, typename T, typename F, typename... As>
+  auto async(const P<T>& ptr, const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value,
+                       decltype(async(ptr.get_proc(),
+                                      func, global_ptr<T>(ptr), args...))>::type
+  {
+    return async(ptr.get_proc(), func, global_ptr<T>(ptr), args...);
+  }
+  
+  template<template<typename> class P, typename T, typename F, typename... As>
+  auto sync(const P<T>& ptr, const F& func, As... args) ->
+    typename enable_if<is_base_of<action_base<F>, F>::value,
+                       decltype(sync(ptr.get_proc(),
+                                     func, global_ptr<T>(ptr), args...))>::type
+  {
+    return sync(ptr.get_proc(), func, global_ptr<T>(ptr), args...);
   }
   
 }

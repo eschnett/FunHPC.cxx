@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <future>
 #include <iostream>
 #include <mutex>
@@ -22,6 +23,7 @@ using std::flush;
 using std::future;
 using std::mutex;
 using std::printf;
+using std::shared_future;
 using std::string;
 using std::vector;
 
@@ -72,6 +74,86 @@ BOOST_CLASS_EXPORT(out_action::finish);
 
 
 
+struct point {
+  int x, y;
+  void init(int value) { x=y=value; }
+  void translate(rpc::global_ptr<point> delta_)
+  {
+    const auto delta = rpc::local_copy(delta_).get();
+    x+=delta.x; y+=delta.y;
+  }
+  void scale(rpc::global_shared_ptr<point> alpha_)
+  {
+    const auto alpha = rpc::local_ptr(alpha_).get();
+    x*=alpha->x; y*=alpha->y;
+  }
+  void output() const
+  {
+    rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] point(" << x << "," << y << ")\n"; });
+  }
+private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive& ar, unsigned int version)
+  {
+    ar & x & y;
+  }
+};
+BOOST_CLASS_EXPORT(rpc::local_copy_helper_action<point>::evaluate);
+BOOST_CLASS_EXPORT(rpc::local_copy_helper_action<point>::finish);
+BOOST_CLASS_EXPORT(rpc::local_ptr_helper_action<point>::evaluate);
+BOOST_CLASS_EXPORT(rpc::local_ptr_helper_action<point>::finish);
+
+struct point_init_action:
+  public rpc::member_action_impl<point_init_action,
+                                 rpc::wrap<decltype(&point::init),
+                                           &point::init>>
+{
+};
+BOOST_CLASS_EXPORT(point_init_action::evaluate);
+BOOST_CLASS_EXPORT(point_init_action::finish);
+
+struct point_translate_action:
+  public rpc::member_action_impl<point_translate_action,
+                                 rpc::wrap<decltype(&point::translate),
+                                           &point::translate>>
+{
+};
+BOOST_CLASS_EXPORT(point_translate_action::evaluate);
+BOOST_CLASS_EXPORT(point_translate_action::finish);
+
+struct point_scale_action:
+  public rpc::member_action_impl<point_scale_action,
+                                 rpc::wrap<decltype(&point::scale),
+                                           &point::scale>>
+{
+};
+BOOST_CLASS_EXPORT(point_scale_action::evaluate);
+BOOST_CLASS_EXPORT(point_scale_action::finish);
+
+struct point_output_action:
+  public rpc::const_member_action_impl<point_output_action,
+                                       rpc::wrap<decltype(&point::output),
+                                                 &point::output>>
+{
+};
+BOOST_CLASS_EXPORT(point_output_action::evaluate);
+BOOST_CLASS_EXPORT(point_output_action::finish);
+
+rpc::global_shared_ptr<point> make_point()
+{
+  return rpc::make_global_shared<point>();
+}
+struct make_point_action:
+  public rpc::action_impl<make_point_action,
+                          rpc::wrap<decltype(make_point), make_point>>
+{
+};
+BOOST_CLASS_EXPORT(make_point_action::evaluate);
+BOOST_CLASS_EXPORT(make_point_action::finish);
+
+
+
 void test_call()
 {
   int dest = 1 % rpc::server->size();
@@ -111,6 +193,30 @@ void test_call()
   cout << "Calling out applicatively...\n" << flush;
   rpc::apply(dest, out_action(), "hello");
   cout << "Done calling out\n";
+  
+  point p, q;
+  rpc::global_ptr<point> pg(&p), qg(&q);
+  p.init(1);
+  rpc::sync(qg, point_init_action(), 2);
+  p.translate(qg);
+  p.output();
+  
+  rpc::global_ptr<point> pg0(&p);
+  rpc::global_shared_ptr<point> pgs0(&p);
+  
+  auto pgs = rpc::make_global_shared<point>(p);
+  auto qgs = rpc::make_global_shared<point>(q);
+  rpc::sync(pgs, point_init_action(), 3);
+  rpc::sync(qgs, point_init_action(), 4);
+  rpc::sync(pgs, point_scale_action(), qgs);
+  rpc::sync(pgs, point_output_action());
+  
+  auto rpgs = rpc::async(1 % rpc::server->size(), make_point_action()).share();
+  auto rqgs = rpc::async(2 % rpc::server->size(), make_point_action()).share();
+  rpc::sync(rpgs.get(), point_init_action(), 5);
+  rpc::sync(rqgs.get(), point_init_action(), 6);
+  rpc::sync(rpgs.get(), point_scale_action(), rqgs.get());
+  rpc::sync(rpgs.get(), point_output_action());
 }
 
 
@@ -191,7 +297,7 @@ BOOST_CLASS_EXPORT(tgsp_action::finish);
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
 {
   if (count == 0) return;
-  cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n";
+  rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n"; });
   int nchildren = random_r() % 4;
   vector<future<void>> fs;
   for (int child=0; child<nchildren; ++child) {

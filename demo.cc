@@ -36,13 +36,7 @@ int f(int n)
        << "of " << rpc::server->size() << "\n";
   return n+1;
 }
-
-struct f_action:
-  public rpc::action_impl<f_action, rpc::wrap<decltype(f), f>>
-{
-};
-BOOST_CLASS_EXPORT(f_action::evaluate);
-BOOST_CLASS_EXPORT(f_action::finish);
+RPC_ACTION(f);
 
 
 
@@ -50,13 +44,7 @@ int add(int m, int n)
 {
   return m+n;
 }
-
-struct add_action:
-  public rpc::action_impl<add_action, rpc::wrap<decltype(add), add>>
-{
-};
-BOOST_CLASS_EXPORT(add_action::evaluate);
-BOOST_CLASS_EXPORT(add_action::finish);
+RPC_ACTION(add);
 
 
 
@@ -64,13 +52,7 @@ void out(string str)
 {
   printf("%s\n", str.c_str());
 }
-
-struct out_action:
-  public rpc::action_impl<out_action, rpc::wrap<decltype(out), out>>
-{
-};
-BOOST_CLASS_EXPORT(out_action::evaluate);
-BOOST_CLASS_EXPORT(out_action::finish);
+RPC_ACTION(out);
 
 
 
@@ -99,58 +81,17 @@ private:
     ar & x & y;
   }
 };
-BOOST_CLASS_EXPORT(rpc::local_copy_helper_action<point>::evaluate);
-BOOST_CLASS_EXPORT(rpc::local_copy_helper_action<point>::finish);
-BOOST_CLASS_EXPORT(rpc::local_ptr_helper_action<point>::evaluate);
-BOOST_CLASS_EXPORT(rpc::local_ptr_helper_action<point>::finish);
-
-struct point_init_action:
-  public rpc::member_action_impl<point_init_action,
-                                 rpc::wrap<decltype(&point::init),
-                                           &point::init>>
-{
-};
-BOOST_CLASS_EXPORT(point_init_action::evaluate);
-BOOST_CLASS_EXPORT(point_init_action::finish);
-
-struct point_translate_action:
-  public rpc::member_action_impl<point_translate_action,
-                                 rpc::wrap<decltype(&point::translate),
-                                           &point::translate>>
-{
-};
-BOOST_CLASS_EXPORT(point_translate_action::evaluate);
-BOOST_CLASS_EXPORT(point_translate_action::finish);
-
-struct point_scale_action:
-  public rpc::member_action_impl<point_scale_action,
-                                 rpc::wrap<decltype(&point::scale),
-                                           &point::scale>>
-{
-};
-BOOST_CLASS_EXPORT(point_scale_action::evaluate);
-BOOST_CLASS_EXPORT(point_scale_action::finish);
-
-struct point_output_action:
-  public rpc::const_member_action_impl<point_output_action,
-                                       rpc::wrap<decltype(&point::output),
-                                                 &point::output>>
-{
-};
-BOOST_CLASS_EXPORT(point_output_action::evaluate);
-BOOST_CLASS_EXPORT(point_output_action::finish);
+RPC_COMPONENT(point);
+RPC_MEMBER_ACTION(point, init);
+RPC_MEMBER_ACTION(point, translate);
+RPC_MEMBER_ACTION(point, scale);
+RPC_CONST_MEMBER_ACTION(point, output);
 
 rpc::global_shared_ptr<point> make_point()
 {
   return rpc::make_global_shared<point>();
 }
-struct make_point_action:
-  public rpc::action_impl<make_point_action,
-                          rpc::wrap<decltype(make_point), make_point>>
-{
-};
-BOOST_CLASS_EXPORT(make_point_action::evaluate);
-BOOST_CLASS_EXPORT(make_point_action::finish);
+RPC_ACTION(make_point);
 
 
 
@@ -268,18 +209,10 @@ private:
 // TODO: use const&
 void tpc(shared_ptr<s> is,
          rpc::global_ptr<s> ig,
-         rpc::global_shared_ptr<s> igs);
-struct tpc_action:
-  public rpc::action_impl<tpc_action, rpc::wrap<decltype(tpc), tpc>>
-{
-};
-BOOST_CLASS_EXPORT(tpc_action::evaluate);
-BOOST_CLASS_EXPORT(tpc_action::finish);
-void tpc(shared_ptr<s> is,
-         rpc::global_ptr<s> ig,
          rpc::global_shared_ptr<s> igs)
 {
 }
+RPC_ACTION(tpc);
 
 int random_r()
 {
@@ -288,12 +221,7 @@ int random_r()
 }
 
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
-struct tgsp_action:
-  public rpc::action_impl<tgsp_action, rpc::wrap<decltype(tgsp), tgsp>>
-{
-};
-BOOST_CLASS_EXPORT(tgsp_action::evaluate);
-BOOST_CLASS_EXPORT(tgsp_action::finish);
+RPC_ACTION(tgsp);
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
 {
   if (count == 0) return;

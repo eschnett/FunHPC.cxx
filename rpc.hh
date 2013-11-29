@@ -1,6 +1,7 @@
 #ifndef RPC_HH
 #define RPC_HH
 
+#include "rpc_action.hh"
 #include "rpc_broadcast.hh"
 #include "rpc_call.hh"
 #include "rpc_component.hh"

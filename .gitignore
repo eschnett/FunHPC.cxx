@@ -1,6 +1,8 @@
 demo
 *.o
 Makefile.bak
-demo.dSYM
 OLD
 *.d
+*.dSYM
+bench
+matmul

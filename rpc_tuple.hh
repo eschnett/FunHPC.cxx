@@ -5,17 +5,18 @@
 
 #include <iostream>
 #include <tuple>
+#include <type_traits>
 
 namespace rpc {
   
+  using std::enable_if;
   using std::get;
   using std::istream;
   using std::ostream;
+  using std::result_of;
   using std::tuple;
   
   
-  
-  // TODO: Add more definitions, maybe using recursion
   
   // template<size_t N>
   // struct tuple_bind_impl {
@@ -23,39 +24,30 @@ namespace rpc {
   //   bind ...
   // };
   
-  template<typename F>
-  auto tuple_map(const F& func, const tuple<>& t) ->
-    decltype(func())
-  {
-    return func();
-  }
+  template<typename F, typename... As>
+  struct tuple_map_impl {
+    const F& f;
+    const tuple<As...>& t;
+    typedef typename result_of<F(As...)>::type R;
+    template<typename... As1>
+    auto map(const As1&... args1) const ->
+      typename enable_if<sizeof...(As1) < sizeof...(As), R>::type
+    {
+      return map(args1..., get<sizeof...(As1)>(t));
+    }
+    template<typename... As1>
+    auto map(const As1&... args1) const ->
+      typename enable_if<sizeof...(As1) == sizeof...(As), R>::type
+    {
+      return f(args1...);
+    }
+  };
   
-  template<typename F, typename A0>
-  auto tuple_map(const F& func, const tuple<A0>& t) ->
-    decltype(func(get<0>(t)))
+  template<typename F, typename... As>
+  auto tuple_map(const F& f, const tuple<As...>& t) ->
+    typename result_of<F(As...)>::type
   {
-    return func(get<0>(t));
-  }
-  
-  template<typename F, typename A0, typename A1>
-  auto tuple_map(const F& func, const tuple<A0, A1>& t) ->
-    decltype(func(get<0>(t), get<1>(t)))
-  {
-    return func(get<0>(t), get<1>(t));
-  }
-  
-  template<typename F, typename A0, typename A1, typename A2>
-  auto tuple_map(const F& func, const tuple<A0, A1, A2>& t) ->
-    decltype(func(get<0>(t), get<1>(t), get<2>(t)))
-  {
-    return func(get<0>(t), get<1>(t), get<2>(t));
-  }
-  
-  template<typename F, typename A0, typename A1, typename A2, typename A3>
-  auto tuple_map(const F& func, const tuple<A0, A1, A2, A3>& t) ->
-    decltype(func(get<0>(t), get<1>(t), get<2>(t), get<3>(t)))
-  {
-    return func(get<0>(t), get<1>(t), get<2>(t), get<3>(t));
+    return tuple_map_impl<F, As...>({ f, t }).map();
   }
   
   
@@ -157,4 +149,9 @@ namespace boost {
   }
 }
 
+#define RPC_TUPLE_HH_DONE
+#else
+#  ifndef RPC_TUPLE_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
 #endif  // #ifndef RPC_TUPLE_HH

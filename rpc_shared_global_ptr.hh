@@ -1,9 +1,10 @@
-#ifndef RPC_GLOBAL_SHARED_PTR_HH
-#define RPC_GLOBAL_SHARED_PTR_HH
+#ifndef RPC_SHARED_GLOBAL_PTR_HH
+#define RPC_SHARED_GLOBAL_PTR_HH
+
+#include "rpc_shared_global_ptr_fwd.hh"
 
 #include "rpc_call.hh"
 #include "rpc_global_ptr.hh"
-#include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_server.hh"
 
 #include <atomic>
@@ -33,7 +34,7 @@ namespace rpc {
                              global_ptr<global_manager_t> sender_manager)
   {
     global_manager_t::add_ref(owner.get());
-    apply(sender_manager.get_proc(), remove_ref_action(), sender_manager);
+    detached(sender_manager.get_proc(), remove_ref_action(), sender_manager);
   }
   struct add_remove_ref_action:
     public action_impl<add_remove_ref_action,
@@ -41,11 +42,11 @@ namespace rpc {
   {
   };
   
-  global_manager_t::~global_manager_t()
+  inline global_manager_t::~global_manager_t()
   {
     assert(refs == 0);
     if (owner) {
-      apply(owner.get_proc(), remove_ref_action(), owner);
+      detached(owner.get_proc(), remove_ref_action(), owner);
     }
     deleter();
   }
@@ -54,7 +55,7 @@ namespace rpc {
   
   template<typename T>
   template<class Archive>
-  void global_shared_ptr<T>::save(Archive& ar, unsigned int version) const
+  void shared_global_ptr<T>::save(Archive& ar, unsigned int version) const
   {
     assert(invariant());
     global_ptr<global_manager_t> sender_manager = manager;
@@ -65,7 +66,7 @@ namespace rpc {
   
   template<typename T>
   template<class Archive>
-  void global_shared_ptr<T>::load(Archive& ar, unsigned int version)
+  void shared_global_ptr<T>::load(Archive& ar, unsigned int version)
   {
     assert(!manager);
     global_ptr<global_manager_t> sender_manager, sender_owner;
@@ -83,26 +84,37 @@ namespace rpc {
       if (owner.is_local()) {
         manager = owner.get();
         global_manager_t::add_ref(manager);
-        apply(sender_manager.get_proc(), remove_ref_action(), sender_manager);
+        detached(sender_manager.get_proc(),
+                 remove_ref_action(), sender_manager);
       } else {
         manager = new global_manager_t(owner, []{});
         if (!sender_is_owner) {
           // We need to register ourselves with the owner, and need to
           // de-register the message with the sender (in this order).
           // We don't need to do anything if the sender is the owner.
-          apply(sender_owner.get_proc(),
-                add_remove_ref_action(), sender_owner, sender_manager);
+          detached(sender_owner.get_proc(),
+                   add_remove_ref_action(), sender_owner, sender_manager);
         }
       }
     }
     assert(invariant());
   }
   
+  
+  
+  template<typename T, typename... As>
+  struct make_shared_global_action:
+    public action_impl<make_shared_global_action<T, As...>,
+                       wrap<decltype(make_shared_global<T, As...>),
+                            make_shared_global<T, As...>>>
+  {
+  };
+  
 }
 
-BOOST_CLASS_EXPORT(rpc::remove_ref_action::evaluate);
-BOOST_CLASS_EXPORT(rpc::remove_ref_action::finish);
-BOOST_CLASS_EXPORT(rpc::add_remove_ref_action::evaluate);
-BOOST_CLASS_EXPORT(rpc::add_remove_ref_action::finish);
-
-#endif  // #ifndef RPC_GLOBAL_SHARED_PTR_HH
+#define RPC_SHARED_GLOBAL_PTR_HH_DONE
+#else
+#  ifndef RPC_SHARED_GLOBAL_PTR_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
+#endif  // #ifndef RPC_SHARED_GLOBAL_PTR_HH

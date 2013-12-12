@@ -56,33 +56,35 @@ namespace rpc {
   
   
   // Reduce from futures
-  template<typename R, typename FI>
-  auto reduce1(const R& op, const FI& b, const FI& e) ->
-    decltype(reduce(*b, *e))
+  template<typename R, typename I>
+  auto reduce1(const R& op, const I& b, const I& e) -> decltype(op(*b, *b))
   {
     const auto sz = e - b;
-    assert(sz > 0);
+    assert(sz != 0);
     // TODO: execute on different processes
-    // TODO: accept global_ptr<future>?
-    if (sz == 1) return b->get();
+    if (sz == 1) return *b;
     const auto m = b + sz/2;
     return op(reduce1(op, b, m), reduce1(op, m, e));
   }
   
-  template<typename R, typename V, typename FI>
-  auto reduce(const R& op, const V& zero,
-              const FI& b, const FI& e) ->
-    typename enable_if<is_same<decltype(reduce(*b, *b)), V>::value, V>::type
+  template<typename R, typename Z, typename I>
+  auto reduce(const R& op, Z& zero, const I& b, const I& e) ->
+    decltype(op(*b, *b))
+  // TODO: R must be FV(FV,FV)
+  // TODO: Z must be FV()
+  // TODO: I must be iterator over FV
+  // NOTE: this currently also works with V instead of FV
+  // TODO: accept global_ptr<future>?
   {
-    const auto sz = e - b;
-    if (sz == 0) return zero;
-    // TODO: execute on different processes
-    // TODO: accept global_ptr<future>?
-    if (sz == 1) return b->get();
-    const auto m = b + sz/2;
-    return op(reduce1(op, b, m), reduce1(op, m, e));
+    if (b == e) return zero();
+    return reduce1(op, b, e);
   }
   
 }
 
+#define RPC_BROADCAST_HH_DONE
+#else
+#  ifndef RPC_BROADCAST_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
 #endif  // #ifndef RPC_BROADCAST_HH

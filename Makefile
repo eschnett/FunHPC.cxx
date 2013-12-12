@@ -8,10 +8,10 @@ LIBS     = -lboost_mpi-mt -lboost_serialization-mt
 
 EXES = bench demo matmul
 
-RPC_SRCS    = rpc_main.cc rpc_server.cc
+RPC_SRCS    = rpc_defs.cc rpc_main.cc rpc_shared_global_ptr.cc rpc_server.cc
 BENCH_SRCS  = bench.cc ${RPC_SRCS}
 DEMO_SRCS   = demo.cc ${RPC_SRCS}
-MATMUL_SRCS = algorithms.cc matmul.cc matrix.cc ${RPC_SRCS}
+MATMUL_SRCS = algorithms.cc block_matrix.cc matmul.cc matrix.cc ${RPC_SRCS}
 
 BENCH_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${BENCH_SRCS}}}
 DEMO_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${DEMO_SRCS}}}

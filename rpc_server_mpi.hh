@@ -2,6 +2,7 @@
 #define RPC_SERVER_MPI_HH
 
 #include "rpc_call.hh"
+#include "rpc_defs.hh"
 #include "rpc_server.hh"
 
 #include <boost/mpi.hpp>
@@ -12,7 +13,9 @@
 #include <future>
 #include <iostream>
 #include <list>
+#include <mutex>
 #include <thread>
+#include <typeinfo>
 #include <vector>
 
 
@@ -25,6 +28,7 @@ namespace rpc {
   using std::atomic;
   using std::max;
   using std::min;
+  using std::mutex;
   using std::list;
   using std::thread;
   using std::vector;
@@ -134,7 +138,7 @@ namespace rpc {
       termination_stage = 1;
       stage_1_counter = 0;
       for (int proc = child_min(); proc < child_max(); ++proc) {
-        apply(proc, terminate_stage_1_action());
+        detached(proc, terminate_stage_1_action());
       }
       terminate_stage_2();
     }
@@ -146,11 +150,11 @@ namespace rpc {
       if (value == child_count() + 1) {
         const int proc = parent();
         if (proc >= 0) {
-          apply(proc, terminate_stage_2_action());
+          detached(proc, terminate_stage_2_action());
         }
         termination_stage = 2;
         if (proc < 0) {
-          apply(0, terminate_stage_3_action());
+          detached(0, terminate_stage_3_action());
         }
       }
     }
@@ -161,7 +165,7 @@ namespace rpc {
       termination_stage = 3;
       stage_3_counter = 0;
       for (int proc = child_min(); proc < child_max(); ++proc) {
-        apply(proc, terminate_stage_3_action());
+        detached(proc, terminate_stage_3_action());
       }
       terminate_stage_4();
     }
@@ -173,7 +177,7 @@ namespace rpc {
       if (value == child_count() + 1) {
         const int proc = parent();
         if (proc >= 0) {
-          apply(proc, terminate_stage_4_action());
+          detached(proc, terminate_stage_4_action());
         }
         termination_stage = 4;
       }
@@ -196,6 +200,7 @@ namespace rpc {
     {
       // Start main program, but only on process 0
       if (comm.rank() == 0) {
+        // TODO: avoid lambda
         thread([=]{ run_application(user_main); }).detach();
       }
       
@@ -246,6 +251,7 @@ namespace rpc {
                  typeid(*recv_call) != typeid(rpc::terminate_stage_3_action::evaluate) &&
                  typeid(*recv_call) != typeid(rpc::terminate_stage_4_action::evaluate)))
           {
+            // TODO: avoid lambda
             thread([=]{ recv_call->execute(); }).detach();
           }
           recv_call.reset();
@@ -286,16 +292,25 @@ namespace rpc {
       assert(dest != rank());
 #endif
       // Threads may still be active when we need to terminate; let
-      // the enqueue requests (why not?)
+      // them enqueue requests (why not?)
       if (we_should_stop_sending() &&
           typeid(*func) != typeid(rpc::terminate_stage_3_action::evaluate) &&
           typeid(*func) != typeid(rpc::terminate_stage_4_action::evaluate))
       {
-        // TODO: block thread instead of sleeping
-        std::this_thread::sleep_for(std::chrono::seconds(1000000));
-        assert(0);
+        // // TODO: block thread instead of sleeping
+        // std::this_thread::sleep_for(std::chrono::seconds(1000000));
+        // assert(0);
+        // This assumes that the calling thread will not attempt to
+        // perform significant work
+        return;
       }
       // assert(!we_should_terminate());
+      // Enable this output to debug unregistered and unexported classes
+      // rpc::with_lock(rpc::io_mutex, [&]{
+      //     std::cout << "[" << rpc::server->rank() << "] "
+      //               << "sending type " << typeid(*func).name() << " "
+      //               << "to " << dest << "\n";
+      //   });
       // TODO: use atomic swaps instead of a mutex
       with_lock(send_queue_mutex,
                 [&]{ send_queue.push_back(send_item_t{ dest, func }); });
@@ -332,4 +347,9 @@ BOOST_CLASS_EXPORT(rpc::terminate_stage_3_action::finish);
 BOOST_CLASS_EXPORT(rpc::terminate_stage_4_action::evaluate);
 BOOST_CLASS_EXPORT(rpc::terminate_stage_4_action::finish);
 
+#define RPC_SERVER_MPI_HH_DONE
+#else
+#  ifndef RPC_SERVER_MPI_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
 #endif  // RPC_SERVER_MPI_HH

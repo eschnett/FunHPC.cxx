@@ -1,22 +1,31 @@
-#ifndef RPC_GLOBAL_SHARED_PTR_FWD_HH
-#define RPC_GLOBAL_SHARED_PTR_FWD_HH
+#ifndef RPC_SHARED_GLOBAL_PTR_FWD_HH
+#define RPC_SHARED_GLOBAL_PTR_FWD_HH
 
-#include "rpc_global_ptr.hh"
+#include "rpc_global_ptr_fwd.hh"
 #include "rpc_server.hh"
 
+#include <boost/make_shared.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <iostream>
+#include <type_traits>
 
 namespace rpc {
   
+  using boost::make_shared;
+  using boost::shared_ptr;
+  
   using std::atomic;
   using std::function;
+  using std::future;
   using std::ostream;
+  using std::remove_const;
   
   
   
@@ -30,6 +39,7 @@ namespace rpc {
     global_ptr<global_manager_t> owner;
     // A function that deletes the object (if local), or does nothing
     // (if remote).
+    // TODO: Modify to use C++ deleter semantics
     function<void(void)> deleter;
     
   public:
@@ -85,24 +95,25 @@ namespace rpc {
   
   
   template<typename T>
-  class global_shared_ptr {
+  class shared_global_ptr {
     
     global_ptr<T> ptr;
     global_manager_t* manager;
     
+    // TODO: use nullptr for the default delete operator?
     static global_manager_t* make_ref(const global_ptr<T>& ptr)
     {
       if (ptr.is_empty() || !ptr) return nullptr;
       T* raw_ptr = ptr.get();
-      return new global_manager_t(nullptr, [=]{ delete raw_ptr; });
+      return new global_manager_t(nullptr, [=](){ delete raw_ptr; });
     }
-    // TODO: Instead of having an empty deleter, use a null manager
-    // and don't count references
-    static global_manager_t* make_pseudo_ref(const global_ptr<T>& ptr)
-    {
-      if (ptr.is_empty() || !ptr) return nullptr;
-      return new global_manager_t(nullptr, []{});
-    }
+    // // TODO: Instead of having an empty deleter, use a null manager
+    // // and don't count references
+    // static global_manager_t* make_pseudo_ref(const global_ptr<T>& ptr)
+    // {
+    //   if (ptr.is_empty() || !ptr) return nullptr;
+    //   return new global_manager_t(nullptr, []{});
+    // }
     
   public:
     
@@ -112,28 +123,37 @@ namespace rpc {
       return !!manager;
     };
     
-    global_shared_ptr(): manager(nullptr) { assert(invariant()); }
-    global_shared_ptr(const global_ptr<T>& ptr):
-      ptr(ptr), manager(make_pseudo_ref(ptr))
+    shared_global_ptr(): manager(nullptr) { assert(invariant()); }
+    shared_global_ptr(T* ptr_):
+      ptr(ptr_), manager(make_ref(ptr))
     {
+      // take ownership
       if (!ptr.is_empty()) assert(ptr.is_local());
       assert(invariant());
     }
-    global_shared_ptr(const global_shared_ptr& other):
+    shared_global_ptr(const shared_ptr<T>& ptr);
+    shared_global_ptr(const global_ptr<T>& ptr_):
+      ptr(ptr_), manager(make_ref(ptr))
+    {
+      // take ownership
+      if (!ptr.is_empty()) assert(ptr.is_local());
+      assert(invariant());
+    }
+    shared_global_ptr(const shared_global_ptr& other):
       ptr(other.ptr), manager(other.manager)
     {
       assert(other.invariant());
       global_manager_t::add_ref(manager);
       assert(invariant());
     }
-    global_shared_ptr(global_shared_ptr&& other):
+    shared_global_ptr(shared_global_ptr&& other):
       ptr(other.ptr), manager(other.manager)
     {
       assert(other.invariant());
-      other = global_shared_ptr();
+      other = shared_global_ptr();
       assert(invariant());
     }
-    global_shared_ptr& operator=(const global_shared_ptr& other)
+    shared_global_ptr& operator=(const shared_global_ptr& other)
     {
       assert(invariant());
       assert(other.invariant());
@@ -152,7 +172,7 @@ namespace rpc {
       manager = other.manager;
       return *this;
     }
-    global_shared_ptr& operator=(global_shared_ptr&& other)
+    shared_global_ptr& operator=(shared_global_ptr&& other)
     {
       assert(invariant());
       assert(other.invariant());
@@ -164,7 +184,7 @@ namespace rpc {
       assert(invariant());
       return *this;
     }
-    ~global_shared_ptr()
+    ~shared_global_ptr()
     {
       assert(invariant());
       global_manager_t::remove_ref(manager);
@@ -174,20 +194,30 @@ namespace rpc {
     int get_proc() const { return ptr.get_proc(); }
     bool is_local() const { return ptr.is_local(); }
     
-    bool operator==(const global_shared_ptr& other) const
+    bool operator==(const shared_global_ptr& other) const
     {
       return ptr == other.ptr;
     }
-    bool operator!=(const global_shared_ptr& other) const
+    bool operator!=(const shared_global_ptr& other) const
     {
       return ! (*this == other);
     }
     
-    explicit operator global_ptr<T>() const { return ptr; }
-    
-    operator bool() const { return bool(ptr); }
+    // global_ptr<T> get_global() const { return ptr; }
+    shared_ptr<T> get_shared() const
+    {
+      // TODO: Store a shared_ptr in shared_global_ptr's manager, so
+      // that this call to make_shared is not necessary
+      assert(!is_empty());
+      if (!*this) return nullptr;
+      return make_shared<T>(**this);
+    }
     T* get() const { return ptr.get(); }
-    global_ptr<T> get_global() const { return ptr; }
+    operator bool() const { return bool(get()); }
+    T& operator*() const { return *get(); }
+    T* operator->() const { return get(); }
+    
+    future<shared_global_ptr<T>> local() const;
     
     ostream& output(ostream& os) const
     {
@@ -207,17 +237,43 @@ namespace rpc {
   };
   
   template<typename T>
-  ostream& operator<<(ostream& os, const global_shared_ptr<T>& ptr)
+  ostream& operator<<(ostream& os, const shared_global_ptr<T>& ptr)
   {
     return ptr.output(os);
   }
   
   template<typename T, typename... As>
-  global_shared_ptr<T> make_global_shared(const As&... args)
+  shared_global_ptr<T> make_shared_global(As... args)
   {
-    return global_shared_ptr<T>(global_ptr<T>(new T(args...)));
+    return make_global<T>(args...);
+  }
+  
+  template<typename T>
+  future<shared_global_ptr<T>> shared_global_ptr<T>::local() const
+  {
+    // TODO: Store a shared_ptr in shared_global_ptr's manager, so
+    // that this call to make_shared is not necessary if the pointer
+    // is local
+    return std::async(std::launch::deferred,
+                      [](future<global_ptr<T>> localptr)
+                      { return shared_global_ptr<T>(localptr.get()); },
+                      ptr.local());
+  }
+  
+  template<typename T>
+  shared_global_ptr<T>::shared_global_ptr(const shared_ptr<T>& ptr):
+    shared_global_ptr()
+  // copy the object
+  // TODO: store a shared_ptr internally, omit the copy
+  {
+    *this = make_shared_global<T>(*ptr);
   }
   
 }
 
-#endif  // #ifndef RPC_GLOBAL_SHARED_PTR_FWD_HH
+#define RPC_SHARED_GLOBAL_PTR_FWD_HH_DONE
+#else
+#  ifndef RPC_SHARED_GLOBAL_PTR_FWD_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
+#endif  // #ifndef RPC_SHARED_GLOBAL_PTR_FWD_HH

@@ -1,6 +1,8 @@
 #ifndef MATRIX_HH
 #define MATRIX_HH
 
+#include "rpc.hh"
+
 #include <boost/serialization/vector.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -23,9 +25,16 @@ std::string mkstr(const T& x)
 
 
 
+struct vector_t;
+struct matrix_t;
+
+
+
 struct vector_t {
   typedef boost::shared_ptr<const vector_t> const_ptr;
   typedef boost::shared_ptr<vector_t> ptr;
+  typedef rpc::shared_global_ptr<vector_t> global_ptr;
+  typedef rpc::client<vector_t> client;
   
   std::ptrdiff_t N;
   std::vector<double> elts;
@@ -37,6 +46,8 @@ private:
   {
     ar & N;
     ar & elts;
+    // TODO
+    assert(N == elts.size());
   }
 public:
   
@@ -61,15 +72,83 @@ public:
     return elts[i];
     // return ((double *__restrict__)&elts[0])[i];
   }
+  double get_elt(std::ptrdiff_t i) const { return (*this)(i); }
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, get_elt);
+  void set_elt(std::ptrdiff_t i, double x) { (*this)(i) = x; }
+  RPC_DECLARE_MEMBER_ACTION(vector_t, set_elt);
+  
+  // Level 1
+  auto faxpy(double alpha, const const_ptr& x) const -> ptr;
+  auto fcopy() const -> ptr;
+  auto fnrm2() const -> double;
+  auto fscal(double alpha) const -> ptr;
+  auto fset(double alpha) const -> ptr;
+  
+  // TODO: make actions capture copies intead of const references,
+  // then update signatures of functions underlying actions
+  auto cfaxpy(double alpha, global_ptr x) const -> global_ptr
+  {
+    auto fxloc = x.local();
+    return faxpy(alpha, fxloc.get().get_shared());
+  }
+  auto cfcopy() const -> global_ptr
+  {
+    return fcopy();
+  }
+  auto cfnrm2() const -> double
+  {
+    return fnrm2();
+  }
+  auto cfscal(double alpha) const -> global_ptr
+  {
+    return fscal(alpha);
+  }
+  auto cfset(double alpha) const -> global_ptr
+  {
+    return fset(alpha);
+  }
+  
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, cfaxpy);
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, cfcopy);
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, cfnrm2);
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, cfscal);
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, cfset);
 };
+RPC_DECLARE_COMPONENT(vector_t);
 
 std::ostream& operator<<(std::ostream& os, const vector_t& x);
+
+// TODO: put these into rpc::client<...>?
+inline auto afaxpy(double alpha, const vector_t::client& x,
+                   const vector_t::client& y0) -> vector_t::client
+{
+  return rpc::async(y0, vector_t::cfaxpy_action(),
+                    alpha, x.get_shared_global());
+}
+inline auto afcopy(const vector_t::client& x0) -> vector_t::client
+{
+  return rpc::async(x0, vector_t::cfcopy_action());
+}
+inline auto afnrm2(const vector_t::client& x0) -> std::shared_future<double>
+{
+  return rpc::async(x0, vector_t::cfnrm2_action());
+}
+inline auto afscal(double alpha, const vector_t::client& x0) -> vector_t::client
+{
+  return rpc::async(x0, vector_t::cfscal_action(), alpha);
+}
+inline auto afset(double alpha, const vector_t::client& x0) -> vector_t::client
+{
+  return rpc::async(x0, vector_t::cfset_action(), alpha);
+}
 
 
 
 struct matrix_t {
   typedef boost::shared_ptr<const matrix_t> const_ptr;
   typedef boost::shared_ptr<matrix_t> ptr;
+  typedef rpc::shared_global_ptr<matrix_t> global_ptr;
+  typedef rpc::client<matrix_t> client;
   
   std::ptrdiff_t NI, NJ;        // interpretation: row, column
   std::vector<double> elts;
@@ -81,6 +160,8 @@ private:
   {
     ar & NI & NJ;
     ar & elts;
+    // TODO
+    assert(NI * NJ == elts.size());
   }
 public:
   
@@ -105,9 +186,133 @@ public:
     assert(i>=0 && i<NI && j>=0 && j<NJ);
     return elts[i+NI*j];
   }
+  double get_elt(std::ptrdiff_t i, std::ptrdiff_t j) const
+  {
+    return (*this)(i, j);
+  }
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, get_elt);
+  void set_elt(std::ptrdiff_t i, std::ptrdiff_t j, double x)
+  {
+    (*this)(i, j) = x;
+  }
+  RPC_DECLARE_MEMBER_ACTION(matrix_t, set_elt);
+  
+  // Level 2
+  auto faxpy(bool transa, bool transb0,
+             double alpha, const const_ptr& a) const -> ptr;
+  auto fgemv(bool trans,
+             double alpha, const vector_t::const_ptr& x,
+             double beta, const vector_t::const_ptr& y0) const -> vector_t::ptr;
+  auto fcopy(bool trans) const -> ptr;
+  auto fnrm2() const -> double;
+  auto fscal(bool trans, double alpha) const -> ptr;
+  auto fset(bool trans, double alpha) const -> ptr;
+  
+  // Level 3
+  auto fgemm(bool transa, bool transb, bool transc0,
+             double alpha, const const_ptr& a, const const_ptr& b,
+             double beta) const -> ptr;
+  
+  auto cfaxpy(bool transa, bool transb0,
+              double alpha, global_ptr a) const -> global_ptr
+  {
+    auto faloc = a.local();
+    return faxpy(transa, transb0,
+                 alpha, faloc.get().get_shared());
+  }
+  auto cfcopy(bool trans) const -> global_ptr
+  {
+    return fcopy(trans);
+  }
+  auto cfgemv(bool trans,
+              double alpha, vector_t::global_ptr x,
+              double beta, vector_t::global_ptr y0) const ->
+    vector_t::global_ptr
+  {
+    auto fxloc = x.local();
+    auto fy0loc = y0.local();
+    return fgemv(trans,
+                 alpha, fxloc.get().get_shared(),
+                 beta, fy0loc.get().get_shared());
+  }
+  auto cfnrm2() const -> double
+  {
+    return fnrm2();
+  }
+  auto cfscal(bool trans, double alpha) const -> global_ptr
+  {
+    return fscal(trans, alpha);
+  }
+  auto cfset(bool trans, double alpha) const -> global_ptr
+  {
+    return fset(trans, alpha);
+  }
+  auto cfgemm(bool transa, bool transb, bool transc0,
+              double alpha, global_ptr a, global_ptr b,
+              double beta) const -> global_ptr
+  {
+    auto faloc = a.local();
+    auto fbloc = b.local();
+    return fgemm(transa, transb, transc0,
+                 alpha, faloc.get().get_shared(), fbloc.get().get_shared(),
+                 beta);
+  }
+  
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfaxpy);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfcopy);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfgemv);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfnrm2);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfscal);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfset);
+  RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfgemm);
 };
+RPC_DECLARE_COMPONENT(matrix_t);
 
 std::ostream& operator<<(std::ostream& os, const matrix_t& a);
+
+inline auto afaxpy(bool transa, bool transb0,
+                   double alpha, const matrix_t::client& a,
+                   const matrix_t::client& b0) -> matrix_t::client
+{
+  return rpc::async(b0, matrix_t::cfaxpy_action(),
+                    transa, transb0, alpha, a.get_shared_global());
+}
+inline auto afcopy(bool trans, const matrix_t::client& a0) -> matrix_t::client
+{
+  return rpc::async(a0, matrix_t::cfcopy_action(), trans);
+}
+inline auto afgemv(bool trans,
+                   double alpha, matrix_t::client a, vector_t::client x,
+                   double beta, vector_t::client y0) -> vector_t::client
+{
+  return rpc::async(a, matrix_t::cfgemv_action(),
+                    trans, alpha, x.get_shared_global(),
+                    beta, y0.get_shared_global());
+}
+inline auto afnrm2(const matrix_t::client& a0) -> std::shared_future<double>
+{
+  return rpc::async(a0, matrix_t::cfnrm2_action());
+}
+inline auto afscal(bool trans, double alpha, const matrix_t::client& a0) ->
+  matrix_t::client
+{
+  return rpc::async(a0, matrix_t::cfscal_action(), trans, alpha);
+}
+inline auto afset(bool trans, double alpha, const matrix_t::client& a0) ->
+  matrix_t::client
+{
+  return rpc::async(a0, matrix_t::cfset_action(), trans, alpha);
+}
+inline auto afgemm(bool transa, bool transb, bool transc0,
+                   double alpha,
+                   const matrix_t::client& a, const matrix_t::client& b,
+                   double beta, const matrix_t::client& c0) -> matrix_t::client
+{
+  return rpc::async(c0, matrix_t::cfgemm_action(),
+                    transa, transb, transc0,
+                    alpha, a.get_shared_global(), b.get_shared_global(),
+                    beta);
+}
 
 
 

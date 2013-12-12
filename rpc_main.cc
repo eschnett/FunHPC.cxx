@@ -1,5 +1,3 @@
-#include "rpc_main.hh"
-
 #include "rpc_server.hh"
 #include "rpc_server_mpi.hh"
 

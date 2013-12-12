@@ -2,8 +2,6 @@
 
 namespace rpc {
   
-  mutex io_mutex;
-  
   abstract_server* server = nullptr;
   
 }

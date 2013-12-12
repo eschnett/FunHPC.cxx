@@ -59,20 +59,18 @@ RPC_ACTION(out);
 struct point {
   int x, y;
   void init(int value) { x=y=value; }
-  void translate(rpc::global_ptr<point> delta_)
+  RPC_DECLARE_MEMBER_ACTION(point, init);
+  void translate(rpc::client<point> delta_)
   {
-    const auto delta = rpc::local_copy(delta_).get();
-    x+=delta.x; y+=delta.y;
+    auto delta = delta_.local();
+    x+=delta->x; y+=delta->y;
   }
-  void scale(rpc::global_shared_ptr<point> alpha_)
-  {
-    const auto alpha = rpc::local_ptr(alpha_).get();
-    x*=alpha->x; y*=alpha->y;
-  }
+  RPC_DECLARE_MEMBER_ACTION(point, translate);
   void output() const
   {
     rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] point(" << x << "," << y << ")\n"; });
   }
+  RPC_DECLARE_CONST_MEMBER_ACTION(point, output);
 private:
   friend class boost::serialization::access;
   template<class Archive>
@@ -82,16 +80,9 @@ private:
   }
 };
 RPC_COMPONENT(point);
-RPC_MEMBER_ACTION(point, init);
-RPC_MEMBER_ACTION(point, translate);
-RPC_MEMBER_ACTION(point, scale);
-RPC_CONST_MEMBER_ACTION(point, output);
-
-rpc::global_shared_ptr<point> make_point()
-{
-  return rpc::make_global_shared<point>();
-}
-RPC_ACTION(make_point);
+RPC_IMPLEMENT_MEMBER_ACTION(point, init);
+RPC_IMPLEMENT_MEMBER_ACTION(point, translate);
+RPC_IMPLEMENT_CONST_MEMBER_ACTION(point, output);
 
 
 
@@ -108,7 +99,7 @@ void test_call()
   cout << "Calling f asynchronously... " << flush;
   cout << rpc::async(dest, f_action(), 30).get() << "\n";
   cout << "Calling f applicatively...\n" << flush;
-  rpc::apply(dest, f_action(), 50);
+  rpc::detached(dest, f_action(), 50);
   cout << "Done calling f\n";
   
   cout << "Calling add directly... " << flush;
@@ -120,7 +111,7 @@ void test_call()
   cout << "Calling add asynchronously... " << flush;
   cout << rpc::async(dest, add_action(), 1,2).get() << "\n";
   cout << "Calling add applicatively...\n" << flush;
-  rpc::apply(dest, add_action(), 1,2);
+  rpc::detached(dest, add_action(), 1,2);
   cout << "Done calling add\n";
   
   cout << "Calling out directly...\n" << flush;
@@ -132,32 +123,24 @@ void test_call()
   cout << "Calling out asynchronously...\n" << flush;
   rpc::async(dest, out_action(), "hello").get();
   cout << "Calling out applicatively...\n" << flush;
-  rpc::apply(dest, out_action(), "hello");
+  rpc::detached(dest, out_action(), "hello");
   cout << "Done calling out\n";
   
-  point p, q;
-  rpc::global_ptr<point> pg(&p), qg(&q);
-  p.init(1);
-  rpc::sync(qg, point_init_action(), 2);
-  p.translate(qg);
-  p.output();
+  auto p = rpc::make_client<point>();
+  auto q = rpc::make_client<point>();
+  rpc::sync(p, point::init_action(), 1);
+  rpc::sync(q, point::init_action(), 2);
+  rpc::sync(p, point::translate_action(), q);
+  rpc::sync(p, point::output_action());
   
-  rpc::global_ptr<point> pg0(&p);
-  rpc::global_shared_ptr<point> pgs0(&p);
-  
-  auto pgs = rpc::make_global_shared<point>(p);
-  auto qgs = rpc::make_global_shared<point>(q);
-  rpc::sync(pgs, point_init_action(), 3);
-  rpc::sync(qgs, point_init_action(), 4);
-  rpc::sync(pgs, point_scale_action(), qgs);
-  rpc::sync(pgs, point_output_action());
-  
-  auto rpgs = rpc::async(1 % rpc::server->size(), make_point_action()).share();
-  auto rqgs = rpc::async(2 % rpc::server->size(), make_point_action()).share();
-  rpc::sync(rpgs.get(), point_init_action(), 5);
-  rpc::sync(rqgs.get(), point_init_action(), 6);
-  rpc::sync(rpgs.get(), point_scale_action(), rqgs.get());
-  rpc::sync(rpgs.get(), point_output_action());
+  auto rp = rpc::async(1 % rpc::server->size(),
+                       rpc::make_client_action<point>()).share();
+  auto rq = rpc::async(2 % rpc::server->size(),
+                       rpc::make_client_action<point>()).share();
+  rpc::sync(rp.get(), point::init_action(), 3);
+  rpc::sync(rq.get(), point::init_action(), 4);
+  rpc::sync(rp.get(), point::translate_action(), rq.get());
+  rpc::sync(rp.get(), point::output_action());
 }
 
 
@@ -209,7 +192,7 @@ private:
 // TODO: use const&
 void tpc(shared_ptr<s> is,
          rpc::global_ptr<s> ig,
-         rpc::global_shared_ptr<s> igs)
+         rpc::shared_global_ptr<s> igs)
 {
 }
 RPC_ACTION(tpc);
@@ -220,9 +203,9 @@ int random_r()
   return rpc::with_lock(m, random);
 }
 
-void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
+void tgsp(rpc::shared_global_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
 RPC_ACTION(tgsp);
-void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
+void tgsp(rpc::shared_global_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
 {
   if (count == 0) return;
   rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n"; });
@@ -234,7 +217,7 @@ void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
     fs.push_back(async(dest, tgsp_action(), igs, child_count, level+1));
     count -= child_count;
   }
-  vector<rpc::global_shared_ptr<s>> locals(count, igs);
+  vector<rpc::shared_global_ptr<s>> locals(count, igs);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   for (auto& f: fs) f.wait();
 }
@@ -248,7 +231,7 @@ void test_ptr()
   auto ip = new s(1);
   auto is = make_shared<s>(2);
   auto ig = rpc::make_global<s>(3);
-  auto igs = rpc::make_global_shared<s>(4);
+  auto igs = rpc::make_shared_global<s>(4);
   
   auto ip2 = ip;
   auto is2 = is;
@@ -257,7 +240,7 @@ void test_ptr()
   
   tpc(is, ig, igs);
   rpc::sync(dest, tpc_action(), is, ig, igs);
-  tgsp(rpc::make_global_shared<s>(5), 1000000);
+  tgsp(rpc::make_shared_global<s>(5), 1000000);
   
   delete ip2;
   delete ig2.get();

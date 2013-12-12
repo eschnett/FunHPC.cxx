@@ -1,96 +1,46 @@
 #ifndef RPC_GLOBAL_PTR_HH
 #define RPC_GLOBAL_PTR_HH
 
-#include "rpc_server.hh"
+#include "rpc_global_ptr_fwd.hh"
 
-#include <boost/serialization/access.hpp>
-
-#include <cstdint>
-#include <iostream>
+#include "rpc_call.hh"
 
 namespace rpc {
   
-  using std::intptr_t;
-  using std::ostream;
-  
-  // A global pointer, represented as a combination of a local pointer
-  // and a process rank describing where the pointer is valid, i.e.
-  // where the pointee lives.
   template<typename T>
-  class global_ptr {
-    
-    int proc;
-    intptr_t iptr;
-    
-  public:
-    
-    global_ptr(): proc(-1) {}
-    global_ptr(T* ptr): proc(server->rank()), iptr((intptr_t)ptr) {}
-    
-    bool is_empty() const
-    {
-      return proc<0;
-    }
-    int get_proc() const
-    {
-      assert(!is_empty());
-      return proc;
-    }
-    bool is_local() const
-    {
-      assert(!is_empty());
-      return proc == server->rank();
-    }
-    
-    bool operator==(const global_ptr& other) const
-    {
-      return proc == other.proc && iptr == other.iptr;
-    }
-    bool operator!=(const global_ptr& other) const
-    {
-      return ! (*this == other);
-    }
-    
-    operator bool() const
-    {
-      assert(!is_empty());
-      return (bool)(T*)iptr;
-    }
-    T* get() const
-    {
-      assert(!is_empty());
-      assert(is_local());
-      if (!is_local()) return nullptr;
-      return (T*)iptr;
-    }
-    
-    ostream& output(ostream& os) const
-    {
-      return os << proc << ":" << (T*)iptr;
-    }
-    
-  private:
-    
-    friend class boost::serialization::access;
-    template<class Archive>
-    void serialize(Archive& ar, unsigned int version)
-    {
-      ar & proc & iptr;
-    }
+  T* global_ptr_get(global_ptr<T> ptr) { return ptr.get(); }
+  template<typename T>
+  struct global_ptr_get_action:
+    public rpc::action_impl<global_ptr_get_action<T>,
+                            rpc::wrap<decltype(global_ptr_get<T>),
+                                      global_ptr_get<T>>>
+  {
   };
   
   template<typename T>
-  ostream& operator<<(ostream& os, const global_ptr<T>& ptr)
+  future<global_ptr<T>> global_ptr<T>::local() const
   {
-    return ptr.output(os);
+    return std::async(std::launch::deferred,
+                      [=](future<T*> localptr)
+                      { return global_ptr<T>(localptr.get()); },
+                      async(get_proc(), global_ptr_get_action<T>(), *this));
   }
   
+  
+  
   template<typename T, typename... As>
-  global_ptr<T> make_global(const As&... args)
+  struct make_global_action:
+    public action_impl<make_global_action<T, As...>,
+                       wrap<decltype(make_global<T, As...>),
+                            make_global<T, As...>>>
   {
-    return new T(args...);
-  }
+  };
   
 }
 
+#define RPC_GLOBAL_PTR_HH_DONE
+#else
+#  ifndef RPC_GLOBAL_PTR_HH_DONE
+#    error "Cyclic include dependency"
+#  endif
 #endif  // #ifndef RPC_GLOBAL_PTR_HH

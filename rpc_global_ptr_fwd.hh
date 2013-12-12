@@ -57,7 +57,7 @@ namespace rpc {
     {
       assert(!is_empty());
       assert(is_local());
-      if (!is_local()) return nullptr;
+      // if (!is_local()) return nullptr;
       return (T*)iptr;
     }
     operator bool() const { return iptr; }

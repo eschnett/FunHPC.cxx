@@ -103,7 +103,7 @@ namespace rpc {
     global_ptr<promise<R>> p;
     tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(global_ptr<promise<R>> p, As... args):
+    action_evaluate(const global_ptr<promise<R>>& p, const As&... args):
       p(p), args(args...) {}
     void execute()
     {
@@ -126,7 +126,7 @@ namespace rpc {
     global_ptr<promise<void>> p;
     tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(global_ptr<promise<void>> p, As... args):
+    action_evaluate(const global_ptr<promise<void>>& p, const As&... args):
       p(p), args(args...) {}
     void execute()
     {
@@ -189,7 +189,7 @@ namespace rpc {
   // Call an action on a given destination
   
   template<typename F, typename... As>
-  auto detached(int dest, const F& func, As... args) ->
+  auto detached(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -203,7 +203,7 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto async(int dest, const F& func, As... args) ->
+  auto async(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
@@ -220,7 +220,7 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto sync(int dest, const F& func, As... args) ->
+  auto sync(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(func(args...))>::type
   {
@@ -237,7 +237,7 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto deferred(int dest, const F& func, As... args) ->
+  auto deferred(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
@@ -251,7 +251,7 @@ namespace rpc {
   struct member_action_impl_t: public action_base<F> {
     typedef typename class_type<decltype(W::value)>::type T;
     typedef typename return_type<decltype(W::value)>::type R;
-    R operator()(const client<T>& obj, As... args) const
+    R operator()(const client<T>& obj, const As&... args) const
     {
       return (obj.get()->*W::value)(args...);
     }
@@ -280,7 +280,7 @@ namespace rpc {
   // Call a member action via a client
   
   template<typename T, typename F, typename... As>
-  auto deferred(const client<T>& ptr, const F& func, As... args) ->
+  auto deferred(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(deferred(ptr.get_proc(),
                                          func, ptr, args...))>::type
@@ -289,7 +289,7 @@ namespace rpc {
   }
   
   template<typename T, typename F, typename... As>
-  auto detached(const client<T>& ptr, const F& func, As... args) ->
+  auto detached(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(apply(ptr.get_proc(),
                                       func, ptr, args...))>::type
@@ -298,7 +298,7 @@ namespace rpc {
   }
   
   template<typename T, typename F, typename... As>
-  auto async(const client<T>& ptr, const F& func, As... args) ->
+  auto async(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(async(ptr.get_proc(),
                                       func, ptr, args...))>::type
@@ -307,7 +307,7 @@ namespace rpc {
   }
   
   template<typename T, typename F, typename... As>
-  auto sync(const client<T>& ptr, const F& func, As... args) ->
+  auto sync(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        decltype(sync(ptr.get_proc(),
                                      func, ptr, args...))>::type

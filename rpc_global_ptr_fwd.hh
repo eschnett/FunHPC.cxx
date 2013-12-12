@@ -60,7 +60,7 @@ namespace rpc {
       if (!is_local()) return nullptr;
       return (T*)iptr;
     }
-    operator bool() const { return bool(get()); }
+    operator bool() const { return iptr; }
     T& operator*() const { return *get(); }
     T* operator->() const { return get(); }
     

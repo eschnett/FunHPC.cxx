@@ -133,14 +133,12 @@ void test_call()
   rpc::sync(p, point::translate_action(), q);
   rpc::sync(p, point::output_action());
   
-  auto rp = rpc::async(1 % rpc::server->size(),
-                       rpc::make_client_action<point>()).share();
-  auto rq = rpc::async(2 % rpc::server->size(),
-                       rpc::make_client_action<point>()).share();
-  rpc::sync(rp.get(), point::init_action(), 3);
-  rpc::sync(rq.get(), point::init_action(), 4);
-  rpc::sync(rp.get(), point::translate_action(), rq.get());
-  rpc::sync(rp.get(), point::output_action());
+  auto rp = rpc::make_remote_client<point>(1 % rpc::server->size());
+  auto rq = rpc::make_remote_client<point>(2 % rpc::server->size());
+  rpc::sync(rp, point::init_action(), 3);
+  rpc::sync(rq, point::init_action(), 4);
+  rpc::sync(rp, point::translate_action(), rq);
+  rpc::sync(rp, point::output_action());
 }
 
 

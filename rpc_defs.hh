@@ -13,6 +13,41 @@ namespace rpc {
   
   
   
+  // Determine the class type of a member function
+  template<typename T>
+  struct class_type;
+  template<typename T, typename R, typename... As>
+  struct class_type<R(T::*const)(As...)>
+  {
+    typedef T type;
+  };
+  template<typename T, typename R, typename... As>
+  struct class_type<R(T::*const)(As...)const>
+  {
+    typedef T type;
+  };
+  
+  // Determine the return type of a function
+  template<typename T>
+  struct return_type;
+  template<typename R, typename... As>
+  struct return_type<R(*const)(As...)>
+  {
+    typedef R type;
+  };
+  template<typename T, typename R, typename... As>
+  struct return_type<R(T::*const)(As...)>
+  {
+    typedef R type;
+  };
+  template<typename T, typename R, typename... As>
+  struct return_type<R(T::*const)(As...)const>
+  {
+    typedef R type;
+  };
+  
+  
+  
   // TODO: provide "then" for futures
   
   template<typename T>

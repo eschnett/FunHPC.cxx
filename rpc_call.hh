@@ -2,6 +2,7 @@
 #define RPC_CALL
 
 #include "rpc_client_fwd.hh"
+#include "rpc_defs.hh"
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_shared_global_ptr_fwd.hh"
 #include "rpc_server.hh"
@@ -154,40 +155,6 @@ namespace rpc {
   template<typename T, T F>
   struct wrap {
     static constexpr decltype(F) value = F;
-  };
-  
-  // Determine the class type of a member function
-  template<typename T>
-  struct class_type;
-  template<typename T, typename R, typename... As>
-  struct class_type<R(T::*const)(As...)>
-  {
-    typedef T type;
-  };
-  template<typename T, typename R, typename... As>
-  struct class_type<R(T::*const)(As...)const>
-  {
-    typedef T type;
-  };
-  
-  // Determine the return type of a function
-  // TODO: move to a more generic place
-  template<typename T>
-  struct return_type;
-  template<typename R, typename... As>
-  struct return_type<R(*const)(As...)>
-  {
-    typedef R type;
-  };
-  template<typename T, typename R, typename... As>
-  struct return_type<R(T::*const)(As...)>
-  {
-    typedef R type;
-  };
-  template<typename T, typename R, typename... As>
-  struct return_type<R(T::*const)(As...)const>
-  {
-    typedef R type;
   };
   
   // Template for an action

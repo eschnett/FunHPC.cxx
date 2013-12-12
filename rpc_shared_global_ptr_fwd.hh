@@ -71,7 +71,7 @@ namespace rpc {
     static
     global_ptr<global_manager_t> get_owner(const global_manager_t* manager)
     {
-      if (!manager) return nullptr;
+      if (!manager) return global_ptr<global_manager_t>(nullptr);
       assert(manager->invariant());
       return manager->owner;
     }
@@ -123,8 +123,10 @@ namespace rpc {
       return !!manager;
     };
     
+    // We require explicit conversions for constructors that take
+    // ownership
     shared_global_ptr(): manager(nullptr) { assert(invariant()); }
-    shared_global_ptr(T* ptr_):
+    explicit shared_global_ptr(T* ptr_):
       ptr(ptr_), manager(make_ref(ptr))
     {
       // take ownership
@@ -132,7 +134,7 @@ namespace rpc {
       assert(invariant());
     }
     shared_global_ptr(const shared_ptr<T>& ptr);
-    shared_global_ptr(const global_ptr<T>& ptr_):
+    explicit shared_global_ptr(const global_ptr<T>& ptr_):
       ptr(ptr_), manager(make_ref(ptr))
     {
       // take ownership
@@ -245,7 +247,7 @@ namespace rpc {
   template<typename T, typename... As>
   shared_global_ptr<T> make_shared_global(As... args)
   {
-    return make_global<T>(args...);
+    return shared_global_ptr<T>(make_global<T>(args...));
   }
   
   template<typename T>

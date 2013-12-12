@@ -20,6 +20,8 @@ namespace rpc {
     mutable shared_future<shared_global_ptr<T>> data;
   public:
     
+    // We require explicit conversions for constructors that take
+    // ownership
     client() {}
     explicit client(T* ptr): client(shared_global_ptr<T>(ptr)) {}
     client(const shared_ptr<T>& ptr);

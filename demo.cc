@@ -127,32 +127,19 @@ void test_call()
   rpc::detached(dest, out_action(), "hello");
   cout << "Done calling out\n";
   
-  cerr << "q1\n";
   auto p = rpc::make_client<point>();
-  cerr << "q2\n";
   auto q = rpc::make_client<point>();
-  cerr << "q3\n";
   rpc::sync(p, point::init_action(), 1);
-  cerr << "q4\n";
   rpc::sync(q, point::init_action(), 2);
-  cerr << "q5\n";
   rpc::sync(p, point::translate_action(), q);
-  cerr << "q6\n";
   rpc::sync(p, point::output_action());
   
-  cerr << "q7\n";
   auto rp = rpc::make_remote_client<point>(1 % rpc::server->size());
-  cerr << "q8\n";
   auto rq = rpc::make_remote_client<point>(2 % rpc::server->size());
-  cerr << "q9\n";
   rpc::sync(rp, point::init_action(), 3);
-  cerr << "q10\n";
   rpc::sync(rq, point::init_action(), 4);
-  cerr << "q11\n";
   rpc::sync(rp, point::translate_action(), rq);
-  cerr << "q12\n";
   rpc::sync(rp, point::output_action());
-  cerr << "qq\n";
 }
 
 
@@ -204,7 +191,7 @@ private:
 // TODO: use const&
 void tpc(shared_ptr<s> is,
          rpc::global_ptr<s> ig,
-         rpc::shared_global_ptr<s> igs)
+         rpc::global_shared_ptr<s> igs)
 {
 }
 RPC_ACTION(tpc);
@@ -215,9 +202,9 @@ int random_r()
   return rpc::with_lock(m, random);
 }
 
-void tgsp(rpc::shared_global_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
+void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
 RPC_ACTION(tgsp);
-void tgsp(rpc::shared_global_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
+void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
 {
   if (count == 0) return;
   rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n"; });
@@ -229,7 +216,7 @@ void tgsp(rpc::shared_global_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
     fs.push_back(async(dest, tgsp_action(), igs, child_count, level+1));
     count -= child_count;
   }
-  vector<rpc::shared_global_ptr<s>> locals(count, igs);
+  vector<rpc::global_shared_ptr<s>> locals(count, igs);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   for (auto& f: fs) f.wait();
 }

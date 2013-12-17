@@ -71,8 +71,9 @@ void block_vector_t::make_block(std::ptrdiff_t b)
   has_block_[b] = true;
   blocks[b] = rpc::make_remote_client<vector_t>(str->locs[b], str->size(b));
 }
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<vector_t, std::ptrdiff_t>))::evaluate);
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<vector_t, std::ptrdiff_t>))::finish);
+// TODO: avoid this
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t, std::ptrdiff_t>))::evaluate);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t, std::ptrdiff_t>))::finish);
 
 void block_vector_t::remove_block(std::ptrdiff_t b)
 {
@@ -188,8 +189,8 @@ auto block_vector_t::fset(double alpha) const -> ptr
   return x;
 }
 
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<vector_t, vector_t>))::evaluate);
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<vector_t, vector_t>))::finish);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t, vector_t>))::evaluate);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t, vector_t>))::finish);
 
 
 
@@ -209,8 +210,8 @@ void block_matrix_t::make_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
   blocks[b] = rpc::make_remote_client<matrix_t>(istr->locs[ib],
                                                 istr->size(ib), jstr->size(jb));
 }
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::evaluate);
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::finish);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::evaluate);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::finish);
 
 void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 {
@@ -301,16 +302,13 @@ auto block_matrix_t::fgemv(bool trans,
                            double beta, const block_vector_t::const_ptr& y0)
   const -> block_vector_t::ptr
 {
-  std::cerr << "r0\n";
   if (alpha == 0.0) return y0->fscal(beta);
-  std::cerr << "r1\n";
   const auto& istra = !trans ? istr : jstr;
   const auto& jstra = !trans ? jstr : istr;
   assert(x->str == jstra);
   assert(y0->str == istra);
   auto y = boost::make_shared<block_vector_t>(y0->str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
-    std::cerr << "r2 ib=" << ib << "\n";
     std::vector<vector_t::client> ytmps;
     if (beta != 0.0 && y0->has_block(ib)) {
       if (beta == 1.0) {
@@ -319,7 +317,6 @@ auto block_matrix_t::fgemv(bool trans,
         ytmps.push_back(afscal(beta, y0->block(ib)));
       }
     }
-    std::cerr << "r3\n";
     for (std::ptrdiff_t jb=0; jb<x->str->B; ++jb) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
@@ -328,7 +325,6 @@ auto block_matrix_t::fgemv(bool trans,
                                0.0, vector_t::client()));
       }
     }
-    std::cerr << "r4\n";
     if (!ytmps.empty()) {
       struct add {
         auto operator()(const vector_t::client& x,
@@ -340,7 +336,6 @@ auto block_matrix_t::fgemv(bool trans,
       y->set_block(ib, rpc::reduce1(add(), ytmps.begin(), ytmps.end()));
     }
   }
-  std::cerr << "r9\n";
   return y;
 }
 
@@ -448,5 +443,5 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
   return c;
 }
 
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<matrix_t, matrix_t>))::evaluate);
-BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_shared_global_action<matrix_t, matrix_t>))::finish);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, matrix_t>))::evaluate);
+BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, matrix_t>))::finish);

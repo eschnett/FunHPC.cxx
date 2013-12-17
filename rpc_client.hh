@@ -4,9 +4,6 @@
 #include "rpc_client_fwd.hh"
 
 #include "rpc_call.hh"
-// TODO
-//#include "rpc_shared_global_ptr.hh"
-#define make_shared_global_action make_global_shared_action
 #include "rpc_global_shared_ptr.hh"
 
 #include <boost/serialization/export.hpp>
@@ -24,7 +21,7 @@ namespace rpc {
   template<typename T, typename... As>
   client<T> make_remote_client(int proc, As... args)
   {
-    return async(proc, make_shared_global_action<T, As...>(), args...);
+    return async(proc, make_global_shared_action<T, As...>(), args...);
   }
   
 }

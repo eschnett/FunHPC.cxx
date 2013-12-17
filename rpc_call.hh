@@ -5,8 +5,6 @@
 #include "rpc_defs.hh"
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
-// TODO
-// #include "rpc_shared_global_ptr_fwd.hh"
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 

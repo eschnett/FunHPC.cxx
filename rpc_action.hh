@@ -4,8 +4,6 @@
 #include "rpc_call.hh"
 #include "rpc_client_fwd.hh"
 #include "rpc_global_ptr_fwd.hh"
-// TODO
-// #include "rpc_shared_global_ptr.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
 
 #include <boost/mpi/packed_iarchive.hpp>

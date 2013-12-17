@@ -284,9 +284,7 @@ void test_block()
   std::cout << "   (error = " << faxpy_error << ")" << std::endl;
   total_error += faxpy_error;
   
-  std::cerr << "q1\n";
   yyp = ap->fgemv(false, alpha, xp, beta, yp);
-  std::cerr << "q2\n";
   std::cout << "fgemv: alpha a x + beta y = " << *yyp << std::endl;
   const block_vector_t::const_ptr gemv_resultp(&gemv_result, null_deleter());
   yyp = yyp->faxpy(-1.0, gemv_resultp);

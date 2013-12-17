@@ -26,22 +26,26 @@ namespace rpc {
     
   public:
     
-    global_ptr(): proc(-1) {}
-    global_ptr(T* ptr): proc(server->rank()), iptr((intptr_t)ptr) {}
-    
-    bool is_empty() const
+    bool invariant() const
     {
-      return proc<0;
+      return (proc == -1) == !iptr;
     }
+    
+    global_ptr(T* ptr = nullptr):
+      proc(ptr ? server->rank() : -1), iptr((intptr_t)ptr)
+    {
+      assert(invariant());
+    }
+    
+    operator bool() const { return bool(iptr); }
     int get_proc() const
     {
-      assert(!is_empty());
       return proc;
     }
     bool is_local() const
     {
-      assert(!is_empty());
-      return proc == server->rank();
+      // Nullptr is always local
+      return !*this || proc == server->rank();
     }
     
     bool operator==(const global_ptr& other) const
@@ -55,14 +59,11 @@ namespace rpc {
     
     T* get() const
     {
-      assert(!is_empty());
       assert(is_local());
-      // if (!is_local()) return nullptr;
       return (T*)iptr;
     }
-    operator bool() const { return iptr; }
     T& operator*() const { return *get(); }
-    T* operator->() const { return get(); }
+    auto operator->() const -> decltype(get()) { return get(); }
     
     future<global_ptr<T>> local() const;
     

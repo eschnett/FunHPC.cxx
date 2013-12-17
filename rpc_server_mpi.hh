@@ -287,6 +287,7 @@ namespace rpc {
     
     virtual void call(int dest, shared_ptr<callable_base> func)
     {
+      assert(dest>=0 && dest<size());
       assert(func);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
       assert(dest != rank());

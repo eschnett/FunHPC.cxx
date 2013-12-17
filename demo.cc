@@ -18,6 +18,7 @@
 using boost::make_shared;
 using boost::shared_ptr;
 
+using std::cerr;
 using std::cout;
 using std::flush;
 using std::future;
@@ -98,7 +99,7 @@ void test_call()
   cout << rpc::sync(dest, f_action(), 40) << "\n";
   cout << "Calling f asynchronously... " << flush;
   cout << rpc::async(dest, f_action(), 30).get() << "\n";
-  cout << "Calling f applicatively...\n" << flush;
+  cout << "Calling f detached...\n" << flush;
   rpc::detached(dest, f_action(), 50);
   cout << "Done calling f\n";
   
@@ -110,7 +111,7 @@ void test_call()
   cout << rpc::sync(dest, add_action(), 1,2) << "\n";
   cout << "Calling add asynchronously... " << flush;
   cout << rpc::async(dest, add_action(), 1,2).get() << "\n";
-  cout << "Calling add applicatively...\n" << flush;
+  cout << "Calling add detached...\n" << flush;
   rpc::detached(dest, add_action(), 1,2);
   cout << "Done calling add\n";
   
@@ -122,23 +123,36 @@ void test_call()
   rpc::sync(dest, out_action(), "hello");
   cout << "Calling out asynchronously...\n" << flush;
   rpc::async(dest, out_action(), "hello").get();
-  cout << "Calling out applicatively...\n" << flush;
+  cout << "Calling out detached...\n" << flush;
   rpc::detached(dest, out_action(), "hello");
   cout << "Done calling out\n";
   
+  cerr << "q1\n";
   auto p = rpc::make_client<point>();
+  cerr << "q2\n";
   auto q = rpc::make_client<point>();
+  cerr << "q3\n";
   rpc::sync(p, point::init_action(), 1);
+  cerr << "q4\n";
   rpc::sync(q, point::init_action(), 2);
+  cerr << "q5\n";
   rpc::sync(p, point::translate_action(), q);
+  cerr << "q6\n";
   rpc::sync(p, point::output_action());
   
+  cerr << "q7\n";
   auto rp = rpc::make_remote_client<point>(1 % rpc::server->size());
+  cerr << "q8\n";
   auto rq = rpc::make_remote_client<point>(2 % rpc::server->size());
+  cerr << "q9\n";
   rpc::sync(rp, point::init_action(), 3);
+  cerr << "q10\n";
   rpc::sync(rq, point::init_action(), 4);
+  cerr << "q11\n";
   rpc::sync(rp, point::translate_action(), rq);
+  cerr << "q12\n";
   rpc::sync(rp, point::output_action());
+  cerr << "qq\n";
 }
 
 

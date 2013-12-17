@@ -115,7 +115,7 @@ void test_dense()
   total_error += yyp->fnrm2();
   std::cout << "   (error = " << yyp->fnrm2() << ")" << std::endl;
   
-  aap = ap->fgemm(false, false, false, alpha, bp, cp, beta);
+  aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
   std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
   const matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
   aap = aap->faxpy(false, false, -1.0, gemm_resultp);
@@ -284,7 +284,9 @@ void test_block()
   std::cout << "   (error = " << faxpy_error << ")" << std::endl;
   total_error += faxpy_error;
   
+  std::cerr << "q1\n";
   yyp = ap->fgemv(false, alpha, xp, beta, yp);
+  std::cerr << "q2\n";
   std::cout << "fgemv: alpha a x + beta y = " << *yyp << std::endl;
   const block_vector_t::const_ptr gemv_resultp(&gemv_result, null_deleter());
   yyp = yyp->faxpy(-1.0, gemv_resultp);

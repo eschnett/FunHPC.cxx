@@ -86,12 +86,12 @@ public:
   
   // TODO: make actions capture copies intead of const references,
   // then update signatures of functions underlying actions
-  auto cfaxpy(double alpha, global_ptr x) const -> global_ptr
+  auto cfaxpy(double alpha, client x) const -> client
   {
-    auto fxloc = x.local();
-    return faxpy(alpha, fxloc.get().get_shared());
+    auto xloc = x.local();
+    return faxpy(alpha, xloc.get());
   }
-  auto cfcopy() const -> global_ptr
+  auto cfcopy() const -> client
   {
     return fcopy();
   }
@@ -99,11 +99,11 @@ public:
   {
     return fnrm2();
   }
-  auto cfscal(double alpha) const -> global_ptr
+  auto cfscal(double alpha) const -> client
   {
     return fscal(alpha);
   }
-  auto cfset(double alpha) const -> global_ptr
+  auto cfset(double alpha) const -> client
   {
     return fset(alpha);
   }
@@ -122,12 +122,11 @@ std::ostream& operator<<(std::ostream& os, const vector_t& x);
 inline auto afaxpy(double alpha, const vector_t::client& x,
                    const vector_t::client& y0) -> vector_t::client
 {
-  return rpc::async(y0, vector_t::cfaxpy_action(),
-                    alpha, x.get_shared_global());
+  return vector_t::client(rpc::async(y0, vector_t::cfaxpy_action(), alpha, x));
 }
 inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {
-  return rpc::async(x0, vector_t::cfcopy_action());
+  return vector_t::client(rpc::async(x0, vector_t::cfcopy_action()));
 }
 inline auto afnrm2(const vector_t::client& x0) -> std::shared_future<double>
 {
@@ -135,11 +134,11 @@ inline auto afnrm2(const vector_t::client& x0) -> std::shared_future<double>
 }
 inline auto afscal(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return rpc::async(x0, vector_t::cfscal_action(), alpha);
+  return vector_t::client(rpc::async(x0, vector_t::cfscal_action(), alpha));
 }
 inline auto afset(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return rpc::async(x0, vector_t::cfset_action(), alpha);
+  return vector_t::client(rpc::async(x0, vector_t::cfset_action(), alpha));
 }
 
 
@@ -210,52 +209,46 @@ public:
   
   // Level 3
   auto fgemm(bool transa, bool transb, bool transc0,
-             double alpha, const const_ptr& a, const const_ptr& b,
-             double beta) const -> ptr;
+             double alpha, const const_ptr& b,
+             double beta, const const_ptr& c0) const -> ptr;
   
-  auto cfaxpy(bool transa, bool transb0,
-              double alpha, global_ptr a) const -> global_ptr
+  auto cfaxpy(bool transa, bool transb0, double alpha, client a) const -> client
   {
-    auto faloc = a.local();
-    return faxpy(transa, transb0,
-                 alpha, faloc.get().get_shared());
+    auto aloc = a.local();
+    return faxpy(transa, transb0, alpha, aloc.get());
   }
-  auto cfcopy(bool trans) const -> global_ptr
+  auto cfcopy(bool trans) const -> client
   {
     return fcopy(trans);
   }
   auto cfgemv(bool trans,
-              double alpha, vector_t::global_ptr x,
-              double beta, vector_t::global_ptr y0) const ->
-    vector_t::global_ptr
+              double alpha, vector_t::client x,
+              double beta, vector_t::client y0) const -> vector_t::client
   {
-    auto fxloc = x.local();
-    auto fy0loc = y0.local();
-    return fgemv(trans,
-                 alpha, fxloc.get().get_shared(),
-                 beta, fy0loc.get().get_shared());
+    auto xloc = x.local();
+    auto y0loc = y0.local();
+    return fgemv(trans, alpha, xloc.get(), beta, y0loc.get());
   }
   auto cfnrm2() const -> double
   {
     return fnrm2();
   }
-  auto cfscal(bool trans, double alpha) const -> global_ptr
+  auto cfscal(bool trans, double alpha) const -> client
   {
     return fscal(trans, alpha);
   }
-  auto cfset(bool trans, double alpha) const -> global_ptr
+  auto cfset(bool trans, double alpha) const -> client
   {
     return fset(trans, alpha);
   }
   auto cfgemm(bool transa, bool transb, bool transc0,
-              double alpha, global_ptr a, global_ptr b,
-              double beta) const -> global_ptr
+              double alpha, client b,
+              double beta, client c0) const -> client
   {
-    auto faloc = a.local();
-    auto fbloc = b.local();
+    auto bloc = b.local();
+    auto c0loc = c0.local();
     return fgemm(transa, transb, transc0,
-                 alpha, faloc.get().get_shared(), fbloc.get().get_shared(),
-                 beta);
+                 alpha, bloc.get(), beta, c0loc.get());
   }
   
   RPC_DECLARE_CONST_MEMBER_ACTION(matrix_t, cfaxpy);
@@ -274,20 +267,19 @@ inline auto afaxpy(bool transa, bool transb0,
                    double alpha, const matrix_t::client& a,
                    const matrix_t::client& b0) -> matrix_t::client
 {
-  return rpc::async(b0, matrix_t::cfaxpy_action(),
-                    transa, transb0, alpha, a.get_shared_global());
+  return matrix_t::client(rpc::async(b0, matrix_t::cfaxpy_action(),
+                                     transa, transb0, alpha, a));
 }
 inline auto afcopy(bool trans, const matrix_t::client& a0) -> matrix_t::client
 {
-  return rpc::async(a0, matrix_t::cfcopy_action(), trans);
+  return matrix_t::client(rpc::async(a0, matrix_t::cfcopy_action(), trans));
 }
 inline auto afgemv(bool trans,
                    double alpha, matrix_t::client a, vector_t::client x,
                    double beta, vector_t::client y0) -> vector_t::client
 {
-  return rpc::async(a, matrix_t::cfgemv_action(),
-                    trans, alpha, x.get_shared_global(),
-                    beta, y0.get_shared_global());
+  return vector_t::client(rpc::async(a, matrix_t::cfgemv_action(),
+                                     trans, alpha, x, beta, y0));
 }
 inline auto afnrm2(const matrix_t::client& a0) -> std::shared_future<double>
 {
@@ -296,22 +288,23 @@ inline auto afnrm2(const matrix_t::client& a0) -> std::shared_future<double>
 inline auto afscal(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return rpc::async(a0, matrix_t::cfscal_action(), trans, alpha);
+  return matrix_t::client(rpc::async(a0, matrix_t::cfscal_action(),
+                                     trans, alpha));
 }
 inline auto afset(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return rpc::async(a0, matrix_t::cfset_action(), trans, alpha);
+  return matrix_t::client(rpc::async(a0, matrix_t::cfset_action(),
+                                     trans, alpha));
 }
 inline auto afgemm(bool transa, bool transb, bool transc0,
                    double alpha,
                    const matrix_t::client& a, const matrix_t::client& b,
                    double beta, const matrix_t::client& c0) -> matrix_t::client
 {
-  return rpc::async(c0, matrix_t::cfgemm_action(),
-                    transa, transb, transc0,
-                    alpha, a.get_shared_global(), b.get_shared_global(),
-                    beta);
+  return matrix_t::client(rpc::async(a, matrix_t::cfgemm_action(),
+                                     transa, transb, transc0,
+                                     alpha, b, beta, c0));
 }
 
 

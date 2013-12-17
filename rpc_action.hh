@@ -2,9 +2,15 @@
 #define RPC_ACTION_HH
 
 #include "rpc_call.hh"
-#include "rpc_client.hh"
-#include "rpc_global_ptr.hh"
-#include "rpc_shared_global_ptr.hh"
+#include "rpc_client_fwd.hh"
+#include "rpc_global_ptr_fwd.hh"
+// TODO
+// #include "rpc_shared_global_ptr.hh"
+#include "rpc_global_shared_ptr_fwd.hh"
+
+#include <boost/mpi/packed_iarchive.hpp>
+#include <boost/mpi/packed_oarchive.hpp>
+#include <boost/serialization/export.hpp>
 
 
 
@@ -61,8 +67,13 @@
   BOOST_CLASS_EXPORT(rpc::make_client_action<c>::finish);               \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::evaluate);             \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::finish);               \
-  BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::evaluate);      \
-  BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::finish);
+  /* BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::evaluate); */ \
+  /* BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::finish); */  \
+  BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);      \
+  BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);        \
+  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::evaluate);    \
+  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::finish);
+
 
 #define RPC_COMPONENT(c)                        \
   RPC_DECLARE_COMPONENT(c)                      \

@@ -1,3 +1,5 @@
+#error "DISABLED"
+
 #ifndef RPC_SHARED_GLOBAL_PTR_FWD_HH
 #define RPC_SHARED_GLOBAL_PTR_FWD_HH
 
@@ -29,7 +31,7 @@ namespace rpc {
   
   
   
-  // A global shared pointer
+  // A shared global pointer
   
   class global_manager_t {
     // Number of references. Serialized messages count reference.
@@ -215,7 +217,7 @@ namespace rpc {
       return make_shared<T>(**this);
     }
     T* get() const { return ptr.get(); }
-    operator bool() const { return bool(get()); }
+    operator bool() const { return bool(ptr); }
     T& operator*() const { return *get(); }
     T* operator->() const { return get(); }
     
@@ -256,8 +258,7 @@ namespace rpc {
     // TODO: Store a shared_ptr in shared_global_ptr's manager, so
     // that this call to make_shared is not necessary if the pointer
     // is local
-    return std::async(std::launch::deferred,
-                      [](future<global_ptr<T>> localptr)
+    return std::async([](future<global_ptr<T>> localptr)
                       { return shared_global_ptr<T>(localptr.get()); },
                       ptr.local());
   }

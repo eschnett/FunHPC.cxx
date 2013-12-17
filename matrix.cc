@@ -146,22 +146,22 @@ auto matrix_t::fset(bool trans, double alpha) const -> ptr
 // Level 3
 
 auto matrix_t::fgemm(bool transa, bool transb, bool transc0,
-                     double alpha, const const_ptr& a, const const_ptr& b,
-                     double beta) const -> ptr
+                     double alpha, const const_ptr& b,
+                     double beta, const const_ptr& c0) const -> ptr
 {
-  if (alpha == 0.0) return fscal(transc0, beta);
-  auto nia = !transa ? a->NI : a->NJ;
-  auto nja = !transa ? a->NJ : a->NI;
+  if (alpha == 0.0) return c0->fscal(transc0, beta);
+  auto nia = !transa ? NI : NJ;
+  auto nja = !transa ? NJ : NI;
   auto nib = !transb ? b->NI : b->NJ;
   auto njb = !transb ? b->NJ : b->NI;
-  auto nic0 = beta == 0.0 ? nia : !transc0 ? NI : NJ;
-  auto njc0 = beta == 0.0 ? njb : !transc0 ? NJ : NI;
+  auto nic0 = beta == 0.0 ? nia : !transc0 ? c0->NI : c0->NJ;
+  auto njc0 = beta == 0.0 ? njb : !transc0 ? c0->NJ : c0->NI;
   assert(nib == nja);
   assert(nic0 == nia);
   assert(njc0 == njb);
   auto c = boost::make_shared<matrix_t>(nic0, njc0);
-  if (beta != 0.0) copy(transc0, *this, *c);
-  gemm(transa, transb, alpha, *a, *b, beta, *c);
+  if (beta != 0.0) copy(transc0, *c0, *c);
+  gemm(transa, transb, alpha, *this, *b, beta, *c);
   return c;
 }
 

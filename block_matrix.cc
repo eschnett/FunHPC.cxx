@@ -106,6 +106,7 @@ auto block_vector_t::faxpy(double alpha, const const_ptr& x) const -> ptr
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
     if (!x->has_block(ib)) {
       if (has_block(ib)) {
+        // TODO: omit copy?
         y->set_block(ib, afcopy(block(ib)));
       }
     } else {
@@ -124,6 +125,7 @@ auto block_vector_t::fcopy() const -> ptr
   auto y = boost::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
     if (has_block(ib)) {
+      // TODO: omit copy?
       y->set_block(ib, afcopy(block(ib)));
     }
   }
@@ -259,6 +261,7 @@ auto block_matrix_t::faxpy(bool transa, bool transb0,
       auto jbb0 = !transb0 ? jb : ib;
       if (!a->has_block(iba,jba)) {
         if (has_block(ibb0,jbb0)) {
+          // TODO: omit copy?
           b->set_block(ib,jb, afcopy(transb0, block(ibb0,jbb0)));
         }
       } else {
@@ -285,6 +288,7 @@ auto block_matrix_t::fcopy(bool trans) const -> ptr
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba)) {
+        // TODO: omit copy?
         b->set_block(ib,jb, afcopy(trans, block(iba,jba)));
       }
     }
@@ -297,13 +301,16 @@ auto block_matrix_t::fgemv(bool trans,
                            double beta, const block_vector_t::const_ptr& y0)
   const -> block_vector_t::ptr
 {
+  std::cerr << "r0\n";
   if (alpha == 0.0) return y0->fscal(beta);
+  std::cerr << "r1\n";
   const auto& istra = !trans ? istr : jstr;
   const auto& jstra = !trans ? jstr : istr;
   assert(x->str == jstra);
   assert(y0->str == istra);
   auto y = boost::make_shared<block_vector_t>(y0->str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
+    std::cerr << "r2 ib=" << ib << "\n";
     std::vector<vector_t::client> ytmps;
     if (beta != 0.0 && y0->has_block(ib)) {
       if (beta == 1.0) {
@@ -312,14 +319,16 @@ auto block_matrix_t::fgemv(bool trans,
         ytmps.push_back(afscal(beta, y0->block(ib)));
       }
     }
+    std::cerr << "r3\n";
     for (std::ptrdiff_t jb=0; jb<x->str->B; ++jb) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba) && x->has_block(jb)) {
         ytmps.push_back(afgemv(trans, alpha, block(iba,jba), x->block(jb),
-                               0.0, vector_t::client(nullptr)));
+                               0.0, vector_t::client()));
       }
     }
+    std::cerr << "r4\n";
     if (!ytmps.empty()) {
       struct add {
         auto operator()(const vector_t::client& x,
@@ -331,6 +340,7 @@ auto block_matrix_t::fgemv(bool trans,
       y->set_block(ib, rpc::reduce1(add(), ytmps.begin(), ytmps.end()));
     }
   }
+  std::cerr << "r9\n";
   return y;
 }
 
@@ -420,7 +430,7 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
         if (a->has_block(iba,kba) && b->has_block(kbb,jbb)) {
           ctmps.push_back(afgemm(transa, transb, false,
                                  alpha, a->block(iba,kba), b->block(kbb,jbb),
-                                 0.0, matrix_t::client(nullptr)));
+                                 0.0, matrix_t::client()));
         }
       }
       if (!ctmps.empty()) {

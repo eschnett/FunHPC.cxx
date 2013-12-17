@@ -20,8 +20,7 @@ namespace rpc {
   template<typename T>
   future<global_ptr<T>> global_ptr<T>::local() const
   {
-    return std::async(std::launch::deferred,
-                      [=](future<T*> localptr)
+    return std::async([=](future<T*> localptr)
                       { return global_ptr<T>(localptr.get()); },
                       async(get_proc(), global_ptr_get_action<T>(), *this));
   }

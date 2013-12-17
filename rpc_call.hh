@@ -4,7 +4,9 @@
 #include "rpc_client_fwd.hh"
 #include "rpc_defs.hh"
 #include "rpc_global_ptr_fwd.hh"
-#include "rpc_shared_global_ptr_fwd.hh"
+#include "rpc_global_shared_ptr_fwd.hh"
+// TODO
+// #include "rpc_shared_global_ptr_fwd.hh"
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
@@ -101,6 +103,7 @@ namespace rpc {
   template<typename F, typename R, typename... As>
   struct action_evaluate: public callable_base {
     global_ptr<promise<R>> p;
+    // TODO: Remove const& from tuple arguments
     tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<R>>& p, const As&... args):
@@ -108,7 +111,7 @@ namespace rpc {
     void execute()
     {
       auto cont = tuple_map(F(), args);
-      if (p.is_empty()) return;
+      if (!p) return;
       // typename F::finish(p, cont)();
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
     }
@@ -131,7 +134,7 @@ namespace rpc {
     void execute()
     {
       tuple_map(F(), args);
-      if (p.is_empty()) return;
+      if (!p) return;
       // (typename F::finish(p))();
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
     }
@@ -253,7 +256,7 @@ namespace rpc {
     typedef typename return_type<decltype(W::value)>::type R;
     R operator()(const client<T>& obj, const As&... args) const
     {
-      return (obj.get()->*W::value)(args...);
+      return (*obj.*W::value)(args...);
     }
     typedef action_evaluate<F, R, client<T>, As...> evaluate;
     typedef action_finish<F, R> finish;

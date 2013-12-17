@@ -7,7 +7,13 @@
 #include "rpc_client.hh"
 #include "rpc_defs.hh"
 #include "rpc_global_ptr.hh"
-#include "rpc_shared_global_ptr.hh"
+#include "rpc_global_shared_ptr.hh"
+
+// TODO
+// #include "rpc_shared_global_ptr.hh"
+#define shared_global_ptr global_shared_ptr
+#define make_shared_global make_global_shared
+
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 

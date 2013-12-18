@@ -314,7 +314,31 @@ void copy(bool transa, const matrix_t& a, matrix_t& b)
 void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
           double beta, vector_t& y)
 {
-#ifndef CBLAS
+#if defined CBLAS
+  if (alpha != 0.0) {
+    if (!trans) {
+      assert(a.NJ == x.N);
+      assert(a.NI == y.N);
+    } else {
+      assert(a.NI == x.N);
+      assert(a.NJ == y.N);
+    }
+  }
+  cblas_dgemv(CblasColMajor, trans ? CblasTrans : CblasNoTrans,
+              y.N, x.N, alpha, &a(0,0), a.NI, &x(0), 1, beta, &y(0), 1);
+#elif defined BLAS
+  if (alpha != 0.0) {
+    if (!trans) {
+      assert(a.NJ == x.N);
+      assert(a.NI == y.N);
+    } else {
+      assert(a.NI == x.N);
+      assert(a.NJ == y.N);
+    }
+  }
+  dgemv_(trans ? 'T' : 'N',
+         y.N, x.N, alpha, &a(0,0), a.NI, &x(0), 1, beta, &y(0), 1);
+#else
   scal(beta, y);
   if (alpha == 0.0) return;
   if (!trans) {
@@ -347,18 +371,6 @@ void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
       yp[j] += alpha * tmp;
     }
   }
-#else
-  if (alpha != 0.0) {
-    if (!trans) {
-      assert(a.NJ == x.N);
-      assert(a.NI == y.N);
-    } else {
-      assert(a.NI == x.N);
-      assert(a.NJ == y.N);
-    }
-  }
-  cblas_dgemv(CblasColMajor, trans ? CblasTrans : CblasNoTrans,
-              y.N, x.N, alpha, &a(0,0), a.NI, &x(0), 1, beta, &y(0), 1);
 #endif
 }
 
@@ -368,7 +380,11 @@ void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
 
 double nrm2(const matrix_t& a)
 {
-#ifndef CBLAS
+#if defined CBLAS
+  return cblas_dnrm2(a.NI*a.NJ, &a(0,0), 1);
+#elif defined BLAS
+  return dnrm2_(a.NI*a.NJ, &a(0,0), 1);
+#else
   double val = nrm2_init();
   const double* __restrict__ const ap = &a(0,0);
   for (std::ptrdiff_t j=0; j<a.NJ; ++j) {
@@ -378,8 +394,6 @@ double nrm2(const matrix_t& a)
     }
   }
   return nrm2_finalize(val);
-#else
-  return cblas_dnrm2(a.NI*a.NJ, &a(0,0), 1);
 #endif
 }
 
@@ -389,7 +403,11 @@ double nrm2(const matrix_t& a)
 
 void scal(double alpha, matrix_t& a)
 {
-#ifndef CBLAS
+#if defined CBLAS
+  cblas_dscal(a.NI*a.NJ, alpha, &a(0,0), 1);
+#elif defined BLAS
+  dscal_(a.NI*a.NJ, alpha, &a(0,0), 1);
+#else
   if (alpha == 1.0) return;
   if (alpha == 0.0) {
     double* __restrict__ const ap = &a(0,0);
@@ -408,8 +426,6 @@ void scal(double alpha, matrix_t& a)
       }
     }
   }
-#else
-  cblas_dscal(a.NI*a.NJ, alpha, &a(0,0), 1);
 #endif
 }
 
@@ -438,7 +454,71 @@ void gemm(bool transa, bool transb,
           double alpha, const matrix_t& a, const matrix_t& b,
           double beta, matrix_t& c)
 {
-#ifndef CBLAS
+#if defined CBLAS
+  if (alpha != 0.0) {
+    if (!transb) {
+      if (!transa) {
+        // c = alpha a b + beta c
+        assert(b.NI == a.NJ);
+        assert(c.NI == a.NI);
+        assert(c.NJ == b.NJ);
+      } else {
+        // c = alpha a^T b + beta c
+        assert(b.NI == a.NI);
+        assert(c.NI == a.NJ);
+        assert(c.NJ == b.NJ);
+      }
+    } else {
+      if (!transa) {
+        // c = alpha a b^T + beta c
+        assert(b.NJ == a.NJ);
+        assert(c.NI == a.NI);
+        assert(c.NJ == b.NI);
+      } else {
+        // c = alpha a^T b^T + beta c
+        assert(b.NJ == a.NI);
+        assert(c.NI == a.NJ);
+        assert(c.NJ == b.NI);
+      }
+    }
+  }
+  cblas_dgemm(CblasColMajor,
+              transa ? CblasTrans : CblasNoTrans,
+              transb ? CblasTrans : CblasNoTrans,
+              c.NI, c.NJ, a.NJ,
+              alpha, &a(0,0), a.NI, &b(0,0), b.NI, beta, &c(0,0), c.NI);
+#elif defined BLAS
+  if (alpha != 0.0) {
+    if (!transb) {
+      if (!transa) {
+        // c = alpha a b + beta c
+        assert(b.NI == a.NJ);
+        assert(c.NI == a.NI);
+        assert(c.NJ == b.NJ);
+      } else {
+        // c = alpha a^T b + beta c
+        assert(b.NI == a.NI);
+        assert(c.NI == a.NJ);
+        assert(c.NJ == b.NJ);
+      }
+    } else {
+      if (!transa) {
+        // c = alpha a b^T + beta c
+        assert(b.NJ == a.NJ);
+        assert(c.NI == a.NI);
+        assert(c.NJ == b.NI);
+      } else {
+        // c = alpha a^T b^T + beta c
+        assert(b.NJ == a.NI);
+        assert(c.NI == a.NJ);
+        assert(c.NJ == b.NI);
+      }
+    }
+  }
+  dgemm_(transa ? 'T' : 'N', transb ? 'T' : 'N',
+         c.NI, c.NJ, a.NJ,
+         alpha, &a(0,0), a.NI, &b(0,0), b.NI, beta, &c(0,0), c.NI);
+#else
   if (alpha == 0.0) {
     scal(beta, c);
     return;
@@ -549,38 +629,5 @@ void gemm(bool transa, bool transb,
       }
     }
   }
-#else
-  if (alpha != 0.0) {
-    if (!transb) {
-      if (!transa) {
-        // c = alpha a b + beta c
-        assert(b.NI == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NJ);
-      } else {
-        // c = alpha a^T b + beta c
-        assert(b.NI == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NJ);
-      }
-    } else {
-      if (!transa) {
-        // c = alpha a b^T + beta c
-        assert(b.NJ == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NI);
-      } else {
-        // c = alpha a^T b^T + beta c
-        assert(b.NJ == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NI);
-      }
-    }
-  }
-  cblas_dgemm(CblasColMajor,
-              transa ? CblasTrans : CblasNoTrans,
-              transb ? CblasTrans : CblasNoTrans,
-              c.NI, c.NJ, a.NJ,
-              alpha, &a(0,0), a.NI, &b(0,0), b.NI, beta, &c(0,0), c.NI);
 #endif
 }

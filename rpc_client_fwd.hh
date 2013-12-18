@@ -28,9 +28,7 @@ namespace rpc {
     // We require explicit conversions for constructors that take
     // ownership
     client(): client(global_shared_ptr<T>()) {}
-    // explicit client(T* ptr): client(global_shared_ptr<T>(ptr)) {}
     client(const shared_ptr<T>& ptr): client(global_shared_ptr<T>(ptr)) {}
-    // explicit client(const global_ptr<T>& ptr): client(global_shared_ptr<T>(ptr)) {}
     client(const global_shared_ptr<T>& ptr): data(make_ready_future(ptr)) {}
     client(future<global_shared_ptr<T>> ptr): data(ptr.share()) {}
     client(const shared_future<global_shared_ptr<T>>& ptr): data(ptr) {}
@@ -58,8 +56,6 @@ namespace rpc {
       return ! (*this == other);
     }
     
-    // TODO
-    // global_shared_ptr<T> get_shared_global() const { return data.get(); }
     const shared_ptr<T>& get() const { return data.get().get(); }
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(get()) { return get(); }

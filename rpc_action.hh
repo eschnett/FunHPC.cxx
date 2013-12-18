@@ -65,8 +65,6 @@
   BOOST_CLASS_EXPORT(rpc::make_client_action<c>::finish);               \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::evaluate);             \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::finish);               \
-  /* BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::evaluate); */ \
-  /* BOOST_CLASS_EXPORT(rpc::make_shared_global_action<c>::finish); */  \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);      \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);        \
   BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::evaluate);    \

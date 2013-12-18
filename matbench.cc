@@ -211,7 +211,8 @@ void bench_dense()
   const result_t res = run_dense_bench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for 1 * DGEMM[N=" << nsize << "]: " << tavg << " sec\n";
+  cout << "Average CPU time for 1 * DGEMM[N=" << nsize << "]: "
+       << tavg << " sec\n";
   
   cout << "This run used " << nthreads << " threads\n";
   
@@ -221,8 +222,8 @@ void bench_dense()
   const double gbyte = mem / 1.0e+9;
   cout << "GFlop/core:     " << gflop << "\n";
   cout << "GByte/core:     " << gbyte << "\n";
-  cout << "GFlop/sec/core: " << nthreads * gflop / tavg << "\n";
-  cout << "GByte/sec/core: " << nthreads * gbyte / tavg << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
   
   cout << "\n";
 }
@@ -236,8 +237,8 @@ void bench_fdense()
   const result_t res = run_dense_fbench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for 1 * DGEMM[N=" << nsize << "]: "
-            << tavg << " sec\n";
+  cout << "Averate CPU time for 1 * DGEMM[N=" << nsize << "]: "
+       << tavg << " sec\n";
   
   cout << "This run used " << nthreads << " threads\n";
   
@@ -247,8 +248,8 @@ void bench_fdense()
   const double gbyte = mem / 1.0e+9;
   cout << "GFlop/core:     " << gflop << "\n";
   cout << "GByte/core:     " << gbyte << "\n";
-  cout << "GFlop/sec/core: " << nthreads * gflop / tavg << "\n";
-  cout << "GByte/sec/core: " << nthreads * gbyte / tavg << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
   
   cout << "\n";
 }
@@ -270,8 +271,8 @@ void bench_dense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-            << tavg << " sec\n";
+  cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << tavg << " sec\n";
   
   cout << "This run used " << nthreads << " threads\n";
   
@@ -281,8 +282,8 @@ void bench_dense_parallel()
   const double gbyte = mem / 1.0e+9;
   cout << "GFlop/core:     " << gflop << "\n";
   cout << "GByte/core:     " << gbyte << "\n";
-  cout << "GFlop/sec/core: " << nthreads * gflop / tavg << "\n";
-  cout << "GByte/sec/core: " << nthreads * gbyte / tavg << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
   
   cout << "\n";
 }
@@ -305,8 +306,8 @@ void bench_fdense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-            << tavg << " sec\n";
+  cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << tavg << " sec\n";
   
   cout << "This run used " << nthreads << " threads\n";
   
@@ -316,8 +317,8 @@ void bench_fdense_parallel()
   const double gbyte = mem / 1.0e+9;
   cout << "GFlop/core:     " << gflop << "\n";
   cout << "GByte/core:     " << gbyte << "\n";
-  cout << "GFlop/sec/core: " << nthreads * gflop / tavg << "\n";
-  cout << "GByte/sec/core: " << nthreads * gbyte / tavg << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
   
   cout << "\n";
 }

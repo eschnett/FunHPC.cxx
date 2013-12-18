@@ -3,9 +3,9 @@ CXX = env OMPI_CXX=g++-mp-4.7 openmpic++
 FC  = env OMPI_FC=gfortran-mp-4.7 openmpif90
 
 CPPFLAGS = -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
-CFLAGS   = -g -std=c99   -march=native # -Ofast
-CXXFLAGS = -g -std=c++11 -march=native # -Ofast
-FFLAGS   = -g -march=native # -Ofast
+CFLAGS   = -g -std=c99   -march=native -Ofast
+CXXFLAGS = -g -std=c++11 -march=native -Ofast
+FFLAGS   = -g -march=native -Ofast
 
 LDFLAGS  = 
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt -lgfortran

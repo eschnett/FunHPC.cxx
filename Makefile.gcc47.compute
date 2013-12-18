@@ -73,7 +73,7 @@ mattest: ${MATTEST_OBJS}
 	@mv $@.tmp $@
 
 %.o: %.f
-	${FC} ${FFLAGS} -c $*.f90
+	${FC} ${FFLAGS} -c $*.f
 
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90

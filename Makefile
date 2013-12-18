@@ -3,7 +3,7 @@ CXX      = env OMPI_CXX=clang++ openmpic++
 F77	 = env OMPI_FC=dragonegg-3.3-gfortran-mp-4.8 openmpif77
 F90	 = env OMPI_FC=dragonegg-3.3-gfortran-mp-4.8 openmpif90
 
-CPPFLAGS = -I/opt/local/include -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
+CPPFLAGS = -I/opt/local/include -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
 CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99   -march=native # -Ofast
 CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native # -Ofast
 # -fplugin-arg-llvm33gcc48-llvm-option=-mtriple:x86_64-apple-macosx10.9.0

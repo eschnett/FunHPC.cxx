@@ -4,34 +4,39 @@ F77	 = env OMPI_FC=dragonegg-3.3-gfortran-mp-4.8 openmpif77
 F90	 = env OMPI_FC=dragonegg-3.3-gfortran-mp-4.8 openmpif90
 
 CPPFLAGS = -I/opt/local/include -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
-CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99   -march=native # -Ofast
-CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native # -Ofast
+CCFLAGS  = -Wall -Wno-deprecated-declarations -g -std=c99   -march=native -Ofast
+CXXFLAGS = -Wall -Wno-deprecated-declarations -g -std=c++11 -march=native -Ofast
 # -fplugin-arg-llvm33gcc48-llvm-option=-mtriple:x86_64-apple-macosx10.9.0
-F77FLAGS = -Wall -g -march=native # -Ofast -fplugin-arg-llvm33gcc48-enable-gcc-optzns
-F90FLAGS = -Wall -g -march=native # -Ofast -fplugin-arg-llvm33gcc48-enable-gcc-optzns
+F77FLAGS = -Wall -g -march=native -Ofast # -fplugin-arg-llvm33gcc48-enable-gcc-optzns
+F90FLAGS = -Wall -g -march=native -Ofast # -fplugin-arg-llvm33gcc48-enable-gcc-optzns
 
 LDFLAGS  = -L/opt/local/lib -L/opt/local/lib/gcc48
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt -lgfortran
 
-EXES = bench demo matmul
+EXES = bench demo matbench mattest
 
-RPC_SRCS    = rpc_defs.cc rpc_global_shared_ptr.cc rpc_main.cc rpc_server.cc
-BENCH_SRCS  = bench.cc ${RPC_SRCS}
-DEMO_SRCS   = demo.cc ${RPC_SRCS}
-MATMUL_SRCS = algorithms.cc block_matrix.cc matmul.cc matrix.cc \
+RPC_SRCS      = rpc_defs.cc rpc_global_shared_ptr.cc rpc_main.cc rpc_server.cc
+BENCH_SRCS    = bench.cc ${RPC_SRCS}
+DEMO_SRCS     = demo.cc ${RPC_SRCS}
+MATBENCH_SRCS = algorithms.cc block_matrix.cc matrix.cc matbench.cc \
+	daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f \
+	${RPC_SRCS}
+MATTEST_SRCS  = algorithms.cc block_matrix.cc matrix.cc mattest.cc \
 	daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f \
 	${RPC_SRCS}
 
-BENCH_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
-DEMO_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
-MATMUL_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATMUL_SRCS}}}}}
+BENCH_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
+DEMO_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
+MATBENCH_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
+MATTEST_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
 
-BENCH_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
-DEMO_DEPS   = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
-MATMUL_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATMUL_SRCS}}}}}
+BENCH_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
+DEMO_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
+MATBENCH_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATBENCH_SRCS}}}}}
+MATTEST_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATTEST_SRCS}}}}}
 
-OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${MATMUL_OBJS}
-DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${MATMUL_DEPS}
+OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS}
+DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS}
 
 
 
@@ -55,7 +60,9 @@ bench: ${BENCH_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 demo: ${DEMO_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-matmul: ${MATMUL_OBJS}
+matbench: ${MATBENCH_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+mattest: ${MATTEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.o: %.c

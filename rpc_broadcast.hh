@@ -13,30 +13,31 @@ namespace rpc {
   using std::vector;
   
   // Broadcast to all processes
-  template<typename F, typename... As>
-  auto broadcast(const F& func, As... args) ->
+  template<typename C, typename F, typename... As>
+  auto broadcast(const C& dests, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       vector<decltype(func(args...))>>::type
+                       vector<future<decltype(func(args...))>>>::type
   {
     typedef decltype(func(args...)) R;
     vector<future<R>> fs;
     // TODO: use tree
-    for (int dest=0; dest<server->size(); ++dest) {
+    for (const int dest: dests) {
       fs.push_back(async(dest, func, args...));
     }
     return fs;
   }
   
-  template<typename F, typename... As>
-  auto broadcast_apply(const F& func, As... args) ->
+  template<typename C, typename F, typename... As>
+  auto broadcast_detached(const C& dests, const F& func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     // TODO: use tree
-    for (int dest=0; dest<server->size(); ++dest) {
-      apply(dest, func, args...);
+    for (const int dest: dests) {
+      detached(dest, func, args...);
     }
   }
   
+  // TODO: Use container instead of b and e?
   template<typename F, typename... As>
   auto broadcast_barrier(const F& func, As... args, int b=0, int e=-1) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, future<void>>::type

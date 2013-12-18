@@ -6,3 +6,5 @@ OLD
 *.dSYM
 bench
 matmul
+mattest
+matbench

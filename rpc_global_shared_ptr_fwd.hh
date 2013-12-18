@@ -235,7 +235,7 @@ namespace rpc {
     // Can only get local objects
     const shared_ptr<T>& get() const { return get_shared(); }
     T& operator*() const { return *get(); }
-    auto operator->() const -> decltype(get()) { return get(); }
+    auto operator->() const -> decltype(this->get()) { return get(); }
     
     auto local() const -> shared_future<global_shared_ptr>;
     

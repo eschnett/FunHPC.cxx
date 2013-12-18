@@ -14,8 +14,8 @@ namespace rpc {
   template<typename T>
   struct global_owner_get_ptr_action:
     public action_impl<global_owner_get_ptr_action<T>,
-                       wrap<decltype(global_owner_get_ptr<T>),
-                            global_owner_get_ptr<T>>>
+                       wrap<decltype(&global_owner_get_ptr<T>),
+                            &global_owner_get_ptr<T>>>
   {
   };
   
@@ -24,8 +24,8 @@ namespace rpc {
   template<typename T, typename... As>
   struct make_global_shared_action:
     public action_impl<make_global_shared_action<T, As...>,
-                       wrap<decltype(make_global_shared<T, As...>),
-                            make_global_shared<T, As...>>>
+                       wrap<decltype(&make_global_shared<T, As...>),
+                            &make_global_shared<T, As...>>>
   {
   };
   

@@ -40,24 +40,25 @@ namespace rpc {
   void terminate_stage_2();
   void terminate_stage_3();
   void terminate_stage_4();
+  // TODO: Use macros
   struct terminate_stage_1_action:
     public action_impl<terminate_stage_1_action,
-                       wrap<decltype(terminate_stage_1), terminate_stage_1>>
+                       wrap<decltype(&terminate_stage_1), &terminate_stage_1>>
   {
   };
   struct terminate_stage_2_action:
     public action_impl<terminate_stage_2_action,
-                       wrap<decltype(terminate_stage_2), terminate_stage_2>>
+                       wrap<decltype(&terminate_stage_2), &terminate_stage_2>>
   {
   };
   struct terminate_stage_3_action:
     public action_impl<terminate_stage_3_action,
-                       wrap<decltype(terminate_stage_3), terminate_stage_3>>
+                       wrap<decltype(&terminate_stage_3), &terminate_stage_3>>
   {
   };
   struct terminate_stage_4_action:
     public action_impl<terminate_stage_4_action,
-                       wrap<decltype(terminate_stage_4), terminate_stage_4>>
+                       wrap<decltype(&terminate_stage_4), &terminate_stage_4>>
   {
   };
   

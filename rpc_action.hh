@@ -14,7 +14,7 @@
 
 #define RPC_DECLARE_ACTION(f)                                           \
   struct f##_action:                                                    \
-    public rpc::action_impl<f##_action, rpc::wrap<decltype(f), f>>      \
+    public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f>>    \
   {                                                                     \
   };
 

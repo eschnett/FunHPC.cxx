@@ -12,8 +12,8 @@ namespace rpc {
   template<typename T>
   struct global_ptr_get_action:
     public rpc::action_impl<global_ptr_get_action<T>,
-                            rpc::wrap<decltype(global_ptr_get<T>),
-                                      global_ptr_get<T>>>
+                            rpc::wrap<decltype(&global_ptr_get<T>),
+                                      &global_ptr_get<T>>>
   {
   };
   
@@ -31,8 +31,8 @@ namespace rpc {
   template<typename T, typename... As>
   struct make_global_action:
     public action_impl<make_global_action<T, As...>,
-                       wrap<decltype(make_global<T, As...>),
-                            make_global<T, As...>>>
+                       wrap<decltype(&make_global<T, As...>),
+                            &make_global<T, As...>>>
   {
   };
   

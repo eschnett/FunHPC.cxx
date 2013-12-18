@@ -179,7 +179,7 @@ namespace rpc {
   
   // Example action definition for a given function "f":
   // struct f_action:
-  //   public rpc::action_impl<f_action, rpc::wrap<decltype(f), f>>
+  //   public rpc::action_impl<f_action, rpc::wrap<decltype(&f), &f>>
   // {
   // };
   // BOOST_CLASS_EXPORT(f_action::evaluate);

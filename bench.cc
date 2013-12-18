@@ -54,7 +54,7 @@ void busywait(double time, continuation_t cont, ptrdiff_t njobs)
 }
 struct busywait_action:
   public rpc::action_impl<busywait_action,
-                          rpc::wrap<decltype(busywait), busywait>>
+                          rpc::wrap<decltype(&busywait), &busywait>>
 {
 };
 BOOST_CLASS_EXPORT(busywait_action::evaluate);
@@ -135,7 +135,7 @@ void run_single(double time, ptrdiff_t njobs)
 }
 struct run_single_action:
   public rpc::action_impl<run_single_action,
-                          rpc::wrap<decltype(run_single), run_single>>
+                          rpc::wrap<decltype(&run_single), &run_single>>
 {
 };
 BOOST_CLASS_EXPORT(run_single_action::evaluate);

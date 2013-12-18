@@ -13,8 +13,8 @@ namespace rpc {
   template<typename T, typename... As>
   struct make_client_action:
     public action_impl<make_client_action<T, As...>,
-                       wrap<decltype(make_client<T, As...>),
-                            make_client<T, As...>>>
+                       wrap<decltype(&make_client<T, As...>),
+                            &make_client<T, As...>>>
   {
   };
   

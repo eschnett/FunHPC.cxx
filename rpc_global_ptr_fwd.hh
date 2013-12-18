@@ -63,7 +63,7 @@ namespace rpc {
       return (T*)iptr;
     }
     T& operator*() const { return *get(); }
-    auto operator->() const -> decltype(get()) { return get(); }
+    auto operator->() const -> decltype(this->get()) { return get(); }
     
     future<global_ptr<T>> local() const;
     

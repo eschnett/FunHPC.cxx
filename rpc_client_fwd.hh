@@ -58,7 +58,7 @@ namespace rpc {
     
     const shared_ptr<T>& get() const { return data.get().get(); }
     T& operator*() const { return *get(); }
-    auto operator->() const -> decltype(get()) { return get(); }
+    auto operator->() const -> decltype(this->get()) { return get(); }
     
     client local() const { return data.get().local(); }
     

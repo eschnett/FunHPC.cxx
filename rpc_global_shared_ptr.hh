@@ -37,7 +37,7 @@ namespace rpc {
   
   
   template<typename T>
-  auto global_shared_ptr<T>::local() const -> shared_future<global_shared_ptr>
+  shared_future<global_shared_ptr<T>> global_shared_ptr<T>::local() const
   {
     if (is_local()) return make_ready_future(*this);
     const auto& owner = mgr->owner;

@@ -137,11 +137,15 @@ namespace {
   
   std::shared_future<double> fnrm2_init()
   {
-    return std::async([=]() { return 0.0; });
+    // return std::async([=]() { return 0.0; });
+    return rpc::make_ready_future(0.0);
   }
   std::shared_future<double> fnrm2_process(std::shared_future<double> xi)
   {
     return std::async([=]() { return std::pow(xi.get(), 2.0); });
+    // return rpc::future_then(xi, [](std::shared_future<double> xi) {
+    //     return std::pow(xi.get(), 2.0);
+    //   });
   }
   std::shared_future<double> fnrm2_combine(std::shared_future<double> val0,
                                            std::shared_future<double> val1)

@@ -10,6 +10,7 @@ namespace rpc {
   using std::lock_guard;
   using std::mutex;
   using std::promise;
+  using std::shared_future;
   
   
   
@@ -48,8 +49,6 @@ namespace rpc {
   
   
   
-  // TODO: provide "then" for futures
-  
   template<typename T>
   future<T> make_ready_future(const T& obj)
   {
@@ -57,6 +56,20 @@ namespace rpc {
     p.set_value(obj);
     return p.get_future();
   }
+  
+  template<typename T, typename FUN>
+  auto future_then(future<T>& ftr, const FUN& fun) -> future<decltype(fun(ftr))>
+  {
+    return std::async([=](){ return fun(ftr); });
+  }
+  template<typename T, typename FUN>
+  auto future_then(const shared_future<T>& ftr, const FUN& fun) ->
+    shared_future<decltype(fun(ftr))>
+  {
+    return std::async([=](){ return fun(ftr); });
+  }
+  
+  // TODO: Implement "futurize"
   
   
   

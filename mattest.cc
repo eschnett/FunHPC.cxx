@@ -48,6 +48,7 @@ void test_dense()
       c(k,j) = n++ + 6;
   std::cout << "c=" << c << std::endl;
   
+  const double nrm2_result = sqrt(14.0);
   const vector_t axpy_result(NI, (double[NI]){7,10,13,16});
   const vector_t gemv_result(NI, (double[NI]){70,109,148,187});
   const matrix_t gemm_result
@@ -64,8 +65,15 @@ void test_dense()
 
   double total_error = 0.0;
   
+  double nn;
   vector_t yy(NI), zz(NI);
   matrix_t aa(NI,NJ);
+  
+  nn = nrm2(x);
+  std::cout << "nrm2: |x| = " << nn << std::endl;
+  nn -= nrm2_result;
+  total_error += fabs(nn);
+  std::cout << "   (error = " << fabs(nn) << ")" << std::endl;
   
   copy(z, zz);
   axpy(alpha, y, zz);
@@ -100,6 +108,12 @@ void test_dense()
   
   vector_t::ptr yyp, zzp;
   matrix_t::ptr aap;
+  
+  nn = xp->fnrm2();
+  std::cout << "fnrm2: |x| = " << nn << std::endl;
+  nn -= nrm2_result;
+  total_error += fabs(nn);
+  std::cout << "   (error = " << fabs(nn) << ")" << std::endl;
   
   zzp = zp->faxpy(alpha, yp);
   std::cout << "faxpy: alpha y + z = " << *zzp << std::endl;
@@ -232,6 +246,9 @@ void test_block()
         c.set_elt(k,j, n++ + 6);
   std::cout << "c=" << c << std::endl;
   
+  const double nrm2_x_result = sqrt(14.0);
+  const double nrm2_a_result = sqrt(1226.0);
+
   typedef block_vector_t::block_t B;
   typedef vector_t V;
   const block_vector_t axpy_result
@@ -273,8 +290,16 @@ void test_block()
   const block_matrix_t::const_ptr bp(&b, null_deleter());
   const block_matrix_t::const_ptr cp(&c, null_deleter());
   
+  double nn;
   block_vector_t::ptr yyp, zzp;
   block_matrix_t::ptr aap;
+  
+  nn = xp->fnrm2().get();
+  std::cout << "fnrm2: |x| = " << nn << std::endl;
+  nn -= nrm2_x_result;
+  const auto fnrm2_x_error = fabs(nn);
+  std::cout << "   (error = " << fnrm2_x_error << ")" << std::endl;
+  total_error += fnrm2_x_error;
   
   zzp = zp->faxpy(alpha, yp);
   std::cout << "faxpy: alpha y + z = " << *zzp << std::endl;
@@ -292,7 +317,14 @@ void test_block()
   std::cout << "   (error = " << fgemv_error << ")" << std::endl;
   total_error += fgemv_error;
   
-  aap = ap->fgemm(false, false, false, alpha, bp, cp, beta);
+  nn = ap->fnrm2().get();
+  std::cout << "fnrm2: |a| = " << nn << std::endl;
+  nn -= nrm2_a_result;
+  const auto fnrm2_a_error = fabs(nn);
+  std::cout << "   (error = " << fnrm2_a_error << ")" << std::endl;
+  total_error += fnrm2_a_error;
+  
+  aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
   std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
   const block_matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
   aap = aap->faxpy(false, false, -1.0, gemm_resultp);

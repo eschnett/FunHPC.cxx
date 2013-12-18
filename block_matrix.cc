@@ -175,6 +175,7 @@ auto block_vector_t::fscal(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
+    // TODO: Remove block if alpha=0
     if (has_block(ib)) {
       x->set_block(ib, afscal(alpha, block(ib)));
     }
@@ -186,7 +187,12 @@ auto block_vector_t::fset(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
-    if (has_block(ib)) {
+    // TODO: Remove block if alpha=0
+    if (!has_block(ib)) {
+      const auto tmp =
+        rpc::make_remote_client<vector_t>(str->locs[ib], str->size(ib));
+      x->set_block(ib, afset(alpha, tmp));
+    } else {
       x->set_block(ib, afset(alpha, block(ib)));
     }
   }
@@ -367,6 +373,7 @@ auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr
     for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
+      // TODO: Remove block if alpha=0
       if (has_block(iba,jba)) {
         b->set_block(ib,jb, afscal(trans, alpha, block(iba,jba)));
       }
@@ -384,7 +391,14 @@ auto block_matrix_t::fset(bool trans, double alpha) const -> ptr
     for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
-      if (has_block(iba,jba)) {
+      // TODO: Remove block if alpha=0
+      if (!has_block(iba,jba)) {
+        // TODO: Add a wrapper for determining the location
+        const auto tmp =
+          rpc::make_remote_client<matrix_t>(istr->locs[iba],
+                                            istr->size(iba), jstr->size(jba));
+        b->set_block(ib,jb, afset(trans, alpha, tmp));
+      } else {
         b->set_block(ib,jb, afset(trans, alpha, block(iba,jba)));
       }
     }
@@ -395,16 +409,16 @@ auto block_matrix_t::fset(bool trans, double alpha) const -> ptr
 // Level 3
 
 auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
-                           double alpha, const const_ptr& a, const const_ptr& b,
-                           double beta) const -> ptr
+                           double alpha, const const_ptr& b,
+                           double beta, const const_ptr& c0) const -> ptr
 {
-  if (alpha == 0.0) return fscal(transc0, beta);
-  const auto& istra = !transa ? a->istr : a->jstr;
-  const auto& jstra = !transa ? a->jstr : a->istr;
+  if (alpha == 0.0) return c0->fscal(transc0, beta);
+  const auto& istra = !transa ? istr : jstr;
+  const auto& jstra = !transa ? jstr : istr;
   const auto& istrb = !transb ? b->istr : b->jstr;
   const auto& jstrb = !transb ? b->jstr : b->istr;
-  const auto& istrc0 = beta == 0.0 ? istra : !transc0 ? istr : jstr;
-  const auto& jstrc0 = beta == 0.0 ? jstrb : !transc0 ? jstr : istr;
+  const auto& istrc0 = beta == 0.0 ? istra : !transc0 ? c0->istr : c0->jstr;
+  const auto& jstrc0 = beta == 0.0 ? jstrb : !transc0 ? c0->jstr : c0->istr;
   assert(istrb == jstra);
   assert(istrc0 == istra);
   assert(jstrc0 == jstrb);
@@ -414,21 +428,21 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
       auto ibc0 = !transc0 ? ib : jb;
       auto jbc0 = !transc0 ? jb : ib;
       std::vector<matrix_t::client> ctmps;
-      if (beta != 0.0 && has_block(ibc0,jbc0)) {
+      if (beta != 0.0 && c0->has_block(ibc0,jbc0)) {
         if (beta == 1.0 && !transc0) {
-          ctmps.push_back(block(ibc0,jbc0));
+          ctmps.push_back(c0->block(ibc0,jbc0));
         } else {
-          ctmps.push_back(afscal(transc0, beta, block(ibc0,jbc0)));
+          ctmps.push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
         }
       }
-      for (std::ptrdiff_t kb=0; kb<a->jstr->B; ++kb) {
+      for (std::ptrdiff_t kb=0; kb<jstr->B; ++kb) {
         auto iba = !transa ? ib : kb;
         auto kba = !transa ? kb : ib;
         auto kbb = !transb ? kb : jb;
         auto jbb = !transb ? jb : kb;
-        if (a->has_block(iba,kba) && b->has_block(kbb,jbb)) {
+        if (has_block(iba,kba) && b->has_block(kbb,jbb)) {
           ctmps.push_back(afgemm(transa, transb, false,
-                                 alpha, a->block(iba,kba), b->block(kbb,jbb),
+                                 alpha, block(iba,kba), b->block(kbb,jbb),
                                  0.0, matrix_t::client()));
         }
       }

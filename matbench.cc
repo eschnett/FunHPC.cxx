@@ -9,11 +9,12 @@ using rpc::server;
 #include <boost/serialization/utility.hpp>
 #include <boost/utility/identity_type.hpp>
 
-#include <cstdlib>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
 using std::cout;
+using std::min;
 using std::pair;
 using std::ptrdiff_t;
 using std::vector;
@@ -26,6 +27,40 @@ namespace bench {
   ptrdiff_t nblocks;
 }
 using namespace bench;
+
+
+
+template<typename T>
+static T div_down(T x, T y)
+{
+  assert(x>=0);
+  assert(y>0);
+  return x / y;
+}
+
+template<typename T>
+static T div_up(T x, T y)
+{
+  assert(x>=0);
+  assert(y>0);
+  return (x + y - 1) / y;
+}
+
+template<typename T>
+static T align_up(T x, T y)
+{
+  assert(x>=0);
+  assert(y>0);
+  return y * div_up(x, y);
+}
+
+template<typename T>
+static T align_down(T x, T y)
+{
+  assert(x>=0);
+  assert(y>0);
+  return y * div_down(x, y);
+}
 
 
 
@@ -61,7 +96,7 @@ typedef pair<double,double> result_t;
 
 
 
-result_t run_dense_bench(std::ptrdiff_t n)
+result_t run_dense_bench(ptrdiff_t n)
 {
   matrix_t a(n,n), b(n,n), c(n,n);
   set(1.0, a);
@@ -88,9 +123,9 @@ result_t run_dense_bench(std::ptrdiff_t n)
   const double t = elapsed(t1, t0), u = niters;
   return { t, u };
 }
-RPC_ACTION(run_dense_bench)
+RPC_ACTION(run_dense_bench);
 
-result_t run_dense_fbench(std::ptrdiff_t n)
+result_t run_dense_fbench(ptrdiff_t n)
 {
   auto a = boost::make_shared<matrix_t>(n,n);
   auto b = boost::make_shared<matrix_t>(n,n);
@@ -119,7 +154,51 @@ result_t run_dense_fbench(std::ptrdiff_t n)
   const double t = elapsed(t1, t0), u = niters;
   return { t, u };
 }
-RPC_ACTION(run_dense_fbench)
+RPC_ACTION(run_dense_fbench);
+
+result_t run_block_fbench(ptrdiff_t n, ptrdiff_t nb, bool run_global = false)
+{
+  nb = min(nb, n);
+  vector<ptrdiff_t> begin(nb+1);
+  for (ptrdiff_t b=0; b<nb+1; ++b) {
+    begin[b] = min(n, b * div_up(n, nb));
+  }
+  vector<int> locs(nb);
+  if (!run_global) {
+    for (ptrdiff_t b=0; b<nb; ++b) locs[b] = server->rank();
+  } else {
+    for (ptrdiff_t b=0; b<nb; ++b) locs[b] = b % server->size();
+  }
+  auto str = boost::make_shared<structure_t>(n, nb, &begin[0], &locs[0]);
+  
+  auto a = boost::make_shared<block_matrix_t>(str,str);
+  auto b = boost::make_shared<block_matrix_t>(str,str);
+  auto c = boost::make_shared<block_matrix_t>(str,str);
+  a = a->fset(false, 1.0);
+  b = b->fset(false, 1.0);
+  c = c->fset(false, 1.0);
+  double res = 0.0;
+  
+  // Warmup
+  c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
+  res += c->fnrm2().get();
+  
+  // Benchmark
+  const auto t0 = gettime();
+  for (int iter=0; iter<niters; ++iter) {
+    c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
+    res += c->fnrm2().get();
+  }
+  const auto t1 = gettime();
+  
+  // Cooldown
+  c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
+  res += c->fnrm2().get();
+  
+  const double t = elapsed(t1, t0), u = niters;
+  return { t, u };
+}
+RPC_ACTION(run_block_fbench);
 
 
 
@@ -168,8 +247,8 @@ void bench_fdense()
   const double gbyte = mem / 1.0e+9;
   cout << "GFlop/core:     " << gflop << "\n";
   cout << "GByte/core:     " << gbyte << "\n";
-  cout << "GFlop/sec/core: " << nthreads *gflop / tavg << "\n";
-  cout << "GByte/sec/core: " << nthreads *gbyte / tavg << "\n";
+  cout << "GFlop/sec/core: " << nthreads * gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << nthreads * gbyte / tavg << "\n";
   
   cout << "\n";
 }
@@ -243,6 +322,67 @@ void bench_fdense_parallel()
   cout << "\n";
 }
 
+void bench_fblock_local()
+{
+  const auto nthreads = std::thread::hardware_concurrency();
+  const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
+  
+  cout << "bench_fblock_local N=" << nsize1 << " B=" << nblocks << "\n";
+  
+  const auto t0 = gettime();
+  const result_t res = run_block_fbench(nsize1, nblocks);
+  const auto t1 = gettime();
+  const double t = res.first, u = res.second;
+  const double tavg = nthreads * t / u;
+  cout << "total benchmark time: " << elapsed(t1, t0) << " sec\n";
+  cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
+            << tavg << " sec\n";
+  
+  cout << "This run used " << nthreads << " threads\n";
+  
+  const double ops = 2.0 * pow(double(nsize1), 3.0);
+  const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
+  const double gflop = ops / nthreads / 1.0e+9;
+  const double gbyte = mem / nthreads / 1.0e+9;
+  cout << "GFlop/core:     " << gflop << "\n";
+  cout << "GByte/core:     " << gbyte << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
+  
+  cout << "\n";
+}
+
+void bench_fblock_global()
+{
+  const auto threads = find_all_threads();
+  const auto nthreads = threads.size();
+  const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
+  
+  cout << "bench_fblock_global N=" << nsize1 << " B=" << nblocks << "\n";
+  
+  const auto t0 = gettime();
+  const result_t res = run_block_fbench(nsize1, nblocks, true);
+  const auto t1 = gettime();
+  const double t = res.first, u = res.second;
+  const double tavg = nthreads * t / u;
+  cout << "total benchmark time: " << elapsed(t1, t0) << " sec\n";
+  cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
+            << tavg << " sec\n";
+  
+  cout << "This run used " << nthreads << " threads\n";
+  
+  const double ops = 2.0 * pow(double(nsize1), 3.0);
+  const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
+  const double gflop = ops / nthreads / 1.0e+9;
+  const double gbyte = mem / nthreads / 1.0e+9;
+  cout << "GFlop/core:     " << gflop << "\n";
+  cout << "GByte/core:     " << gbyte << "\n";
+  cout << "GFlop/sec/core: " << gflop / tavg << "\n";
+  cout << "GByte/sec/core: " << gbyte / tavg << "\n";
+  
+  cout << "\n";
+}
+
 
 
 int rpc_main(int argc, char** argv)
@@ -255,8 +395,8 @@ int rpc_main(int argc, char** argv)
   bench_fdense();
   bench_dense_parallel();
   bench_fdense_parallel();
-  // bench_fblock_local();
-  // bench_fblock_global();
+  bench_fblock_local();
+  bench_fblock_global();
   
   return 0;
 }

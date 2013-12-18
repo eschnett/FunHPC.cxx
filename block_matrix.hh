@@ -111,6 +111,7 @@ struct block_vector_t {
   }
   
   // Level 1
+  // TODO: turn these into free functions
   auto faxpy(double alpha, const const_ptr& x) const -> ptr;
   auto fcopy() const -> ptr;
   auto fnrm2() const -> std::shared_future<double>;
@@ -208,8 +209,8 @@ struct block_matrix_t {
   
   // Level 3
   auto fgemm(bool transa, bool transb, bool transc0,
-             double alpha, const const_ptr& a, const const_ptr& b,
-             double beta) const -> ptr;
+             double alpha, const const_ptr& b,
+             double beta, const const_ptr& c0) const -> ptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const block_matrix_t& a);

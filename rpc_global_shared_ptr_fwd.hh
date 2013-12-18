@@ -56,6 +56,7 @@ namespace rpc {
   
   
   // Owner
+  // TODO: Put owner into manager
   
   class global_owner_base;
   void global_owner_add_ref(global_ptr<global_owner_base> owner);

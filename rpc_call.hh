@@ -200,7 +200,7 @@ namespace rpc {
     }
 #endif
     typedef decltype(func(args...)) R;
-    auto p = global_ptr<promise<R>>();
+    promise<R>* p = nullptr;
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
   }
   
@@ -216,9 +216,8 @@ namespace rpc {
 #endif
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
-    auto f = p->get_future();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
-    return f;
+    return p->get_future();
   }
   
   template<typename F, typename... As>
@@ -233,9 +232,8 @@ namespace rpc {
 #endif
     typedef decltype(func(args...)) R;
     auto p = new promise<R>;
-    auto f = p->get_future();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
-    return f.get();
+    return p->get_future().get();
   }
   
   template<typename F, typename... As>

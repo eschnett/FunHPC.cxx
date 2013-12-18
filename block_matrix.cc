@@ -142,7 +142,8 @@ namespace {
   }
   std::shared_future<double> fnrm2_process(std::shared_future<double> xi)
   {
-    return std::async([=]() { return std::pow(xi.get(), 2.0); });
+    // gcc 4.7 thinks that shared_future::get is non-const
+    return std::async([=]() mutable { return std::pow(xi.get(), 2.0); });
     // return rpc::future_then(xi, [](std::shared_future<double> xi) {
     //     return std::pow(xi.get(), 2.0);
     //   });
@@ -150,11 +151,11 @@ namespace {
   std::shared_future<double> fnrm2_combine(std::shared_future<double> val0,
                                            std::shared_future<double> val1)
   {
-    return std::async([=]() { return val0.get() + val1.get(); });
+    return std::async([=]() mutable { return val0.get() + val1.get(); });
   }
   std::shared_future<double> fnrm2_finalize(std::shared_future<double> val)
   {
-    return std::async([=]() { return std::sqrt(val.get()); });
+    return std::async([=]() mutable { return std::sqrt(val.get()); });
   }
   
 }

@@ -22,6 +22,7 @@ namespace rpc {
   
   template<typename T>
   class client {
+    // gcc 4.7 thinks that shared_future::get is non-const
     mutable shared_future<global_shared_ptr<T>> data;
   public:
     
@@ -38,8 +39,9 @@ namespace rpc {
     {
     }
     client(const shared_future<client<T>>& ptr):
+      // gcc 4.7 thinks that shared_future::get is non-const
       data(std::async([ptr]() -> global_shared_ptr<T>
-                      { return ptr.get().data.get(); }))
+                      { auto ptr1=ptr; return ptr1.get().data.get(); }))
     {
     }
     

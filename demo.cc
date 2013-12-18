@@ -69,7 +69,10 @@ struct point {
   RPC_DECLARE_MEMBER_ACTION(point, translate);
   void output() const
   {
-    rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] point(" << x << "," << y << ")\n"; });
+    rpc::with_lock(rpc::io_mutex, [&]{
+        cout << "[" << rpc::server->rank() << "] "
+             << "point(" << x << "," << y << ")\n";
+      });
   }
   RPC_DECLARE_CONST_MEMBER_ACTION(point, output);
 private:
@@ -207,7 +210,10 @@ RPC_ACTION(tgsp);
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
 {
   if (count == 0) return;
-  rpc::with_lock(rpc::io_mutex, [&]{ cout << "[" << rpc::server->rank() << "] tgsp " << count << " " << level << "\n"; });
+  rpc::with_lock(rpc::io_mutex, [&]{
+      cout << "[" << rpc::server->rank() << "] "
+           << "tgsp " << count << " " << level << "\n";
+    });
   int nchildren = random_r() % 4;
   vector<future<void>> fs;
   for (int child=0; child<nchildren; ++child) {

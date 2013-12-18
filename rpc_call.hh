@@ -155,14 +155,15 @@ namespace rpc {
   
   template<typename T, T F>
   struct wrap {
-    static constexpr decltype(F) value = F;
+    typedef T type;
+    // static constexpr T value = F;
+    static T get_value() { return F; }
   };
   
   // Template for an action
-  template<typename F, typename W, typename... As>
+  template<typename F, typename W, typename R, typename... As>
   struct action_impl_t: public action_base<F> {
-    typedef typename return_type<decltype(W::value)>::type R;
-    R operator()(As... args) const { return W::value(args...); }
+    R operator()(As... args) const { return W::get_value()(args...); }
     typedef action_evaluate<F, R, As...> evaluate;
     typedef action_finish<F, R> finish;
   };
@@ -170,12 +171,12 @@ namespace rpc {
   // Get the action implementation (with its template arguments) for a
   // function wrapper
   template<typename F, typename W, typename R, typename... As>
-  action_impl_t<F, W, As...> get_action_impl_t(R(As...));
+  action_impl_t<F, W, R, As...> get_action_impl_t(R(As...));
   
   // TODO: don't expect a wrapper, expect the function instead
   // TODO: determine the function's type automatically
   template<typename F, typename W>
-  using action_impl = decltype(get_action_impl_t<F, W>(W::value));
+  using action_impl = decltype(get_action_impl_t<F, W>(W::get_value()));
   
   // Example action definition for a given function "f":
   // struct f_action:
@@ -248,13 +249,11 @@ namespace rpc {
   
   
   // Template for an action
-  template<typename F, typename W, typename... As>
+  template<typename F, typename W, typename R, typename T, typename... As>
   struct member_action_impl_t: public action_base<F> {
-    typedef typename class_type<decltype(W::value)>::type T;
-    typedef typename return_type<decltype(W::value)>::type R;
     R operator()(const client<T>& obj, const As&... args) const
     {
-      return (*obj.*W::value)(args...);
+      return (*obj.*W::get_value())(args...);
     }
     typedef action_evaluate<F, R, client<T>, As...> evaluate;
     typedef action_finish<F, R> finish;
@@ -263,18 +262,20 @@ namespace rpc {
   // Get the member action implementation (with its template
   // arguments) for a member function wrapper
   template<typename F, typename W, typename R, typename T, typename... As>
-  member_action_impl_t<F, W, As...> get_member_action_impl_t(R(T::*)(As...));
+  member_action_impl_t<F, W, R, T, As...>
+  get_member_action_impl_t(R(T::*)(As...));
   template<typename F, typename W, typename R, typename T, typename... As>
-  member_action_impl_t<F, W, As...>
+  member_action_impl_t<F, W, R, T, As...>
   get_const_member_action_impl_t(R(T::*)(As...)const);
   
   // TODO: don't expect a wrapper, expect the function instead
   // TODO: determine the function's type automatically
   template<typename F, typename W>
-  using member_action_impl = decltype(get_member_action_impl_t<F, W>(W::value));
+  using member_action_impl =
+    decltype(get_member_action_impl_t<F, W>(W::get_value()));
   template<typename F, typename W>
   using const_member_action_impl =
-    decltype(get_const_member_action_impl_t<F, W>(W::value));
+    decltype(get_const_member_action_impl_t<F, W>(W::get_value()));
   
   
   

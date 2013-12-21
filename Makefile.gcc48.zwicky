@@ -1,16 +1,17 @@
-# BROKEN
+# module load gcc/4.8.1
+# module load openmpi/1.4.3-gcc-dynamic
 
 CC  = mpicc
 CXX = mpic++
 FC  = mpif90
 
-CPPFLAGS = -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
+CPPFLAGS = -DBLAS -I/home/eschnett/boost_1_54_0-gcc48/include -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
 CFLAGS   = -g -std=c99   -march=native -Ofast
 CXXFLAGS = -g -std=c++11 -march=native -Ofast
 FFLAGS   = -g -march=native -Ofast
 
-LDFLAGS  = 
-LIBS     = -lboost_mpi-mt -lboost_serialization-mt -lgfortran
+LDFLAGS  = -L/home/eschnett/boost_1_54_0-gcc48/lib -Wl,-rpath,/home/eschnett/boost_1_54_0-gcc48/lib -L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib
+LIBS     = -lboost_mpi -lboost_serialization -lgfortran
 
 EXES = bench demo matbench mattest
 
@@ -80,7 +81,7 @@ mattest: ${MATTEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.gcc47.compute
+${OBJS}: Makefile.gcc48.zwicky
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}

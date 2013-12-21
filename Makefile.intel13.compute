@@ -1,13 +1,13 @@
-# BROKEN
+# VERY BROKEN
 
-CC  = mpicc
-CXX = mpic++
-FC  = mpif90
+CC  = env OMPI_CC=icc mpicc
+CXX = env OMPI_CXX=icpc mpic++
+FC  = env OMPI_FC=ifort mpif90
 
 CPPFLAGS = -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
-CFLAGS   = -g -std=c99   -march=native -Ofast
-CXXFLAGS = -g -std=c++11 -march=native -Ofast
-FFLAGS   = -g -march=native -Ofast
+CFLAGS   = -g -std=c99   -xHost -Ofast
+CXXFLAGS = -g -std=c++11 -xHost -Ofast
+FFLAGS   = -g -xHost -Ofast
 
 LDFLAGS  = 
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt -lgfortran
@@ -80,7 +80,7 @@ mattest: ${MATTEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.gcc47.compute
+${OBJS}: Makefile.intel13.compute
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}

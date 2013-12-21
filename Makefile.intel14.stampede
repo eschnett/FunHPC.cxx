@@ -1,13 +1,15 @@
-# BROKEN
+# VERY BROKEN
+
+# module swap intel intel/14.0.1.106
 
 CC  = mpicc
 CXX = mpic++
 FC  = mpif90
 
 CPPFLAGS = -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
-CFLAGS   = -g -std=c99   -march=native -Ofast
-CXXFLAGS = -g -std=c++11 -march=native -Ofast
-FFLAGS   = -g -march=native -Ofast
+CFLAGS   = -g -std=c99   -xHost -Ofast
+CXXFLAGS = -g -std=c++11 -xHost -Ofast
+FFLAGS   = -g -xHost -Ofast
 
 LDFLAGS  = 
 LIBS     = -lboost_mpi-mt -lboost_serialization-mt -lgfortran
@@ -80,7 +82,7 @@ mattest: ${MATTEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.gcc47.compute
+${OBJS}: Makefile.intel14.stampede
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}

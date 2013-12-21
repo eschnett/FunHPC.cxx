@@ -206,15 +206,13 @@ void bench_dense()
 {
   const ptrdiff_t nthreads = 1;
   
-  cout << "bench_dense N=" << nsize << "\n";
+  cout << "bench_dense N=" << nsize << " T=" << nthreads << "\n";
   
   const result_t res = run_dense_bench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
   cout << "Average CPU time for 1 * DGEMM[N=" << nsize << "]: "
        << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -232,15 +230,13 @@ void bench_fdense()
 {
   const ptrdiff_t nthreads = 1;
   
-  cout << "bench_fdense N=" << nsize << "\n";
+  cout << "bench_fdense N=" << nsize << " T=" << nthreads << "\n";
   
   const result_t res = run_dense_fbench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "Averate CPU time for 1 * DGEMM[N=" << nsize << "]: "
+  cout << "Average CPU time for 1 * DGEMM[N=" << nsize << "]: "
        << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -259,7 +255,7 @@ void bench_dense_parallel()
   vector<int> threads = find_all_threads();
   const auto nthreads = threads.size();
   
-  cout << "bench_dense_parallel N=" << nsize << "\n";
+  cout << "bench_dense_parallel N=" << nsize << " T=" << nthreads << "\n";
   
   auto results = broadcast(threads, run_dense_bench_action(), nsize);
   result_t res = { 0.0, 0.0 };
@@ -273,8 +269,6 @@ void bench_dense_parallel()
   const double tavg = t / u;
   cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
        << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -293,7 +287,7 @@ void bench_fdense_parallel()
   const auto threads = find_all_threads();
   const auto nthreads = threads.size();
   
-  cout << "bench_fdense_parallel N=" << nsize << "\n";
+  cout << "bench_fdense_parallel N=" << nsize << " T=" << nthreads << "\n";
   
   auto results =
     broadcast(threads, run_dense_fbench_action(), nsize);
@@ -308,8 +302,6 @@ void bench_fdense_parallel()
   const double tavg = t / u;
   cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
        << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -328,7 +320,8 @@ void bench_fblock_local()
   const auto nthreads = std::thread::hardware_concurrency();
   const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
   
-  cout << "bench_fblock_local N=" << nsize1 << " B=" << nblocks << "\n";
+  cout << "bench_fblock_local "
+       << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
   
   const auto t0 = gettime();
   const result_t res = run_block_fbench(nsize1, nblocks);
@@ -359,7 +352,8 @@ void bench_fblock_global()
   const auto nthreads = threads.size();
   const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
   
-  cout << "bench_fblock_global N=" << nsize1 << " B=" << nblocks << "\n";
+  cout << "bench_fblock_global "
+       << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
   
   const auto t0 = gettime();
   const result_t res = run_block_fbench(nsize1, nblocks, true);

@@ -8,6 +8,8 @@
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
+#include "qthread.hh"
+
 #include <boost/make_shared.hpp>
 // Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
 // using the macro BOOST_CLASS_EXPORT
@@ -21,26 +23,23 @@
 #include <cassert>
 #include <chrono>
 #include <functional>
-#include <future>
 #include <sstream>
-#include <thread>
 #include <type_traits>
 
 namespace rpc {
   
-  // TODO: Use std::shared instead
+  using qthread::future;
+  using qthread::promise;
+  using qthread::thread;
+  
   using boost::make_shared;
   using boost::shared_ptr;
   
   using std::enable_if;
-  using std::future;
-  using std::future_status;
   using std::is_base_of;
   using std::istringstream;
   using std::ostringstream;
-  using std::promise;
   using std::string;
-  using std::thread;
   
   
   
@@ -64,7 +63,7 @@ namespace rpc {
     action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
     void execute()
     {
-      p.get()->set_value(res);
+      p->set_value(res);
       delete p.get();
       p = nullptr;
     }
@@ -84,7 +83,7 @@ namespace rpc {
     action_finish(const global_ptr<promise<void>>& p): p(p) {}
     void execute()
     {
-      p.get()->set_value();
+      p->set_value();
       delete p.get();
       p = nullptr;
     }
@@ -211,7 +210,7 @@ namespace rpc {
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return std::async(func, args...);
+      return qthread::async(func, args...);
     }
 #endif
     typedef decltype(func(args...)) R;
@@ -241,7 +240,7 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<decltype(func(args...))>>::type
   {
-    return std::async(std::launch::deferred, sync, dest, func, args...);
+    return qthread::async(sync, dest, func, args...);
   }
   
   

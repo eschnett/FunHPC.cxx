@@ -23,9 +23,9 @@ namespace qthread {
   
   template<typename M>
   class lock_guard {
-    M mtx;
+    M& mtx;
   public:
-    explicit lock_guard(M& m) { mtx.lock(); }
+    explicit lock_guard(M& m): mtx(m) { mtx.lock(); }
     ~lock_guard() { mtx.unlock(); }
   };
   

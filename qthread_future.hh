@@ -3,17 +3,13 @@
 
 #include <qthread.h>
 
+#include <iostream>             // TODO
 #include <memory>
+#include <utility>
 
 
 
 namespace qthread {
-  
-  using std::make_shared;
-  using std::move;
-  using std::shared_ptr;
-  
-  
   
   template<typename T>
   class future;
@@ -27,7 +23,8 @@ namespace qthread {
     aligned_t value_valid;
     T value;
   public:
-    future_state(): value_valid(false) {}
+    future_state(): value_valid(false) { qthread_empty(&value_valid); }
+    ~future_state() { qthread_fill(&value_valid); }
     bool has_value() const { return value_valid; }
     void wait() const
     {
@@ -35,6 +32,7 @@ namespace qthread {
         aligned_t tmp;
         qthread_readFF(&tmp, &value_valid);
       }
+      assert(has_value());
     }
     void set_value(const T& value_)
     {
@@ -42,6 +40,15 @@ namespace qthread {
       value = value_;
       aligned_t tmp = true;
       qthread_writeF(&value_valid, &tmp);
+      assert(has_value());
+    }
+    void set_value(T&& value_)
+    {
+      assert(!has_value());
+      std::swap(value, value_);
+      aligned_t tmp = true;
+      qthread_writeF(&value_valid, &tmp);
+      assert(has_value());
     }
     T& get_value()
     {
@@ -76,27 +83,32 @@ namespace qthread {
   };
   
   
+  
   template<typename T>
   class shared_future {
-    shared_ptr<future_state<T>> state;
+    std::shared_ptr<future_state<T>> state;
     void swap(shared_future& other) { std::swap(state, other.state); }
-    shared_future(const shared_ptr<future_state<T>>& state): state(state) {}
+    shared_future(const std::shared_ptr<future_state<T>>& state): state(state)
+    {
+    }
     friend class promise<T>;
   public:
     shared_future(): state(nullptr) {}
     shared_future(future<T>&& other);
+    shared_future(const shared_future& other): state(other.state) {}
     shared_future(shared_future&& other): shared_future() { swap(other); }
-    shared_future(const shared_future& other) = delete;
     ~shared_future() {}
+    shared_future& operator=(const shared_future& other)
+    {
+      state = other.state;
+      return *this;
+    }
     shared_future& operator=(shared_future&& other)
     {
       swap(other);
       other.state.reset();
       return *this;
     }
-    shared_future& operator=(const shared_future& other) = delete;
-    // shared_future<T> share() { return shared_future<T>(*this); }
-    // T get() { return state->get_value(); };
     const T& get() const { return state->get_value(); };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
@@ -104,25 +116,30 @@ namespace qthread {
   
   template<>
   class shared_future<void> {
-    shared_ptr<future_state<void>> state;
+    std::shared_ptr<future_state<void>> state;
     void swap(shared_future& other) { std::swap(state, other.state); }
-    shared_future(const shared_ptr<future_state<void>>& state): state(state) {}
+    shared_future(const std::shared_ptr<future_state<void>>& state):
+      state(state)
+    {
+    }
     friend class promise<void>;
   public:
     shared_future(): state(nullptr) {}
     shared_future(future<void>&& other);
+    shared_future(const shared_future& other): state(other.state) {}
     shared_future(shared_future&& other): shared_future() { swap(other); }
-    shared_future(const shared_future& other) = delete;
     ~shared_future() {}
+    shared_future& operator=(const shared_future& other)
+    {
+      state = other.state;
+      return *this;
+    }
     shared_future& operator=(shared_future&& other)
     {
       swap(other);
       other.state.reset();
       return *this;
     }
-    shared_future& operator=(const shared_future& other) = delete;
-    // shared_future<void> share() { return shared_future<void>(*this); }
-    // void get() { return state->get_value(); };
     void get() const { return state->get_value(); };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
@@ -130,9 +147,9 @@ namespace qthread {
   
   template<typename T>
   class future {
-    shared_ptr<future_state<T>> state;
+    std::shared_ptr<future_state<T>> state;
     void swap(future& other) { std::swap(state, other.state); }
-    future(const shared_ptr<future_state<T>>& state): state(state) {}
+    future(const std::shared_ptr<future_state<T>>& state): state(state) {}
     friend class shared_future<T>;
     friend class promise<T>;
   public:
@@ -147,18 +164,17 @@ namespace qthread {
       return *this;
     }
     future& operator=(const future& other) = delete;
-    shared_future<T> share() { return shared_future<T>(*this); }
+    shared_future<T> share() { return shared_future<T>(std::move(*this)); }
     T get() { return state->get_value(); };
-    // const T& get() const { return state->get_value(); };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
   };
   
   template<>
   class future<void> {
-    shared_ptr<future_state<void>> state;
+    std::shared_ptr<future_state<void>> state;
     void swap(future& other) { std::swap(state, other.state); }
-    future(const shared_ptr<future_state<void>>& state): state(state) {}
+    future(const std::shared_ptr<future_state<void>>& state): state(state) {}
     friend class shared_future<void>;
     friend class promise<void>;
   public:
@@ -173,28 +189,31 @@ namespace qthread {
       return *this;
     }
     future& operator=(const future& other) = delete;
-    shared_future<void> share() { return shared_future<void>(move(*this)); }
+    shared_future<void> share()
+    {
+      return shared_future<void>(std::move(*this));
+    }
     void get() { return state->get_value(); };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
   };
   
   template<typename T>
-  shared_future<T>::shared_future(future<T>&& other)
+  shared_future<T>::shared_future(future<T>&& other): state()
   {
     std::swap(state, other.state);
   }
   
-  inline shared_future<void>::shared_future(future<void>&& other)
+  inline shared_future<void>::shared_future(future<void>&& other): state()
   {
     std::swap(state, other.state);
   }
   
   template<typename T>
   class promise {
-    shared_ptr<future_state<T>> state;
+    std::shared_ptr<future_state<T>> state;
   public:
-    promise(): state(make_shared<future_state<T>>()) {}
+    promise(): state(std::make_shared<future_state<T>>()) {}
     promise(promise&& other): state() { std::swap(*this, other); }
     promise(const promise& other) = delete;
     ~promise() { assert(!state || state->has_value()); }
@@ -205,16 +224,25 @@ namespace qthread {
     }
     promise& operator=(const promise& rhs) = delete;
     void swap(promise& other) { std::swap(state, other.state); }
-    future<T> get_future() { return future<T>(state); }
-    void set_value(const T& value) { state->set_value(value); }
-    // void set_value(T&& value) { state->set_value(value); }
+    // TODO: allow only one call to get_future
+    future<T> get_future() { assert(state); return future<T>(state); }
+    void set_value(const T& value)
+    {
+      assert(state);
+      state->set_value(value);
+    }
+    void set_value(T&& value)
+    {
+      assert(state);
+      state->set_value(std::forward<T>(value));
+    }
   };
   
   template<>
   class promise<void> {
-    shared_ptr<future_state<void>> state;
+    std::shared_ptr<future_state<void>> state;
   public:
-    promise(): state(make_shared<future_state<void>>()) {}
+    promise(): state(std::make_shared<future_state<void>>()) {}
     promise(promise&& other): state() { std::swap(*this, other); }
     promise(const promise& other) = delete;
     ~promise() { assert(!state || state->has_value()); }
@@ -227,7 +255,6 @@ namespace qthread {
     void swap(promise& other) { std::swap(state, other.state); }
     future<void> get_future() { return future<void>(state); }
     void set_value() { state->set_value(); }
-    // void set_value() { state->set_value(); }
   };
   
   template<typename T>

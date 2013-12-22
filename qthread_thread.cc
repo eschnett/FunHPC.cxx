@@ -1,10 +1,9 @@
 #include "qthread_thread.hh"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace qthread {
-  
-  using std::remove_if;
   
   
   
@@ -23,6 +22,8 @@ namespace qthread {
   
   detached_threads::~detached_threads()
   {
+    assert(detached.empty());
+    assert(incoming.empty());
     assert(!cleanup_thread.joinable());
   }
   
@@ -41,30 +42,59 @@ namespace qthread {
   
   void detached_threads::cleanup()
   {
-    while (!(detached.empty() && signal_stop)) {
+    for (;;) {
+      bool did_some_work = false;
+      
+      // Empty incoming queue
+      {
+        auto old_size = detached.size();
+        std::vector<thread_manager*> tmp;
+        {
+          lock_guard<mutex> g(mtx);
+          swap(tmp, incoming);
+        }
+        detached.insert(detached.end(), tmp.begin(), tmp.end());
+        did_some_work |= detached.size() != old_size;
+      }
+      
+      // Walk through all threads, and destruct them if they are done
+      {
+        auto old_size = detached.size();
+        auto new_end = std::remove_if(detached.begin(), detached.end(),
+                                      [](thread_manager* mgr) {
+                                        auto done = mgr->done();
+                                        if (done) delete mgr;
+                                        return done;
+                                      });
+        detached.erase(new_end, detached.end());
+        did_some_work |= detached.size() != old_size;
+      }
+      
       // Wait
       // TODO: Sleep dynamically, measuring e.g. the time spent
       // checking threads
-      this_thread::sleep_for(std::chrono::milliseconds(100));
-      
-      // Empty incoming queue
-      vector<thread_manager*> tmp;
+      if (!did_some_work) {
+        if (signal_stop) break;
+        this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+    }
+    
+    do {
+      for (auto mgr: detached) delete mgr;
+      detached.clear();
       {
         lock_guard<mutex> g(mtx);
-        swap(tmp, incoming);
+        swap(detached, incoming);
       }
-      detached.insert(detached.end(), tmp.begin(), tmp.end());
-      
-      // Walk through all threads, and destruct them if they are done
-      remove_if(detached.begin(), detached.end(),
-                [](thread_manager* mgr) { return mgr->done(); });
-    }
+    } while (!detached.empty());
   }
   
   
   
   void initialize()
-    {
+  {
+    setenv("QTHREAD_INFO", "1", 1);
+    setenv("QTHREAD_STACK_SIZE", "8192", 1);
     qthread_initialize();
     detached = new detached_threads();
     detached->start_cleanup();

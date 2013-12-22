@@ -12,6 +12,12 @@ namespace rpc {
   using std::is_same;
   using std::vector;
   
+  
+  
+  vector<int> find_all_threads();
+  
+  
+  
   // Broadcast to all processes
   template<typename C, typename F, typename... As>
   auto broadcast(const C& dests, const F& func, As... args) ->
@@ -51,7 +57,34 @@ namespace rpc {
     const auto m = b + sz/2;
     const auto fs0 = broadcast_barrier(func, args..., b, m);
     const auto fs1 = broadcast_barrier(func, args..., m, e);
-    return std::async([=](){ fs0.wait(); fs1.wait(); });
+    return qthread::async([=](){ fs0.wait(); fs1.wait(); });
+  }
+  
+  
+  
+  // Map-reduce from futures
+  //   F must be A -> B
+  //   R must be (B, B) -> B
+  //   Z must be () -> B
+  //   I must be iterator over [A]
+  template<typename F, typename R, typename I>
+  auto map_reduce1(const F& f, const R& op, const I& b, const I& e) ->
+    decltype(f(*b))
+  {
+    const auto sz = e - b;
+    assert(sz != 0);
+    // TODO: execute on different processes
+    if (sz == 1) return f(*b);
+    const auto m = b + sz/2;
+    return op(reduce1(op, b, m), reduce1(op, m, e));
+  }
+  
+  template<typename F, typename R, typename Z, typename I>
+  auto map_reduce(const F& f, const R& op, Z& zero, const I& b, const I& e) ->
+    decltype(f(*b))
+  {
+    if (b == e) return zero();
+    return reduce1(f, op, b, e);
   }
   
   

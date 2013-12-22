@@ -1,22 +1,22 @@
+#include "qthread.hh"
 #include "rpc.hh"
 
 #include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
-#include <future>
 #include <iostream>
-#include <thread>
 #include <vector>
 
-using std::async;
+using qthread::async;
+using qthread::future;
+using qthread::thread;
+
 using std::cout;
 using std::endl;
 using std::flush;
-using std::future;
 using std::min;
 using std::ptrdiff_t;
-using std::thread;
 using std::vector;
 
 

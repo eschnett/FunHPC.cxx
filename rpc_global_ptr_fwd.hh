@@ -3,17 +3,19 @@
 
 #include "rpc_server.hh"
 
+#include "qthread.hh"
+
 #include <boost/serialization/access.hpp>
 
 #include <cstdint>
-#include <future>
 #include <iostream>
 
 namespace rpc {
   
+  using qthread::future;
+  
   using std::intptr_t;
   using std::ostream;
-  using std::future;
   
   // A global pointer, represented as a combination of a local pointer
   // and a process rank describing where the pointer is valid, i.e.

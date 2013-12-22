@@ -1,3 +1,4 @@
+#include "qthread.hh"
 #include "rpc.hh"
 
 #include <boost/serialization/access.hpp>
@@ -8,12 +9,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
-#include <future>
 #include <iostream>
-#include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
+
+using qthread::future;
+using qthread::mutex;
+using qthread::shared_future;
 
 using boost::make_shared;
 using boost::shared_ptr;
@@ -21,10 +23,7 @@ using boost::shared_ptr;
 using std::cerr;
 using std::cout;
 using std::flush;
-using std::future;
-using std::mutex;
 using std::printf;
-using std::shared_future;
 using std::string;
 using std::vector;
 
@@ -223,7 +222,7 @@ void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
     count -= child_count;
   }
   vector<rpc::global_shared_ptr<s>> locals(count, igs);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  qthread::this_thread::sleep_for(std::chrono::milliseconds(100));
   for (auto& f: fs) f.wait();
 }
 
@@ -236,16 +235,17 @@ void test_ptr()
   auto ip = new s(1);
   auto is = make_shared<s>(2);
   auto ig = rpc::make_global<s>(3);
-  auto igs = rpc::make_shared_global<s>(4);
+  auto igs = rpc::make_global_shared<s>(4);
   
   auto ip2 = ip;
   auto is2 = is;
   auto ig2 = ig;
   auto igs2 = igs;
   
+  srandom(0);                   // be repeatable
   tpc(is, ig, igs);
   rpc::sync(dest, tpc_action(), is, ig, igs);
-  tgsp(rpc::make_shared_global<s>(5), 1000000);
+  tgsp(rpc::make_global_shared<s>(5), 1000000);
   
   delete ip2;
   delete ig2.get();

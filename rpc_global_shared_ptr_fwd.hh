@@ -3,6 +3,8 @@
 
 #include "rpc_global_ptr_fwd.hh"
 
+#include "qthread.hh"
+
 #include <boost/make_shared.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
@@ -11,15 +13,15 @@
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
-#include <future>
-  
+
 namespace rpc {
+  
+  using qthread::shared_future;
   
   using boost::make_shared;
   using boost::shared_ptr;
   
   using std::atomic;
-  using std::shared_future;
   
   
   

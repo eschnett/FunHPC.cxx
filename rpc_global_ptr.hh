@@ -22,8 +22,8 @@ namespace rpc {
   {
     if (is_local()) return make_ready_future(*this);
     const auto localptr = async(get_proc(), global_ptr_get_action<T>(), *this);
-    return std::async([localptr]()
-                      { return global_ptr<T>(localptr.get()); });
+    return qthread::async([localptr]()
+                          { return global_ptr<T>(localptr.get()); });
   }
   
   

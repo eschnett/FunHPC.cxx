@@ -9,7 +9,6 @@
 
 #include <cassert>
 #include <cstdlib>
-#include <future>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -114,7 +113,7 @@ struct block_vector_t {
   // TODO: turn these into free functions
   auto faxpy(double alpha, const const_ptr& x) const -> ptr;
   auto fcopy() const -> ptr;
-  auto fnrm2() const -> std::shared_future<double>;
+  auto fnrm2() const -> qthread::shared_future<double>;
   auto fscal(double alpha) const -> ptr;
   auto fset(double alpha) const -> ptr;
 };
@@ -203,7 +202,7 @@ struct block_matrix_t {
              double alpha, const block_vector_t::const_ptr& x,
              double beta, const block_vector_t::const_ptr& y0) const ->
     block_vector_t::ptr;
-  auto fnrm2() const -> std::shared_future<double>;
+  auto fnrm2() const -> qthread::shared_future<double>;
   auto fscal(bool trans, double alpha) const -> ptr;
   auto fset(bool trans, double alpha) const -> ptr;
   

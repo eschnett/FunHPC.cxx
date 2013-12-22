@@ -135,34 +135,34 @@ auto block_vector_t::fcopy() const -> ptr
 
 namespace {
   
-  std::shared_future<double> fnrm2_init()
+  qthread::shared_future<double> fnrm2_init()
   {
     // return std::async([=]() { return 0.0; });
     return rpc::make_ready_future(0.0);
   }
-  std::shared_future<double> fnrm2_process(std::shared_future<double> xi)
+  qthread::shared_future<double> fnrm2_process(qthread::shared_future<double> xi)
   {
     // gcc 4.7 thinks that shared_future::get is non-const
-    return std::async([=]() mutable { return std::pow(xi.get(), 2.0); });
-    // return rpc::future_then(xi, [](std::shared_future<double> xi) {
+    return qthread::async([=]() { return std::pow(xi.get(), 2.0); });
+    // return rpc::future_then(xi, [](qthread::shared_future<double> xi) {
     //     return std::pow(xi.get(), 2.0);
     //   });
   }
-  std::shared_future<double> fnrm2_combine(std::shared_future<double> val0,
-                                           std::shared_future<double> val1)
+  qthread::shared_future<double> fnrm2_combine(qthread::shared_future<double> val0,
+                                           qthread::shared_future<double> val1)
   {
-    return std::async([=]() mutable { return val0.get() + val1.get(); });
+    return qthread::async([=]() { return val0.get() + val1.get(); });
   }
-  std::shared_future<double> fnrm2_finalize(std::shared_future<double> val)
+  qthread::shared_future<double> fnrm2_finalize(qthread::shared_future<double> val)
   {
-    return std::async([=]() mutable { return std::sqrt(val.get()); });
+    return qthread::async([=]() mutable { return std::sqrt(val.get()); });
   }
   
 }
 
-auto block_vector_t::fnrm2() const -> std::shared_future<double>
+auto block_vector_t::fnrm2() const -> qthread::shared_future<double>
 {
-  std::vector<std::shared_future<double>> fs;
+  std::vector<qthread::shared_future<double>> fs;
   for (std::ptrdiff_t ib=0; ib<str->B; ++ib) {
     if (has_block(ib)) {
       fs.push_back(fnrm2_process(afnrm2(block(ib))));
@@ -350,9 +350,9 @@ auto block_matrix_t::fgemv(bool trans,
   return y;
 }
 
-auto block_matrix_t::fnrm2() const -> std::shared_future<double>
+auto block_matrix_t::fnrm2() const -> qthread::shared_future<double>
 {
-  std::vector<std::shared_future<double>> fs;
+  std::vector<qthread::shared_future<double>> fs;
   // TODO: Parallelize jb loop
   for (std::ptrdiff_t jb=0; jb<jstr->B; ++jb) {
     for (std::ptrdiff_t ib=0; ib<istr->B; ++ib) {

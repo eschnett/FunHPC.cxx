@@ -16,17 +16,6 @@
 
 namespace qthread {
   
-  using std::atomic;
-  using std::bind;
-  using std::enable_if;
-  using std::function;
-  using std::is_void;
-  using std::result_of;
-  using std::terminate;
-  using std::vector;
-  
-  
-  
   class detached_threads;
   extern detached_threads* detached;
   
@@ -34,23 +23,12 @@ namespace qthread {
   
   class thread_manager {
     
-  public:
-    
-    typedef unsigned int id;
-    
-  private:
-    
     // The function to call
-    function<void()> func;
+    std::function<void()> func;
     
-    // Promise for the thread id
-    promise<id> p;
-    
-    static aligned_t wrapper(void* args)
+    static aligned_t wrapper(void* mgr)
     {
-      thread_manager* mgr = (thread_manager*)args;
-      mgr->p.set_value(qthread_id());
-      mgr->func();
+      ((thread_manager*)mgr)->func();
       return 1;
     }
     
@@ -58,12 +36,10 @@ namespace qthread {
     // finished
     aligned_t m_done;
     
-    shared_future<id> m_id;
-    
   public:
     
-    thread_manager(const function<void()>& func):
-      func(func), p(), m_done(0), m_id(p.get_future())
+    thread_manager(const std::function<void()>& func):
+      func(func), m_done(0)
     {
       int ierr = qthread_fork(wrapper, this, &m_done);
       assert(!ierr);
@@ -71,19 +47,12 @@ namespace qthread {
     
     ~thread_manager()
     {
-      join();
-    }
-    
-    id get_id() const { return m_id.get(); }
-    
-    bool done() const { return (volatile aligned_t&)m_done; }
-    
-    void join()
-    {
       aligned_t tmp;
       qthread_readFF(&tmp, &m_done);
+      assert(done());
     }
     
+    bool done() const { return (volatile aligned_t&)m_done; }
   };
   
   
@@ -95,31 +64,34 @@ namespace qthread {
   public:
     
     typedef thread_manager* native_handle_type;
-    typedef thread_manager::id id;
     
     thread(): mgr(nullptr) {}
     thread(thread&& other): thread() { swap(other); }
-    thread(const function<void()>& func): mgr(new thread_manager(func)) {}
+    
+    template<typename F, typename... As>
+    explicit thread(F&& f, As&&... args):
+      mgr(new thread_manager(std::bind(f, args...)))
+    {
+    }
+    
     thread(const thread&) = delete;
     
     ~thread() {
-      if (mgr) delete mgr;
+      if (joinable()) std::terminate();
     }
     
     thread& operator=(thread&& other)
     {
-      if (mgr) terminate();
+      if (mgr) std::terminate();
       swap(other);
       return *this;
     }
     
     bool joinable() const { return mgr; }
     
-    id get_id() const { return mgr->get_id(); }
-    
     static unsigned int hardware_concurrency() { return qthread_num_workers(); }
     
-    void join() { mgr->join(); mgr = nullptr; }
+    void join() { delete mgr; mgr = nullptr; }
     
     void detach();
     
@@ -129,11 +101,6 @@ namespace qthread {
   
   
   namespace this_thread {
-    
-    inline thread::id get_id()
-    {
-      return qthread_id();
-    }
     
     inline void yield()
     {
@@ -156,36 +123,35 @@ namespace qthread {
   
   template<typename F, typename... As>
   auto async(F&& f, As&&... args) ->
-    typename enable_if<!is_void<typename result_of<F(As...)>::type>::value,
-                       future<typename result_of<F(As...)>::type> >::type
+    typename std::enable_if<
+      !std::is_void<typename std::result_of<F(As...)>::type>::value,
+      future<typename std::result_of<F(As...)>::type> >::type
   {
-    typedef typename result_of<F(As...)>::type R;
-    auto prm = make_shared<promise<R>>();
-    auto ftr = prm->get_future();
+    typedef typename std::result_of<F(As...)>::type R;
+    auto prm = std::make_shared<promise<R>>();
     // gcc does not handle lambda expressions with parameter packs
-    auto fbnd = bind(f, args...);
-    auto func = [prm, fbnd]() {
+    auto fbnd = std::bind(f, args...);
+    auto func = [prm, fbnd]() mutable {
       prm->set_value(fbnd());
     };
     thread(func).detach();
-    return ftr;
+    return prm->get_future();
   }
   
   template<typename F, typename... As>
   auto async(F&& f, As&&... args) ->
-    typename enable_if<is_void<typename result_of<F(As...)>::type>::value,
-                       future<typename result_of<F(As...)>::type> >::type
+    typename std::enable_if<
+      std::is_void<typename std::result_of<F(As...)>::type>::value,
+      future<typename std::result_of<F(As...)>::type> >::type
   {
-    typedef typename result_of<F(As...)>::type R;
-    auto prm = make_shared<promise<R>>();
-    auto ftr = prm->get_future();
-    auto fbnd = bind(f, args...);
+    auto prm = std::make_shared<promise<void>>();
+    auto fbnd = std::bind(f, args...);
     auto func = [prm, fbnd]() {
       fbnd();
       prm->set_value();
     };
     thread(func).detach();
-    return ftr;
+    return prm->get_future();
   }
   
   
@@ -195,11 +161,11 @@ namespace qthread {
     // TODD: Use a lock-free data structure such as qlfqueue or
     // similar?
     mutex mtx;
-    vector<thread_manager*> detached;
-    vector<thread_manager*> incoming;
+    std::vector<thread_manager*> detached;
+    std::vector<thread_manager*> incoming;
     
     thread cleanup_thread;
-    atomic<bool> signal_stop;
+    std::atomic<bool> signal_stop;
     
   public:
     

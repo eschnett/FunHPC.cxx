@@ -2,21 +2,20 @@
 #define RPC_CLIENT_FWD_HH
 
 #include "rpc_defs.hh"
-// TODO
-//#include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
-#define global_shared_ptr global_shared_ptr
-#define make_shared_global make_global_shared
+
+#include "qthread.hh"
 
 #include <boost/serialization/access.hpp>
 
 #include <cassert>
-#include <future>
 
 namespace rpc {
   
-  using std::future;
-  using std::shared_future;
+  using namespace qthread;
+  
+  using qthread::future;
+  using qthread::shared_future;
   
   
   
@@ -34,14 +33,14 @@ namespace rpc {
     client(future<global_shared_ptr<T>> ptr): data(ptr.share()) {}
     client(const shared_future<global_shared_ptr<T>>& ptr): data(ptr) {}
     client(future<client<T>>& ptr):
-      data(std::async([ptr]() -> global_shared_ptr<T>
-                      { return ptr.get().data.get(); }))
+      data(qthread::async([ptr]() -> global_shared_ptr<T>
+                          { return ptr.get().data.get(); }))
     {
     }
     client(const shared_future<client<T>>& ptr):
       // gcc 4.7 thinks that shared_future::get is non-const
-      data(std::async([ptr]() -> global_shared_ptr<T>
-                      { auto ptr1=ptr; return ptr1.get().data.get(); }))
+      data(qthread::async([ptr]() -> global_shared_ptr<T>
+                          { auto ptr1=ptr; return ptr1.get().data.get(); }))
     {
     }
     
@@ -95,7 +94,7 @@ namespace rpc {
   template<typename T, typename... As>
   client<T> make_client(const As&... args)
   {
-    return make_shared_global<T>(args...);
+    return make_global_shared<T>(args...);
   }
   
   template<typename T, typename... As>

@@ -137,8 +137,14 @@ namespace std {
   
 }
 
+#if defined RPC_HPX
+#  include <hpx/util/serialize_empty_type.hpp>
+#endif
+
 namespace boost {
   namespace serialization {
+    
+#ifndef RPC_HPX
     
     template<class Archive, typename... As>
     void serialize(Archive & ar, std::tuple<As...>& t, unsigned int version)
@@ -146,8 +152,46 @@ namespace boost {
       rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
     }
     
+#else
+    
+    // HPX provides a serialization function for its own archives and
+    // empty types. This conflicts with tuples when the tuple is
+    // empty. We thus need to provide tuple serialization functions
+    // only for either non-HPX archives or non-empty tuples.
+    
+    template<class Archive, typename... As>
+    typename std::enable_if<
+      (!std::is_same<Archive, hpx::util::portable_binary_iarchive>::value &&
+       !std::is_same<Archive, hpx::util::portable_binary_oarchive>::value),
+      void>::type
+    serialize(Archive & ar, std::tuple<As...>& t, unsigned int version)
+    {
+      rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
+    }
+    
+    template<typename... As>
+    typename std::enable_if<!std::is_empty<std::tuple<As...>>::value,
+                            void>::type
+    serialize(hpx::util::portable_binary_iarchive & ar,
+              std::tuple<As...>& t, unsigned int version)
+    {
+      rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
+    }
+    
+    template<typename... As>
+    typename std::enable_if<!std::is_empty<std::tuple<As...>>::value,
+                            void>::type
+    serialize(hpx::util::portable_binary_oarchive & ar,
+              std::tuple<As...>& t, unsigned int version)
+    {
+      rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
+    }
+    
+#endif
+    
   }
 }
+// #endif
 
 #define RPC_TUPLE_HH_DONE
 #else

@@ -1,4 +1,3 @@
-#include "qthread.hh"
 #include "rpc.hh"
 
 #include <boost/serialization/access.hpp>
@@ -13,9 +12,9 @@
 #include <string>
 #include <vector>
 
-using qthread::future;
-using qthread::mutex;
-using qthread::shared_future;
+using rpc::future;
+using rpc::mutex;
+using rpc::shared_future;
 
 using boost::make_shared;
 using boost::shared_ptr;
@@ -98,9 +97,9 @@ void test_call()
   cout << "Calling f as action... " << flush;
   cout << f_action()(20) << "\n";
   cout << "Calling f synchronously... " << flush;
-  cout << rpc::sync(dest, f_action(), 40) << "\n";
+  cout << rpc::sync(dest, f_action(), 30) << "\n";
   cout << "Calling f asynchronously... " << flush;
-  cout << rpc::async(dest, f_action(), 30).get() << "\n";
+  cout << rpc::async(dest, f_action(), 40).get() << "\n";
   cout << "Calling f detached...\n" << flush;
   rpc::detached(dest, f_action(), 50);
   cout << "Done calling f\n";
@@ -198,12 +197,6 @@ void tpc(shared_ptr<s> is,
 }
 RPC_ACTION(tpc);
 
-int random_r()
-{
-  static mutex m;
-  return rpc::with_lock(m, random);
-}
-
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level = 0);
 RPC_ACTION(tgsp);
 void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
@@ -213,16 +206,16 @@ void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
       cout << "[" << rpc::server->rank() << "] "
            << "tgsp " << count << " " << level << "\n";
     });
-  int nchildren = random_r() % 4;
+  int nchildren = 3;
   vector<future<void>> fs;
   for (int child=0; child<nchildren; ++child) {
-    ptrdiff_t child_count = count==0 ? 0 : random_r() % count;
-    int dest = random_r() % rpc::server->size();
+    ptrdiff_t child_count = count / 4;
+    int dest = (rpc::server->rank() + 1001 + 5 * child) % rpc::server->size();
     fs.push_back(async(dest, tgsp_action(), igs, child_count, level+1));
     count -= child_count;
   }
   vector<rpc::global_shared_ptr<s>> locals(count, igs);
-  qthread::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //TODO rpc::this_thread::sleep_for(std::chrono::milliseconds(100));
   for (auto& f: fs) f.wait();
 }
 
@@ -242,10 +235,9 @@ void test_ptr()
   auto ig2 = ig;
   auto igs2 = igs;
   
-  srandom(0);                   // be repeatable
   tpc(is, ig, igs);
   rpc::sync(dest, tpc_action(), is, ig, igs);
-  tgsp(rpc::make_global_shared<s>(5), 1000000);
+  tgsp(rpc::make_global_shared<s>(5), 100000);
   
   delete ip2;
   delete ig2.get();

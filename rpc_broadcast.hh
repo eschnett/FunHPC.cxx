@@ -20,12 +20,11 @@ namespace rpc {
   
   // Broadcast to all processes
   template<typename C, typename F, typename... As>
-  auto broadcast(const C& dests, const F& func, As... args) ->
+  auto broadcast(const C& dests, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       vector<future<decltype(func(args...))>>>::type
+     vector<future<typename result_of<F(As...)>::type>>>::type
   {
-    typedef decltype(func(args...)) R;
-    vector<future<R>> fs;
+    vector<future<typename result_of<F(As...)>::type>> fs;
     // TODO: use tree
     for (const int dest: dests) {
       fs.push_back(async(dest, func, args...));
@@ -34,7 +33,7 @@ namespace rpc {
   }
   
   template<typename C, typename F, typename... As>
-  auto broadcast_detached(const C& dests, const F& func, As... args) ->
+  auto broadcast_detached(const C& dests, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     // TODO: use tree
@@ -45,7 +44,7 @@ namespace rpc {
   
   // TODO: Use container instead of b and e?
   template<typename F, typename... As>
-  auto broadcast_barrier(const F& func, As... args, int b=0, int e=-1) ->
+  auto broadcast_barrier(F func, const As&... args, int b=0, int e=-1) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, future<void>>::type
   {
     if (e == -1) e = server->size();
@@ -57,13 +56,13 @@ namespace rpc {
     const auto m = b + sz/2;
     const auto fs0 = broadcast_barrier(func, args..., b, m);
     const auto fs1 = broadcast_barrier(func, args..., m, e);
-    return qthread::async([=](){ fs0.wait(); fs1.wait(); });
+    return rpc::async([=](){ fs0.wait(); fs1.wait(); });
   }
   
   
   
   // Map-reduce from futures
-  //   F must be A -> B
+  //   const F& must be A -> B
   //   R must be (B, B) -> B
   //   Z must be () -> B
   //   I must be iterator over [A]

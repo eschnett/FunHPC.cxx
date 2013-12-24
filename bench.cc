@@ -1,4 +1,3 @@
-#include "qthread.hh"
 #include "rpc.hh"
 
 #include <algorithm>
@@ -8,9 +7,9 @@
 #include <iostream>
 #include <vector>
 
-using qthread::async;
-using qthread::future;
-using qthread::thread;
+using rpc::async;
+using rpc::future;
+using rpc::thread;
 
 using std::cout;
 using std::endl;
@@ -39,17 +38,27 @@ enum continuation_t { do_nothing,
                       do_daisychain_func, do_daisychain,
                       do_tree_func, do_tree };
 
+double busywait_rate = 1.0e+9;  // operations per second
+
 void run_next(double time, continuation_t cont, ptrdiff_t njobs);
 
 void busywait(double time, continuation_t cont, ptrdiff_t njobs)
 {
   assert(njobs >= 0);
   if (njobs == 0) return;
+#if 0
   const auto t0 = gettime();
   for (;;) {
     const auto t1 = gettime();
     if (elapsed(t1, t0) >= time) break;
   }
+#else
+  ptrdiff_t count = llrint(time * busywait_rate);
+  double eps = 1.0e-10;
+  double x = 1.0;
+  for (ptrdiff_t i=0; i<count; ++i) x = x * (1.0+eps) + eps;
+  volatile double y = x;
+#endif
   run_next(time, cont, njobs-1);
 }
 struct busywait_action:
@@ -98,6 +107,19 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
     break;
   }
   }
+}
+
+void calibrate_busywait()
+{
+  busywait_rate = 1.0e+9;       // irrelevant but non-zero
+  auto count = 1.0e+6;          // choice
+  auto t0 = gettime();
+  busywait(count / busywait_rate, do_nothing, 1);
+  auto t1 = gettime();
+  auto dt = elapsed(t1, t0);
+  auto flop_sec = 2.0 * count / dt;
+  cout << "Busy-waiting with " << flop_sec / 1.0e+9 << " Gflop/sec\n";
+  busywait_rate = count / dt;
 }
 
 
@@ -413,8 +435,9 @@ int rpc_main(int argc, char** argv)
   const auto t0 = gettime();
   const auto t1 = gettime();
   const double dt = elapsed(t1, t0);
-  cout << "Timing overhead: " << dt * 1.0e+6 << " µsec" << endl
-       << endl;
+  cout << "Timing overhead: " << dt * 1.0e+6 << " µsec" << endl;
+  calibrate_busywait();
+  cout << endl;
   
   rpcbench_local_functions();
   rpcbench_local_actions();

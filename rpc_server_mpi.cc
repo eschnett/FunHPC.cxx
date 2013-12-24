@@ -152,10 +152,11 @@ namespace rpc {
       }
       // Wait
       if (!did_communicate) {
-        qthread::this_thread::yield();
+        this_thread::yield();
       }
     }
-      
+    std::cout << "TODO mpi server finished\n";
+    
     // Cancel receives
     for (auto& recv_req: recv_reqs) recv_req.cancel();
     // Cancel sends
@@ -182,7 +183,7 @@ namespace rpc {
         typeid(*func) != typeid(rpc::terminate_stage_4_action::evaluate))
     {
       // // TODO: block thread instead of sleeping
-      // qthread::this_thread::sleep_for(std::chrono::seconds(1000000));
+      // nthis_thread::sleep_for(std::chrono::seconds(1000000));
       // assert(0);
       // This assumes that the calling thread will not attempt to
       // perform significant work

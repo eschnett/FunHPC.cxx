@@ -1,17 +1,9 @@
 #ifndef RPC_DEFS_HH
 #define RPC_DEFS_HH
 
-#include "qthread.hh"
+#include "rpc_future.hh"
 
 namespace rpc {
-  
-  using qthread::future;
-  using qthread::lock_guard;
-  using qthread::mutex;
-  using qthread::promise;
-  using qthread::shared_future;
-  
-  
   
   // Determine the class type of a member function
   template<typename T>
@@ -59,13 +51,13 @@ namespace rpc {
   template<typename T, typename FUN>
   auto future_then(future<T>& ftr, const FUN& fun) -> future<decltype(fun(ftr))>
   {
-    return qthread::async([=](){ return fun(ftr); });
+    return async([=](){ return fun(ftr); });
   }
   template<typename T, typename FUN>
   auto future_then(const shared_future<T>& ftr, const FUN& fun) ->
     shared_future<decltype(fun(ftr))>
   {
-    return qthread::async([=](){ return fun(ftr); });
+    return async([=](){ return fun(ftr); });
   }
   
   // TODO: Implement "futurize"

@@ -128,7 +128,7 @@ inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {
   return vector_t::client(rpc::async(x0, vector_t::cfcopy_action()));
 }
-inline auto afnrm2(const vector_t::client& x0) -> qthread::shared_future<double>
+inline auto afnrm2(const vector_t::client& x0) -> rpc::shared_future<double>
 {
   return rpc::async(x0, vector_t::cfnrm2_action());
 }
@@ -281,7 +281,7 @@ inline auto afgemv(bool trans,
   return vector_t::client(rpc::async(a, matrix_t::cfgemv_action(),
                                      trans, alpha, x, beta, y0));
 }
-inline auto afnrm2(const matrix_t::client& a0) -> qthread::shared_future<double>
+inline auto afnrm2(const matrix_t::client& a0) -> rpc::shared_future<double>
 {
   return rpc::async(a0, matrix_t::cfnrm2_action());
 }

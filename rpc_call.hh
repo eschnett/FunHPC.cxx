@@ -1,14 +1,13 @@
 #ifndef RPC_CALL
 #define RPC_CALL
 
+#include "rpc_thread.hh"
 #include "rpc_client_fwd.hh"
 #include "rpc_defs.hh"
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
-
-#include "qthread.hh"
 
 #include <boost/make_shared.hpp>
 // Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
@@ -25,12 +24,9 @@
 #include <functional>
 #include <sstream>
 #include <type_traits>
+#include <utility>
 
 namespace rpc {
-  
-  using qthread::future;
-  using qthread::promise;
-  using qthread::thread;
   
   using boost::make_shared;
   using boost::shared_ptr;
@@ -58,7 +54,7 @@ namespace rpc {
   template<typename F, typename R>
   struct action_finish: public callable_base {
     global_ptr<promise<R>> p;
-    R res;
+    typename std::remove_const<typename std::remove_reference<R>::type>::type res;
     action_finish() {}          // only for boost::serialize
     action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
     void execute()
@@ -100,8 +96,8 @@ namespace rpc {
   template<typename F, typename R, typename... As>
   struct action_evaluate: public callable_base {
     global_ptr<promise<R>> p;
-    // TODO: Remove const& from tuple arguments
-    tuple<As...> args;
+    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
+    // tuple<As...> args;
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<R>>& p, const As&... args):
       p(p), args(args...) {}
@@ -109,7 +105,6 @@ namespace rpc {
     {
       auto cont = tuple_map(F(), args);
       if (!p) return;
-      // typename F::finish(p, cont)();
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
     }
   private:
@@ -128,11 +123,11 @@ namespace rpc {
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<void>>& p, const As&... args):
       p(p), args(args...) {}
+    // TODO: Allow moving arguments via &&?
     void execute()
     {
       tuple_map(F(), args);
       if (!p) return;
-      // (typename F::finish(p))();
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
     }
   private:
@@ -162,7 +157,13 @@ namespace rpc {
   // Template for an action
   template<typename F, typename W, typename R, typename... As>
   struct action_impl_t: public action_base<F> {
-    R operator()(As... args) const { return W::get_value()(args...); }
+    // Note: The argument types As are defined by the function that is
+    // wrapped to form this action. As thus cannot adapt for perfect
+    // forwarding.
+    R operator()(const As&... args) const
+    {
+      return W::get_value()(args...);
+    }
     typedef action_evaluate<F, R, As...> evaluate;
     typedef action_finish<F, R> finish;
   };
@@ -198,39 +199,38 @@ namespace rpc {
       return thread(func, args...).detach();
     }
 #endif
-    typedef decltype(func(args...)) R;
-    promise<R>* p = nullptr;
+    promise<typename result_of<F(As...)>::type>* p = nullptr;
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
   }
   
   template<typename F, typename... As>
   auto async(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<decltype(func(args...))>>::type
+                       future<typename std::result_of<F(As...)>::type>>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return qthread::async(func, args...);
+      return async(func, args...);
     }
 #endif
-    typedef decltype(func(args...)) R;
-    auto p = new promise<R>;
-    server->call(dest, make_shared<typename F::evaluate>(p, args...));
+    auto p = new promise<typename result_of<F(As...)>::type>;
+    server->call(dest,
+                 make_shared<typename F::evaluate>(p,
+                                                   args...));
     return p->get_future();
   }
   
   template<typename F, typename... As>
   auto sync(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       decltype(func(args...))>::type
+                       typename result_of<F(As...)>::type>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return func(args...);
     }
 #endif
-    typedef decltype(func(args...)) R;
-    auto p = new promise<R>;
+    auto p = new promise<typename result_of<F(As...)>::type>;
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
     return p->get_future().get();
   }
@@ -238,9 +238,9 @@ namespace rpc {
   template<typename F, typename... As>
   auto deferred(int dest, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<decltype(func(args...))>>::type
+                       future<typename result_of<F(As...)>::type>>::type
   {
-    return qthread::async(sync, dest, func, args...);
+    return async(launch::deferred, sync, dest, func, args...);
   }
   
   
@@ -248,7 +248,7 @@ namespace rpc {
   // Template for an action
   template<typename F, typename W, typename R, typename T, typename... As>
   struct member_action_impl_t: public action_base<F> {
-    R operator()(const client<T>& obj, const As&... args) const
+    R operator()(const client<T>& obj, As... args) const
     {
       return (*obj.*W::get_value())(args...);
     }
@@ -281,17 +281,14 @@ namespace rpc {
   template<typename T, typename F, typename... As>
   auto deferred(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       decltype(deferred(ptr.get_proc(),
-                                         func, ptr, args...))>::type
+                       future<typename result_of<F(const client<T>&, As...)>::type>>::type
   {
     return deferred(ptr.get_proc(), func, ptr, args...);
   }
   
   template<typename T, typename F, typename... As>
   auto detached(const client<T>& ptr, const F& func, const As&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
-                       decltype(apply(ptr.get_proc(),
-                                      func, ptr, args...))>::type
+    typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     return detached(ptr.get_proc(), func, ptr, args...);
   }
@@ -299,8 +296,7 @@ namespace rpc {
   template<typename T, typename F, typename... As>
   auto async(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       decltype(async(ptr.get_proc(),
-                                      func, ptr, args...))>::type
+                       future<typename result_of<F(const client<T>&, As...)>::type>>::type
   {
     return async(ptr.get_proc(), func, ptr, args...);
   }
@@ -308,8 +304,7 @@ namespace rpc {
   template<typename T, typename F, typename... As>
   auto sync(const client<T>& ptr, const F& func, const As&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       decltype(sync(ptr.get_proc(),
-                                     func, ptr, args...))>::type
+                       typename result_of<F(const client<T>&, As...)>::type>::type
   {
     return sync(ptr.get_proc(), func, ptr, args...);
   }

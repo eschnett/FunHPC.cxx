@@ -1,9 +1,8 @@
 #ifndef RPC_GLOBAL_PTR_FWD_HH
 #define RPC_GLOBAL_PTR_FWD_HH
 
+#include "rpc_future.hh"
 #include "rpc_server.hh"
-
-#include "qthread.hh"
 
 #include <boost/serialization/access.hpp>
 
@@ -11,8 +10,6 @@
 #include <iostream>
 
 namespace rpc {
-  
-  using qthread::future;
   
   using std::intptr_t;
   using std::ostream;

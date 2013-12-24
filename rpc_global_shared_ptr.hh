@@ -41,12 +41,11 @@ namespace rpc {
   {
     if (is_local()) return make_ready_future(*this);
     const auto& owner = mgr->owner;
-    return qthread::async([owner]() -> global_shared_ptr<T>
-                          {
-                            return sync(owner.get_proc(),
-                                        global_owner_get_ptr_action<T>(),
-                                        owner);
-                          });
+    return async([owner]() -> global_shared_ptr<T>
+                 {
+                   return sync(owner.get_proc(),
+                               global_owner_get_ptr_action<T>(), owner);
+                 });
   }
   
   template<typename T>

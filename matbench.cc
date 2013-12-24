@@ -83,7 +83,7 @@ vector<int> find_all_threads()
   vector<int> threads;
   for (int p=0; p<server->size(); ++p) {
     // TODO: Collect thread counts from processes
-    for (int t=0; t<qthread::thread::hardware_concurrency(); ++t) {
+    for (int t=0; t<rpc::thread::hardware_concurrency(); ++t) {
       threads.push_back(p);
     }
   }
@@ -317,7 +317,7 @@ void bench_fdense_parallel()
 
 void bench_fblock_local()
 {
-  const auto nthreads = qthread::thread::hardware_concurrency();
+  const auto nthreads = rpc::thread::hardware_concurrency();
   const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
   
   cout << "bench_fblock_local "

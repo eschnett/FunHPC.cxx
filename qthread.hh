@@ -5,6 +5,28 @@
 #include "qthread_mutex.hh"
 #include "qthread_thread.hh"
 
+namespace rpc {
+  
+  using ::qthread::async;
+  using ::qthread::future;
+  using ::qthread::launch;
+  using ::qthread::lock_guard;
+  using ::qthread::mutex;
+  using ::qthread::promise;
+  using ::qthread::shared_future;
+  namespace this_thread {
+    using ::qthread::this_thread::sleep_for;
+    using ::qthread::this_thread::yield;
+  }
+  using ::qthread::thread;
+  
+  using ::qthread::thread_main;
+  using ::qthread::thread_initialize;
+  using ::qthread::thread_finalize;
+  using ::qthread::thread_finalize2;
+  
+}
+
 namespace std {
   
   // Poison std:: functionality that is also provided by qthread

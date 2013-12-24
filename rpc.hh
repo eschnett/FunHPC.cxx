@@ -1,6 +1,10 @@
 #ifndef RPC_HH
 #define RPC_HH
 
+#include "rpc_future.hh"
+#include "rpc_mutex.hh"
+#include "rpc_thread.hh"
+
 #include "rpc_action.hh"
 #include "rpc_broadcast.hh"
 #include "rpc_call.hh"

@@ -6,25 +6,18 @@
 #include "rpc_defs.hh"
 #include "rpc_server.hh"
 
-#include "qthread.hh"
-
 #include <boost/mpi.hpp>
 
 
 
 namespace rpc {
   
-  using namespace qthread;
-  
   using boost::optional;
   
-  // using std::async;
   using std::atomic;
   using std::list;
   using std::max;
   using std::min;
-  // using std::mutex;
-  // using std::thread;
   using std::vector;
   
   

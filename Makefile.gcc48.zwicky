@@ -5,44 +5,66 @@ CC  = mpicc
 CXX = mpic++
 FC  = mpif90
 
-CPPFLAGS = -I/home/eschnett/qthread-1.10/include -I/home/eschnett/boost_1_54_0-gcc48/include -DBLAS -DBOOST_MPI_HOMOGENEOUS # -DRPC_DISABLE_CALL_SHORTCUT
-CFLAGS   = -g -std=c99   -march=native -Ofast
-CXXFLAGS = -g -std=c++11 -march=native -Ofast
-FFLAGS   = -g            -march=native -Ofast
+# -DRPC_DISABLE_CALL_SHORTCUT
+CPPFLAGS = \
+	-I/home/eschnett/hpx/include/hpx/external -I/home/eschnett/hpx/include \
+	-DHPX_LIMIT=6 \
+	-I/home/eschnett/boost_1_54_0-gcc48/include \
+	-DBOOST_MPI_HOMOGENEOUS \
+	-I/home/eschnett/qthread-1.10/include \
+	-DRPC_HPX \
+	-DBLAS
+CFLAGS   = -pipe -g -std=c99   -march=native # -Ofast
+CXXFLAGS = -pipe -g -std=c++11 -march=native # -Ofast
+FFLAGS   = -pipe -g            -march=native # -Ofast
 
-LDFLAGS  = -L/home/eschnett/boost_1_54_0-gcc48/lib -Wl,-rpath,/home/eschnett/boost_1_54_0-gcc48/lib -L/home/eschnett/qthread-1.10/lib -Wl,-rpath,/home/eschnett/qthread-1.10/lib -L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib
-LIBS     = -lboost_mpi -lboost_serialization -lqthread -lgfortran
+LDFLAGS  = \
+	-L/home/eschnett/hpx/lib/hpx -Wl,-rpath,/home/eschnett/hpx/lib/hpx \
+	-L/home/eschnett/boost_1_54_0-gcc48/lib -Wl,-rpath,/home/eschnett/boost_1_54_0-gcc48/lib \
+	-L/home/eschnett/qthread-1.10/lib -Wl,-rpath,/home/eschnett/qthread-1.10/lib \
+	-L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib
+LIBS     = \
+	-lhpxd -lhpx_initd -lhpx_serializationd \
+	-lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context \
+	-lboost_mpi -lboost_serialization \
+	-lqthread \
+	-lgfortran
 
 
 
-EXES = bench demo matbench mattest qthread_test
+EXES = bench demo matbench mattest qthread_test hpx_test
 
 BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
+HPX_SRCS     = hpx.cc
 RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
-	rpc_main.cc rpc_server.cc rpc_server_mpi.cc
+	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
+	${QTHREAD_SRCS} ${HPX_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
-BENCH_SRCS        = bench.cc ${RPC_SRCS} ${QTHREAD_SRCS}
-DEMO_SRCS         = demo.cc ${RPC_SRCS} ${QTHREAD_SRCS}
-MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${RPC_SRCS} ${QTHREAD_SRCS} ${MATRIX_SRCS}
-MATTEST_SRCS      = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${QTHREAD_SRCS} ${MATRIX_SRCS}
+BENCH_SRCS        = bench.cc ${RPC_SRCS}
+DEMO_SRCS         = demo.cc ${RPC_SRCS}
+MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
+MATTEST_SRCS      = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
 QTHREAD_TEST_SRCS = qthread_test.cc ${QTHREAD_SRCS}
+HPX_TEST_SRCS     = hpx_test.cc
 
 BENCH_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
 DEMO_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
 MATBENCH_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
 MATTEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
 QTHREAD_TEST_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${QTHREAD_TEST_SRCS}}}}}
+HPX_TEST_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
 
 BENCH_DEPS        = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
 DEMO_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
 MATBENCH_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATBENCH_SRCS}}}}}
 MATTEST_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATTEST_SRCS}}}}}
 QTHREAD_TEST_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${QTHREAD_TEST_SRCS}}}}}
+HPX_TEST_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_TEST_SRCS}}}}}
 
-OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${QTHREAD_TEST_OBJS}
-DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${QTHREAD_TEST_DEPS}
+OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${QTHREAD_TEST_OBJS} ${HPX_TEST_OBJS}
+DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${QTHREAD_TEST_DEPS} ${HPX_TEST_DEPS}
 
 
 
@@ -71,6 +93,8 @@ matbench: ${MATBENCH_OBJS}
 mattest: ${MATTEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 qthread_test: ${QTHREAD_TEST_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+hpx_test: ${HPX_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.o: %.c

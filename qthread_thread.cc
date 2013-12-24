@@ -3,9 +3,15 @@
 #include <algorithm>
 #include <cstdlib>
 
+
+
+namespace rpc {
+  int real_main(int argc, char** argv);
+}
+
+
+
 namespace qthread {
-  
-  
   
   detached_threads* detached = nullptr;
   
@@ -91,20 +97,29 @@ namespace qthread {
   
   
   
-  void initialize()
+  int thread_main(int argc, char** argv)
+  {
+    return rpc::real_main(argc, argv);
+  }
+  
+  void thread_initialize()
   {
     setenv("QTHREAD_INFO", "1", 1);
-    setenv("QTHREAD_STACK_SIZE", "8192", 1);
+    setenv("QTHREAD_STACK_SIZE", "81920", 1);
     qthread_initialize();
     detached = new detached_threads();
     detached->start_cleanup();
   }
   
-  void finalize()
+  void thread_finalize()
   {
     detached->stop_cleanup();
     delete detached;
     qthread_finalize();
+  }
+  
+  void thread_finalize2()
+  {
   }
   
 }

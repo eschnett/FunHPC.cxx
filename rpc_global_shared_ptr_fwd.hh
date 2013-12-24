@@ -3,8 +3,6 @@
 
 #include "rpc_global_ptr_fwd.hh"
 
-#include "qthread.hh"
-
 #include <boost/make_shared.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
@@ -15,8 +13,6 @@
 #include <cstdlib>
 
 namespace rpc {
-  
-  using qthread::shared_future;
   
   using boost::make_shared;
   using boost::shared_ptr;
@@ -264,7 +260,7 @@ namespace rpc {
   
   
   template<typename T, typename... As>
-  global_shared_ptr<T> make_global_shared(As... args)
+  global_shared_ptr<T> make_global_shared(const As&... args)
   {
     return make_shared<T>(args...);
   }

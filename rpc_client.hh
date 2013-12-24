@@ -8,6 +8,8 @@
 
 #include <boost/serialization/export.hpp>
 
+#include <utility>
+
 namespace rpc {
   
   template<typename T, typename... As>
@@ -19,7 +21,7 @@ namespace rpc {
   };
   
   template<typename T, typename... As>
-  client<T> make_remote_client(int proc, As... args)
+  client<T> make_remote_client(int proc, const As&... args)
   {
     return async(proc, make_global_shared_action<T, As...>(), args...);
   }

@@ -121,10 +121,13 @@ namespace qthread {
   
   
   
+  enum class launch { async, deferred, sync };
+  
   template<typename F, typename... As>
   auto async(F&& f, As&&... args) ->
     typename std::enable_if<
-      !std::is_void<typename std::result_of<F(As...)>::type>::value,
+      (!std::is_same<F, launch>::value &&
+       !std::is_void<typename std::result_of<F(As...)>::type>::value),
       future<typename std::result_of<F(As...)>::type> >::type
   {
     typedef typename std::result_of<F(As...)>::type R;
@@ -141,7 +144,8 @@ namespace qthread {
   template<typename F, typename... As>
   auto async(F&& f, As&&... args) ->
     typename std::enable_if<
-      std::is_void<typename std::result_of<F(As...)>::type>::value,
+      (!std::is_same<F, launch>::value &&
+       std::is_void<typename std::result_of<F(As...)>::type>::value),
       future<typename std::result_of<F(As...)>::type> >::type
   {
     auto prm = std::make_shared<promise<void>>();
@@ -153,6 +157,13 @@ namespace qthread {
     thread(func).detach();
     return prm->get_future();
   }
+  
+  template<typename F, typename... As>
+  auto async(launch l, F&& f, As&&... args) ->
+    decltype(async(std::forward<F>(f), std::forward<As>(args)...))
+  {
+    return async(std::forward<F>(f), std::forward<As>(args)...);
+  }  
   
   
   
@@ -188,8 +199,10 @@ namespace qthread {
   
   
   
-  void initialize();
-  void finalize();
+  int thread_main(int argc, char** argv);
+  void thread_initialize();
+  void thread_finalize();
+  void thread_finalize2();
   
 }
 

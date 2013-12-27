@@ -96,8 +96,9 @@ namespace rpc {
   template<typename F, typename R, typename... As>
   struct action_evaluate: public callable_base {
     global_ptr<promise<R>> p;
-    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
+    // TODO: use std::reference_wrapper?
     // tuple<As...> args;
+    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<R>>& p, const As&... args):
       p(p), args(args...) {}
@@ -119,7 +120,8 @@ namespace rpc {
   template<typename F, typename... As>
   struct action_evaluate<F, void, As...>: public callable_base {
     global_ptr<promise<void>> p;
-    tuple<As...> args;
+    // tuple<As...> args;
+    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<void>>& p, const As&... args):
       p(p), args(args...) {}
@@ -191,7 +193,7 @@ namespace rpc {
   // Call an action on a given destination
   
   template<typename F, typename... As>
-  auto detached(int dest, const F& func, const As&... args) ->
+  auto detached(int dest, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -204,24 +206,27 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto async(int dest, const F& func, const As&... args) ->
+  auto async(int dest, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<typename std::result_of<F(As...)>::type>>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return async(func, args...);
+      // return async(func, args...);
+      // return async(func, typename std::remove_reference<As>::type(args)...);
+      return async(typename std::remove_reference<F>::type(func), args...);
     }
 #endif
     auto p = new promise<typename result_of<F(As...)>::type>;
+    auto f = p->get_future();
     server->call(dest,
                  make_shared<typename F::evaluate>(p,
                                                    args...));
-    return p->get_future();
+    return f;
   }
   
   template<typename F, typename... As>
-  auto sync(int dest, const F& func, const As&... args) ->
+  auto sync(int dest, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        typename result_of<F(As...)>::type>::type
   {
@@ -231,12 +236,13 @@ namespace rpc {
     }
 #endif
     auto p = new promise<typename result_of<F(As...)>::type>;
+    auto f = p->get_future();
     server->call(dest, make_shared<typename F::evaluate>(p, args...));
-    return p->get_future().get();
+    return f.get();
   }
   
   template<typename F, typename... As>
-  auto deferred(int dest, const F& func, const As&... args) ->
+  auto deferred(int dest, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<typename result_of<F(As...)>::type>>::type
   {
@@ -279,7 +285,7 @@ namespace rpc {
   // Call a member action via a client
   
   template<typename T, typename F, typename... As>
-  auto deferred(const client<T>& ptr, const F& func, const As&... args) ->
+  auto deferred(const client<T>& ptr, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<typename result_of<F(const client<T>&, As...)>::type>>::type
   {
@@ -287,14 +293,14 @@ namespace rpc {
   }
   
   template<typename T, typename F, typename... As>
-  auto detached(const client<T>& ptr, const F& func, const As&... args) ->
+  auto detached(const client<T>& ptr, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
     return detached(ptr.get_proc(), func, ptr, args...);
   }
   
   template<typename T, typename F, typename... As>
-  auto async(const client<T>& ptr, const F& func, const As&... args) ->
+  auto async(const client<T>& ptr, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<typename result_of<F(const client<T>&, As...)>::type>>::type
   {
@@ -302,7 +308,7 @@ namespace rpc {
   }
   
   template<typename T, typename F, typename... As>
-  auto sync(const client<T>& ptr, const F& func, const As&... args) ->
+  auto sync(const client<T>& ptr, F func, As... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        typename result_of<F(const client<T>&, As...)>::type>::type
   {

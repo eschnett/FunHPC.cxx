@@ -134,8 +134,7 @@ namespace rpc {
                (typeid(*recv_call) !=
                 typeid(rpc::terminate_stage_4_action::evaluate))))
         {
-          // TODO: avoid lambda
-          thread([=]{ recv_call->execute(); }).detach();
+          thread(&callable_base::execute, recv_call).detach();
         }
         recv_call.reset();
         // Post next receive
@@ -155,7 +154,6 @@ namespace rpc {
         this_thread::yield();
       }
     }
-    std::cout << "TODO mpi server finished\n";
     
     // Cancel receives
     for (auto& recv_req: recv_reqs) recv_req.cancel();

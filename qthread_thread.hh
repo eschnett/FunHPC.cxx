@@ -1,77 +1,56 @@
 #ifndef QTHREAD_THREAD_HH
 #define QTHREAD_THREAD_HH
 
-#include <qthread.h>
+#include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
 
 #include "qthread_future.hh"
 #include "qthread_mutex.hh"
 
-#include <atomic>
 #include <chrono>
 #include <functional>
 #include <vector>
+#include <utility>
 
 
 
 namespace qthread {
   
-  class detached_threads;
-  extern detached_threads* detached;
-  
-  
-  
-  class thread_manager {
-    
-    // The function to call
-    std::function<void()> func;
-    
-    static aligned_t wrapper(void* mgr)
-    {
-      ((thread_manager*)mgr)->func();
-      return 1;
-    }
-    
-    // We initialize ret to 0, and set it to 1 once the thread has
-    // finished
-    aligned_t m_done;
-    
-  public:
-    
-    thread_manager(const std::function<void()>& func):
-      func(func), m_done(0)
-    {
-      int ierr = qthread_fork(wrapper, this, &m_done);
-      assert(!ierr);
-    }
-    
-    ~thread_manager()
-    {
-      aligned_t tmp;
-      qthread_readFF(&tmp, &m_done);
-      assert(done());
-    }
-    
-    bool done() const { return (volatile aligned_t&)m_done; }
-  };
+  template<typename T>
+  typename std::decay<T>::type decay_copy(T&& value)
+  {
+    return std::forward<T>(value);
+  }
   
   
   
   class thread {
     
-    thread_manager* mgr;
+    struct thread_args {
+      std::function<void()> func;
+      promise<void> p;
+      thread_args(const std::function<void()>& func): func(func) {}
+    };
+    
+    static aligned_t run_thread(void* args_);
+    static future<void> start_thread(const std::function<void()>& func);
+    
+    
+    
+    future<void> handle;
     
   public:
     
-    typedef thread_manager* native_handle_type;
-    
-    thread(): mgr(nullptr) {}
+    thread() {}
     thread(thread&& other): thread() { swap(other); }
     
     template<typename F, typename... As>
-    explicit thread(F&& f, As&&... args):
-      mgr(new thread_manager(std::bind(f, args...)))
+    explicit thread(F&& f, As&&... args)
     {
+      auto fb = std::bind(decay_copy<F>(std::forward<F>(f)),
+                          decay_copy<As>(std::forward<As>(args))...);
+      // auto fb = std::bind(std::forward<F>(f), std::forward<As>(args)...);
+      handle = start_thread([fb]() { fb(); });
     }
     
     thread(const thread&) = delete;
@@ -82,20 +61,20 @@ namespace qthread {
     
     thread& operator=(thread&& other)
     {
-      if (mgr) std::terminate();
+      if (joinable()) std::terminate();
       swap(other);
       return *this;
     }
     
-    bool joinable() const { return mgr; }
+    bool joinable() const { return handle.valid(); }
     
     static unsigned int hardware_concurrency() { return qthread_num_workers(); }
     
-    void join() { delete mgr; mgr = nullptr; }
+    void join() { assert(joinable()); handle.wait(); assert(!joinable()); }
     
-    void detach();
+    void detach() { handle = future<void>(); }
     
-    void swap(thread& other) { std::swap(mgr, other.mgr); }
+    void swap(thread& other) { std::swap(handle, other.handle); }
   };
   
   
@@ -123,79 +102,64 @@ namespace qthread {
   
   enum class launch { async, deferred, sync };
   
-  template<typename F, typename... As>
-  auto async(F&& f, As&&... args) ->
-    typename std::enable_if<
-      (!std::is_same<F, launch>::value &&
-       !std::is_void<typename std::result_of<F(As...)>::type>::value),
-      future<typename std::result_of<F(As...)>::type> >::type
+  template<typename F, typename... As> 
+  typename std::enable_if<
+    !std::is_void<typename std::result_of<
+                    typename std::decay<F>::type
+                    (typename std::decay<As>::type...)>::type>::value,
+    future<typename std::result_of<
+             typename std::decay<F>::type
+             (typename std::decay<As>::type...)>::type>
+    >::type
+  async(launch policy, F&& func, As&&... args)
   {
-    typedef typename std::result_of<F(As...)>::type R;
-    auto prm = std::make_shared<promise<R>>();
+    typedef typename std::result_of<
+      typename std::decay<F>::type(typename std::decay<As>::type...)>::type R;
+    auto p = new promise<R>();
+    auto f = p->get_future();
     // gcc does not handle lambda expressions with parameter packs
-    auto fbnd = std::bind(f, args...);
-    auto func = [prm, fbnd]() mutable {
-      prm->set_value(fbnd());
-    };
-    thread(func).detach();
-    return prm->get_future();
+    auto func0 = std::bind(decay_copy<F>(std::forward<F>(func)),
+                           decay_copy<As>(std::forward<As>(args))...);
+    thread([p, func0]() {
+        p->set_value(func0());
+        delete p;
+      }).detach();
+    return f;
   }
   
-  template<typename F, typename... As>
-  auto async(F&& f, As&&... args) ->
-    typename std::enable_if<
-      (!std::is_same<F, launch>::value &&
-       std::is_void<typename std::result_of<F(As...)>::type>::value),
-      future<typename std::result_of<F(As...)>::type> >::type
+  template<typename F, typename... As> 
+  typename std::enable_if<
+    std::is_void<typename std::result_of<
+                   typename std::decay<F>::type
+                   (typename std::decay<As>::type...)>::type>::value,
+    future<typename std::result_of<
+             typename std::decay<F>::type
+             (typename std::decay<As>::type...)>::type>
+    >::type
+  async(launch policy, F&& func, As&&... args)
   {
-    auto prm = std::make_shared<promise<void>>();
-    auto fbnd = std::bind(f, args...);
-    auto func = [prm, fbnd]() {
-      fbnd();
-      prm->set_value();
-    };
-    thread(func).detach();
-    return prm->get_future();
+    auto p = new promise<void>();
+    auto f = p->get_future();
+    // gcc does not handle lambda expressions with parameter packs
+    auto func0 = std::bind(decay_copy<F>(std::forward<F>(func)),
+                           decay_copy<As>(std::forward<As>(args))...);
+    thread([p, func0]() {
+        func0();
+        p->set_value();
+        delete p;
+      }).detach();
+    return f;
   }
   
-  template<typename F, typename... As>
-  auto async(launch l, F&& f, As&&... args) ->
-    decltype(async(std::forward<F>(f), std::forward<As>(args)...))
+  template<typename F, typename... As> 
+  future<typename std::result_of<
+           typename std::decay<F>::type
+           (typename std::decay<As>::type...)>::type>
+  async(F&& func, As&&... args)
   {
-    return async(std::forward<F>(f), std::forward<As>(args)...);
-  }  
-  
-  
-  
-  class detached_threads {
-    
-    // TODD: Use a lock-free data structure such as qlfqueue or
-    // similar?
-    mutex mtx;
-    std::vector<thread_manager*> detached;
-    std::vector<thread_manager*> incoming;
-    
-    thread cleanup_thread;
-    std::atomic<bool> signal_stop;
-    
-  public:
-    
-    ~detached_threads();
-    
-    void start_cleanup();
-    void stop_cleanup();
-    
-    void add(thread_manager* mgr)
-    {
-      lock_guard<mutex> g(mtx);
-      incoming.push_back(mgr);
-    }
-    
-  private:
-    
-    // Periodically clean up detached threads
-    void cleanup();
-  };
+    return async(launch::async,
+                 std::forward<F>(func), std::forward<As>(args)...);
+  }
   
   
   

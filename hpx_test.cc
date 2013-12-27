@@ -22,6 +22,8 @@ int rpc_main(int argc, char** argv)
   // MPI_Init(&argc, &argv);
   auto f = hpx::async(outx, 1);
   f.wait();
+  hpx::thread(outx, 1).detach();
+  hpx::this_thread::sleep_for(boost::chrono::seconds(1));
   // MPI_Finalize();
   return 0;
 }

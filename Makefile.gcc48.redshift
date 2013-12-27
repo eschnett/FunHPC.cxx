@@ -1,22 +1,26 @@
+# export BOOST_DIR=$HOME/boost_1_55_0
+# export HPX_DIR=$HOME/hpx-gcc48
+# export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
+
 CC  = env OMPI_CC=gcc-mp-4.8 openmpicc
 CXX = env OMPI_CXX=g++-mp-4.8 openmpic++
 FC  = env OMPI_FC=gfortran-mp-4.8 openmpif90
 
 # -DRPC_DISABLE_CALL_SHORTCUT
 CPPFLAGS = \
-	-I/Users/eschnett/hpx/include/hpx/external -I/Users/eschnett/hpx/include \
+	-I/Users/eschnett/hpx-gcc48/include/hpx/external -I/Users/eschnett/hpx-gcc48/include \
 	-DHPX_LIMIT=6 \
 	-I/Users/eschnett/boost_1_55_0/include \
 	-DBOOST_MPI_HOMOGENEOUS \
 	-I/Users/eschnett/qthread-1.10/include \
-	-DRPC_HPX \
+	-DRPC_QTHREADS \
 	-DBLAS
 CFLAGS   = -g -std=c99   -march=native # -Ofast
 CXXFLAGS = -g -std=c++11 -march=native # -Ofast
 FFLAGS   = -g            -march=native # -Ofast
 
 LDFLAGS  = \
-	-L/Users/eschnett/hpx/lib/hpx -Wl,-rpath,/Users/eschnett/hpx/lib/hpx \
+	-L/Users/eschnett/hpx-gcc48/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-gcc48/lib/hpx \
 	-L/Users/eschnett/boost_1_55_0/lib \
 	-L/Users/eschnett/qthread-1.10/lib
 LIBS     = \
@@ -25,11 +29,6 @@ LIBS     = \
 	-lboost_mpi -lboost_serialization \
 	-lqthread \
 	-lgfortran
-
-# NOTE: To run an application, set:
-# export BOOST_DIR=$HOME/boost_1_55_0
-# export HPX_DIR=$HOME/hpx
-# export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
 
 
 

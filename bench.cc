@@ -1,6 +1,7 @@
 #include "rpc.hh"
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -11,6 +12,7 @@ using rpc::async;
 using rpc::future;
 using rpc::thread;
 
+using std::atomic;
 using std::cout;
 using std::endl;
 using std::flush;
@@ -42,6 +44,8 @@ double busywait_rate = 1.0e+9;  // operations per second
 
 void run_next(double time, continuation_t cont, ptrdiff_t njobs);
 
+atomic<ptrdiff_t> busywait_count;
+atomic<double> busywait_result;
 void busywait(double time, continuation_t cont, ptrdiff_t njobs)
 {
   assert(njobs >= 0);
@@ -57,7 +61,9 @@ void busywait(double time, continuation_t cont, ptrdiff_t njobs)
   double eps = 1.0e-10;
   double x = 1.0;
   for (ptrdiff_t i=0; i<count; ++i) x = x * (1.0+eps) + eps;
-  volatile double y = x;
+  // volatile double y __attribute__((__unused__)) = x;
+  ++busywait_count;
+  busywait_result = x;
 #endif
   run_next(time, cont, njobs-1);
 }
@@ -73,7 +79,7 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
 {
   switch (cont) {
   default:
-    assert(0); __builtin_unreachable();
+    __builtin_unreachable(); assert(0);
   case do_nothing:
     break;
   case do_daisychain_func: {
@@ -111,6 +117,8 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
 
 void calibrate_busywait()
 {
+  busywait_count = 0;
+  busywait_result = 0.0;
   busywait_rate = 1.0e+9;       // irrelevant but non-zero
   auto count = 1.0e+6;          // choice
   auto t0 = gettime();
@@ -167,8 +175,6 @@ void run_multi_func(double time, ptrdiff_t njobs, ptrdiff_t nthreads)
 {
   cout << "    Configuration: function multi...      " << flush;
   vector<future<void>> fs(nthreads);
-  const auto here = rpc::server->rank();
-  const vector<int> locs(1, here);
   const auto t0 = gettime();
   auto njobs_left = njobs;
   const auto njobs1 = (njobs + nthreads - 1) / nthreads;

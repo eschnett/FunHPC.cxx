@@ -26,24 +26,21 @@ namespace rpc {
   using ::boost::lock_guard;
   using ::boost::mutex;
   
-  using ::hpx::promise;
-#if 0
-  using ::hpx::shared_future;
-#endif
-  using ::hpx::thread;
-  
-  // future
-#if 0
-  template<typename T> using future = ::hpx::unique_future<T>;
-#endif
-  
   using ::hpx::async;
   using ::hpx::launch;
-  using ::hpx::future;
+  using ::hpx::make_ready_future;
+  using ::hpx::promise;
+  using ::hpx::thread;
+  
+#if 0
+  // use unique_future and shared_future
+  
+  // future
+  template<typename T> using future = ::hpx::unique_future<T>;
+  
   using ::hpx::shared_future;
   
   // async
-#if 0
   template<typename T> class client;
   namespace detail {
     template<typename T>
@@ -62,6 +59,13 @@ namespace rpc {
     return ::hpx::async(std::forward<A0>(arg0),
                         std::forward<As>(args)...).unique();
   }
+  
+#else
+  // use future and shared_future
+  
+  using ::hpx::future;
+  using ::hpx::shared_future;
+  
 #endif
   
   namespace this_thread {

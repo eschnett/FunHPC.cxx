@@ -13,86 +13,23 @@ namespace rpc {
 
 namespace qthread {
   
-  detached_threads* detached = nullptr;
   
-  
-  
-  void thread::detach()
+  aligned_t thread::run_thread(void* args_)
   {
-    assert(mgr);
-    detached->add(mgr);
-    mgr = nullptr;
+    auto args = (thread_args*)args_;
+    args->func();
+    args->p.set_value();
+    delete args;
+    return 0;
   }
   
-  
-  
-  detached_threads::~detached_threads()
+  future<void> thread::start_thread(const std::function<void()>& func)
   {
-    assert(detached.empty());
-    assert(incoming.empty());
-    assert(!cleanup_thread.joinable());
-  }
-  
-  void detached_threads::start_cleanup()
-  {
-    // Start cleanup thread
-    signal_stop = false;
-    cleanup_thread = thread([=](){ cleanup(); });
-  }
-  
-  void detached_threads::stop_cleanup()
-  {
-    signal_stop = true;
-    cleanup_thread.join();
-  }
-  
-  void detached_threads::cleanup()
-  {
-    for (;;) {
-      bool did_some_work = false;
-      
-      // Empty incoming queue
-      {
-        auto old_size = detached.size();
-        std::vector<thread_manager*> tmp;
-        {
-          lock_guard<mutex> g(mtx);
-          swap(tmp, incoming);
-        }
-        detached.insert(detached.end(), tmp.begin(), tmp.end());
-        did_some_work |= detached.size() != old_size;
-      }
-      
-      // Walk through all threads, and destruct them if they are done
-      {
-        auto old_size = detached.size();
-        auto new_end = std::remove_if(detached.begin(), detached.end(),
-                                      [](thread_manager* mgr) {
-                                        auto done = mgr->done();
-                                        if (done) delete mgr;
-                                        return done;
-                                      });
-        detached.erase(new_end, detached.end());
-        did_some_work |= detached.size() != old_size;
-      }
-      
-      // Wait
-      // TODO: Sleep dynamically, measuring e.g. the time spent
-      // checking threads
-      if (!did_some_work) {
-        if (signal_stop) break;
-        this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-    }
-    
-    do {
-      for (auto mgr: detached) delete mgr;
-      detached.clear();
-      {
-        lock_guard<mutex> g(mtx);
-        swap(detached, incoming);
-      }
-    } while (!detached.empty());
+    auto args = new thread_args(func);
+    auto f = args->p.get_future();
+    int ierr = qthread_fork_syncvar(run_thread, args, NULL);
+    assert(!ierr);
+    return f;
   }
   
   
@@ -105,16 +42,12 @@ namespace qthread {
   void thread_initialize()
   {
     setenv("QTHREAD_INFO", "1", 1);
-    setenv("QTHREAD_STACK_SIZE", "81920", 1);
+    setenv("QTHREAD_STACK_SIZE", "131071", 1);
     qthread_initialize();
-    detached = new detached_threads();
-    detached->start_cleanup();
   }
   
   void thread_finalize()
   {
-    detached->stop_cleanup();
-    delete detached;
     qthread_finalize();
   }
   

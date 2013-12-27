@@ -11,6 +11,7 @@ namespace rpc {
   using ::qthread::future;
   using ::qthread::launch;
   using ::qthread::lock_guard;
+  using ::qthread::make_ready_future;
   using ::qthread::mutex;
   using ::qthread::promise;
   using ::qthread::shared_future;

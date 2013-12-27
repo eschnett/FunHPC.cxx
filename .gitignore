@@ -8,3 +8,5 @@ bench
 matmul
 mattest
 matbench
+hpx_test
+qthread_test

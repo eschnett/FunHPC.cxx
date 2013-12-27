@@ -155,7 +155,7 @@ namespace {
   }
   rpc::shared_future<double> fnrm2_finalize(rpc::shared_future<double> val)
   {
-    return rpc::async([=]() mutable { return std::sqrt(val.get()); });
+    return rpc::async([=]() { return std::sqrt(val.get()); });
   }
   
 }

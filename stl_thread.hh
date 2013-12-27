@@ -4,6 +4,7 @@
 #include <future>
 #include <mutex>
 #include <thread>
+#include <utility>
 
 namespace rpc {
   
@@ -19,6 +20,14 @@ namespace rpc {
     using ::std::this_thread::yield;
   }
   using ::std::thread;
+  
+  template<typename T>
+  future<T> make_ready_future(T&& obj)
+  {
+    promise<T> p;
+    p.set_value(std::forward<T>(obj));
+    return p.get_future();
+  }
   
   int real_main(int argc, char** argv);
   inline int thread_main(int argc, char** argv)

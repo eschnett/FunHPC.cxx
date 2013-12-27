@@ -40,25 +40,17 @@ namespace rpc {
   
   
   
-  template<typename T>
-  future<T> make_ready_future(const T& obj)
-  {
-    promise<T> p;
-    p.set_value(obj);
-    return p.get_future();
-  }
-  
-  template<typename T, typename FUN>
-  auto future_then(future<T>& ftr, const FUN& fun) -> future<decltype(fun(ftr))>
-  {
-    return async([=](){ return fun(ftr); });
-  }
-  template<typename T, typename FUN>
-  auto future_then(const shared_future<T>& ftr, const FUN& fun) ->
-    shared_future<decltype(fun(ftr))>
-  {
-    return async([=](){ return fun(ftr); });
-  }
+  // template<typename T, typename FUN>
+  // auto future_then(future<T>& ftr, const FUN& fun) -> future<decltype(fun(ftr))>
+  // {
+  //   return async([=](){ return fun(ftr); });
+  // }
+  // template<typename T, typename FUN>
+  // auto future_then(const shared_future<T>& ftr, const FUN& fun) ->
+  //   shared_future<decltype(fun(ftr))>
+  // {
+  //   return async([=](){ return fun(ftr); });
+  // }
   
   // TODO: Implement "futurize"
   
@@ -67,10 +59,11 @@ namespace rpc {
   // TODO: use invoke? make it work similar to async; improve async as
   // well so that it can call member functions.
   template<typename M, typename F, typename... As>
-  auto with_lock(M& m, const F& f, const As&... args) -> decltype(f(args...))
+  auto with_lock(M& m, F&& f, As&&... args) ->
+    typename std::result_of<F(As...)>::type
   {
     lock_guard<decltype(m)> g(m);
-    return f(args...);
+    return std::forward<F>(f)(std::forward<As>(args)...);
   }
   
   extern mutex io_mutex;

@@ -1,42 +1,45 @@
 # export BOOST_DIR=$HOME/boost_1_55_0
-# export HPX_DIR=$HOME/hpx-gcc48
-# export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
+# export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib
+# # export BOOST_DIR=$HOME/boost_1_55_0
+# # export HPX_DIR=$HOME/hpx-gcc48
+# # export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
 
-CC  = env OMPI_CC=gcc-mp-4.8 openmpicc
-CXX = env OMPI_CXX=g++-mp-4.8 openmpic++
+CC  = env OMPI_CC=gcc-mp-4.8      openmpicc
+CXX = env OMPI_CXX=g++-mp-4.8     openmpic++
 FC  = env OMPI_FC=gfortran-mp-4.8 openmpif90
 
 # -DRPC_DISABLE_CALL_SHORTCUT
+# -I/Users/eschnett/hpx-gcc48/include/hpx/external -I/Users/eschnett/hpx-gcc48/include
+# -DHPX_LIMIT=6
 CPPFLAGS = \
-	-I/Users/eschnett/hpx-gcc48/include/hpx/external -I/Users/eschnett/hpx-gcc48/include \
-	-DHPX_LIMIT=6 \
 	-I/Users/eschnett/boost_1_55_0/include \
 	-DBOOST_MPI_HOMOGENEOUS \
-	-I/Users/eschnett/qthread-1.10/include \
+	-I/Users/eschnett/qthread-1.10-gcc48/include \
 	-DRPC_QTHREADS \
 	-DBLAS
-CFLAGS   = -g -std=c99   -march=native # -Ofast
-CXXFLAGS = -g -std=c++11 -march=native # -Ofast
-FFLAGS   = -g            -march=native # -Ofast
+CFLAGS   = -g -std=c99   -march=native -Ofast
+CXXFLAGS = -g -std=c++11 -march=native -Ofast
+FFLAGS   = -g            -march=native -Ofast
 
+# -L/Users/eschnett/hpx-gcc48/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-gcc48/lib/hpx
 LDFLAGS  = \
-	-L/Users/eschnett/hpx-gcc48/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-gcc48/lib/hpx \
 	-L/Users/eschnett/boost_1_55_0/lib \
-	-L/Users/eschnett/qthread-1.10/lib
+	-L/Users/eschnett/qthread-1.10-gcc48/lib
+# -lhpxd -lhpx_initd -lhpx_serializationd
+# -lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context
 LIBS     = \
-	-lhpxd -lhpx_initd -lhpx_serializationd \
-	-lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context \
 	-lboost_mpi -lboost_serialization \
 	-lqthread \
 	-lgfortran
 
 
 
-EXES = bench demo matbench mattest qthread_test hpx_test
+# hpx_test
+EXES = bench demo matbench mattest qthread_test
 
 BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
-HPX_SRCS     = hpx.cc
+HPX_SRCS     = # hpx.cc
 RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
 	${QTHREAD_SRCS} ${HPX_SRCS}

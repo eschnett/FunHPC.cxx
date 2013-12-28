@@ -383,7 +383,7 @@ void bench_fblock_global()
 int rpc_main(int argc, char** argv)
 {
   niters = 3;
-  nsize = 100; //TODO 1000;
+  nsize = 1000;
   nblocks = 10;
   
   bench_dense();

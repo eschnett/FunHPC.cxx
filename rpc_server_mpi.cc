@@ -74,8 +74,15 @@ namespace rpc {
   
   int server_mpi::event_loop(const user_main_t& user_main)
   {
-    // std::cout << "[" << rank() << "] Hardware concurrency: "
-    //           << thread::hardware_concurrency() << "\n";
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+    if (comm.size() == 1) {
+      // Optimization: Don't start the MPI communication server
+      iret = user_main(argc, argv);
+      termination_stage = 4;
+      boost::mpi::broadcast(comm, iret, 0);
+      return iret;
+    }
+#endif
     
     // Start main program, but only on process 0
     if (comm.rank() == 0) {

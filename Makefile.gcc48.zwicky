@@ -13,7 +13,8 @@ CPPFLAGS = \
 	-DBOOST_MPI_HOMOGENEOUS \
 	-I/home/eschnett/qthread-1.10/include \
 	-DRPC_QTHREADS \
-	-DBLAS
+	-DBLAS \
+	-I/home/eschnett/gperftools-2.1/include
 CFLAGS   = -pipe -g -std=c99   -march=native -Ofast
 CXXFLAGS = -pipe -g -std=c++11 -march=native -Ofast
 FFLAGS   = -pipe -g            -march=native -Ofast
@@ -22,13 +23,15 @@ FFLAGS   = -pipe -g            -march=native -Ofast
 LDFLAGS  = \
 	-L/home/eschnett/boost_1_54_0-gcc48/lib -Wl,-rpath,/home/eschnett/boost_1_54_0-gcc48/lib \
 	-L/home/eschnett/qthread-1.10/lib -Wl,-rpath,/home/eschnett/qthread-1.10/lib \
-	-L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib
+	-L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib \
+	-L/home/eschnett/gperftools-2.1/lib -Wl,-rpath,/home/eschnett/gperftools-2.1/lib
 # -lhpxd -lhpx_initd -lhpx_serializationd
 # -lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context
 LIBS     = \
 	-lboost_mpi -lboost_serialization \
 	-lqthread \
-	-lgfortran
+	-lgfortran \
+	-ltcmalloc -lprofiler
 
 
 

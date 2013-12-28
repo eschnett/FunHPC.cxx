@@ -16,6 +16,9 @@ namespace rpc {
     if (rpc::server->rank() == 0) {
       std::cout << "Running...\n";
     }
+    std::cout << "MPI processes: " << rpc::server->size() << "\n";
+    std::cout << "[" << rpc::server->rank() << "] Hardware concurrency: "
+              << thread::hardware_concurrency() << "\n";
     int iret = rpc::server->event_loop(rpc_main);
     if (rpc::server->rank() == 0) {
       if (iret == 0) {

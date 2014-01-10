@@ -25,8 +25,54 @@ std::string mkstr(const T& x)
 
 
 
+struct scalar_t;
 struct vector_t;
 struct matrix_t;
+
+
+
+struct scalar_t {
+  typedef boost::shared_ptr<const scalar_t> const_ptr;
+  typedef boost::shared_ptr<scalar_t> ptr;
+  // TODO: remove all global_ptr?
+  typedef rpc::global_shared_ptr<scalar_t> global_ptr;
+  typedef rpc::client<scalar_t> client;
+  
+  double elts;
+  
+private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive& ar, unsigned int version)
+  {
+    ar & elts;
+  }
+public:
+  
+  explicit scalar_t() {}
+  scalar_t(const double& elts_): elts(elts_) {}
+  scalar_t(const scalar_t&) = default;
+  scalar_t& operator=(const scalar_t&) { RPC_ASSERT(0); __builtin_unreachable(); }
+  operator double() const { return elts; }
+  
+  operator std::string() const { return mkstr(*this); }
+  const double& operator()() const
+  {
+    return elts;
+    // return *(const double *__restrict__)&elts;
+  }
+  double& operator()() {
+    return elts;
+    // return *(double *__restrict__)&elts;
+  }
+  double get_elt() const { return (*this)(); }
+  RPC_DECLARE_CONST_MEMBER_ACTION(scalar_t, get_elt);
+  void set_elt(double alpha) { (*this)() = alpha; }
+  RPC_DECLARE_MEMBER_ACTION(scalar_t, set_elt);
+};
+RPC_DECLARE_COMPONENT(scalar_t);
+
+std::ostream& operator<<(std::ostream& os, const scalar_t& x);
 
 
 
@@ -47,7 +93,7 @@ private:
     ar & N;
     ar & elts;
     // TODO
-    assert(N == elts.size());
+    RPC_ASSERT(N == elts.size());
   }
 public:
   
@@ -57,20 +103,20 @@ public:
   // We don't really want these
   vector_t(): N(-1) {}
   vector_t(const vector_t&) = default;
-  vector_t& operator=(const vector_t&) { assert(0); __builtin_unreachable(); }
+  vector_t& operator=(const vector_t&) { RPC_ASSERT(0); __builtin_unreachable(); }
   
   operator std::string() const { return mkstr(*this); }
   const double& operator()(std::ptrdiff_t i) const
   {
-    assert(i>=0 && i<N);
+    RPC_ASSERT(i>=0 && i<N);
     return elts[i];
-    // return ((const double *__restrict__)&elts[0])[i];
+    // return *(const double *__restrict__)&elts[i];
   }
   double& operator()(std::ptrdiff_t i)
   {
-    assert(i>=0 && i<N);
+    RPC_ASSERT(i>=0 && i<N);
     return elts[i];
-    // return ((double *__restrict__)&elts[0])[i];
+    // return *(double *__restrict__)&elts[i];
   }
   double get_elt(std::ptrdiff_t i) const { return (*this)(i); }
   RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, get_elt);
@@ -80,7 +126,7 @@ public:
   // Level 1
   auto faxpy(double alpha, const const_ptr& x) const -> ptr;
   auto fcopy() const -> ptr;
-  auto fnrm2() const -> double;
+  auto fnrm2() const -> scalar_t::ptr;
   auto fscal(double alpha) const -> ptr;
   auto fset(double alpha) const -> ptr;
   
@@ -88,14 +134,14 @@ public:
   // then update signatures of functions underlying actions
   auto cfaxpy(double alpha, client x) const -> client
   {
-    auto xloc = x.local();
+    auto xloc = x.make_local();
     return faxpy(alpha, xloc.get());
   }
   auto cfcopy() const -> client
   {
     return fcopy();
   }
-  auto cfnrm2() const -> double
+  auto cfnrm2() const -> scalar_t::client
   {
     return fnrm2();
   }
@@ -128,9 +174,9 @@ inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {
   return vector_t::client(rpc::async(x0, vector_t::cfcopy_action()));
 }
-inline auto afnrm2(const vector_t::client& x0) -> rpc::shared_future<double>
+inline auto afnrm2(const vector_t::client& x0) -> scalar_t::client
 {
-  return rpc::async(x0, vector_t::cfnrm2_action());
+  return scalar_t::client(rpc::async(x0, vector_t::cfnrm2_action()));
 }
 inline auto afscal(double alpha, const vector_t::client& x0) -> vector_t::client
 {
@@ -160,7 +206,7 @@ private:
     ar & NI & NJ;
     ar & elts;
     // TODO
-    assert(NI * NJ == elts.size());
+    RPC_ASSERT(NI * NJ == elts.size());
   }
 public:
   
@@ -177,13 +223,15 @@ public:
   operator std::string() const { return mkstr(*this); }
   const double& operator()(std::ptrdiff_t i, std::ptrdiff_t j) const
   {
-    assert(i>=0 && i<NI && j>=0 && j<NJ);
+    RPC_ASSERT(i>=0 && i<NI && j>=0 && j<NJ);
     return elts[i+NI*j];
+    // return *(const double *__restrict__)&elts[i+NI*j];
   }
   double& operator()(std::ptrdiff_t i, std::ptrdiff_t j)
   {
-    assert(i>=0 && i<NI && j>=0 && j<NJ);
+    RPC_ASSERT(i>=0 && i<NI && j>=0 && j<NJ);
     return elts[i+NI*j];
+    // return *(double *__restrict__)&elts[i+NI*j];
   }
   double get_elt(std::ptrdiff_t i, std::ptrdiff_t j) const
   {
@@ -203,7 +251,7 @@ public:
              double alpha, const vector_t::const_ptr& x,
              double beta, const vector_t::const_ptr& y0) const -> vector_t::ptr;
   auto fcopy(bool trans) const -> ptr;
-  auto fnrm2() const -> double;
+  auto fnrm2() const -> scalar_t::ptr;
   auto fscal(bool trans, double alpha) const -> ptr;
   auto fset(bool trans, double alpha) const -> ptr;
   
@@ -214,7 +262,7 @@ public:
   
   auto cfaxpy(bool transa, bool transb0, double alpha, client a) const -> client
   {
-    auto aloc = a.local();
+    auto aloc = a.make_local();
     return faxpy(transa, transb0, alpha, aloc.get());
   }
   auto cfcopy(bool trans) const -> client
@@ -225,11 +273,11 @@ public:
               double alpha, vector_t::client x,
               double beta, vector_t::client y0) const -> vector_t::client
   {
-    auto xloc = x.local();
-    auto y0loc = y0.local();
+    auto xloc = x.make_local();
+    auto y0loc = y0.make_local();
     return fgemv(trans, alpha, xloc.get(), beta, y0loc.get());
   }
-  auto cfnrm2() const -> double
+  auto cfnrm2() const -> scalar_t::client
   {
     return fnrm2();
   }
@@ -245,8 +293,8 @@ public:
               double alpha, client b,
               double beta, client c0) const -> client
   {
-    auto bloc = b.local();
-    auto c0loc = c0.local();
+    auto bloc = b.make_local();
+    auto c0loc = c0.make_local();
     return fgemm(transa, transb, transc0,
                  alpha, bloc.get(), beta, c0loc.get());
   }
@@ -281,9 +329,9 @@ inline auto afgemv(bool trans,
   return vector_t::client(rpc::async(a, matrix_t::cfgemv_action(),
                                      trans, alpha, x, beta, y0));
 }
-inline auto afnrm2(const matrix_t::client& a0) -> rpc::shared_future<double>
+inline auto afnrm2(const matrix_t::client& a0) -> scalar_t::client
 {
-  return rpc::async(a0, matrix_t::cfnrm2_action());
+  return scalar_t::client(rpc::async(a0, matrix_t::cfnrm2_action()));
 }
 inline auto afscal(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
@@ -319,7 +367,7 @@ vector_t::vector_t(std::ptrdiff_t N, const T& elts_): N(N), elts(N)
     (*this)(i) = elt;
     ++i;
   }
-  assert(i == N);
+  RPC_ASSERT(i == N);
 }
 
 template<typename T>
@@ -334,10 +382,10 @@ matrix_t::matrix_t(std::ptrdiff_t NI, std::ptrdiff_t NJ, const T& elts_):
       (*this)(i,j) = elt;
       ++j;
     }
-    assert(j == NJ);
+    RPC_ASSERT(j == NJ);
     ++i;
   }
-  assert(i == NI);
+  RPC_ASSERT(i == NI);
 }
 
 #endif // #ifndef MATRIX_HH

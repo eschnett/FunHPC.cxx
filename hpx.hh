@@ -47,7 +47,7 @@ namespace rpc {
     struct is_client { static constexpr bool value = false; };
     template<>
     template<typename T>
-    struct is_client<client<T>> { static constexpr bool value = true; };
+    struct is_client<client<T> > { static constexpr bool value = true; };
   }
   template<typename A0, typename... As>
   auto async(A0 arg0, As... args) ->

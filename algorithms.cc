@@ -32,14 +32,16 @@ extern "C" {
               const double* __restrict__ a, const int& lda,
               const double* __restrict__ b, const int& ldb,
               const double& beta,
-              double* __restrict__ c, const int& ldc);
+              double* __restrict__ c, const int& ldc,
+              int transa_length, int transb_length);
   void dgemv_(const char& trans,
               const int& M, const int& N,
               const double& alpha,
               const double* __restrict__ a, const int& lda,
               const double* __restrict__ x, const int& incx,
               const double& beta,
-              double* __restrict__ y, const int& incy);
+              double* __restrict__ y, const int& incy,
+              int trans_length);
   double dnrm2_(const int& N,
                 const double* __restrict__ x, const int& incx);
   void dscal_(const int& N,
@@ -58,17 +60,17 @@ void axpy(double alpha, const vector_t& x, vector_t& y)
 {
 #if defined CBLAS
   if (alpha != 0.0) {
-    assert(y.N == x.N);
+    RPC_ASSERT(y.N == x.N);
   }
   cblas_daxpy(y.N, alpha, &x(0), 1, &y(0), 1);
 #elif defined BLAS
   if (alpha != 0.0) {
-    assert(y.N == x.N);
+    RPC_ASSERT(y.N == x.N);
   }
   daxpy_(y.N, alpha, &x(0), 1, &y(0), 1);
 #else
   if (alpha == 0.0) return;
-  assert(y.N == x.N);
+  RPC_ASSERT(y.N == x.N);
   if (alpha == 1.0) {
     double* __restrict__ const yp = &y(0);
     const double* __restrict__ const xp = &x(0);
@@ -94,13 +96,13 @@ void axpy(double alpha, const vector_t& x, vector_t& y)
 void copy(const vector_t& x, vector_t& y)
 {
 #if defined CBLAS
-  assert(y.N == x.N);
+  RPC_ASSERT(y.N == x.N);
   cblas_dcopy(y.N, &x(0), 1, &y(0), 1);
 #elif defined BLAS
-  assert(y.N == x.N);
+  RPC_ASSERT(y.N == x.N);
   dcopy_(y.N, &x(0), 1, &y(0), 1);
 #else
-  assert(y.N == x.N);
+  RPC_ASSERT(y.N == x.N);
   double* __restrict__ const yp = &y(0);
   const double* __restrict__ const xp = &x(0);
   for (std::ptrdiff_t i=0; i<y.N; ++i) {
@@ -183,32 +185,32 @@ void axpy(bool transa, double alpha, const matrix_t& a, matrix_t& b)
 #if defined CBLAS
   if (alpha != 0.0) {
     if (!transa) {
-      assert(b.NI == a.NI);
-      assert(b.NJ == a.NJ);
+      RPC_ASSERT(b.NI == a.NI);
+      RPC_ASSERT(b.NJ == a.NJ);
     } else {
-      assert(b.NI == a.NJ);
-      assert(b.NJ == a.NI);
+      RPC_ASSERT(b.NI == a.NJ);
+      RPC_ASSERT(b.NJ == a.NI);
     }
   }
-  assert(!transa);
+  RPC_ASSERT(!transa);
   cblas_daxpy(b.NI*b.NJ, alpha, &a(0,0), 1, &b(0,0), 1);
 #elif defined BLAS
   if (alpha != 0.0) {
     if (!transa) {
-      assert(b.NI == a.NI);
-      assert(b.NJ == a.NJ);
+      RPC_ASSERT(b.NI == a.NI);
+      RPC_ASSERT(b.NJ == a.NJ);
     } else {
-      assert(b.NI == a.NJ);
-      assert(b.NJ == a.NI);
+      RPC_ASSERT(b.NI == a.NJ);
+      RPC_ASSERT(b.NJ == a.NI);
     }
   }
-  assert(!transa);
+  RPC_ASSERT(!transa);
   daxpy_(b.NI*b.NJ, alpha, &a(0,0), 1, &b(0,0), 1);
 #else
   if (alpha == 0.0) return;
   if (!transa) {
-    assert(b.NI == a.NI);
-    assert(b.NJ == a.NJ);
+    RPC_ASSERT(b.NI == a.NI);
+    RPC_ASSERT(b.NJ == a.NJ);
     if (alpha == 1.0) {
       const double* __restrict__ const ap = &a(0,0);
       double* __restrict__ const bp = &b(0,0);
@@ -229,8 +231,8 @@ void axpy(bool transa, double alpha, const matrix_t& a, matrix_t& b)
       }
     }
   } else {
-    assert(b.NI == a.NJ);
-    assert(b.NJ == a.NI);
+    RPC_ASSERT(b.NI == a.NJ);
+    RPC_ASSERT(b.NJ == a.NI);
     if (alpha == 1.0) {
       const double* __restrict__ const ap = &a(0,0);
       double* __restrict__ const bp = &b(0,0);
@@ -262,28 +264,28 @@ void copy(bool transa, const matrix_t& a, matrix_t& b)
 {
 #if defined CBLAS
   if (!transa) {
-    assert(b.NI == a.NI);
-    assert(b.NJ == a.NJ);
+    RPC_ASSERT(b.NI == a.NI);
+    RPC_ASSERT(b.NJ == a.NJ);
   } else {
-    assert(b.NI == a.NJ);
-    assert(b.NJ == a.NI);
+    RPC_ASSERT(b.NI == a.NJ);
+    RPC_ASSERT(b.NJ == a.NI);
   }
-  assert(!transa);
+  RPC_ASSERT(!transa);
   cblas_dcopy(b.NI*b.NJ, &a(0,0), 1, &b(0,0), 1);
 #elif defined BLAS
   if (!transa) {
-    assert(b.NI == a.NI);
-    assert(b.NJ == a.NJ);
+    RPC_ASSERT(b.NI == a.NI);
+    RPC_ASSERT(b.NJ == a.NJ);
   } else {
-    assert(b.NI == a.NJ);
-    assert(b.NJ == a.NI);
+    RPC_ASSERT(b.NI == a.NJ);
+    RPC_ASSERT(b.NJ == a.NI);
   }
-  assert(!transa);
+  RPC_ASSERT(!transa);
   dcopy_(b.NI*b.NJ, &a(0,0), 1, &b(0,0), 1);
 #else
   if (!transa) {
-    assert(b.NI == a.NI);
-    assert(b.NJ == a.NJ);
+    RPC_ASSERT(b.NI == a.NI);
+    RPC_ASSERT(b.NJ == a.NJ);
     const double* __restrict__ const ap = &a(0,0);
     double* __restrict__ const bp = &b(0,0);
     for (std::ptrdiff_t j=0; j<b.NJ; ++j) {
@@ -293,8 +295,8 @@ void copy(bool transa, const matrix_t& a, matrix_t& b)
       }
     }
   } else {
-    assert(b.NI == a.NJ);
-    assert(b.NJ == a.NI);
+    RPC_ASSERT(b.NI == a.NJ);
+    RPC_ASSERT(b.NJ == a.NI);
     const double* __restrict__ const ap = &a(0,0);
     double* __restrict__ const bp = &b(0,0);
     for (std::ptrdiff_t j=0; j<b.NJ; ++j) {
@@ -317,11 +319,11 @@ void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
 #if defined CBLAS
   if (alpha != 0.0) {
     if (!trans) {
-      assert(a.NJ == x.N);
-      assert(a.NI == y.N);
+      RPC_ASSERT(a.NJ == x.N);
+      RPC_ASSERT(a.NI == y.N);
     } else {
-      assert(a.NI == x.N);
-      assert(a.NJ == y.N);
+      RPC_ASSERT(a.NI == x.N);
+      RPC_ASSERT(a.NJ == y.N);
     }
   }
   cblas_dgemv(CblasColMajor, trans ? CblasTrans : CblasNoTrans,
@@ -329,21 +331,21 @@ void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
 #elif defined BLAS
   if (alpha != 0.0) {
     if (!trans) {
-      assert(a.NJ == x.N);
-      assert(a.NI == y.N);
+      RPC_ASSERT(a.NJ == x.N);
+      RPC_ASSERT(a.NI == y.N);
     } else {
-      assert(a.NI == x.N);
-      assert(a.NJ == y.N);
+      RPC_ASSERT(a.NI == x.N);
+      RPC_ASSERT(a.NJ == y.N);
     }
   }
   dgemv_(trans ? 'T' : 'N',
-         y.N, x.N, alpha, &a(0,0), a.NI, &x(0), 1, beta, &y(0), 1);
+         y.N, x.N, alpha, &a(0,0), a.NI, &x(0), 1, beta, &y(0), 1, 1);
 #else
   scal(beta, y);
   if (alpha == 0.0) return;
   if (!trans) {
-    assert(a.NJ == x.N);
-    assert(a.NI == y.N);
+    RPC_ASSERT(a.NJ == x.N);
+    RPC_ASSERT(a.NI == y.N);
     const double* __restrict__ const ap = &a(0,0);
     const double* __restrict__ const xp = &x(0);
     double* __restrict__ const yp = &y(0);
@@ -356,8 +358,8 @@ void gemv(bool trans, double alpha, const matrix_t& a, const vector_t& x,
       }
     }
   } else {
-    assert(a.NI == x.N);
-    assert(a.NJ == y.N);
+    RPC_ASSERT(a.NI == x.N);
+    RPC_ASSERT(a.NJ == y.N);
     const double* __restrict__ const ap = &a(0,0);
     const double* __restrict__ const xp = &x(0);
     double* __restrict__ const yp = &y(0);
@@ -459,26 +461,26 @@ void gemm(bool transa, bool transb,
     if (!transb) {
       if (!transa) {
         // c = alpha a b + beta c
-        assert(b.NI == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NJ);
+        RPC_ASSERT(b.NI == a.NJ);
+        RPC_ASSERT(c.NI == a.NI);
+        RPC_ASSERT(c.NJ == b.NJ);
       } else {
         // c = alpha a^T b + beta c
-        assert(b.NI == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NJ);
+        RPC_ASSERT(b.NI == a.NI);
+        RPC_ASSERT(c.NI == a.NJ);
+        RPC_ASSERT(c.NJ == b.NJ);
       }
     } else {
       if (!transa) {
         // c = alpha a b^T + beta c
-        assert(b.NJ == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NI);
+        RPC_ASSERT(b.NJ == a.NJ);
+        RPC_ASSERT(c.NI == a.NI);
+        RPC_ASSERT(c.NJ == b.NI);
       } else {
         // c = alpha a^T b^T + beta c
-        assert(b.NJ == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NI);
+        RPC_ASSERT(b.NJ == a.NI);
+        RPC_ASSERT(c.NI == a.NJ);
+        RPC_ASSERT(c.NJ == b.NI);
       }
     }
   }
@@ -492,32 +494,32 @@ void gemm(bool transa, bool transb,
     if (!transb) {
       if (!transa) {
         // c = alpha a b + beta c
-        assert(b.NI == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NJ);
+        RPC_ASSERT(b.NI == a.NJ);
+        RPC_ASSERT(c.NI == a.NI);
+        RPC_ASSERT(c.NJ == b.NJ);
       } else {
         // c = alpha a^T b + beta c
-        assert(b.NI == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NJ);
+        RPC_ASSERT(b.NI == a.NI);
+        RPC_ASSERT(c.NI == a.NJ);
+        RPC_ASSERT(c.NJ == b.NJ);
       }
     } else {
       if (!transa) {
         // c = alpha a b^T + beta c
-        assert(b.NJ == a.NJ);
-        assert(c.NI == a.NI);
-        assert(c.NJ == b.NI);
+        RPC_ASSERT(b.NJ == a.NJ);
+        RPC_ASSERT(c.NI == a.NI);
+        RPC_ASSERT(c.NJ == b.NI);
       } else {
         // c = alpha a^T b^T + beta c
-        assert(b.NJ == a.NI);
-        assert(c.NI == a.NJ);
-        assert(c.NJ == b.NI);
+        RPC_ASSERT(b.NJ == a.NI);
+        RPC_ASSERT(c.NI == a.NJ);
+        RPC_ASSERT(c.NJ == b.NI);
       }
     }
   }
   dgemm_(transa ? 'T' : 'N', transb ? 'T' : 'N',
          c.NI, c.NJ, a.NJ,
-         alpha, &a(0,0), a.NI, &b(0,0), b.NI, beta, &c(0,0), c.NI);
+         alpha, &a(0,0), a.NI, &b(0,0), b.NI, beta, &c(0,0), c.NI, 1, 1);
 #else
   if (alpha == 0.0) {
     scal(beta, c);
@@ -526,9 +528,9 @@ void gemm(bool transa, bool transb,
   if (!transb) {
     if (!transa) {
       // c = alpha a b + beta c
-      assert(b.NI == a.NJ);
-      assert(c.NI == a.NI);
-      assert(c.NJ == b.NJ);
+      RPC_ASSERT(b.NI == a.NJ);
+      RPC_ASSERT(c.NI == a.NI);
+      RPC_ASSERT(c.NJ == b.NJ);
       const double* __restrict__ const ap = &a(0,0);
       const double* __restrict__ const bp = &b(0,0);
       double* __restrict__ const cp = &c(0,0);
@@ -558,9 +560,9 @@ void gemm(bool transa, bool transb,
       }
     } else {
       // c = alpha a^T b + beta c
-      assert(b.NI == a.NI);
-      assert(c.NI == a.NJ);
-      assert(c.NJ == b.NJ);
+      RPC_ASSERT(b.NI == a.NI);
+      RPC_ASSERT(c.NI == a.NJ);
+      RPC_ASSERT(c.NJ == b.NJ);
       const double* __restrict__ const ap = &a(0,0);
       const double* __restrict__ const bp = &b(0,0);
       double* __restrict__ const cp = &c(0,0);
@@ -581,9 +583,9 @@ void gemm(bool transa, bool transb,
   } else {
     if (!transa) {
       // c = alpha a b^T + beta c
-      assert(b.NJ == a.NJ);
-      assert(c.NI == a.NI);
-      assert(c.NJ == b.NI);
+      RPC_ASSERT(b.NJ == a.NJ);
+      RPC_ASSERT(c.NI == a.NI);
+      RPC_ASSERT(c.NJ == b.NI);
       const double* __restrict__ const ap = &a(0,0);
       const double* __restrict__ const bp = &b(0,0);
       double* __restrict__ const cp = &c(0,0);
@@ -608,9 +610,9 @@ void gemm(bool transa, bool transb,
       }
     } else {
       // c = alpha a^T b^T + beta c
-      assert(b.NJ == a.NI);
-      assert(c.NI == a.NJ);
-      assert(c.NJ == b.NI);
+      RPC_ASSERT(b.NJ == a.NI);
+      RPC_ASSERT(c.NI == a.NJ);
+      RPC_ASSERT(c.NJ == b.NI);
       const double* __restrict__ const ap = &a(0,0);
       const double* __restrict__ const bp = &b(0,0);
       double* __restrict__ const cp = &c(0,0);

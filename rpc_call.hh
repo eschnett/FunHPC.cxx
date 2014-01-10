@@ -9,6 +9,8 @@
 #include "rpc_server.hh"
 #include "rpc_tuple.hh"
 
+#include "cxx_utils.hh"
+
 #include <boost/make_shared.hpp>
 // Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
 // using the macro BOOST_CLASS_EXPORT
@@ -53,10 +55,10 @@ namespace rpc {
   
   template<typename F, typename R>
   struct action_finish: public callable_base {
-    global_ptr<promise<R>> p;
-    typename std::remove_const<typename std::remove_reference<R>::type>::type res;
+    global_ptr<promise<R> > p;
+    typename std::decay<R>::type res;
     action_finish() {}          // only for boost::serialize
-    action_finish(const global_ptr<promise<R>>& p, R res): p(p), res(res) {}
+    action_finish(const global_ptr<promise<R> >& p, R res): p(p), res(res) {}
     void execute()
     {
       p->set_value(res);
@@ -74,9 +76,9 @@ namespace rpc {
   };
   template<typename F>
   struct action_finish<F, void>: public callable_base {
-    global_ptr<promise<void>> p;
+    global_ptr<promise<void> > p;
     action_finish() {}          // only for boost::serialize
-    action_finish(const global_ptr<promise<void>>& p): p(p) {}
+    action_finish(const global_ptr<promise<void> >& p): p(p) {}
     void execute()
     {
       p->set_value();
@@ -95,18 +97,20 @@ namespace rpc {
   
   template<typename F, typename R, typename... As>
   struct action_evaluate: public callable_base {
-    global_ptr<promise<R>> p;
-    // TODO: use std::reference_wrapper?
-    // tuple<As...> args;
-    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
+    global_ptr<promise<R> > p;
+    tuple<typename std::decay<As>::type...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(const global_ptr<promise<R>>& p, const As&... args):
+    action_evaluate(const global_ptr<promise<R> >& p, const As&... args):
       p(p), args(args...) {}
     void execute()
     {
-      auto cont = tuple_map(F(), args);
+      /*TODO*/ std::cout << "action_evaluate.0\n";
+      auto cont = tuple_apply(F(), args);
+      /*TODO*/ std::cout << "action_evaluate.1\n";
       if (!p) return;
+      /*TODO*/ std::cout << "action_evaluate.2\n";
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
+      /*TODO*/ std::cout << "action_evaluate.3\n";
     }
   private:
     friend class boost::serialization::access;
@@ -119,18 +123,22 @@ namespace rpc {
   };
   template<typename F, typename... As>
   struct action_evaluate<F, void, As...>: public callable_base {
-    global_ptr<promise<void>> p;
-    // tuple<As...> args;
-    tuple<typename std::remove_const<typename std::remove_reference<As>::type>::type...> args;
+    global_ptr<promise<void> > p;
+    tuple<typename std::decay<As>::type...> args;
     action_evaluate() {}        // only for boost::serialize
-    action_evaluate(const global_ptr<promise<void>>& p, const As&... args):
+    action_evaluate(const global_ptr<promise<void> >& p, const As&... args):
       p(p), args(args...) {}
+    /*TODO*/ ~action_evaluate() { std::cout << "~action_evaluate<void>\n"; }
     // TODO: Allow moving arguments via &&?
     void execute()
     {
-      tuple_map(F(), args);
+      /*TODO*/ std::cout << "action_evaluate<void>.0\n";
+      tuple_apply(F(), args);
+      /*TODO*/ std::cout << "action_evaluate<void>.1\n";
       if (!p) return;
+      /*TODO*/ std::cout << "action_evaluate<void>.2\n";
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
+      /*TODO*/ std::cout << "action_evaluate<void>.3\n";
     }
   private:
     friend class boost::serialization::access;
@@ -182,7 +190,7 @@ namespace rpc {
   
   // Example action definition for a given function "f":
   // struct f_action:
-  //   public rpc::action_impl<f_action, rpc::wrap<decltype(&f), &f>>
+  //   public rpc::action_impl<f_action, rpc::wrap<decltype(&f), &f> >
   // {
   // };
   // BOOST_CLASS_EXPORT(f_action::evaluate);
@@ -193,61 +201,67 @@ namespace rpc {
   // Call an action on a given destination
   
   template<typename F, typename... As>
-  auto detached(int dest, F func, As... args) ->
+  auto detached(int dest, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return thread(func, args...).detach();
+      return thread(func, std::forward<As>(args)...).detach();
     }
 #endif
-    promise<typename result_of<F(As...)>::type>* p = nullptr;
-    server->call(dest, make_shared<typename F::evaluate>(p, args...));
+    typedef typename invoke_of<F, As...>::type R;
+    promise<R>* p = nullptr;
+    server->call
+      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
   }
   
   template<typename F, typename... As>
-  auto async(int dest, F func, As... args) ->
+  auto async(int dest, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename std::result_of<F(As...)>::type>>::type
+                       future<typename invoke_of<F, As...>::type> >::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      // return async(func, args...);
-      // return async(func, typename std::remove_reference<As>::type(args)...);
-      return async(typename std::remove_reference<F>::type(func), args...);
+      return async(func, std::forward<As>(args)...);
     }
 #endif
-    auto p = new promise<typename result_of<F(As...)>::type>;
+    typedef typename invoke_of<F, As...>::type R;
+    auto p = new promise<R>;
     auto f = p->get_future();
-    server->call(dest,
-                 make_shared<typename F::evaluate>(p,
-                                                   args...));
+    server->call
+      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
     return f;
   }
   
   template<typename F, typename... As>
-  auto sync(int dest, F func, As... args) ->
+  auto sync(int dest, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       typename result_of<F(As...)>::type>::type
+                       typename invoke_of<F, As...>::type>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return func(args...);
+      return func(std::forward<As>(args)...);
     }
 #endif
-    auto p = new promise<typename result_of<F(As...)>::type>;
+    typedef typename invoke_of<F, As...>::type R;
+    auto p = new promise<R>;
     auto f = p->get_future();
-    server->call(dest, make_shared<typename F::evaluate>(p, args...));
+    server->call
+      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
     return f.get();
   }
   
+#if 0
   template<typename F, typename... As>
-  auto deferred(int dest, F func, As... args) ->
+  auto deferred(int dest, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename result_of<F(As...)>::type>>::type
+                       future<typename invoke_of<F, As...>::type> >::type
   {
-    return async(launch::deferred, sync, dest, func, args...);
+    // TODO: This call to sync may have the wrong argument types
+    return async
+      (launch::deferred, sync<F, As...>, dest, func, std::forward<As>(args)...);
   }
+#endif
   
   
   
@@ -284,35 +298,43 @@ namespace rpc {
   
   // Call a member action via a client
   
+#if 0
   template<typename T, typename F, typename... As>
-  auto deferred(const client<T>& ptr, F func, As... args) ->
+  auto deferred(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename result_of<F(const client<T>&, As...)>::type>>::type
+                       future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
-    return deferred(ptr.get_proc(), func, ptr, args...);
+    return deferred(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
+#endif
   
   template<typename T, typename F, typename... As>
-  auto detached(const client<T>& ptr, F func, As... args) ->
+  auto detached(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
-    return detached(ptr.get_proc(), func, ptr, args...);
+    return detached(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
   
   template<typename T, typename F, typename... As>
-  auto async(const client<T>& ptr, F func, As... args) ->
+  auto async(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename result_of<F(const client<T>&, As...)>::type>>::type
+                       future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
-    return async(ptr.get_proc(), func, ptr, args...);
+    //TODO return async(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+    /*TODO*/ std::cout << "HHH.0\n";
+    auto proc = ptr.get_proc();
+    /*TODO*/ std::cout << "HHH.1\n";
+    auto r = async(proc, func, ptr, std::forward<As>(args)...);
+    /*TODO*/ std::cout << "HHH.2\n";
+    return std::move(r);
   }
   
   template<typename T, typename F, typename... As>
-  auto sync(const client<T>& ptr, F func, As... args) ->
+  auto sync(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
-                       typename result_of<F(const client<T>&, As...)>::type>::type
+                       typename invoke_of<F, const client<T>&, As...>::type>::type
   {
-    return sync(ptr.get_proc(), func, ptr, args...);
+    return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
   
 }

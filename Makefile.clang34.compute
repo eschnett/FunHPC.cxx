@@ -1,68 +1,49 @@
-# rsync -Paz Makefile*[^~] *.hh *.cc *.f eschnett@zwicky.cacr.caltech.edu:src/cc/mpi-rpc/
+# rsync -Paz Makefile*[^~] *.hh *.cc eschnetter@nvidia.pi.local:/xfs1/eschnetter/compute/src/cc/mpi-rpc
+# source /xfs1/eschnetter/compute/q/boost-1.55.0/env.sh
+# source /xfs1/eschnetter/compute/q/gperftools-2.1/env.sh
+# source /xfs1/eschnetter/compute/q/hwloc-1.8/env.sh
+# source /xfs1/eschnetter/compute/q/llvm-3.4/env.sh
+# source /xfs1/eschnetter/compute/q/openmpi-1.7.3/env.sh
+# source /xfs1/eschnetter/compute/q/qthreads-1.10/env.sh
 
-# module load gcc/4.8.1
-# module load openmpi/1.4.3-gcc-dynamic
-
-CC  = mpicc
-CXX = mpic++
-FC  = mpif90
+CC  := ${MPICC}
+CXX := ${MPICXX}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
-# -I/home/eschnett/hpx/include/hpx/external -I/home/eschnett/hpx/include
-# -DHPX_LIMIT=6
-CPPFLAGS = \
-	-I/home/eschnett/boost_1_54_0-gcc48/include \
+CPPFLAGS := \
 	-DBOOST_MPI_HOMOGENEOUS \
-	-I/home/eschnett/qthread-1.10/include \
-	-DRPC_QTHREADS \
-	-DBLAS \
-	-I/home/eschnett/hwloc-1.7.2/include \
-	-I/home/eschnett/gperftools-2.1/include
-CFLAGS   = -pipe -g -std=c99   -march=native -Ofast
-CXXFLAGS = -pipe -g -std=c++11 -march=native -Ofast
-FFLAGS   = -pipe -g            -march=native -Ofast
+	-DRPC_STL
+CFLAGS   := -g ${C99FLAGS}   ${CFLAGS}   -march=native # -Ofast
+CXXFLAGS := -g ${CXX11FLAGS} ${CXXFLAGS} -march=native # -Ofast
 
-# -L/home/eschnett/hpx/lib/hpx -Wl,-rpath,/home/eschnett/hpx/lib/hpx
-LDFLAGS  = \
-	-L/home/eschnett/boost_1_54_0-gcc48/lib -Wl,-rpath,/home/eschnett/boost_1_54_0-gcc48/lib \
-	-L/home/eschnett/qthread-1.10/lib -Wl,-rpath,/home/eschnett/qthread-1.10/lib \
-	-L/home/eschnett/hwloc-1.7.2/lib -Wl,-rpath,/home/eschnett/hwloc-1.7.2/lib \
-	-L/usr/local/openmpi-1.4.3-gcc-dynamic/lib -Wl,-rpath,/usr/local/openmpi-1.4.3-gcc-dynamic/lib \
-	-L/home/eschnett/gperftools-2.1/lib -Wl,-rpath,/home/eschnett/gperftools-2.1/lib
-# -lhpxd -lhpx_initd -lhpx_serializationd
-# -lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context
-LIBS     = \
-	-lboost_mpi -lboost_serialization \
-	-lqthread \
-	-lhwloc \
-	-lgfortran \
-	-ltcmalloc -lprofiler
+LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS}
+LIBS     := ${MPI_LIBS} ${LIBS}
 
 
 
-# hpx_test
 EXES = bench demo hwloc matbench mattest qthread_test
 
-BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
-QTHREAD_SRCS = qthread_thread.cc
+BLAS_SRCS    = # daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 HPX_SRCS     = # hpx.cc
-RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
+QTHREAD_SRCS = qthread_thread.cc
+RPC_SRCS     = \
+	rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
 	${QTHREAD_SRCS} ${HPX_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
 BENCH_SRCS        = bench.cc ${RPC_SRCS}
 DEMO_SRCS         = demo.cc ${RPC_SRCS}
-HWLOC_SRCS	  = hwloc.cc ${RPC_SRCS}
 HPX_TEST_SRCS     = hpx_test.cc
+HWLOC_SRCS	  = hwloc.cc ${RPC_SRCS}
 MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
 MATTEST_SRCS      = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
 QTHREAD_TEST_SRCS = qthread_test.cc ${QTHREAD_SRCS}
 
 BENCH_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
 DEMO_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
-HWLOC_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_SRCS}}}}}
 HPX_TEST_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
+HWLOC_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_SRCS}}}}}
 MATBENCH_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
 MATTEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
 QTHREAD_TEST_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${QTHREAD_TEST_SRCS}}}}}
@@ -127,7 +108,7 @@ qthread_test: ${QTHREAD_TEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.gcc48.zwicky
+${OBJS}: Makefile.gcc48.redshift
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}

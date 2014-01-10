@@ -4,7 +4,7 @@
 
 #include <mpi.h>
 
-#include <cassert>
+#include <cRPC_ASSERT>
 #include <iostream>
 
 using std::cout;
@@ -12,7 +12,7 @@ using std::cout;
 
 
 namespace rpc {
-  int real_main(int argc, char** argv) { assert(0); }
+  int real_main(int argc, char** argv) { RPC_ASSERT(0); }
 }
 
 void outx(int x) { cout << "x=" << x << "\n"; }

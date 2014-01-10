@@ -1,6 +1,8 @@
 #ifndef RPC_HH
 #define RPC_HH
 
+#include "cxx_utils.hh"
+
 #include "rpc_future.hh"
 #include "rpc_mutex.hh"
 #include "rpc_thread.hh"

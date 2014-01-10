@@ -15,10 +15,19 @@ CPPFLAGS = \
 	-I/Users/eschnett/qthread-1.10-clang33/include \
 	-DRPC_QTHREADS \
 	-DBLAS
-CFLAGS   = -g -Wall -Wno-deprecated-declarations -std=c99   -march=native -Ofast
-CXXFLAGS = -g -Wall -Wno-deprecated-declarations -std=c++11 -march=native -Ofast
-# -fplugin-arg-llvm33gcc48-llvm-option=-mtriple:x86_64-apple-macosx10.9.0 -fplugin-arg-llvm33gcc48-enable-gcc-optzns
-FFLAGS   = -g -Wall                                         -march=native -Ofast
+CFLAGS   = -g -Wall -Wno-deprecated-declarations -std=c99   -march=native
+CXXFLAGS = -g -Wall -Wno-deprecated-declarations -std=c++11 -march=native
+FFLAGS   = -g -Wall                                         -march=native
+
+# -fsanitize=thread,memory,undefined
+CFLAGS   += -ftrapv -fsanitize=bounds
+CXXFLAGS += -ftrapv -fsanitize=bounds
+FFLAGS   += -ftrapv
+
+# CFLAGS   += -Ofast
+# CXXFLAGS += -Ofast
+# # -fplugin-arg-llvm33gcc48-llvm-option=-mtriple:x86_64-apple-macosx10.9.0 -fplugin-arg-llvm33gcc48-enable-gcc-optzns
+# FFLAGS   += -Ofast
 
 # -L/Users/eschnett/hpx-clang33/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-clang33/lib/hpx
 LDFLAGS  = \

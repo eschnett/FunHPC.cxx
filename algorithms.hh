@@ -17,7 +17,7 @@ void copy(const vector_t& x, vector_t& y);
 
 // nrm2: sqrt(x^T x)
 inline double nrm2_init() { return 0.0; }
-inline double nrm2_process(double xi) { return xi * xi; }
+inline double nrm2_process(double xi) { return std::pow(xi, 2.0); }
 inline double nrm2_combine(double val0, double val1) { return val0 + val1; }
 inline double nrm2_finalize(double val) { return std::sqrt(val); }
 double nrm2(const vector_t& x);

@@ -33,13 +33,13 @@ struct structure_t {
               const int* locs):
     N(N), B(B), begin(begin, begin+B+1), locs(locs, locs+B)
   {
-    assert(invariant());
+    RPC_ASSERT(invariant());
   }
   operator std::string() const { return mkstr(*this); }
   bool operator==(const structure_t& str) const { return this == &str; }
   std::ptrdiff_t size(std::ptrdiff_t b) const
   {
-    assert(b>=0 && b<B);
+    RPC_ASSERT(b>=0 && b<B);
     return begin[b+1] - begin[b];
   }
   std::ptrdiff_t find(std::ptrdiff_t i) const;
@@ -55,7 +55,7 @@ struct block_vector_t {
   
   structure_t::const_ptr str;
   std::vector<unsigned char> has_block_; // vector<bool> is not thread-safe
-  std::vector<rpc::client<vector_t>> blocks;
+  std::vector<rpc::client<vector_t> > blocks;
   block_vector_t(const structure_t::const_ptr& str);
   struct block_t {
     std::ptrdiff_t i;
@@ -68,33 +68,33 @@ struct block_vector_t {
   operator std::string() const { return mkstr(*this); }
   bool has_block(std::ptrdiff_t b) const
   {
-    assert(b>=0 && b<str->B);
+    RPC_ASSERT(b>=0 && b<str->B);
     return has_block_[b];
   }
   void make_block(std::ptrdiff_t b);
   void remove_block(std::ptrdiff_t b);
   const rpc::client<vector_t>& block(std::ptrdiff_t b) const
   {
-    assert(b>=0 && b<str->B);
-    assert(has_block(b));
+    RPC_ASSERT(b>=0 && b<str->B);
+    RPC_ASSERT(has_block(b));
     return blocks[b];
   }
   void set_block(std::ptrdiff_t b, const rpc::client<vector_t>& x)
   {
-    assert(b>=0 && b<str->B);
+    RPC_ASSERT(b>=0 && b<str->B);
     // TODO: check that x is not NULL
     has_block_[b] = true;
     blocks[b] = x;
   }
   bool has_elt(std::ptrdiff_t i) const
   {
-    assert(i>=0 && i<str->N);
+    RPC_ASSERT(i>=0 && i<str->N);
     auto b = str->find(i);
     return has_block(b);
   }
   double operator()(std::ptrdiff_t i) const
   {
-    assert(i>=0 && i<str->N);
+    RPC_ASSERT(i>=0 && i<str->N);
     auto b = str->find(i);
     static const double zero = 0.0;
     if (!has_block(b)) return zero;
@@ -103,9 +103,9 @@ struct block_vector_t {
   }
   void set_elt(std::ptrdiff_t i, double x)
   {
-    assert(i>=0 && i<str->N);
+    RPC_ASSERT(i>=0 && i<str->N);
     auto b = str->find(i);
-    assert(has_block(b));
+    RPC_ASSERT(has_block(b));
     rpc::sync(block(b), vector_t::set_elt_action(), i - str->begin[b], x);
   }
   
@@ -113,7 +113,7 @@ struct block_vector_t {
   // TODO: turn these into free functions
   auto faxpy(double alpha, const const_ptr& x) const -> ptr;
   auto fcopy() const -> ptr;
-  auto fnrm2() const -> rpc::shared_future<double>;
+  auto fnrm2() const -> scalar_t::client;
   auto fscal(double alpha) const -> ptr;
   auto fset(double alpha) const -> ptr;
 };
@@ -128,7 +128,7 @@ struct block_matrix_t {
   
   structure_t::const_ptr istr, jstr; // interpretation: row, column
   std::vector<unsigned char> has_block_; // vector<bool> is not thread-safe
-  std::vector<rpc::client<matrix_t>> blocks;
+  std::vector<rpc::client<matrix_t> > blocks;
   block_matrix_t(const structure_t::const_ptr& istr,
                  const structure_t::const_ptr& jstr);
   struct block_t {
@@ -147,21 +147,21 @@ struct block_matrix_t {
   operator std::string() const { return mkstr(*this); }
   bool has_block(std::ptrdiff_t ib, std::ptrdiff_t jb) const
   {
-    assert(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
+    RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
     return has_block_[ib+istr->B*jb];
   }
   void make_block(std::ptrdiff_t ib, std::ptrdiff_t jb);
   void remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb);
   const rpc::client<matrix_t>& block(std::ptrdiff_t ib, std::ptrdiff_t jb) const
   {
-    assert(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
-    assert(has_block(ib,jb));
+    RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
+    RPC_ASSERT(has_block(ib,jb));
     return blocks[ib+istr->B*jb];
   }
   void set_block(std::ptrdiff_t ib, std::ptrdiff_t jb,
                  const rpc::client<matrix_t>& a)
   {
-    assert(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
+    RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
     // TODO: check that a is not NULL
     auto b = ib+istr->B*jb;
     has_block_[b] = true;
@@ -169,14 +169,14 @@ struct block_matrix_t {
   }
   bool has_elt(std::ptrdiff_t i, std::ptrdiff_t j) const
   {
-    assert(i>=0 && i<istr->N && j>=0 && j<jstr->N);
+    RPC_ASSERT(i>=0 && i<istr->N && j>=0 && j<jstr->N);
     auto ib = istr->find(i);
     auto jb = jstr->find(j);
     return has_block(ib,jb);
   }
   double operator()(std::ptrdiff_t i, std::ptrdiff_t j) const
   {
-    assert(i>=0 && i<istr->N && j>=0 && j<jstr->N);
+    RPC_ASSERT(i>=0 && i<istr->N && j>=0 && j<jstr->N);
     auto ib = istr->find(i);
     auto jb = jstr->find(j);
     static const double zero = 0.0;
@@ -186,10 +186,10 @@ struct block_matrix_t {
   }
   void set_elt(std::ptrdiff_t i, std::ptrdiff_t j, double x)
   {
-    assert(i>=0 && i<istr->N && j>=0 && j<jstr->N);
+    RPC_ASSERT(i>=0 && i<istr->N && j>=0 && j<jstr->N);
     auto ib = istr->find(i);
     auto jb = jstr->find(j);
-    assert(has_block(ib,jb));
+    RPC_ASSERT(has_block(ib,jb));
     rpc::sync(block(ib,jb), matrix_t::set_elt_action(),
               i - istr->begin[ib], j - jstr->begin[jb], x);
   }
@@ -202,7 +202,7 @@ struct block_matrix_t {
              double alpha, const block_vector_t::const_ptr& x,
              double beta, const block_vector_t::const_ptr& y0) const ->
     block_vector_t::ptr;
-  auto fnrm2() const -> rpc::shared_future<double>;
+  auto fnrm2() const -> scalar_t::client;
   auto fscal(bool trans, double alpha) const -> ptr;
   auto fset(bool trans, double alpha) const -> ptr;
   
@@ -225,10 +225,10 @@ block_vector_t::block_vector_t(const structure_t::const_ptr& str,
 {
   for (const auto& blk: blocks_) {
     auto b = str->find(blk.i);
-    assert(str->begin[b] == blk.i);
-    assert(!has_block(b));
+    RPC_ASSERT(str->begin[b] == blk.i);
+    RPC_ASSERT(!has_block(b));
     has_block_[b] = true;
-    assert(blk.x.N == str->size(b));
+    RPC_ASSERT(blk.x.N == str->size(b));
     blocks[b] = rpc::make_remote_client<vector_t>(str->locs[b], blk.x);
   }
 }
@@ -244,13 +244,13 @@ block_matrix_t::block_matrix_t(const structure_t::const_ptr& istr,
   for (const auto& blk: blocks_) {
     auto ib = istr->find(blk.i);
     auto jb = jstr->find(blk.j);
-    assert(istr->begin[ib] == blk.i);
-    assert(jstr->begin[jb] == blk.j);
+    RPC_ASSERT(istr->begin[ib] == blk.i);
+    RPC_ASSERT(jstr->begin[jb] == blk.j);
     auto b = ib+istr->B*jb;
-    assert(!has_block_[b]);
+    RPC_ASSERT(!has_block_[b]);
     has_block_[b] = true;
-    assert(blk.a.NI == istr->size(ib));
-    assert(blk.a.NJ == jstr->size(jb));
+    RPC_ASSERT(blk.a.NI == istr->size(ib));
+    RPC_ASSERT(blk.a.NJ == jstr->size(jb));
     blocks[b] = rpc::make_remote_client<matrix_t>(istr->locs[ib], blk.a);
   }
 }

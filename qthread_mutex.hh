@@ -11,7 +11,7 @@ namespace qthread {
     syncvar mem;
   public:
     mutex() {}
-    ~mutex() { assert(mem.status()); }
+    ~mutex() { RPC_ASSERT(mem.status()); }
     mutex(const mutex&) = delete;
     mutex(mutex&&) = delete;
     mutex& operator=(const mutex&) = delete;
@@ -19,7 +19,7 @@ namespace qthread {
     void lock() { mem.readFE(); }
     // TODO: implement this
     bool try_lock();
-    void unlock() { assert(!mem.status()); mem.fill(); }
+    void unlock() { RPC_ASSERT(!mem.status()); mem.fill(); }
   };
   
   template<typename M>

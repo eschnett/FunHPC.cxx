@@ -25,10 +25,10 @@ namespace qthread {
   
   future<void> thread::start_thread(const std::function<void()>& func)
   {
-    auto args = new thread_args(func);
+    auto args = new thread_args(std::move(func));
     auto f = args->p.get_future();
     int ierr = qthread_fork_syncvar(run_thread, args, NULL);
-    assert(!ierr);
+    RPC_ASSERT(!ierr);
     return f;
   }
   

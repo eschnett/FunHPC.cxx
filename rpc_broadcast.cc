@@ -4,6 +4,8 @@
 
 #include <boost/serialization/vector.hpp>
 
+#include <numeric>
+
 namespace rpc {
   
   vector<int> find_all_threads_partial(int dmin, int dmax);
@@ -11,7 +13,7 @@ namespace rpc {
   
   vector<int> find_all_threads_partial(int dmin, int dmax)
   {
-    assert(dmax > dmin);
+    RPC_ASSERT(dmax > dmin);
     if (dmin+1 == dmax) {
       auto nthreads = thread::hardware_concurrency();
       return vector<int>(nthreads, server->rank());
@@ -26,6 +28,13 @@ namespace rpc {
   vector<int> find_all_threads()
   {
     return find_all_threads_partial(0, server->size());
+  }
+  
+  vector<int> find_all_processes()
+  {
+    vector<int> procs(rpc::server->size());
+    std::iota(procs.begin(), procs.end(), 0);
+    return procs;
   }
   
 }

@@ -33,32 +33,32 @@ using namespace bench;
 template<typename T>
 static T div_down(T x, T y)
 {
-  assert(x>=0);
-  assert(y>0);
+  RPC_ASSERT(x>=0);
+  RPC_ASSERT(y>0);
   return x / y;
 }
 
 template<typename T>
 static T div_up(T x, T y)
 {
-  assert(x>=0);
-  assert(y>0);
+  RPC_ASSERT(x>=0);
+  RPC_ASSERT(y>0);
   return (x + y - 1) / y;
 }
 
 template<typename T>
 static T align_up(T x, T y)
 {
-  assert(x>=0);
-  assert(y>0);
+  RPC_ASSERT(x>=0);
+  RPC_ASSERT(y>0);
   return y * div_up(x, y);
 }
 
 template<typename T>
 static T align_down(T x, T y)
 {
-  assert(x>=0);
-  assert(y>0);
+  RPC_ASSERT(x>=0);
+  RPC_ASSERT(y>0);
   return y * div_down(x, y);
 }
 
@@ -137,19 +137,19 @@ result_t run_dense_fbench(ptrdiff_t n)
   
   // Warmup
   c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-  res += c->fnrm2();
+  res += *c->fnrm2();
   
   // Benchmark
   const auto t0 = gettime();
   for (int iter=0; iter<niters; ++iter) {
     c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-    res += c->fnrm2();
+    res += *c->fnrm2();
   }
   const auto t1 = gettime();
   
   // Cooldown
   c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-  res += c->fnrm2();
+  res += *c->fnrm2();
   
   const double t = elapsed(t1, t0), u = niters;
   return { t, u };
@@ -181,19 +181,19 @@ result_t run_block_fbench(ptrdiff_t n, ptrdiff_t nb, bool run_global = false)
   
   // Warmup
   c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-  res += c->fnrm2().get();
+  res += *c->fnrm2().make_local();
   
   // Benchmark
   const auto t0 = gettime();
   for (int iter=0; iter<niters; ++iter) {
     c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-    res += c->fnrm2().get();
+    res += *c->fnrm2().make_local();
   }
   const auto t1 = gettime();
   
   // Cooldown
   c = a->fgemm(false, false, false, 1.0, b, 1.0, c);
-  res += c->fnrm2().get();
+  res += *c->fnrm2().make_local();
   
   const double t = elapsed(t1, t0), u = niters;
   return { t, u };
@@ -211,8 +211,8 @@ void bench_dense()
   const result_t res = run_dense_bench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "Average CPU time for 1 * DGEMM[N=" << nsize << "]: "
-       << tavg << " sec\n";
+  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -235,8 +235,8 @@ void bench_fdense()
   const result_t res = run_dense_fbench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "Average CPU time for 1 * DGEMM[N=" << nsize << "]: "
-       << tavg << " sec\n";
+  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -267,8 +267,8 @@ void bench_dense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << tavg << " sec\n";
+  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -300,8 +300,8 @@ void bench_fdense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "Average CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << tavg << " sec\n";
+  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -323,16 +323,11 @@ void bench_fblock_local()
   cout << "bench_fblock_local "
        << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
   
-  const auto t0 = gettime();
   const result_t res = run_block_fbench(nsize1, nblocks);
-  const auto t1 = gettime();
   const double t = res.first, u = res.second;
-  const double tavg = nthreads * t / u;
-  cout << "total benchmark time: " << elapsed(t1, t0) << " sec\n";
+  const double tavg = t / u;
   cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
-            << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize1), 3.0);
   const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
@@ -355,16 +350,11 @@ void bench_fblock_global()
   cout << "bench_fblock_global "
        << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
   
-  const auto t0 = gettime();
   const result_t res = run_block_fbench(nsize1, nblocks, true);
-  const auto t1 = gettime();
   const double t = res.first, u = res.second;
-  const double tavg = nthreads * t / u;
-  cout << "total benchmark time: " << elapsed(t1, t0) << " sec\n";
+  const double tavg = t / u;
   cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
-            << tavg << " sec\n";
-  
-  cout << "This run used " << nthreads << " threads\n";
+       << nthreads * tavg << " sec\n";
   
   const double ops = 2.0 * pow(double(nsize1), 3.0);
   const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
@@ -384,14 +374,14 @@ int rpc_main(int argc, char** argv)
 {
   niters = 3;
   nsize = 1000;
-  nblocks = 10;
+  nblocks = 20; // 10;
   
-  bench_dense();
-  bench_fdense();
-  bench_dense_parallel();
-  bench_fdense_parallel();
+  // bench_dense();
+  // bench_fdense();
+  // bench_dense_parallel();
+  // bench_fdense_parallel();
   bench_fblock_local();
-  bench_fblock_global();
+  // bench_fblock_global();
   
   return 0;
 }

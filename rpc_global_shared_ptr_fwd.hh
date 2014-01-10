@@ -3,6 +3,8 @@
 
 #include "rpc_global_ptr_fwd.hh"
 
+#include "cxx_utils.hh"
+
 #include <boost/make_shared.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
@@ -11,6 +13,7 @@
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
+#include <string>
 
 namespace rpc {
   
@@ -18,6 +21,7 @@ namespace rpc {
   using boost::shared_ptr;
   
   using std::atomic;
+  using std::string;
   
   
   
@@ -62,10 +66,18 @@ namespace rpc {
   
   class global_owner_base {
     atomic<ptrdiff_t> refcount;
+    static atomic<ptrdiff_t> objcount; // TODO
+    ptrdiff_t id;                      // TODO
   public:
     virtual bool invariant() const { return refcount>0; }
-    global_owner_base(): refcount(1) { assert(refcount>0); }
-    virtual ~global_owner_base() { assert(refcount==0); }
+    virtual string get_type() const { RPC_ASSERT(0); }
+    global_owner_base() { RPC_ASSERT(0); }
+    global_owner_base(int): refcount(1), id(refcount++) {
+      /* TODO */ std::cout << "global_owner_base at " << this << ": " << typeid(*this).name() << " id=" << id << "\n";
+ RPC_ASSERT(refcount>0); }
+    virtual ~global_owner_base() {
+      /* TODO */ std::cout << "~global_owner_base at " << this << ": " << typeid(*this).name() << " id=" << id << "\n";
+ RPC_ASSERT(refcount==0); }
     
     global_owner_base(const global_owner_base&) = delete;
     global_owner_base(global_owner_base&&) = delete;
@@ -81,6 +93,7 @@ namespace rpc {
   
   template<typename T>
   class global_owner: public global_owner_base {
+    virtual void check_abstract() const {} // make class concrete
     // TODO: make ptr private
   public:
     shared_ptr<T> ptr;
@@ -88,8 +101,16 @@ namespace rpc {
     {
       return global_owner_base::invariant() && bool(ptr);
     }
-    global_owner(const shared_ptr<T>& ptr): ptr(ptr) { assert(invariant()); }
-    virtual ~global_owner() {}
+    virtual string get_type() const { return string() + "global_owner<" + typeid(T).name() + ">"; }
+    // TODO: add move constructor
+    global_owner(const shared_ptr<T>& ptr):
+      global_owner_base(0),
+      ptr(ptr) {
+      /* TODO */ std::cout << "global_owner at " << this << ": " << typeid(*this).name() << "\n";
+ RPC_ASSERT(invariant()); }
+    virtual ~global_owner() {
+      /* TODO */ std::cout << "~global_owner at " << this << ": " << typeid(*this).name() << "\n";
+}
     
     global_owner() = delete;
     global_owner(const global_owner&) = delete;
@@ -121,7 +142,7 @@ namespace rpc {
     bool invariant() const { return bool(owner); }
     global_manager(const global_ptr<global_owner_base>& owner): owner(owner)
     {
-      assert(invariant());
+      RPC_ASSERT(invariant());
     }
     ~global_manager();
     
@@ -134,9 +155,11 @@ namespace rpc {
   
   
   
-  void global_keepalive_destruct(global_ptr<shared_ptr<global_manager>> keepalive);
-  void global_keepalive_add_then_destruct(global_ptr<global_owner_base> owner,
-                                          global_ptr<shared_ptr<global_manager>> keepalive);
+  void global_keepalive_destruct
+  (global_ptr<shared_ptr<global_manager> > keepalive);
+  void global_keepalive_add_then_destruct
+  (global_ptr<global_owner_base> owner,
+   global_ptr<shared_ptr<global_manager> > keepalive);
   
   
   
@@ -147,6 +170,8 @@ namespace rpc {
     // shared_ptr<T> sptr;
     shared_ptr<global_manager> mgr;
   public:
+    typedef T element_type;
+    
     bool invariant() const
     {
       // nullptr:
@@ -159,48 +184,48 @@ namespace rpc {
       return true;
     }
     
-    global_shared_ptr(): gptr(), mgr(nullptr) { assert(invariant()); }
+    global_shared_ptr(): gptr(), mgr(nullptr) { RPC_ASSERT(invariant()); }
     global_shared_ptr(const shared_ptr<T>& ptr):
       gptr(ptr.get()),
       mgr(ptr ? make_shared<global_manager>(new global_owner<T>(ptr)) : nullptr)
     {
-      assert(invariant());
+      RPC_ASSERT(invariant());
     }
     global_shared_ptr(const global_shared_ptr& other):
       gptr(other.gptr), mgr(other.mgr)
     {
-      assert(other.invariant());
-      assert(invariant());
+      RPC_ASSERT(other.invariant());
+      RPC_ASSERT(invariant());
     }
     global_shared_ptr(global_shared_ptr&& other):
       global_shared_ptr()
     {
-      assert(other.invariant());
-      assert(invariant());
+      RPC_ASSERT(other.invariant());
+      RPC_ASSERT(invariant());
       gptr = other.gptr;
       other.gptr = nullptr;
       mgr.swap(other.mgr);
-      assert(invariant());
+      RPC_ASSERT(invariant());
     }
     global_shared_ptr& operator=(const global_shared_ptr& other)
     {
-      assert(invariant() && other.invariant());
+      RPC_ASSERT(invariant() && other.invariant());
       if (this != &other) {
         gptr = other.gptr;
         mgr = other.mgr;
       }
-      assert(invariant());
+      RPC_ASSERT(invariant());
       return *this;
     }
     global_shared_ptr& operator=(global_shared_ptr&& other)
     {
-      assert(invariant() && other.invariant());
+      RPC_ASSERT(invariant() && other.invariant());
       gptr = nullptr;
       mgr.reset();
       gptr = other.gptr;
       other.gptr = nullptr;
       mgr.swap(other.mgr);
-      assert(invariant());
+      RPC_ASSERT(invariant());
       return *this;
     }
     
@@ -213,7 +238,8 @@ namespace rpc {
     const global_ptr<T>& get_global() const { return gptr; }
     const shared_ptr<T>& get_shared() const
     {
-      assert(is_local());
+      /*TODO*/ std::cout << "[" << rpc::server->rank() << "] global_shared_ptr.is_local=" << is_local() << "\n";
+      RPC_ASSERT(is_local());
       // return sptr;
       static const shared_ptr<T> null_shared(nullptr);
       if (!*this) return null_shared;
@@ -235,7 +261,7 @@ namespace rpc {
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    auto local() const -> shared_future<global_shared_ptr>;
+    auto make_local() const -> shared_future<global_shared_ptr>;
     
     ostream& output(ostream& os) const
     {

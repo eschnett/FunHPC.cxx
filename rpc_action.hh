@@ -14,7 +14,7 @@
 
 #define RPC_DECLARE_ACTION(f)                                           \
   struct f##_action:                                                    \
-    public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f>>    \
+    public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f> >    \
   {                                                                     \
   };
 
@@ -31,7 +31,7 @@
 #define RPC_DECLARE_MEMBER_ACTION(c, f)                                 \
   struct f##_action:                                                    \
     public rpc::member_action_impl<f##_action,                          \
-                                   rpc::wrap<decltype(&c::f), &c::f>>   \
+                                   rpc::wrap<decltype(&c::f), &c::f> >   \
   {                                                                     \
   };
 
@@ -44,7 +44,7 @@
 #define RPC_DECLARE_CONST_MEMBER_ACTION(c, f)                           \
   struct f##_action:                                                    \
     public rpc::const_member_action_impl<f##_action,                    \
-                                         rpc::wrap<decltype(&c::f), &c::f>> \
+                                         rpc::wrap<decltype(&c::f), &c::f> > \
   {                                                                     \
   };
 
@@ -58,17 +58,21 @@
 
 // TODO: These are functions that take arguments, and only the default
 // constructor is handled here
+// TODO: What does the above mean?
 #define RPC_IMPLEMENT_COMPONENT(c)                                      \
   BOOST_CLASS_EXPORT(rpc::global_ptr_get_action<c>::evaluate);          \
   BOOST_CLASS_EXPORT(rpc::global_ptr_get_action<c>::finish);            \
-  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::evaluate);             \
-  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::finish);               \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::evaluate);             \
   BOOST_CLASS_EXPORT(rpc::make_global_action<c>::finish);               \
+  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::evaluate);    \
+  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::finish);      \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);      \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);        \
-  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::evaluate);    \
-  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::finish);
+  BOOST_CLASS_EXPORT(rpc::client_get_global_shared_action<c>::evaluate); \
+  BOOST_CLASS_EXPORT(rpc::client_get_global_shared_action<c>::finish);  \
+  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::evaluate);             \
+  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::finish);
+
 
 
 #define RPC_COMPONENT(c)                        \

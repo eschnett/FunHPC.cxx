@@ -48,7 +48,7 @@ atomic<ptrdiff_t> busywait_count;
 atomic<double> busywait_result;
 void busywait(double time, continuation_t cont, ptrdiff_t njobs)
 {
-  assert(njobs >= 0);
+  RPC_ASSERT(njobs >= 0);
   if (njobs == 0) return;
 #if 0
   const auto t0 = gettime();
@@ -69,7 +69,7 @@ void busywait(double time, continuation_t cont, ptrdiff_t njobs)
 }
 struct busywait_action:
   public rpc::action_impl<busywait_action,
-                          rpc::wrap<decltype(&busywait), &busywait>>
+                          rpc::wrap<decltype(&busywait), &busywait> >
 {
 };
 BOOST_CLASS_EXPORT(busywait_action::evaluate);
@@ -79,7 +79,7 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
 {
   switch (cont) {
   default:
-    __builtin_unreachable(); assert(0);
+    __builtin_unreachable(); RPC_ASSERT(0);
   case do_nothing:
     break;
   case do_daisychain_func: {
@@ -165,7 +165,7 @@ void run_single(double time, ptrdiff_t njobs)
 }
 struct run_single_action:
   public rpc::action_impl<run_single_action,
-                          rpc::wrap<decltype(&run_single), &run_single>>
+                          rpc::wrap<decltype(&run_single), &run_single> >
 {
 };
 BOOST_CLASS_EXPORT(run_single_action::evaluate);
@@ -174,7 +174,7 @@ BOOST_CLASS_EXPORT(run_single_action::finish);
 void run_multi_func(double time, ptrdiff_t njobs, ptrdiff_t nthreads)
 {
   cout << "    Configuration: function multi...      " << flush;
-  vector<future<void>> fs(nthreads);
+  vector<future<void> > fs(nthreads);
   const auto t0 = gettime();
   auto njobs_left = njobs;
   const auto njobs1 = (njobs + nthreads - 1) / nthreads;
@@ -183,7 +183,7 @@ void run_multi_func(double time, ptrdiff_t njobs, ptrdiff_t nthreads)
     njobs_left -= njobs2;
     fs[t] = async(run_single, time, njobs2);
   }
-  assert(njobs_left == 0);
+  RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();
   const auto t1 = gettime();
   const double usec = elapsed(t1, t0) * nthreads / njobs * 1.0e+6;
@@ -194,8 +194,8 @@ void run_multi(double time, ptrdiff_t njobs,
                const vector<int>& locs, ptrdiff_t nthreads)
 {
   cout << "    Configuration: action multi...        " << flush;
-  assert(nthreads == ptrdiff_t(locs.size() * thread::hardware_concurrency()));
-  vector<future<void>> fs(nthreads);
+  RPC_ASSERT(nthreads == ptrdiff_t(locs.size() * thread::hardware_concurrency()));
+  vector<future<void> > fs(nthreads);
   const auto t0 = gettime();
   auto njobs_left = njobs;
   const auto njobs1 = (njobs + nthreads - 1) / nthreads;
@@ -205,7 +205,7 @@ void run_multi(double time, ptrdiff_t njobs,
     fs[t] = rpc::async(locs[t % locs.size()], run_single_action(),
                        time, njobs2);
   }
-  assert(njobs_left == 0);
+  RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();
   const auto t1 = gettime();
   const double usec = elapsed(t1, t0) * nthreads / njobs * 1.0e+6;
@@ -265,7 +265,7 @@ void run_parallel_func(double time, ptrdiff_t njobs,
                        ptrdiff_t nthreads)
 {
   cout << "    Configuration: function parallel...   " << flush;
-  vector<future<void>> fs(njobs);
+  vector<future<void> > fs(njobs);
   const auto t0 = gettime();
   for (ptrdiff_t n=0; n<njobs; ++n) {
     fs[n] = async(busywait, time, do_nothing, 1);
@@ -281,7 +281,7 @@ void run_parallel(double time, ptrdiff_t njobs,
                   ptrdiff_t nthreads)
 {
   cout << "    Configuration: action parallel...     " << flush;
-  vector<future<void>> fs(njobs);
+  vector<future<void> > fs(njobs);
   const auto t0 = gettime();
   for (ptrdiff_t n=0; n<njobs; ++n) {
     fs[n] = rpc::async(locs[n % locs.size()], busywait_action(),
@@ -317,7 +317,7 @@ void run_sqrt_func(double time, ptrdiff_t njobs, ptrdiff_t nthreads)
 {
   cout << "    Configuration: function sqrt...       " << flush;
   const ptrdiff_t njobs_par = lrint(sqrt(njobs));
-  vector<future<void>> fs(njobs_par);
+  vector<future<void> > fs(njobs_par);
   const auto t0 = gettime();
   auto njobs_left = njobs;
   const auto njobs1 = (njobs + njobs_par - 1) / njobs_par;
@@ -326,7 +326,7 @@ void run_sqrt_func(double time, ptrdiff_t njobs, ptrdiff_t nthreads)
     njobs_left -= njobs2;
     fs[n] = async(busywait, time, do_daisychain_func, njobs2);
   }
-  assert(njobs_left == 0);
+  RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();
   const auto t1 = gettime();
   const double usec = elapsed(t1, t0) * nthreads / njobs * 1.0e+6;
@@ -338,7 +338,7 @@ void run_sqrt(double time, ptrdiff_t njobs,
 {
   cout << "    Configuration: action sqrt...         " << flush;
   const ptrdiff_t njobs_par = lrint(sqrt(njobs));
-  vector<future<void>> fs(njobs_par);
+  vector<future<void> > fs(njobs_par);
   const auto t0 = gettime();
   auto njobs_left = njobs;
   const auto njobs1 = (njobs + njobs_par - 1) / njobs_par;
@@ -348,7 +348,7 @@ void run_sqrt(double time, ptrdiff_t njobs,
     fs[n] = rpc::async(locs[n % locs.size()], busywait_action(),
                        time, do_daisychain, njobs2);
   }
-  assert(njobs_left == 0);
+  RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();
   const auto t1 = gettime();
   const double usec = elapsed(t1, t0) * nthreads / njobs * 1.0e+6;

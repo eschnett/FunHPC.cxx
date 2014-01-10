@@ -4,11 +4,13 @@
 #include <future>
 #include <mutex>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 namespace rpc {
   
   using ::std::async;
+  using ::std::decay;
   using ::std::future;
   using ::std::launch;
   using ::std::lock_guard;
@@ -22,11 +24,31 @@ namespace rpc {
   using ::std::thread;
   
   template<typename T>
-  future<T> make_ready_future(T&& obj)
+  future<typename std::decay<T>::type> make_future(T&& obj)
   {
-    promise<T> p;
+    promise<typename std::decay<T>::type> p;
     p.set_value(std::forward<T>(obj));
     return p.get_future();
+  }
+  inline future<void> make_future()
+  {
+    promise<void> p;
+    p.set_value();
+    return p.get_future();
+  }
+  
+  template<typename T>
+  shared_future<typename std::decay<T>::type> make_shared_future(T&& obj)
+  {
+    return make_future(std::forward<T>(obj)).share();
+  }
+  inline shared_future<void> make_shared_future()
+  {
+    return make_future().share();
+  }
+  
+  namespace this_thread {
+    inline int get_worker_id() { return 0; }
   }
   
   int real_main(int argc, char** argv);

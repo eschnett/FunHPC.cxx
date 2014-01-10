@@ -2,6 +2,9 @@
 #include "rpc_server.hh"
 #include "rpc_server_mpi.hh"
 
+#include <unistd.h>             //TODO
+
+#include <atomic>
 #include <cassert>
 #include <iostream>
 
@@ -19,17 +22,23 @@ namespace rpc {
     std::cout << "MPI processes: " << rpc::server->size() << "\n";
     std::cout << "[" << rpc::server->rank() << "] Hardware concurrency: "
               << thread::hardware_concurrency() << "\n";
+    /*TODO*/ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << "\n";
     int iret = rpc::server->event_loop(rpc_main);
-    if (rpc::server->rank() == 0) {
+    if (true || rpc::server->rank() == 0) {
       if (iret == 0) {
         std::cout << "Done: success.\n";
       } else {
         std::cout << "Done: failure (error=" << iret << ").\n";
       }
     }
+    /*TODO*/ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " shutdown.0\n";
     rpc::thread_finalize();
+    /*TODO*/ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " shutdown.1\n";
     delete rpc::server;
+    rpc::server = nullptr;
+    /*TODO*/ std::cout << "[???] pid=" << getpid() << " shutdown.2\n";
     rpc::thread_finalize2();
+    /*TODO*/ std::cout << "[???] pid=" << getpid() << " shutdown.3\n";
     return iret;
   }
   

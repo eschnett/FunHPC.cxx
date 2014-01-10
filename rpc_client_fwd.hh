@@ -13,29 +13,35 @@ namespace rpc {
   template<typename T>
   class client {
     // gcc 4.7 thinks that shared_future::get is non-const
-    mutable shared_future<global_shared_ptr<T>> data;
+    mutable shared_future<global_shared_ptr<T> > data;
   public:
+    typedef T element_type;
+    
+    // TODO: define then, unwrap for future<client> etc.?
     
     // We require explicit conversions for constructors that take
-    // ownership
+    // ownership of pointers
     client(): client(global_shared_ptr<T>()) {}
     client(const shared_ptr<T>& ptr): client(global_shared_ptr<T>(ptr)) {}
-    client(const global_shared_ptr<T>& ptr): data(make_ready_future(ptr)) {}
-    client(future<global_shared_ptr<T>> ptr): data(ptr.share()) {}
-    client(const shared_future<global_shared_ptr<T>>& ptr): data(ptr) {}
-    client(future<client<T>>& ptr):
-      data(async([ptr]() -> global_shared_ptr<T> {
+    client(const global_shared_ptr<T>& ptr): data(make_shared_future(ptr)) {}
+    client(const shared_future<global_shared_ptr<T> >& ptr): data(ptr) {}
+    client(future<global_shared_ptr<T> >&& ptr): client(ptr.share()) {}
+    client(const shared_future<client<T> >& ptr):
+#if 0
+      client(ptr.then([](const shared_future<client<T> >& ptr) ->
+                      global_shared_ptr<T> {
+                        return ptr.get().data.get();
+                      }))
+#else
+      client(async([=]() -> global_shared_ptr<T> {
             return ptr.get().data.get();
           }))
+#endif
     {
     }
-    client(const shared_future<client<T>>& ptr):
-      // gcc 4.7 thinks that shared_future::get is non-const
-      data(async([ptr]() -> global_shared_ptr<T> {
-            auto ptr1=ptr; return ptr1.get().data.get();
-          }))
-    {
-    }
+    client(future<client<T> >&& ptr): client(ptr.share()) {}
+    
+    global_shared_ptr<T> get_global_shared() const { return data.get(); }
     
     operator bool() const { return bool(data.get()); }
     int get_proc() const { return data.get().get_proc(); }
@@ -50,11 +56,14 @@ namespace rpc {
       return ! (*this == other);
     }
     
-    const shared_ptr<T>& get() const { return data.get().get(); }
+    void wait() const { data.wait(); }
+    const shared_ptr<T>& get() const {
+      /*TODO*/ std::cout << "[" << rpc::server->rank() << "] client.is_local=" << is_local() << "\n";
+ return data.get().get(); }
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    client local() const { return data.get().local(); }
+    client make_local() const { return data.get().make_local(); }
     
     ostream& output(ostream& os) const
     {
@@ -64,17 +73,9 @@ namespace rpc {
   private:
     friend class boost::serialization::access;
     template<class Archive>
-    void save(Archive& ar, unsigned int version) const
-    {
-      ar << data.get();
-    }
+    void save(Archive& ar, unsigned int version) const;
     template<class Archive>
-    void load(Archive& ar, unsigned int version)
-    {
-      global_shared_ptr<T> ptr;
-      ar >> ptr;
-      *this = client(ptr);
-    }
+    void load(Archive& ar, unsigned int version);
     BOOST_SERIALIZATION_SPLIT_MEMBER();
   };
   

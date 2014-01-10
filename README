@@ -1,6 +1,4 @@
 TODO:
-- abstract threading interface, so that std::thread can be replaced by
-  hpx::thread
 - write trivial server with size=1
 - find better name for project
 - support RDMA (get/put), including atomic operations

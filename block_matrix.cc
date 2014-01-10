@@ -1,5 +1,6 @@
 #include "block_matrix.hh"
 
+#include "algorithms.hh"
 #include "matrix.hh"
 
 #include "rpc.hh"
@@ -24,25 +25,25 @@ bool structure_t::invariant() const
 
 std::ptrdiff_t structure_t::find(std::ptrdiff_t i) const
 {
-  assert(i>=0 && i<N);
+  RPC_ASSERT(i>=0 && i<N);
   std::ptrdiff_t b0 = 0, b1 = B;
   auto loopinv = [&]() { return b0>=0 && b1<=B && b0<b1; };
   auto loopvar = [&]() { return b1 - b0; };
-  assert(loopinv());
+  RPC_ASSERT(loopinv());
   std::ptrdiff_t old_loopvar = loopvar();
   while (b0+1 < b1 && i>=begin[b0] && i<begin[b1]) {
     std::ptrdiff_t b = (b0 + b1)/2;
-    assert(b>b0 && b<b1);
+    RPC_ASSERT(b>b0 && b<b1);
     if (i >= begin[b])
       b0 = b;
     else
       b1 = b;
-    assert(loopinv());
+    RPC_ASSERT(loopinv());
     auto next_loopvar = loopvar();
-    assert(next_loopvar >= 0 && next_loopvar < old_loopvar);
+    RPC_ASSERT(next_loopvar >= 0 && next_loopvar < old_loopvar);
     old_loopvar = next_loopvar;
   }
-  assert(loopinv());
+  RPC_ASSERT(loopinv());
   return b0;
 }
 
@@ -66,8 +67,8 @@ block_vector_t::block_vector_t(const structure_t::const_ptr& str):
 
 void block_vector_t::make_block(std::ptrdiff_t b)
 {
-  assert(b>=0 && b<str->B);
-  assert(!has_block(b));
+  RPC_ASSERT(b>=0 && b<str->B);
+  RPC_ASSERT(!has_block(b));
   has_block_[b] = true;
   blocks[b] = rpc::make_remote_client<vector_t>(str->locs[b], str->size(b));
 }
@@ -77,8 +78,8 @@ BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t,
 
 void block_vector_t::remove_block(std::ptrdiff_t b)
 {
-  assert(b>=0 && b<str->B);
-  assert(has_block(b));
+  RPC_ASSERT(b>=0 && b<str->B);
+  RPC_ASSERT(has_block(b));
   has_block_[b] = false;
   blocks[b] = rpc::client<vector_t>();
 }
@@ -90,7 +91,7 @@ std::ostream& operator<<(std::ostream& os, const block_vector_t& x)
     if (b != 0) os << ",";
     os << x.str->begin[b];
     if (x.has_block(b)) {
-      os << ":" << *x.block(b).local();
+      os << ":" << *x.block(b).make_local();
     }
   }
   os << "}";
@@ -102,7 +103,7 @@ std::ostream& operator<<(std::ostream& os, const block_vector_t& x)
 auto block_vector_t::faxpy(double alpha, const const_ptr& x) const -> ptr
 {
   if (alpha == 0.0) return fcopy();
-  assert(str == x->str);
+  RPC_ASSERT(str == x->str);
   auto y = boost::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
     if (!x->has_block(ib)) {
@@ -133,43 +134,66 @@ auto block_vector_t::fcopy() const -> ptr
   return y;
 }
 
-namespace {
-  
-  rpc::shared_future<double> fnrm2_init()
-  {
-    // return std::async([=]() { return 0.0; });
-    return rpc::make_ready_future(0.0);
-  }
-  rpc::shared_future<double> fnrm2_process(rpc::shared_future<double> xi)
-  {
-    // gcc 4.7 thinks that shared_future::get is non-const
-    return rpc::async([=]() { return std::pow(xi.get(), 2.0); });
-    // return rpc::future_then(xi, [](rpc::shared_future<double> xi) {
-    //     return std::pow(xi.get(), 2.0);
-    //   });
-  }
-  rpc::shared_future<double> fnrm2_combine(rpc::shared_future<double> val0,
-                                           rpc::shared_future<double> val1)
-  {
-    return rpc::async([=]() { return val0.get() + val1.get(); });
-  }
-  rpc::shared_future<double> fnrm2_finalize(rpc::shared_future<double> val)
-  {
-    return rpc::async([=]() { return std::sqrt(val.get()); });
-  }
-  
-}
-
-auto block_vector_t::fnrm2() const -> rpc::shared_future<double>
+scalar_t::client fnrm2_init()
 {
-  std::vector<rpc::shared_future<double>> fs;
+  return rpc::make_client<scalar_t>(nrm2_init());
+}
+RPC_ACTION(fnrm2_init);
+scalar_t::client fnrm2_process(scalar_t::client xi)
+{
+  RPC_ASSERT(xi.is_local());
+  return rpc::make_client<scalar_t>(nrm2_process(*xi));
+}
+RPC_ACTION(fnrm2_process);
+scalar_t::client fnrm2_combine(scalar_t::client val0, scalar_t::client val1)
+{
+  RPC_ASSERT(val0.is_local());
+  return rpc::make_client<scalar_t>(nrm2_combine(*val0, *val1.make_local()));
+}
+RPC_ACTION(fnrm2_combine);
+scalar_t::client fnrm2_finalize(scalar_t::client val)
+{
+  RPC_ASSERT(val.is_local());
+  return rpc::make_client<scalar_t>(nrm2_finalize(*val));
+}
+RPC_ACTION(fnrm2_finalize);
+
+auto block_vector_t::fnrm2() const -> scalar_t::client
+{
+  // TODO: use map_reduce instead of creating an intermediate vector.
+  // extend map_reduce to allow skipping (or producing multiple)
+  // elements.
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.0\n";
+  auto fs = rpc::make_client<std::vector<scalar_t::client> >();
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.1\n";
   for (std::ptrdiff_t ib=0; ib<str->B; ++ib) {
     if (has_block(ib)) {
-      fs.push_back(fnrm2_process(afnrm2(block(ib))));
+      fs->push_back(afnrm2(block(ib)));
     }
   }
-  return fnrm2_finalize(rpc::reduce(fnrm2_combine, fnrm2_init,
-                                    fs.begin(), fs.end()));
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2\n";
+  //TODOreturn rpc::async(rpc::map_reduce(fnrm2_process_action(),
+  //TODO                                  fnrm2_combine_action(),
+  //TODO                                  fnrm2_init_action(),
+  //TODO                                  fs),
+  //TODO                  fnrm2_finalize_action());
+  auto r0 = rpc::map_reduce(fnrm2_process_action(),
+                            fnrm2_combine_action(),
+                            fnrm2_init_action(),
+                            fs);
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2a\n";
+  r0.wait();
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2b\n";
+  auto r = rpc::async(r0, fnrm2_finalize_action());
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.3\n";
+  r.wait();
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.4\n";
+  auto r2 = r.share();
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.5\n";
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.6 res=" << r2.get() << "\n";
+  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.6 is_local=" << r2.get().is_local() << "\n";
+  /*TODO*/ if (r2.get().is_local()) std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.7 res=" << *r2.get() << "\n";
+  return make_future(r2.get());
 }
 
 auto block_vector_t::fscal(double alpha) const -> ptr
@@ -214,8 +238,8 @@ block_matrix_t::block_matrix_t(const structure_t::const_ptr& istr,
 
 void block_matrix_t::make_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 {
-  assert(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
-  assert(!has_block(ib,jb));
+  RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
+  RPC_ASSERT(!has_block(ib,jb));
   auto b = ib+istr->B*jb;
   has_block_[b] = true;
   blocks[b] = rpc::make_remote_client<matrix_t>(istr->locs[ib],
@@ -226,8 +250,8 @@ BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t,
 
 void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 {
-  assert(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
-  assert(has_block(ib,jb));
+  RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
+  RPC_ASSERT(has_block(ib,jb));
   auto b = ib+istr->B*jb;
   has_block_[b] = false;
   blocks[b] = rpc::client<matrix_t>();
@@ -243,7 +267,7 @@ std::ostream& operator<<(std::ostream& os, const block_matrix_t& a)
       if (jb != 0) os << ",";
       os << "(" << a.istr->begin[ib] << "," << a.jstr->begin[jb] << ")";
       if (a.has_block(ib,jb)) {
-        os << ":" << *a.block(ib,jb).local();
+        os << ":" << *a.block(ib,jb).make_local();
       }
     }
     os << "}";
@@ -262,8 +286,8 @@ auto block_matrix_t::faxpy(bool transa, bool transb0,
   const auto& jstra = !transa ? a->jstr : a->istr;
   const auto& istrb0 = !transb0 ? istr : jstr;
   const auto& jstrb0 = !transb0 ? jstr : istr;
-  assert(istrb0 == istra);
-  assert(jstrb0 == jstra);
+  RPC_ASSERT(istrb0 == istra);
+  RPC_ASSERT(jstrb0 == jstra);
   auto b = boost::make_shared<block_matrix_t>(istrb0, jstrb0);
   for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
     for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
@@ -308,6 +332,13 @@ auto block_matrix_t::fcopy(bool trans) const -> ptr
   return b;
 }
 
+auto vector_t_add(const vector_t::client& x, const vector_t::client& y) ->
+  vector_t::client
+{
+  return afaxpy(1.0, x, y);
+}
+RPC_ACTION(vector_t_add);
+
 auto block_matrix_t::fgemv(bool trans,
                            double alpha, const block_vector_t::const_ptr& x,
                            double beta, const block_vector_t::const_ptr& y0)
@@ -316,53 +347,52 @@ auto block_matrix_t::fgemv(bool trans,
   if (alpha == 0.0) return y0->fscal(beta);
   const auto& istra = !trans ? istr : jstr;
   const auto& jstra = !trans ? jstr : istr;
-  assert(x->str == jstra);
-  assert(y0->str == istra);
+  RPC_ASSERT(x->str == jstra);
+  RPC_ASSERT(y0->str == istra);
   auto y = boost::make_shared<block_vector_t>(y0->str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
-    std::vector<vector_t::client> ytmps;
+    auto ytmps = rpc::make_client<std::vector<vector_t::client> >();
     if (beta != 0.0 && y0->has_block(ib)) {
       if (beta == 1.0) {
-        ytmps.push_back(y0->block(ib));
+        ytmps->push_back(y0->block(ib));
       } else {
-        ytmps.push_back(afscal(beta, y0->block(ib)));
+        ytmps->push_back(afscal(beta, y0->block(ib)));
       }
     }
     for (std::ptrdiff_t jb=0; jb<x->str->B; ++jb) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba) && x->has_block(jb)) {
-        ytmps.push_back(afgemv(trans, alpha, block(iba,jba), x->block(jb),
+        ytmps->push_back(afgemv(trans, alpha, block(iba,jba), x->block(jb),
                                0.0, vector_t::client()));
       }
     }
-    if (!ytmps.empty()) {
-      struct add {
-        auto operator()(const vector_t::client& x,
-                        const vector_t::client& y) const -> vector_t::client
-        {
-          return afaxpy(1.0, x, y);
-        }
-      };
-      y->set_block(ib, rpc::reduce1(add(), ytmps.begin(), ytmps.end()));
+    if (!ytmps->empty()) {
+      y->set_block(ib, rpc::reduce1(vector_t_add_action(),
+                                    ytmps, ytmps->begin(), ytmps->end()));
+      y->block(ib).wait();
     }
   }
+  // std::cerr << "b5\n";
   return y;
 }
 
-auto block_matrix_t::fnrm2() const -> rpc::shared_future<double>
+auto block_matrix_t::fnrm2() const -> scalar_t::client
 {
-  std::vector<rpc::shared_future<double>> fs;
+  auto fs = rpc::make_client<std::vector<scalar_t::client> >();
   // TODO: Parallelize jb loop
   for (std::ptrdiff_t jb=0; jb<jstr->B; ++jb) {
     for (std::ptrdiff_t ib=0; ib<istr->B; ++ib) {
       if (has_block(ib,jb)) {
-        fs.push_back(fnrm2_process(afnrm2(block(ib,jb))));
+        fs->push_back(afnrm2(block(ib,jb)));
       }
     }
   }
-  return fnrm2_finalize(rpc::reduce(fnrm2_combine, fnrm2_init,
-                                    fs.begin(), fs.end()));
+  return rpc::async(rpc::map_reduce(fnrm2_process_action(),
+                                    fnrm2_combine_action(),
+                                    fnrm2_init_action(),
+                                    fs),
+                    fnrm2_finalize_action());
 }
 
 auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr
@@ -409,6 +439,13 @@ auto block_matrix_t::fset(bool trans, double alpha) const -> ptr
   
 // Level 3
 
+auto matrix_t_add(const matrix_t::client& a, const matrix_t::client& b) ->
+  matrix_t::client
+{
+  return afaxpy(false, false, 1.0, a, b);
+}
+RPC_ACTION(matrix_t_add);
+
 auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
                            double alpha, const const_ptr& b,
                            double beta, const const_ptr& c0) const -> ptr
@@ -420,20 +457,20 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
   const auto& jstrb = !transb ? b->jstr : b->istr;
   const auto& istrc0 = beta == 0.0 ? istra : !transc0 ? c0->istr : c0->jstr;
   const auto& jstrc0 = beta == 0.0 ? jstrb : !transc0 ? c0->jstr : c0->istr;
-  assert(istrb == jstra);
-  assert(istrc0 == istra);
-  assert(jstrc0 == jstrb);
+  RPC_ASSERT(istrb == jstra);
+  RPC_ASSERT(istrc0 == istra);
+  RPC_ASSERT(jstrc0 == jstrb);
   auto c = boost::make_shared<block_matrix_t>(istrc0, jstrc0);
   for (std::ptrdiff_t jb=0; jb<c->jstr->B; ++jb) {
     for (std::ptrdiff_t ib=0; ib<c->istr->B; ++ib) {
       auto ibc0 = !transc0 ? ib : jb;
       auto jbc0 = !transc0 ? jb : ib;
-      std::vector<matrix_t::client> ctmps;
+      auto ctmps = rpc::make_client<std::vector<matrix_t::client> >();
       if (beta != 0.0 && c0->has_block(ibc0,jbc0)) {
         if (beta == 1.0 && !transc0) {
-          ctmps.push_back(c0->block(ibc0,jbc0));
+          ctmps->push_back(c0->block(ibc0,jbc0));
         } else {
-          ctmps.push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
+          ctmps->push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
         }
       }
       for (std::ptrdiff_t kb=0; kb<jstr->B; ++kb) {
@@ -442,20 +479,14 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
         auto kbb = !transb ? kb : jb;
         auto jbb = !transb ? jb : kb;
         if (has_block(iba,kba) && b->has_block(kbb,jbb)) {
-          ctmps.push_back(afgemm(transa, transb, false,
-                                 alpha, block(iba,kba), b->block(kbb,jbb),
-                                 0.0, matrix_t::client()));
+          ctmps->push_back(afgemm(transa, transb, false,
+                                  alpha, block(iba,kba), b->block(kbb,jbb),
+                                  0.0, matrix_t::client()));
         }
       }
-      if (!ctmps.empty()) {
-        struct add {
-          auto operator()(const matrix_t::client& a,
-                          const matrix_t::client& b) const -> matrix_t::client
-          {
-            return afaxpy(false, false, 1.0, a, b);
-          }
-        };
-        c->set_block(ib,jb, rpc::reduce1(add(), ctmps.begin(), ctmps.end()));
+      if (!ctmps->empty()) {
+        c->set_block(ib,jb, rpc::reduce1(matrix_t_add_action(),
+                                         ctmps, ctmps->begin(), ctmps->end()));
       }
     }
   }

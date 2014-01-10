@@ -4,6 +4,18 @@
 
 
 
+RPC_IMPLEMENT_COMPONENT(scalar_t);
+RPC_IMPLEMENT_CONST_MEMBER_ACTION(scalar_t, get_elt);
+RPC_IMPLEMENT_MEMBER_ACTION(scalar_t, set_elt);
+
+std::ostream& operator<<(std::ostream& os, const scalar_t& alpha)
+{
+  os << alpha();
+  return os;
+}
+
+
+
 RPC_IMPLEMENT_COMPONENT(vector_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(vector_t, get_elt);
 RPC_IMPLEMENT_MEMBER_ACTION(vector_t, set_elt);
@@ -36,9 +48,9 @@ auto vector_t::fcopy() const -> ptr
   return y;
 }
 
-auto vector_t::fnrm2() const -> double
+auto vector_t::fnrm2() const -> scalar_t::ptr
 {
-  return nrm2(*this);
+  return boost::make_shared<scalar_t>(nrm2(*this));
 }
 
 auto vector_t::fscal(double alpha) const -> ptr
@@ -118,9 +130,9 @@ auto matrix_t::fgemv(bool trans,
   return y;
 }
 
-auto matrix_t::fnrm2() const -> double
+auto matrix_t::fnrm2() const -> scalar_t::ptr
 {
-  return nrm2(*this);
+  return boost::make_shared<scalar_t>(nrm2(*this));
 }
 
 auto matrix_t::fscal(bool trans, double alpha) const ->
@@ -156,9 +168,9 @@ auto matrix_t::fgemm(bool transa, bool transb, bool transc0,
   auto njb = !transb ? b->NJ : b->NI;
   auto nic0 = beta == 0.0 ? nia : !transc0 ? c0->NI : c0->NJ;
   auto njc0 = beta == 0.0 ? njb : !transc0 ? c0->NJ : c0->NI;
-  assert(nib == nja);
-  assert(nic0 == nia);
-  assert(njc0 == njb);
+  RPC_ASSERT(nib == nja);
+  RPC_ASSERT(nic0 == nia);
+  RPC_ASSERT(njc0 == njb);
   auto c = boost::make_shared<matrix_t>(nic0, njc0);
   if (beta != 0.0) copy(transc0, *c0, *c);
   gemm(transa, transb, alpha, *this, *b, beta, *c);

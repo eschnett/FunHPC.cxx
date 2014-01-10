@@ -4,6 +4,8 @@
 #include "rpc_future.hh"
 #include "rpc_server.hh"
 
+#include "cxx_utils.hh"
+
 #include <boost/serialization/access.hpp>
 
 #include <cstdint>
@@ -13,6 +15,11 @@ namespace rpc {
   
   using std::intptr_t;
   using std::ostream;
+  
+  template<typename T>
+  class global_ptr;
+  template<typename T>
+  ostream& operator<<(ostream& os, const global_ptr<T>& ptr);
   
   // A global pointer, represented as a combination of a local pointer
   // and a process rank describing where the pointer is valid, i.e.
@@ -25,6 +32,8 @@ namespace rpc {
     
   public:
     
+    typedef T element_type;
+    
     bool invariant() const
     {
       return (proc == -1) == !iptr;
@@ -33,8 +42,10 @@ namespace rpc {
     global_ptr(T* ptr = nullptr):
       proc(ptr ? server->rank() : -1), iptr((intptr_t)ptr)
     {
-      assert(invariant());
+      RPC_ASSERT(invariant());
     }
+    
+    // /*TODO*/ ~global_ptr() { std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " ~global_ptr<" << typeid(T).name() << ">:" << *this << "\n"; }
     
     operator bool() const { return bool(iptr); }
     int get_proc() const
@@ -58,13 +69,13 @@ namespace rpc {
     
     T* get() const
     {
-      assert(is_local());
+      RPC_ASSERT(is_local());
       return (T*)iptr;
     }
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    future<global_ptr<T>> local() const;
+    future<global_ptr<T> > make_local() const;
     
     ostream& output(ostream& os) const
     {

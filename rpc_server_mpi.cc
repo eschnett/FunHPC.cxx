@@ -14,14 +14,14 @@ namespace rpc {
   
   server_mpi::~server_mpi()
   {
-    assert(we_should_terminate());
+    RPC_ASSERT(we_should_terminate());
   }
   
   
   
   void server_mpi::terminate_stage_1()
   {
-    assert(termination_stage == 0);
+    RPC_ASSERT(termination_stage == 0);
     termination_stage = 1;
     stage_1_counter = 0;
     for (int proc = child_min(); proc < child_max(); ++proc) {
@@ -32,7 +32,7 @@ namespace rpc {
   
   void server_mpi::terminate_stage_2()
   {
-    assert(termination_stage == 1);
+    RPC_ASSERT(termination_stage == 1);
     const int value = ++stage_1_counter;
     if (value == child_count() + 1) {
       const int proc = parent();
@@ -48,7 +48,7 @@ namespace rpc {
   
   void server_mpi::terminate_stage_3()
   {
-    assert(termination_stage == 2);
+    RPC_ASSERT(termination_stage == 2);
     termination_stage = 3;
     stage_3_counter = 0;
     for (int proc = child_min(); proc < child_max(); ++proc) {
@@ -59,7 +59,7 @@ namespace rpc {
   
   void server_mpi::terminate_stage_4()
   {
-    assert(termination_stage == 3);
+    RPC_ASSERT(termination_stage == 3);
     const int value = ++stage_3_counter;
     if (value == child_count() + 1) {
       const int proc = parent();
@@ -87,8 +87,11 @@ namespace rpc {
     // Start main program, but only on process 0
     if (comm.rank() == 0) {
       thread([=]() {
+          /*TODO*/ std::cout << "[" << rpc::server->rank() << "] rpc_main pid=" << getpid() << "\n";
           iret = user_main(argc, argv);
+          /*TODO*/ std::cout << "returned from user_main\n";
           terminate_stage_1();
+          /*TODO*/ std::cout << "initiated termination\n";
         }).detach();
     }
     
@@ -102,7 +105,7 @@ namespace rpc {
     // Note: Can't have multiple receives open with any_source,
     // since Boost may break MPI messages into two that then don't
     // match any more!
-    vector<shared_ptr<callable_base>> recv_calls(num_recvs);
+    vector<shared_ptr<callable_base> > recv_calls(num_recvs);
     vector<boost::mpi::request> recv_reqs(num_recvs);
     for (int i=0; i<num_recvs; ++i) {
       recv_reqs[i] = comm.irecv(source(i), tag, recv_calls[i]);
@@ -128,7 +131,7 @@ namespace rpc {
         // mpi::send, which doesn't happen immediately since the
         // event loop is still trapped in mpi::test.
         optional<std::pair<boost::mpi::status,
-                           vector<boost::mpi::request>::iterator>> st =
+                           vector<boost::mpi::request>::iterator> > st =
           boost::mpi::test_any(recv_reqs.begin(), recv_reqs.end());
         if (!st) break;
         did_communicate = true;
@@ -141,16 +144,23 @@ namespace rpc {
                (typeid(*recv_call) !=
                 typeid(rpc::terminate_stage_4_action::evaluate))))
         {
-          thread(&callable_base::execute, recv_call).detach();
+          // TODO: move recv_call instead of copying it
+          // thread(&callable_base::execute, recv_call).detach();
+          thread([=]() {
+              /*TODO*/ std::cout << "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << "\n";
+              /*TODO*/ std::cout << "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << " typeid=" << typeid(*recv_call).name() << "\n";
+ recv_call->execute();
+              /*TODO*/ std::cout <<  "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << " done\n";
+ }).detach();
         }
-        recv_call.reset();
+        recv_call = nullptr;
         // Post next receive
         recv_req = comm.irecv(source(i), tag, recv_call);
       }
       // Finalize sends
       for (;;) {
         optional<std::pair<boost::mpi::status,
-                           list<boost::mpi::request>::iterator>> st =
+                           list<boost::mpi::request>::iterator> > st =
           boost::mpi::test_any(send_reqs.begin(), send_reqs.end());
         if (!st) break;
         did_communicate = true;
@@ -158,9 +168,11 @@ namespace rpc {
       }
       // Wait
       if (!did_communicate) {
-        this_thread::yield();
+        //TODO this_thread::yield();
+        this_thread::sleep_for(std::chrono::milliseconds(1));
       }
     }
+    /*TODO*/ std::cout << "finished event loop\n";
     
     // Cancel receives
     for (auto& recv_req: recv_reqs) recv_req.cancel();
@@ -168,7 +180,9 @@ namespace rpc {
     for (auto& send_req: send_reqs) send_req.cancel();
     
     // Broadcast return value
+    /*TODO*/ std::cout << "about to broadcast\n";
     boost::mpi::broadcast(comm, iret, 0);
+    /*TODO*/ std::cout << "did broadcast\n";
     return iret;
   }
   
@@ -176,10 +190,10 @@ namespace rpc {
   
   void server_mpi::call(int dest, shared_ptr<callable_base> func)
   {
-    assert(dest>=0 && dest<size());
-    assert(func);
+    RPC_ASSERT(dest>=0 && dest<size());
+    RPC_ASSERT(func!=nullptr);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
-    assert(dest != rank());
+    RPC_ASSERT(dest != rank());
 #endif
     // Threads may still be active when we need to terminate; let
     // them enqueue requests (why not?)
@@ -189,18 +203,18 @@ namespace rpc {
     {
       // // TODO: block thread instead of sleeping
       // nthis_thread::sleep_for(std::chrono::seconds(1000000));
-      // assert(0);
+      // RPC_ASSERT(0);
       // This assumes that the calling thread will not attempt to
       // perform significant work
       return;
     }
-    // assert(!we_should_terminate());
+    // RPC_ASSERT(!we_should_terminate());
     // Enable this output to debug unregistered and unexported classes
-    // rpc::with_lock(rpc::io_mutex, [&]{
-    //     std::cout << "[" << rpc::server->rank() << "] "
-    //               << "sending type " << typeid(*func).name() << " "
-    //               << "to " << dest << "\n";
-    //   });
+    rpc::with_lock(rpc::io_mutex, [&]{
+        std::cout << "[" << rpc::server->rank() << "] "
+                  << "sending type " << typeid(*func).name() << " "
+                  << "to " << dest << "\n";
+      });
     // TODO: use atomic swaps instead of a mutex
     with_lock(send_queue_mutex,
               [&]{ send_queue.push_back(send_item_t{ dest, func }); });

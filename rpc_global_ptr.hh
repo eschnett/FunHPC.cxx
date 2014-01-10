@@ -13,12 +13,12 @@ namespace rpc {
   struct global_ptr_get_action:
     public rpc::action_impl<global_ptr_get_action<T>,
                             rpc::wrap<decltype(&global_ptr_get<T>),
-                                      &global_ptr_get<T>>>
+                                      &global_ptr_get<T> > >
   {
   };
   
   template<typename T>
-  future<global_ptr<T>> global_ptr<T>::local() const
+  future<global_ptr<T> > global_ptr<T>::make_local() const
   {
     if (is_local()) return make_ready_future(*this);
     const auto localptr = async(get_proc(), global_ptr_get_action<T>(), *this);
@@ -33,7 +33,7 @@ namespace rpc {
   struct make_global_action:
     public action_impl<make_global_action<T, As...>,
                        wrap<decltype(&make_global<T, As...>),
-                            &make_global<T, As...>>>
+                            &make_global<T, As...> > >
   {
   };
   

@@ -11,11 +11,14 @@ namespace rpc {
   using ::qthread::future;
   using ::qthread::launch;
   using ::qthread::lock_guard;
-  using ::qthread::make_ready_future;
+  using ::qthread::make_future;
+  using ::qthread::make_shared_future;
   using ::qthread::mutex;
   using ::qthread::promise;
   using ::qthread::shared_future;
   namespace this_thread {
+    using ::qthread::this_thread::get_id;
+    using ::qthread::this_thread::get_worker_id;
     using ::qthread::this_thread::sleep_for;
     using ::qthread::this_thread::yield;
   }

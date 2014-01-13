@@ -56,22 +56,19 @@
 
 #define RPC_DECLARE_COMPONENT(c) /* do nothing */
 
-// TODO: These are functions that take arguments, and only the default
-// constructor is handled here
-// TODO: What does the above mean?
+// TODO: make_global and make_global_shared take arguments, and only
+// their default constructors can be handled here. But -- does this
+// matter?
 #define RPC_IMPLEMENT_COMPONENT(c)                                      \
   BOOST_CLASS_EXPORT(rpc::global_ptr_get_action<c>::evaluate);          \
   BOOST_CLASS_EXPORT(rpc::global_ptr_get_action<c>::finish);            \
-  BOOST_CLASS_EXPORT(rpc::make_global_action<c>::evaluate);             \
-  BOOST_CLASS_EXPORT(rpc::make_global_action<c>::finish);               \
-  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::evaluate);    \
-  BOOST_CLASS_EXPORT(rpc::global_owner_get_ptr_action<c>::finish);      \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);      \
   BOOST_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);        \
   BOOST_CLASS_EXPORT(rpc::client_get_global_shared_action<c>::evaluate); \
-  BOOST_CLASS_EXPORT(rpc::client_get_global_shared_action<c>::finish);  \
-  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::evaluate);             \
-  BOOST_CLASS_EXPORT(rpc::make_client_action<c>::finish);
+  BOOST_CLASS_EXPORT(rpc::client_get_global_shared_action<c>::finish);
+
+// BOOST_CLASS_EXPORT(rpc::make_global_action<c>::evaluate);             \
+// BOOST_CLASS_EXPORT(rpc::make_global_action<c>::finish);               \
 
 
 

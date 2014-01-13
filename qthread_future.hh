@@ -7,7 +7,9 @@
 
 #include "cxx_utils.hh"
 
-#include <memory>
+#include <boost/make_shared.hpp>
+#include <boost/shared_ptr.hpp>
+
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -52,48 +54,30 @@ namespace qthread {
   class future_state {
     mutable syncvar m_ready;
     bool has_exception;
-    bool is_destructed;         // TODO
-    int magic;
     T value;
   public:
-    future_state(): has_exception(false)
-                  , is_destructed(false), magic(0)
- { m_ready.empty(); }
-    ~future_state() {
-      RPC_ASSERT(!is_destructed);
-      is_destructed=true;
-      magic = 0x1234;
- m_ready.fill(); }
+    future_state(): has_exception(false) { m_ready.empty(); }
+    ~future_state() { m_ready.fill(); }
     future_state(const future_state&) = delete;
     future_state(future_state&&) = delete;
     future_state& operator=(const future_state&) = delete;
     future_state& operator=(future_state&&) = delete;
     bool ready() const { return m_ready.status(); }
-    void wait() const
-    {
-      RPC_ASSERT(!is_destructed);
-      m_ready.readFF();
-      RPC_ASSERT(ready());
-    }
+    void wait() const { m_ready.readFF(); }
     void set_value(const T& value_)
     {
-      RPC_ASSERT(!is_destructed);
       RPC_ASSERT(!ready());
       value = value_;
       m_ready.fill();
-      RPC_ASSERT(ready());
     }
     void set_value(T&& value_)
     {
-      RPC_ASSERT(!is_destructed);
       RPC_ASSERT(!ready());
       std::swap(value, value_);
       m_ready.fill();
-      RPC_ASSERT(ready());
     }
     void set_exception()
     {
-      RPC_ASSERT(!is_destructed);
       RPC_ASSERT(!ready());
       has_exception = true;
       RPC_ASSERT(0);       // TODO
@@ -101,7 +85,6 @@ namespace qthread {
     }
     T& get_value()
     {
-      RPC_ASSERT(!is_destructed);
       wait();
       RPC_ASSERT(!has_exception);
       return value;
@@ -113,8 +96,16 @@ namespace qthread {
     mutable syncvar m_ready;
     bool has_exception;
   public:
-    future_state(): has_exception(false) { m_ready.empty(); }
-    ~future_state() { m_ready.fill(); }
+    future_state(): has_exception(false) {
+      ///*TODO*/std::cout << "future_state.0 " << this << "\n";
+ m_ready.empty();
+      ///*TODO*/std::cout << "future_state.1 " << this << "\n";
+ }
+    ~future_state() {
+      ///*TODO*/std::cout << "future_state.2 " << this << "\n";
+ m_ready.fill();
+      ///*TODO*/std::cout << "future_state.3 " << this << "\n";
+ }
     future_state(const future_state&) = delete;
     future_state(future_state&&) = delete;
     future_state& operator=(const future_state&) = delete;
@@ -122,14 +113,14 @@ namespace qthread {
     bool ready() const { return m_ready.status(); }
     void wait() const
     {
+      ///*TODO*/std::cout << "future_state.wait.0" << this << "\n";
       m_ready.readFF();
-      RPC_ASSERT(ready());
+      ///*TODO*/std::cout << "future_state.wait.1\n";
     }
     void set_value()
     {
       RPC_ASSERT(!ready());
       m_ready.fill();
-      RPC_ASSERT(ready());
     }
     void set_exception()
     {
@@ -140,8 +131,11 @@ namespace qthread {
     }
     void get_value()
     {
+      ///*TODO*/std::cout << "future_state.get_value.0\n";
       wait();
+      ///*TODO*/std::cout << "future_state.get_value.1\n";
       RPC_ASSERT(!has_exception);
+      ///*TODO*/std::cout << "future_state.get_value.2\n";
     }
   };
   
@@ -150,9 +144,9 @@ namespace qthread {
   template<typename T>
   class shared_future {
     typedef T value_type;
-    std::shared_ptr<future_state<value_type> > state;
+    boost::shared_ptr<future_state<value_type> > state;
     void swap(shared_future& other) { std::swap(state, other.state); }
-    shared_future(const std::shared_ptr<future_state<value_type> >& state):
+    shared_future(const boost::shared_ptr<future_state<value_type> >& state):
       state(state)
     {
     }
@@ -163,9 +157,7 @@ namespace qthread {
     shared_future(future<value_type>&& other);
     shared_future(const shared_future& other): state(other.state) {}
     shared_future(shared_future&& other): shared_future() { swap(other); }
-    ~shared_future() {
-      state=nullptr;            // TODO
-}
+    ~shared_future() {}
     shared_future& operator=(const shared_future& other)
     {
       state = other.state;
@@ -207,9 +199,9 @@ namespace qthread {
   template<typename T>
   class shared_future<T&> {
     typedef T& value_type;
-    std::shared_ptr<future_state<T> > state;
+    boost::shared_ptr<future_state<T> > state;
     void swap(shared_future& other) { std::swap(state, other.state); }
-    shared_future(const std::shared_ptr<future_state<value_type> >& state):
+    shared_future(const boost::shared_ptr<future_state<value_type> >& state):
       state(state)
     {
     }
@@ -251,9 +243,9 @@ namespace qthread {
   template<>
   class shared_future<void> {
     typedef void value_type;
-    std::shared_ptr<future_state<value_type> > state;
+    boost::shared_ptr<future_state<value_type> > state;
     void swap(shared_future& other) { std::swap(state, other.state); }
-    shared_future(const std::shared_ptr<future_state<value_type> >& state):
+    shared_future(const boost::shared_ptr<future_state<value_type> >& state):
       state(state)
     {
     }
@@ -297,9 +289,10 @@ namespace qthread {
   template<typename T>
   class future {
     typedef T value_type;
-    std::shared_ptr<future_state<value_type> > state;
+    boost::shared_ptr<future_state<value_type> > state;
     void swap(future& other) { std::swap(state, other.state); }
-    future(const std::shared_ptr<future_state<value_type> >& state): state(state)
+    future(const boost::shared_ptr<future_state<value_type> >& state):
+      state(state)
     {
     }
     friend class shared_future<value_type>;
@@ -308,9 +301,7 @@ namespace qthread {
     future(): state(nullptr) {}
     future(future&& other): future() { swap(other); }
     future(const future& other) = delete;
-    ~future() {
-      state=nullptr;            // TODO
-}
+    ~future() {}
     future& operator=(future&& other)
     {
       state = nullptr;
@@ -358,9 +349,9 @@ namespace qthread {
   template<typename T>
   class future<T&> {
     typedef T& value_type;
-    std::shared_ptr<future_state<value_type> > state;
+    boost::shared_ptr<future_state<value_type> > state;
     void swap(future& other) { std::swap(state, other.state); }
-    future(const std::shared_ptr<future_state<T> >& state): state(state) {}
+    future(const boost::shared_ptr<future_state<T> >& state): state(state) {}
     friend class shared_future<value_type>;
     friend class promise<value_type>;
   public:
@@ -387,7 +378,8 @@ namespace qthread {
     {
       RPC_ASSERT(valid());
       // TODO: optimize this
-      return async([func](future&& f) { f.wait(); return func(std::move(f)); }, std::move(*this));
+      return async([func](future&& f) {
+          f.wait(); return func(std::move(f)); }, std::move(*this));
     }
     bool ready() const { return state->ready(); }
   };
@@ -395,9 +387,10 @@ namespace qthread {
   template<>
   class future<void> {
     typedef void value_type;
-    std::shared_ptr<future_state<value_type> > state;
+    boost::shared_ptr<future_state<value_type> > state;
     void swap(future& other) { std::swap(state, other.state); }
-    future(const std::shared_ptr<future_state<value_type> >& state): state(state)
+    future(const boost::shared_ptr<future_state<value_type> >& state):
+      state(state)
     {
     }
     friend class shared_future<value_type>;
@@ -418,7 +411,11 @@ namespace qthread {
     {
       return shared_future<value_type>(std::move(*this));
     }
-    value_type get() { return state->get_value(); };
+    value_type get() {
+      ///*TODO*/std::cout << "future.get.0\n";
+      ///*TODO*/struct atexit { ~atexit() { std::cout << "future.get.1\n"; } } x;
+      return state->get_value();
+ };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
     template<typename F>
@@ -426,7 +423,8 @@ namespace qthread {
     {
       RPC_ASSERT(valid());
       // TODO: optimize this
-      return async([func](future&& f) { f.wait(); return func(std::move(f)); }, std::move(*this));
+      return async([func](future&& f) {
+          f.wait(); return func(std::move(f)); }, std::move(*this));
     }
     bool ready() const { return state->ready(); }
   };
@@ -448,9 +446,9 @@ namespace qthread {
   
   template<typename T>
   class promise {
-    std::shared_ptr<future_state<T> > state;
+    boost::shared_ptr<future_state<T> > state;
   public:
-    promise(): state(std::make_shared<future_state<T> >()) {}
+    promise(): state(boost::make_shared<future_state<T> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
     ~promise() { if (state && !state->ready()) set_exception(); }
@@ -463,7 +461,11 @@ namespace qthread {
     promise& operator=(const promise& rhs) = delete;
     void swap(promise& other) { std::swap(state, other.state); }
     // TODO: allow only one call to get_future
-    future<T> get_future() { RPC_ASSERT(state!=nullptr); return future<T>(state); }
+    future<T> get_future()
+    {
+      RPC_ASSERT(state!=nullptr);
+      return future<T>(state);
+    }
     void set_value(const T& value) { state->set_value(value); }
     void set_value(T&& value) { state->set_value(std::forward<T>(value)); }
     void set_exception() { state->set_exception(); }
@@ -471,9 +473,9 @@ namespace qthread {
   
   template<typename T>
   class promise<T&> {
-    std::shared_ptr<future_state<T> > state;
+    boost::shared_ptr<future_state<T> > state;
   public:
-    promise(): state(std::make_shared<future_state<T&> >()) {}
+    promise(): state(boost::make_shared<future_state<T&> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
     ~promise() { if (state && !state->ready()) set_exception(); }
@@ -493,9 +495,9 @@ namespace qthread {
   
   template<>
   class promise<void> {
-    std::shared_ptr<future_state<void> > state;
+    boost::shared_ptr<future_state<void> > state;
   public:
-    promise(): state(std::make_shared<future_state<void> >()) {}
+    promise(): state(boost::make_shared<future_state<void> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
     ~promise() { if (state && !state->ready()) set_exception(); }

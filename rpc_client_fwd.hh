@@ -7,6 +7,7 @@
 #include <boost/serialization/access.hpp>
 
 #include <cassert>
+#include <utility>
 
 namespace rpc {
   
@@ -26,17 +27,19 @@ namespace rpc {
     client(const global_shared_ptr<T>& ptr): data(make_shared_future(ptr)) {}
     client(const shared_future<global_shared_ptr<T> >& ptr): data(ptr) {}
     client(future<global_shared_ptr<T> >&& ptr): client(ptr.share()) {}
+    
+    client(const shared_future<shared_ptr<T> >& ptr):
+      client(async([=]() -> global_shared_ptr<T> {
+            return ptr.get();
+          }))
+    {
+    }
+    client(future<shared_ptr<T> >&& ptr): client(ptr.share()) {}
+    
     client(const shared_future<client<T> >& ptr):
-#if 0
-      client(ptr.then([](const shared_future<client<T> >& ptr) ->
-                      global_shared_ptr<T> {
-                        return ptr.get().data.get();
-                      }))
-#else
       client(async([=]() -> global_shared_ptr<T> {
             return ptr.get().data.get();
           }))
-#endif
     {
     }
     client(future<client<T> >&& ptr): client(ptr.share()) {}
@@ -57,13 +60,23 @@ namespace rpc {
     }
     
     void wait() const { data.wait(); }
-    const shared_ptr<T>& get() const {
-      /*TODO*/ std::cout << "[" << rpc::server->rank() << "] client.is_local=" << is_local() << "\n";
- return data.get().get(); }
+    const shared_ptr<T>& get() const { return data.get().get(); }
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    client make_local() const { return data.get().make_local(); }
+    client make_local() const {
+      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.0\n";
+      data;
+      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.1\n";
+      data.get();
+      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.2\n";
+      /*TODO*/struct atexit { ~atexit() { std::cout << "client.make_local.9\n"; } } x;
+      return async([](const shared_future<global_shared_ptr<T> >& data) ->
+                   global_shared_ptr<T>
+                   {
+                     return data.get().make_local().get();
+                   }, data);
+ }
     
     ostream& output(ostream& os) const
     {

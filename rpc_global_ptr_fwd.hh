@@ -39,13 +39,15 @@ namespace rpc {
       return (proc == -1) == !iptr;
     }
     
+    // TODO: allow constructing from and converting to other
+    // global_ptr, if the respective pointers can be converted (also
+    // for global_shared_ptr and client)
+    
     global_ptr(T* ptr = nullptr):
       proc(ptr ? server->rank() : -1), iptr((intptr_t)ptr)
     {
       RPC_ASSERT(invariant());
     }
-    
-    // /*TODO*/ ~global_ptr() { std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " ~global_ptr<" << typeid(T).name() << ">:" << *this << "\n"; }
     
     operator bool() const { return bool(iptr); }
     int get_proc() const
@@ -75,7 +77,8 @@ namespace rpc {
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    future<global_ptr<T> > make_local() const;
+    // future<global_ptr<T> > make_local() const;
+    future<T*> make_local() const;
     
     ostream& output(ostream& os) const
     {

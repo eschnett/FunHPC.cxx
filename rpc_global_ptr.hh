@@ -17,14 +17,22 @@ namespace rpc {
   {
   };
   
+  // template<typename T>
+  // future<global_ptr<T> > global_ptr<T>::make_local() const
+  // {
+  //   if (is_local()) return make_ready_future(get());
+  //   const auto localptr = async(get_proc(), global_ptr_get_action<T>(), *this);
+  //   return async([localptr]() {
+  //       return global_ptr<T>(localptr.get());
+  //     });
+  // }
   template<typename T>
-  future<global_ptr<T> > global_ptr<T>::make_local() const
+  future<T*> global_ptr<T>::make_local() const
   {
-    if (is_local()) return make_ready_future(*this);
-    const auto localptr = async(get_proc(), global_ptr_get_action<T>(), *this);
-    return async([localptr]() {
-        return global_ptr<T>(localptr.get());
-      });
+    // Don't know whether to copy or not for local pointers
+    assert(!is_local());
+    // if (is_local()) return make_future(get());
+    return async(get_proc(), global_ptr_get_action<T>(), *this);
   }
   
   

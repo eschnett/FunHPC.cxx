@@ -9,6 +9,7 @@ CXX = env OMPI_CXX=g++-mp-4.8     openmpic++
 FC  = env OMPI_FC=gfortran-mp-4.8 openmpif90
 
 # -DRPC_DISABLE_CALL_SHORTCUT
+# -DRPC_DEBUG_MISSING_EXPORTS
 # -I/Users/eschnett/hpx-gcc48/include/hpx/external -I/Users/eschnett/hpx-gcc48/include
 # -DHPX_LIMIT=6
 CPPFLAGS = \
@@ -22,9 +23,9 @@ CXXFLAGS = -g -std=c++11 -fstrict-overflow -march=native
 FFLAGS   = -g            -fstrict-overflow -march=native
 
 # -fsanitize=thread
-CFLAGS   += -fbounds-check -ftrapv # -fstack-check -fstack-protector-all -fsanitize=address
-CXXFLAGS += -fbounds-check -ftrapv # -fstack-check -fstack-protector-all -fsanitize=address
-FFLAGS   += -fbounds-check -ftrapv # -fstack-check -fstack-protector-all -fsanitize=address
+CFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+CXXFLAGS += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
 
 # CFLAGS   += -Ofast
 # CXXFLAGS += -Ofast

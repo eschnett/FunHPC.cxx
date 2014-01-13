@@ -14,6 +14,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <string>
+#include <utility>
 
 namespace rpc {
   
@@ -21,180 +22,175 @@ namespace rpc {
   using boost::shared_ptr;
   
   using std::atomic;
+  using std::move;
   using std::string;
+  using std::swap;
   
   
   
   // A global shared pointer
   
-  // Design:
-  //
-  // On the node where the pointee lives, there is a manager object
-  // controlling the pointee. This manager object also contains a
-  // reference count for all remote manager objects. The manager
-  // object's desctructor also destructs the pointee.
-  //
-  // On each node, there is at least on manager object. The manager's
-  // destructor decreases the owning manager's reference count.
-  
-  // Names:
-  // - T: object type
-  // - M: manager
-  // - O: owner
-  
   // Layout:
   //
   // Pointer:
-  //    - shared_ptr<T> ptr, for efficient access if local
-  //    - shared_ptr<M> mgr
+  //    - ptr<M>:               manager
+  //    - maybe: global_ptr<M>: owner
+  //    - maybe: shared_ptr<T>: pointer (if not local)
   //
   // Manager:
-  //    - global_ptr<O> owner
-  //
-  // Owner:
-  //    - atomic<ptrdiff_t> refcount
-  //    - shared_ptr<T> ptr
+  //    - atomic<ptrdiff_t>: reference count
+  //    - global_ptr<M>:     owner (may point to itself)
+  //    - global_ptr<T>:     pointer
+  //    - shared_ptr<T>:     pointer (if not local)
   
-  
-  
-  // Owner
-  // TODO: Put owner into manager
-  
-  class global_owner_base;
-  void global_owner_add_ref(global_ptr<global_owner_base> owner);
-  void global_owner_remove_ref(global_ptr<global_owner_base> owner);
-  
-  class global_owner_base {
+  class global_manager_base {
     atomic<ptrdiff_t> refcount;
-    static atomic<ptrdiff_t> objcount; // TODO
-    ptrdiff_t id;                      // TODO
+    global_ptr<global_manager_base> owner;
   public:
-    virtual bool invariant() const { return refcount>0; }
-    virtual string get_type() const { RPC_ASSERT(0); }
-    global_owner_base() { RPC_ASSERT(0); }
-    global_owner_base(int): refcount(1), id(refcount++) {
-      /* TODO */ std::cout << "global_owner_base at " << this << ": " << typeid(*this).name() << " id=" << id << "\n";
- RPC_ASSERT(refcount>0); }
-    virtual ~global_owner_base() {
-      /* TODO */ std::cout << "~global_owner_base at " << this << ": " << typeid(*this).name() << " id=" << id << "\n";
- RPC_ASSERT(refcount==0); }
-    
-    global_owner_base(const global_owner_base&) = delete;
-    global_owner_base(global_owner_base&&) = delete;
-    global_owner_base& operator=(const global_owner_base&) = delete;
-    global_owner_base& operator=(global_owner_base&&) = delete;
-    
-    template<typename T>
-    const shared_ptr<T>& get_ptr() const;
-    
-    friend void global_owner_add_ref(global_ptr<global_owner_base> owner);
-    friend void global_owner_remove_ref(global_ptr<global_owner_base> owner);
-  };
-  
-  template<typename T>
-  class global_owner: public global_owner_base {
-    virtual void check_abstract() const {} // make class concrete
-    // TODO: make ptr private
-  public:
-    shared_ptr<T> ptr;
-    virtual bool invariant() const
+    bool invariant() const
     {
-      return global_owner_base::invariant() && bool(ptr);
+      if (refcount<0) return false;
+      if (!owner) return false;
+      if (owner.is_local() && owner.get() != this) return false;
+      return true;
     }
-    virtual string get_type() const { return string() + "global_owner<" + typeid(T).name() + ">"; }
-    // TODO: add move constructor
-    global_owner(const shared_ptr<T>& ptr):
-      global_owner_base(0),
-      ptr(ptr) {
-      /* TODO */ std::cout << "global_owner at " << this << ": " << typeid(*this).name() << "\n";
- RPC_ASSERT(invariant()); }
-    virtual ~global_owner() {
-      /* TODO */ std::cout << "~global_owner at " << this << ": " << typeid(*this).name() << "\n";
-}
+    // Create object from scratch
+    global_manager_base(): refcount(1), owner(this)
+    {
+      RPC_ASSERT(invariant() && refcount>0);
+    }
+    // Create from another manager
+    global_manager_base(const global_ptr<global_manager_base>& owner,
+                        const global_ptr<global_manager_base>& other);
+    virtual ~global_manager_base();
     
-    global_owner() = delete;
-    global_owner(const global_owner&) = delete;
-    global_owner(global_owner&&) = delete;
-    global_owner& operator=(const global_owner&) = delete;
-    global_owner& operator=(global_owner&&) = delete;
+    global_manager_base(const global_manager_base&) = delete;
+    global_manager_base(global_manager_base&&) = delete;
+    global_manager_base& operator=(const global_manager_base&) = delete;
+    global_manager_base& operator=(global_manager_base&&) = delete;
+    
+    global_ptr<global_manager_base> get_owner() const { return owner; }
+    
+    void incref() { ++refcount; }
+    void decref() { if (--refcount==0) delete this; }
   };
   
   template<typename T>
-  const shared_ptr<T>& global_owner_base::get_ptr() const
-  {
-    return ((const global_owner<T>*)this)->ptr;
-  }
-  
-  template<typename T>
-  shared_ptr<T> global_owner_get_ptr(global_ptr<global_owner_base> owner)
-  {
-    return owner->get_ptr<T>();
-  }
-  
-  
-  
-  // Manager
-  
-  class global_manager {
-    // TODO: make owner private
+  class global_manager: public global_manager_base {
+    global_ptr<T> gptr;
+    shared_ptr<T> sptr;
   public:
-    global_ptr<global_owner_base> owner;
-    bool invariant() const { return bool(owner); }
-    global_manager(const global_ptr<global_owner_base>& owner): owner(owner)
+    bool invariant() const
+    {
+      if (!global_manager_base::invariant()) return false;
+      if (!bool(gptr)) return false;
+      if (bool(sptr) != gptr.is_local()) return false;
+      return true;
+    }
+    // Create object from scratch
+    global_manager(const shared_ptr<T>& ptr):
+      global_manager_base(), gptr(ptr.get()), sptr(ptr)
     {
       RPC_ASSERT(invariant());
     }
-    ~global_manager();
+    global_manager(shared_ptr<T>&& ptr):
+      global_manager_base(), gptr(ptr.get()), sptr(move(ptr))
+    {
+      RPC_ASSERT(invariant());
+    }
+    // Create from another manager
+    global_manager(const global_ptr<global_manager_base>& owner,
+                   const global_ptr<global_manager_base>& other,
+                   const global_ptr<T>& gptr):
+      global_manager_base(owner, other), gptr(gptr), sptr(nullptr)
+    {
+      assert(gptr);
+      RPC_ASSERT(gptr.get_proc() == owner.get_proc());
+      RPC_ASSERT(invariant());
+    }
+    virtual ~global_manager()
+    {
+      RPC_ASSERT(invariant());
+    }
     
     global_manager() = delete;
     global_manager(const global_manager&) = delete;
     global_manager(global_manager&&) = delete;
     global_manager& operator=(const global_manager&) = delete;
     global_manager& operator=(global_manager&&) = delete;
+    
+    const global_ptr<T>& get_global() const { return gptr; }
+    const shared_ptr<T>& get_shared() const { RPC_ASSERT(sptr); return sptr; }
   };
-  
-  
-  
-  void global_keepalive_destruct
-  (global_ptr<shared_ptr<global_manager> > keepalive);
-  void global_keepalive_add_then_destruct
-  (global_ptr<global_owner_base> owner,
-   global_ptr<shared_ptr<global_manager> > keepalive);
   
   
   
   // Pointer
   template<typename T>
   class global_shared_ptr {
-    global_ptr<T> gptr;
-    // shared_ptr<T> sptr;
-    shared_ptr<global_manager> mgr;
+    global_manager<T>* mgr;
+    
+    void swap(global_shared_ptr& other) { std::swap(mgr, other.mgr); }
+    
   public:
     typedef T element_type;
+    
+    operator bool() const { return bool(mgr); }
+    
+    const global_ptr<T>& get_global() const
+    {
+      static const global_ptr<T> null(nullptr);
+      if (!*this) return null;
+      return mgr->get_global();
+    }
+    
+    int get_proc() const
+    {
+      return get_global().get_proc();
+    }
+    
+    bool is_local() const
+    {
+      return get_global().is_local();
+    }
+    
+    // Can only get local objects
+    const shared_ptr<T>& get() const
+    {
+      RPC_ASSERT(is_local());
+      return mgr->get_shared();
+    }
     
     bool invariant() const
     {
       // nullptr:
-      if (!*this) return !gptr && !mgr;
-      if (!mgr) return false;
-      // !local:
-      if (!is_local()) return !mgr->owner.is_local();
-      if (!mgr->owner.is_local()) return false;
-      if (get_global().get() != get_shared().get()) return false;
+      if (!mgr) return true;
+      // check manager
+      if (!mgr->invariant()) return false;
       return true;
     }
     
-    global_shared_ptr(): gptr(), mgr(nullptr) { RPC_ASSERT(invariant()); }
+    // Create empty
+    global_shared_ptr(): mgr(nullptr) { RPC_ASSERT(invariant()); }
+    
+    // Create from shared pointer
     global_shared_ptr(const shared_ptr<T>& ptr):
-      gptr(ptr.get()),
-      mgr(ptr ? make_shared<global_manager>(new global_owner<T>(ptr)) : nullptr)
+      mgr(ptr ? new global_manager<T>(ptr) : nullptr)
     {
       RPC_ASSERT(invariant());
     }
+    global_shared_ptr(shared_ptr<T>&& ptr):
+      mgr(ptr ? new global_manager<T>(move(ptr)) : nullptr)
+    {
+      RPC_ASSERT(invariant());
+    }
+    
+    // Copy constructor and friends
     global_shared_ptr(const global_shared_ptr& other):
-      gptr(other.gptr), mgr(other.mgr)
+      mgr(other.mgr)
     {
       RPC_ASSERT(other.invariant());
+      if (mgr) mgr->incref();
       RPC_ASSERT(invariant());
     }
     global_shared_ptr(global_shared_ptr&& other):
@@ -202,17 +198,16 @@ namespace rpc {
     {
       RPC_ASSERT(other.invariant());
       RPC_ASSERT(invariant());
-      gptr = other.gptr;
-      other.gptr = nullptr;
-      mgr.swap(other.mgr);
+      swap(other);
       RPC_ASSERT(invariant());
     }
     global_shared_ptr& operator=(const global_shared_ptr& other)
     {
       RPC_ASSERT(invariant() && other.invariant());
       if (this != &other) {
-        gptr = other.gptr;
+        if (mgr) mgr->decref();
         mgr = other.mgr;
+        if (mgr) mgr->incref();
       }
       RPC_ASSERT(invariant());
       return *this;
@@ -220,52 +215,44 @@ namespace rpc {
     global_shared_ptr& operator=(global_shared_ptr&& other)
     {
       RPC_ASSERT(invariant() && other.invariant());
-      gptr = nullptr;
-      mgr.reset();
-      gptr = other.gptr;
-      other.gptr = nullptr;
-      mgr.swap(other.mgr);
+      if (mgr) mgr->decref();
+      mgr = nullptr;
+      swap(other);
       RPC_ASSERT(invariant());
       return *this;
     }
     
-    // Can check for nullptr even for remote objects
-    operator bool() const { return bool(gptr); }
-    int get_proc() const { return gptr.get_proc(); }
-    bool is_local() const { return gptr.is_local(); }
-    
-  private:
-    const global_ptr<T>& get_global() const { return gptr; }
-    const shared_ptr<T>& get_shared() const
+    ~global_shared_ptr()
     {
-      /*TODO*/ std::cout << "[" << rpc::server->rank() << "] global_shared_ptr.is_local=" << is_local() << "\n";
-      RPC_ASSERT(is_local());
-      // return sptr;
-      static const shared_ptr<T> null_shared(nullptr);
-      if (!*this) return null_shared;
-      return mgr->owner->get_ptr<T>();
+      RPC_ASSERT(invariant());
+      if (mgr) mgr->decref();
+      mgr = nullptr;
     }
-  public:
     
     bool operator==(const global_shared_ptr& other) const
     {
-      return gptr == other.gptr;
+      return get_global() == other.get_global();
     }
     bool operator!=(const global_shared_ptr& other) const
     {
       return ! (*this == other);
     }
     
-    // Can only get local objects
-    const shared_ptr<T>& get() const { return get_shared(); }
     T& operator*() const { return *get(); }
     auto operator->() const -> decltype(this->get()) { return get(); }
     
-    auto make_local() const -> shared_future<global_shared_ptr>;
+    future<shared_ptr<T> > make_local() const
+    {
+      if (is_local()) return make_future(get());
+      return async([](const global_ptr<T>& ptr) {
+          return shared_ptr<T>(ptr.make_local().get());
+        }, get_global());
+    }
     
     ostream& output(ostream& os) const
     {
-      return os << gptr;
+      // TODO: output mgr itself as well
+      return os << mgr;
     }
     
   private:

@@ -87,11 +87,8 @@ namespace rpc {
     // Start main program, but only on process 0
     if (comm.rank() == 0) {
       thread([=]() {
-          /*TODO*/ std::cout << "[" << rpc::server->rank() << "] rpc_main pid=" << getpid() << "\n";
           iret = user_main(argc, argv);
-          /*TODO*/ std::cout << "returned from user_main\n";
           terminate_stage_1();
-          /*TODO*/ std::cout << "initiated termination\n";
         }).detach();
     }
     
@@ -146,12 +143,7 @@ namespace rpc {
         {
           // TODO: move recv_call instead of copying it
           // thread(&callable_base::execute, recv_call).detach();
-          thread([=]() {
-              /*TODO*/ std::cout << "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << "\n";
-              /*TODO*/ std::cout << "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << " typeid=" << typeid(*recv_call).name() << "\n";
- recv_call->execute();
-              /*TODO*/ std::cout <<  "[" << rpc::server->rank() << "] recv_call pid=" << getpid() << " done\n";
- }).detach();
+          thread([=]() { recv_call->execute(); }).detach();
         }
         recv_call = nullptr;
         // Post next receive
@@ -168,11 +160,9 @@ namespace rpc {
       }
       // Wait
       if (!did_communicate) {
-        //TODO this_thread::yield();
-        this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::yield();
       }
     }
-    /*TODO*/ std::cout << "finished event loop\n";
     
     // Cancel receives
     for (auto& recv_req: recv_reqs) recv_req.cancel();
@@ -180,9 +170,7 @@ namespace rpc {
     for (auto& send_req: send_reqs) send_req.cancel();
     
     // Broadcast return value
-    /*TODO*/ std::cout << "about to broadcast\n";
     boost::mpi::broadcast(comm, iret, 0);
-    /*TODO*/ std::cout << "did broadcast\n";
     return iret;
   }
   
@@ -210,11 +198,13 @@ namespace rpc {
     }
     // RPC_ASSERT(!we_should_terminate());
     // Enable this output to debug unregistered and unexported classes
+#ifdef RPC_DEBUG_MISSING_EXPORTS
     rpc::with_lock(rpc::io_mutex, [&]{
         std::cout << "[" << rpc::server->rank() << "] "
                   << "sending type " << typeid(*func).name() << " "
                   << "to " << dest << "\n";
       });
+#endif
     // TODO: use atomic swaps instead of a mutex
     with_lock(send_queue_mutex,
               [&]{ send_queue.push_back(send_item_t{ dest, func }); });

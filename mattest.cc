@@ -183,13 +183,25 @@ void test_block()
   auto kstr = boost::make_shared<structure_t>(NK, BK, kbegin, klocs);
   std::cout << "kstr=" << *kstr << std::endl;
   
+  /*TODO*/std::cout << "AAA.0\n";
   block_vector_t x(jstr);
+  /*TODO*/std::cout << "AAA.1\n";
   for (ptrdiff_t jb=0; jb<BJ; ++jb)
     if (jb % 2 == 0)
       x.make_block(jb);
+  /*TODO*/std::cout << "AAA.2\n";
   for (ptrdiff_t j=0, n=0; j<NJ; ++j)
+  {
+  /*TODO*/std::cout << "AAA.2.0 j=" << j << "\n";
     if (x.has_elt(j))
+    {
+  /*TODO*/std::cout << "AAA.2.1\n";
       x.set_elt(j, n++ + 1);
+  /*TODO*/std::cout << "AAA.2.2\n";
+    }
+  /*TODO*/std::cout << "AAA.2.3\n";
+  }
+  /*TODO*/std::cout << "AAA.3\n";
   std::cout << "x=" << x << std::endl;
   
   block_vector_t y(istr);
@@ -301,52 +313,46 @@ void test_block()
   std::cout << "   (error = " << fnrm2_x_error << ")" << std::endl;
   total_error += fnrm2_x_error;
   
-  /*TODO*/ std::cout << "BBB before sleep\n";
-  rpc::this_thread::sleep_for(std::chrono::seconds(1));
-  /*TODO*/ std::cout << "BBB after sleep\n";
   zzp = zp->faxpy(alpha, yp);
   std::cout << "faxpy: alpha y + z = " << *zzp << std::endl;
-  /*TODO*/ std::cout << "BBB.0\n";
   const block_vector_t::const_ptr axpy_resultp(&axpy_result, null_deleter());
-  /*TODO*/ std::cout << "BBB.1\n";
   zzp = zzp->faxpy(-1.0, axpy_resultp);
-  /*TODO*/ std::cout << "BBB.2.0\n";
-  auto q0 = zzp->fnrm2();
-  /*TODO*/ std::cout << "BBB.2.1\n";
-  auto q1 = q0.make_local();
-  /*TODO*/ std::cout << "BBB.2.2\n";
-  auto q2 = *q1;
-  /*TODO*/ std::cout << "BBB.2.3\n";
-  const double faxpy_error = q2;
-  //TODO const double faxpy_error = *zzp->fnrm2().make_local();
-  /*TODO*/ std::cout << "BBB.3\n";
+  const double faxpy_error = *zzp->fnrm2().make_local();
   std::cout << "   (error = " << faxpy_error << ")" << std::endl;
-  /*TODO*/ std::cout << "BBB.4\n";
   total_error += faxpy_error;
-  /*TODO*/ std::cout << "BBB.5\n";
   
-  //TODO yyp = ap->fgemv(false, alpha, xp, beta, yp);
-  //TODO std::cout << "fgemv: alpha a x + beta y = " << *yyp << std::endl;
-  //TODO const block_vector_t::const_ptr gemv_resultp(&gemv_result, null_deleter());
-  //TODO yyp = yyp->faxpy(-1.0, gemv_resultp);
-  //TODO const double fgemv_error = *zzp->fnrm2();
-  //TODO std::cout << "   (error = " << fgemv_error << ")" << std::endl;
-  //TODO total_error += fgemv_error;
-  //TODO 
-  //TODO nn = *ap->fnrm2();
-  //TODO std::cout << "fnrm2: |a| = " << nn << std::endl;
-  //TODO nn -= nrm2_a_result;
-  //TODO const double fnrm2_a_error = fabs(nn);
-  //TODO std::cout << "   (error = " << fnrm2_a_error << ")" << std::endl;
-  //TODO total_error += fnrm2_a_error;
-  //TODO 
-  //TODO aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
-  //TODO std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
-  //TODO const block_matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
-  //TODO aap = aap->faxpy(false, false, -1.0, gemm_resultp);
-  //TODO const double fgemm_error = *zzp->fnrm2();
-  //TODO std::cout << "   (error = " << fgemm_error << ")" << std::endl;
-  //TODO total_error += fgemm_error;
+  yyp = ap->fgemv(false, alpha, xp, beta, yp);
+  std::cout << "fgemv: alpha a x + beta y = " << *yyp << std::endl;
+  const block_vector_t::const_ptr gemv_resultp(&gemv_result, null_deleter());
+  yyp = yyp->faxpy(-1.0, gemv_resultp);
+  const double fgemv_error = *zzp->fnrm2().make_local();
+  std::cout << "   (error = " << fgemv_error << ")" << std::endl;
+  total_error += fgemv_error;
+  
+  nn = *ap->fnrm2().make_local();
+  std::cout << "fnrm2: |a| = " << nn << std::endl;
+  nn -= nrm2_a_result;
+  const double fnrm2_a_error = fabs(nn);
+  std::cout << "   (error = " << fnrm2_a_error << ")" << std::endl;
+  total_error += fnrm2_a_error;
+  
+  /*TODO*/std::cout << "AAA.4\n";
+  aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
+  /*TODO*/std::cout << "AAA.5\n";
+  /*TODO*/std::cout << "AAA.5a aap="<<aap<<"\n";
+  /*TODO*/std::cout << "AAA.5b *aap="<<*aap<<"\n";
+  std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
+  /*TODO*/std::cout << "AAA.6\n";
+  const block_matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
+  /*TODO*/std::cout << "AAA.7\n";
+  aap = aap->faxpy(false, false, -1.0, gemm_resultp);
+  /*TODO*/std::cout << "AAA.8\n";
+  const double fgemm_error = *zzp->fnrm2().make_local();
+  /*TODO*/std::cout << "AAA.9\n";
+  std::cout << "   (error = " << fgemm_error << ")" << std::endl;
+  /*TODO*/std::cout << "AAA.10\n";
+  total_error += fgemm_error;
+  /*TODO*/std::cout << "AAA.11\n";
   
   
   
@@ -362,7 +368,10 @@ void test_block()
 
 int rpc_main(int argc, char** argv)
 {
-  //TODO test_dense();
+  /*TODO*/std::cout << "000.0\n";
+  test_dense();
+  /*TODO*/std::cout << "000.1\n";
   test_block();
+  /*TODO*/std::cout << "000.2\n";
   return 0;
 }

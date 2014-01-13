@@ -2,59 +2,65 @@
 
 namespace rpc {
   
-  void global_owner_add_ref(global_ptr<global_owner_base> owner)
+  global_manager_base::global_manager_base
+  (const global_ptr<global_manager_base>& owner,
+   const global_ptr<global_manager_base>& other):
+    refcount(1), owner(owner)
   {
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " increasing refcount at " << owner << "\n";
-    /* TODO */ std::cout << "   " << typeid(*owner).name() << "\n";
-    /* TODO */ std::cout << "   " << owner->get_type() << "\n";
-    RPC_ASSERT(owner->invariant());
-    RPC_ASSERT(owner->refcount>0 && owner->refcount<1000);
-    ++owner->refcount;
-  }
-  void global_owner_remove_ref(global_ptr<global_owner_base> owner)
-  {
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " decreasing refcount at " << owner << ": " << typeid(*owner).name() << " " << owner->get_type() << "\n";
-    /* TODO */ std::cout << "   refcount=" << owner->refcount << "\n";
-    RPC_ASSERT(owner->refcount>0 && owner->refcount<1000);
-    if (--owner->refcount == 0) {
-      /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " deleting owner at " << owner << ": " << typeid(*owner).name() << " " << owner->get_type() << "\n";
-      delete owner.get();
+    RPC_ASSERT(owner);
+    RPC_ASSERT(other);
+    // We don't want multiple managers per process, so we forbid this.
+    // This is for efficiency only.
+    RPC_ASSERT(!owner.is_local());
+    RPC_ASSERT(!other.is_local());
+    // We assume that other has its refcount artificially increased by
+    // one, ensuring that the object won't be destructed before we
+    // have registered. We also start out with a reference count that
+    // has been artificially increased by one to ensure that we don't
+    // de-register with the owner before we actually have registered.
+    
+    // We register in three steps:
+    // 1.  Send message to owner, increasing the refcount there
+    // 2a. Send message to other, decreasing the refcount there
+    // 2b. Send message (back) to this, decreasing the refcount
+    //     there
+    if (other != owner) {
+      refcount = 2;
+      detached(owner.get_proc(),
+               global_shared::register_then_unregister_action(),
+               owner, other, this);
     }
-    /* TODO */ std::cout << "   done decreasing\n";
+    RPC_ASSERT(invariant() && refcount>0);
+  }
+  
+  global_manager_base::~global_manager_base()
+  {
+    RPC_ASSERT(invariant());
+    RPC_ASSERT(refcount==0);
+    if (owner != this) {
+      detached(owner.get_proc(), global_shared::unregister_action(), owner);
+    }
   }
   
   
   
-  global_manager::~global_manager()
-  {
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " ~global_manager at " << this << " " << typeid(*this).name() << "\n";
-    detached(owner.get_proc(), global_owner_remove_ref_action(), owner);
-  }
-  
-  
-  
-  void global_keepalive_destruct
-  (global_ptr<shared_ptr<global_manager> > keepalive)
-  {
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " deleting keepalive at " << keepalive << ": " << typeid(*keepalive).name() << " " << *keepalive << "\n";
-    delete keepalive.get();
-  }
-  void global_keepalive_add_then_destruct
-  (global_ptr<global_owner_base> owner,
-   global_ptr<shared_ptr<global_manager> > keepalive)
-  {
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " global_keepalive_add_then_destruct: owner=" << owner << " keepalive=" << keepalive << ": about to add_ref\n";
-    global_owner_add_ref(owner);
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " global_keepalive_add_then_destruct: owner=" << owner << " keepalive=" << keepalive << ": about to detach\n";
-    detached(keepalive.get_proc(),
-             global_keepalive_destruct_action(), keepalive);
-    /* TODO */ std::cout << "[" << rpc::server->rank() << "] pid=" << getpid() << " global_keepalive_add_then_destruct: owner=" << owner << " keepalive=" << keepalive << ": done\n";
+  namespace global_shared {
+    void register_then_unregister(const global_ptr<global_manager_base>& owner,
+                                  const global_ptr<global_manager_base>& other,
+                                  const global_ptr<global_manager_base>& self)
+    {
+      owner->incref();
+      detached(other.get_proc(), unregister_action(), other);
+      detached(self.get_proc(), unregister_action(), self);
+    }
+    
+    void unregister(const global_ptr<global_manager_base>& self)
+    {
+      self->decref();
+    }
   }
   
 }
 
-RPC_IMPLEMENT_ACTION(rpc::global_owner_add_ref);
-RPC_IMPLEMENT_ACTION(rpc::global_owner_remove_ref);
-
-RPC_IMPLEMENT_ACTION(rpc::global_keepalive_destruct);
-RPC_IMPLEMENT_ACTION(rpc::global_keepalive_add_then_destruct);
+RPC_IMPLEMENT_ACTION(rpc::global_shared::register_then_unregister);
+RPC_IMPLEMENT_ACTION(rpc::global_shared::unregister);

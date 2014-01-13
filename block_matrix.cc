@@ -163,37 +163,17 @@ auto block_vector_t::fnrm2() const -> scalar_t::client
   // TODO: use map_reduce instead of creating an intermediate vector.
   // extend map_reduce to allow skipping (or producing multiple)
   // elements.
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.0\n";
   auto fs = rpc::make_client<std::vector<scalar_t::client> >();
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.1\n";
   for (std::ptrdiff_t ib=0; ib<str->B; ++ib) {
     if (has_block(ib)) {
       fs->push_back(afnrm2(block(ib)));
     }
   }
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2\n";
-  //TODOreturn rpc::async(rpc::map_reduce(fnrm2_process_action(),
-  //TODO                                  fnrm2_combine_action(),
-  //TODO                                  fnrm2_init_action(),
-  //TODO                                  fs),
-  //TODO                  fnrm2_finalize_action());
-  auto r0 = rpc::map_reduce(fnrm2_process_action(),
-                            fnrm2_combine_action(),
-                            fnrm2_init_action(),
-                            fs);
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2a\n";
-  r0.wait();
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.2b\n";
-  auto r = rpc::async(r0, fnrm2_finalize_action());
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.3\n";
-  r.wait();
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.4\n";
-  auto r2 = r.share();
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.5\n";
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.6 res=" << r2.get() << "\n";
-  /*TODO*/ std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.6 is_local=" << r2.get().is_local() << "\n";
-  /*TODO*/ if (r2.get().is_local()) std::cout << "AAA [" << rpc::server->rank() << "/" << getpid() << "] fnrm2.7 res=" << *r2.get() << "\n";
-  return make_future(r2.get());
+  return rpc::async(rpc::map_reduce(fnrm2_process_action(),
+                                    fnrm2_combine_action(),
+                                    fnrm2_init_action(),
+                                    fs),
+                    fnrm2_finalize_action());
 }
 
 auto block_vector_t::fscal(double alpha) const -> ptr
@@ -259,20 +239,35 @@ void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 
 std::ostream& operator<<(std::ostream& os, const block_matrix_t& a)
 {
+  /*TODO*/std::cout << "JJJ.0\n";
   os << "{";
+  /*TODO*/std::cout << "JJJ.1\n";
   for (std::ptrdiff_t ib=0; ib<a.istr->B; ++ib) {
+    /*TODO*/std::cout << "JJJ.2 ib="<<ib<<"\n";
     if (ib != 0) os << ",";
+    /*TODO*/std::cout << "JJJ.3\n";
     os << "{";
+    /*TODO*/std::cout << "JJJ.4\n";
     for (std::ptrdiff_t jb=0; jb<a.jstr->B; ++jb) {
+      /*TODO*/std::cout << "JJJ.5 jb="<<jb<<"\n";
       if (jb != 0) os << ",";
+      /*TODO*/std::cout << "JJJ.6\n";
       os << "(" << a.istr->begin[ib] << "," << a.jstr->begin[jb] << ")";
+      /*TODO*/std::cout << "JJJ.7\n";
       if (a.has_block(ib,jb)) {
+        /*TODO*/std::cout << "JJJ.8\n";
         os << ":" << *a.block(ib,jb).make_local();
+        /*TODO*/std::cout << "JJJ.9\n";
       }
+      /*TODO*/std::cout << "JJJ.10\n";
     }
+    /*TODO*/std::cout << "JJJ.11\n";
     os << "}";
+    /*TODO*/std::cout << "JJJ.12\n";
   }
+  /*TODO*/std::cout << "JJJ.13\n";
   os << "}";
+  /*TODO*/std::cout << "JJJ.14\n";
   return os;
 }
 
@@ -450,7 +445,9 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
                            double alpha, const const_ptr& b,
                            double beta, const const_ptr& c0) const -> ptr
 {
+  /*TODO*/std::cout << "III.0\n";
   if (alpha == 0.0) return c0->fscal(transc0, beta);
+  /*TODO*/std::cout << "III.1\n";
   const auto& istra = !transa ? istr : jstr;
   const auto& jstra = !transa ? jstr : istr;
   const auto& istrb = !transb ? b->istr : b->jstr;
@@ -460,36 +457,66 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
   RPC_ASSERT(istrb == jstra);
   RPC_ASSERT(istrc0 == istra);
   RPC_ASSERT(jstrc0 == jstrb);
+  /*TODO*/std::cout << "III.2\n";
   auto c = boost::make_shared<block_matrix_t>(istrc0, jstrc0);
+  /*TODO*/std::cout << "III.3 c="<<c<<"\n";
+  /*TODO*/std::cout << "III.3a *c="<<*c<<"\n";
   for (std::ptrdiff_t jb=0; jb<c->jstr->B; ++jb) {
+    /*TODO*/std::cout << "III.4 jb="<<jb<<"\n";
     for (std::ptrdiff_t ib=0; ib<c->istr->B; ++ib) {
+      /*TODO*/std::cout << "III.5 ib="<<ib<<"\n";
       auto ibc0 = !transc0 ? ib : jb;
       auto jbc0 = !transc0 ? jb : ib;
+      /*TODO*/std::cout << "III.6\n";
       auto ctmps = rpc::make_client<std::vector<matrix_t::client> >();
+      /*TODO*/std::cout << "III.7\n";
       if (beta != 0.0 && c0->has_block(ibc0,jbc0)) {
+        /*TODO*/std::cout << "III.8\n";
         if (beta == 1.0 && !transc0) {
+          /*TODO*/std::cout << "III.9\n";
           ctmps->push_back(c0->block(ibc0,jbc0));
+          /*TODO*/std::cout << "III.10\n";
         } else {
+          /*TODO*/std::cout << "III.11\n";
           ctmps->push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
+          /*TODO*/std::cout << "III.12\n";
         }
+        /*TODO*/std::cout << "III.13\n";
       }
+      /*TODO*/std::cout << "III.14\n";
       for (std::ptrdiff_t kb=0; kb<jstr->B; ++kb) {
+        /*TODO*/std::cout << "III.15 kb="<<kb<<"0\n";
         auto iba = !transa ? ib : kb;
         auto kba = !transa ? kb : ib;
         auto kbb = !transb ? kb : jb;
         auto jbb = !transb ? jb : kb;
+        /*TODO*/std::cout << "III.16\n";
         if (has_block(iba,kba) && b->has_block(kbb,jbb)) {
+          /*TODO*/std::cout << "III.17\n";
           ctmps->push_back(afgemm(transa, transb, false,
                                   alpha, block(iba,kba), b->block(kbb,jbb),
                                   0.0, matrix_t::client()));
+          /*TODO*/std::cout << "III.18\n";
         }
+        /*TODO*/std::cout << "III.19\n";
       }
+      /*TODO*/std::cout << "III.20\n";
       if (!ctmps->empty()) {
+        /*TODO*/std::cout << "III.21\n";
         c->set_block(ib,jb, rpc::reduce1(matrix_t_add_action(),
                                          ctmps, ctmps->begin(), ctmps->end()));
+        /*TODO*/std::cout << "III.22\n";
       }
+      /*TODO*/std::cout << "III.23\n";
     }
+    /*TODO*/std::cout << "III.24\n";
   }
+  /*TODO*/std::cout << "III.25 c="<<c<<"\n";
+  c;
+  /*TODO*/std::cout << "III.25a\n";
+  *c;
+  /*TODO*/std::cout << "III.25b\n";
+  /*TODO*/std::cout << "III.25c *c="<<*c<<"\n";
   return c;
 }
 

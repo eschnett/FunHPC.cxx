@@ -104,13 +104,9 @@ namespace rpc {
       p(p), args(args...) {}
     void execute()
     {
-      /*TODO*/ std::cout << "action_evaluate.0\n";
       auto cont = tuple_apply(F(), args);
-      /*TODO*/ std::cout << "action_evaluate.1\n";
       if (!p) return;
-      /*TODO*/ std::cout << "action_evaluate.2\n";
       server->call(p.get_proc(), make_shared<typename F::finish>(p, cont));
-      /*TODO*/ std::cout << "action_evaluate.3\n";
     }
   private:
     friend class boost::serialization::access;
@@ -128,17 +124,12 @@ namespace rpc {
     action_evaluate() {}        // only for boost::serialize
     action_evaluate(const global_ptr<promise<void> >& p, const As&... args):
       p(p), args(args...) {}
-    /*TODO*/ ~action_evaluate() { std::cout << "~action_evaluate<void>\n"; }
     // TODO: Allow moving arguments via &&?
     void execute()
     {
-      /*TODO*/ std::cout << "action_evaluate<void>.0\n";
       tuple_apply(F(), args);
-      /*TODO*/ std::cout << "action_evaluate<void>.1\n";
       if (!p) return;
-      /*TODO*/ std::cout << "action_evaluate<void>.2\n";
       server->call(p.get_proc(), make_shared<typename F::finish>(p));
-      /*TODO*/ std::cout << "action_evaluate<void>.3\n";
     }
   private:
     friend class boost::serialization::access;
@@ -238,16 +229,25 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        typename invoke_of<F, As...>::type>::type
   {
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.0\n";
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
+      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.1\n";
+      /*TODO*/struct atexit { ~atexit() { std::cout << "sync.2\n"; } } x;
       return func(std::forward<As>(args)...);
     }
 #endif
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.3\n";
     typedef typename invoke_of<F, As...>::type R;
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.4\n";
     auto p = new promise<R>;
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.5\n";
     auto f = p->get_future();
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.6\n";
     server->call
       (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.7\n";
+    /*TODO*/struct atexit { ~atexit() { std::cout << "sync.8\n"; } } x;
     return f.get();
   }
   
@@ -301,8 +301,9 @@ namespace rpc {
 #if 0
   template<typename T, typename F, typename... As>
   auto deferred(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename invoke_of<F, const client<T>&, As...>::type> >::type
+    typename enable_if
+    <is_base_of<action_base<F>, F>::value,
+     future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
     return deferred(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
@@ -317,23 +318,21 @@ namespace rpc {
   
   template<typename T, typename F, typename... As>
   auto async(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
-                       future<typename invoke_of<F, const client<T>&, As...>::type> >::type
+    typename enable_if
+    <is_base_of<action_base<F>, F>::value,
+     future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
-    //TODO return async(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
-    /*TODO*/ std::cout << "HHH.0\n";
-    auto proc = ptr.get_proc();
-    /*TODO*/ std::cout << "HHH.1\n";
-    auto r = async(proc, func, ptr, std::forward<As>(args)...);
-    /*TODO*/ std::cout << "HHH.2\n";
-    return std::move(r);
+    return async(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
   
   template<typename T, typename F, typename... As>
   auto sync(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
-                       typename invoke_of<F, const client<T>&, As...>::type>::type
+    typename enable_if
+    <is_base_of<action_base<F>, F>::value,
+     typename invoke_of<F, const client<T>&, As...>::type>::type
   {
+    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync(client).0\n";
+    /*TODO*/struct atexit { ~atexit() { std::cout << "sync(client).1\n"; } } x;
     return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
   

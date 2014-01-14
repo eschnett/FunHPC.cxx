@@ -18,18 +18,18 @@ CPPFLAGS = \
 	-I/Users/eschnett/qthread-1.10-gcc48/include \
 	-DRPC_QTHREADS \
 	-DBLAS
-CFLAGS   = -g -std=c99   -fstrict-overflow -march=native
-CXXFLAGS = -g -std=c++11 -fstrict-overflow -march=native
-FFLAGS   = -g            -fstrict-overflow -march=native
+CFLAGS   = -g -std=c99   -march=native
+CXXFLAGS = -g -std=c++11 -march=native
+FFLAGS   = -g            -march=native
 
 # -fsanitize=thread
-CFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
-CXXFLAGS += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
-FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# CFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# CXXFLAGS += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
 
-# CFLAGS   += -Ofast
-# CXXFLAGS += -Ofast
-# FFLAGS   += -Ofast
+CFLAGS   += -Ofast
+CXXFLAGS += -Ofast
+FFLAGS   += -Ofast
 
 # -L/Users/eschnett/hpx-gcc48/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-gcc48/lib/hpx
 LDFLAGS  = \

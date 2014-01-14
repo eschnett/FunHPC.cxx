@@ -10,11 +10,18 @@ CC  := ${MPICC}
 CXX := ${MPICXX}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
+# -DRPC_DEBUG_MISSING_EXPORTS
 CPPFLAGS := \
 	-DBOOST_MPI_HOMOGENEOUS \
-	-DRPC_STL
-CFLAGS   := -g ${C99FLAGS}   ${CFLAGS}   -march=native # -Ofast
-CXXFLAGS := -g ${CXX11FLAGS} ${CXXFLAGS} -march=native # -Ofast
+	-DRPC_QTHREADS
+CFLAGS   := -g ${C99FLAGS}   ${CFLAGS}   -march=native
+CXXFLAGS := -g ${CXX11FLAGS} ${CXXFLAGS} -march=native
+
+# CFLAGS   +=
+# CXXFLAGS +=
+
+CFLAGS   += -Ofast
+CXXFLAGS += -Ofast
 
 LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS}
 LIBS     := ${MPI_LIBS} ${LIBS}
@@ -108,7 +115,7 @@ qthread_test: ${QTHREAD_TEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.gcc48.redshift
+${OBJS}: Makefile.clang34.compute
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}

@@ -30,7 +30,7 @@ namespace rpc {
   future<T*> global_ptr<T>::make_local() const
   {
     // Don't know whether to copy or not for local pointers
-    assert(!is_local());
+    RPC_ASSERT(!is_local());
     // if (is_local()) return make_future(get());
     return async(get_proc(), global_ptr_get_action<T>(), *this);
   }

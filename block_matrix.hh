@@ -103,21 +103,10 @@ struct block_vector_t {
   }
   void set_elt(std::ptrdiff_t i, double x)
   {
-    /*TODO*/std::cout << "BBB.0\n";
     RPC_ASSERT(i>=0 && i<str->N);
-    /*TODO*/std::cout << "BBB.1\n";
     auto b = str->find(i);
-    /*TODO*/std::cout << "BBB.2\n";
     RPC_ASSERT(has_block(b));
-    /*TODO*/std::cout << "BBB.3\n";
-    block(b);
-    /*TODO*/std::cout << "BBB.3.1\n";
-    vector_t::set_elt_action();
-    /*TODO*/std::cout << "BBB.3.2\n";
-    i - str->begin[b];
-    /*TODO*/std::cout << "BBB.3.3\n";
     rpc::sync(block(b), vector_t::set_elt_action(), i - str->begin[b], x);
-    /*TODO*/std::cout << "BBB.4\n";
   }
   
   // Level 1

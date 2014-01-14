@@ -229,25 +229,16 @@ namespace rpc {
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        typename invoke_of<F, As...>::type>::type
   {
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.0\n";
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.1\n";
-      /*TODO*/struct atexit { ~atexit() { std::cout << "sync.2\n"; } } x;
       return func(std::forward<As>(args)...);
     }
 #endif
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.3\n";
     typedef typename invoke_of<F, As...>::type R;
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.4\n";
     auto p = new promise<R>;
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.5\n";
     auto f = p->get_future();
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.6\n";
     server->call
       (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync.7\n";
-    /*TODO*/struct atexit { ~atexit() { std::cout << "sync.8\n"; } } x;
     return f.get();
   }
   
@@ -331,8 +322,6 @@ namespace rpc {
     <is_base_of<action_base<F>, F>::value,
      typename invoke_of<F, const client<T>&, As...>::type>::type
   {
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] sync(client).0\n";
-    /*TODO*/struct atexit { ~atexit() { std::cout << "sync(client).1\n"; } } x;
     return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
   }
   

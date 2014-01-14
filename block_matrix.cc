@@ -108,8 +108,8 @@ auto block_vector_t::faxpy(double alpha, const const_ptr& x) const -> ptr
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
     if (!x->has_block(ib)) {
       if (has_block(ib)) {
-        // TODO: omit copy?
-        y->set_block(ib, afcopy(block(ib)));
+        // y->set_block(ib, afcopy(block(ib)));
+        y->set_block(ib, block(ib));
       }
     } else {
       if (!has_block(ib)) {
@@ -127,8 +127,8 @@ auto block_vector_t::fcopy() const -> ptr
   auto y = boost::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
     if (has_block(ib)) {
-      // TODO: omit copy?
-      y->set_block(ib, afcopy(block(ib)));
+      // y->set_block(ib, afcopy(block(ib)));
+      y->set_block(ib, block(ib));
     }
   }
   return y;
@@ -179,10 +179,11 @@ auto block_vector_t::fnrm2() const -> scalar_t::client
 auto block_vector_t::fscal(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
-  for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
-    // TODO: Remove block if alpha=0
-    if (has_block(ib)) {
-      x->set_block(ib, afscal(alpha, block(ib)));
+  if (alpha != 0.0) {
+    for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
+      if (has_block(ib)) {
+        x->set_block(ib, afscal(alpha, block(ib)));
+      }
     }
   }
   return x;
@@ -191,14 +192,15 @@ auto block_vector_t::fscal(double alpha) const -> ptr
 auto block_vector_t::fset(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
-  for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
-    // TODO: Remove block if alpha=0
-    if (!has_block(ib)) {
-      const auto tmp =
-        rpc::make_remote_client<vector_t>(str->locs[ib], str->size(ib));
-      x->set_block(ib, afset(alpha, tmp));
-    } else {
-      x->set_block(ib, afset(alpha, block(ib)));
+  if (alpha != 0.0) {
+    for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
+      if (!has_block(ib)) {
+        const auto tmp =
+          rpc::make_remote_client<vector_t>(str->locs[ib], str->size(ib));
+        x->set_block(ib, afset(alpha, tmp));
+      } else {
+        x->set_block(ib, afset(alpha, block(ib)));
+      }
     }
   }
   return x;
@@ -239,35 +241,20 @@ void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 
 std::ostream& operator<<(std::ostream& os, const block_matrix_t& a)
 {
-  /*TODO*/std::cout << "JJJ.0\n";
   os << "{";
-  /*TODO*/std::cout << "JJJ.1\n";
   for (std::ptrdiff_t ib=0; ib<a.istr->B; ++ib) {
-    /*TODO*/std::cout << "JJJ.2 ib="<<ib<<"\n";
     if (ib != 0) os << ",";
-    /*TODO*/std::cout << "JJJ.3\n";
     os << "{";
-    /*TODO*/std::cout << "JJJ.4\n";
     for (std::ptrdiff_t jb=0; jb<a.jstr->B; ++jb) {
-      /*TODO*/std::cout << "JJJ.5 jb="<<jb<<"\n";
       if (jb != 0) os << ",";
-      /*TODO*/std::cout << "JJJ.6\n";
       os << "(" << a.istr->begin[ib] << "," << a.jstr->begin[jb] << ")";
-      /*TODO*/std::cout << "JJJ.7\n";
       if (a.has_block(ib,jb)) {
-        /*TODO*/std::cout << "JJJ.8\n";
         os << ":" << *a.block(ib,jb).make_local();
-        /*TODO*/std::cout << "JJJ.9\n";
       }
-      /*TODO*/std::cout << "JJJ.10\n";
     }
-    /*TODO*/std::cout << "JJJ.11\n";
     os << "}";
-    /*TODO*/std::cout << "JJJ.12\n";
   }
-  /*TODO*/std::cout << "JJJ.13\n";
   os << "}";
-  /*TODO*/std::cout << "JJJ.14\n";
   return os;
 }
 
@@ -292,8 +279,12 @@ auto block_matrix_t::faxpy(bool transa, bool transb0,
       auto jbb0 = !transb0 ? jb : ib;
       if (!a->has_block(iba,jba)) {
         if (has_block(ibb0,jbb0)) {
-          // TODO: omit copy?
-          b->set_block(ib,jb, afcopy(transb0, block(ibb0,jbb0)));
+          // b->set_block(ib,jb, afcopy(transb0, block(ibb0,jbb0)));
+          if (transb0) {
+            b->set_block(ib,jb, afcopy(transb0, block(ibb0,jbb0)));
+          } else {
+            b->set_block(ib,jb, block(ibb0,jbb0));
+          }
         }
       } else {
         if (!has_block(ibb0,jbb0)) {
@@ -319,8 +310,12 @@ auto block_matrix_t::fcopy(bool trans) const -> ptr
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba)) {
-        // TODO: omit copy?
-        b->set_block(ib,jb, afcopy(trans, block(iba,jba)));
+        // b->set_block(ib,jb, afcopy(trans, block(iba,jba)));
+        if (trans) {
+          b->set_block(ib,jb, afcopy(trans, block(iba,jba)));
+        } else {
+          b->set_block(ib,jb, block(iba,jba));
+        }
       }
     }
   }
@@ -395,13 +390,14 @@ auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr
   const auto& istrb = !trans ? istr : jstr;
   const auto& jstrb = !trans ? jstr : istr;
   auto b = boost::make_shared<block_matrix_t>(istrb, jstrb);
-  for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
-      auto iba = !trans ? ib : jb;
-      auto jba = !trans ? jb : ib;
-      // TODO: Remove block if alpha=0
-      if (has_block(iba,jba)) {
-        b->set_block(ib,jb, afscal(trans, alpha, block(iba,jba)));
+  if (alpha != 0.0) {
+    for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
+      for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+        auto iba = !trans ? ib : jb;
+        auto jba = !trans ? jb : ib;
+        if (has_block(iba,jba)) {
+          b->set_block(ib,jb, afscal(trans, alpha, block(iba,jba)));
+        }
       }
     }
   }
@@ -413,19 +409,20 @@ auto block_matrix_t::fset(bool trans, double alpha) const -> ptr
   const auto& istrb = !trans ? istr : jstr;
   const auto& jstrb = !trans ? jstr : istr;
   auto b = boost::make_shared<block_matrix_t>(istrb, jstrb);
-  for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
-      auto iba = !trans ? ib : jb;
-      auto jba = !trans ? jb : ib;
-      // TODO: Remove block if alpha=0
-      if (!has_block(iba,jba)) {
-        // TODO: Add a wrapper for determining the location
-        const auto tmp =
-          rpc::make_remote_client<matrix_t>(istr->locs[iba],
-                                            istr->size(iba), jstr->size(jba));
-        b->set_block(ib,jb, afset(trans, alpha, tmp));
-      } else {
-        b->set_block(ib,jb, afset(trans, alpha, block(iba,jba)));
+  if (alpha != 0.0) {
+    for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
+      for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+        auto iba = !trans ? ib : jb;
+        auto jba = !trans ? jb : ib;
+        if (!has_block(iba,jba)) {
+          // TODO: Add a wrapper for determining the location
+          const auto tmp =
+            rpc::make_remote_client<matrix_t>(istr->locs[iba],
+                                              istr->size(iba), jstr->size(jba));
+          b->set_block(ib,jb, afset(trans, alpha, tmp));
+        } else {
+          b->set_block(ib,jb, afset(trans, alpha, block(iba,jba)));
+        }
       }
     }
   }
@@ -445,9 +442,7 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
                            double alpha, const const_ptr& b,
                            double beta, const const_ptr& c0) const -> ptr
 {
-  /*TODO*/std::cout << "III.0\n";
   if (alpha == 0.0) return c0->fscal(transc0, beta);
-  /*TODO*/std::cout << "III.1\n";
   const auto& istra = !transa ? istr : jstr;
   const auto& jstra = !transa ? jstr : istr;
   const auto& istrb = !transb ? b->istr : b->jstr;
@@ -457,66 +452,36 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
   RPC_ASSERT(istrb == jstra);
   RPC_ASSERT(istrc0 == istra);
   RPC_ASSERT(jstrc0 == jstrb);
-  /*TODO*/std::cout << "III.2\n";
   auto c = boost::make_shared<block_matrix_t>(istrc0, jstrc0);
-  /*TODO*/std::cout << "III.3 c="<<c<<"\n";
-  /*TODO*/std::cout << "III.3a *c="<<*c<<"\n";
   for (std::ptrdiff_t jb=0; jb<c->jstr->B; ++jb) {
-    /*TODO*/std::cout << "III.4 jb="<<jb<<"\n";
     for (std::ptrdiff_t ib=0; ib<c->istr->B; ++ib) {
-      /*TODO*/std::cout << "III.5 ib="<<ib<<"\n";
       auto ibc0 = !transc0 ? ib : jb;
       auto jbc0 = !transc0 ? jb : ib;
-      /*TODO*/std::cout << "III.6\n";
       auto ctmps = rpc::make_client<std::vector<matrix_t::client> >();
-      /*TODO*/std::cout << "III.7\n";
       if (beta != 0.0 && c0->has_block(ibc0,jbc0)) {
-        /*TODO*/std::cout << "III.8\n";
         if (beta == 1.0 && !transc0) {
-          /*TODO*/std::cout << "III.9\n";
           ctmps->push_back(c0->block(ibc0,jbc0));
-          /*TODO*/std::cout << "III.10\n";
         } else {
-          /*TODO*/std::cout << "III.11\n";
           ctmps->push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
-          /*TODO*/std::cout << "III.12\n";
         }
-        /*TODO*/std::cout << "III.13\n";
       }
-      /*TODO*/std::cout << "III.14\n";
       for (std::ptrdiff_t kb=0; kb<jstr->B; ++kb) {
-        /*TODO*/std::cout << "III.15 kb="<<kb<<"0\n";
         auto iba = !transa ? ib : kb;
         auto kba = !transa ? kb : ib;
         auto kbb = !transb ? kb : jb;
         auto jbb = !transb ? jb : kb;
-        /*TODO*/std::cout << "III.16\n";
         if (has_block(iba,kba) && b->has_block(kbb,jbb)) {
-          /*TODO*/std::cout << "III.17\n";
           ctmps->push_back(afgemm(transa, transb, false,
                                   alpha, block(iba,kba), b->block(kbb,jbb),
                                   0.0, matrix_t::client()));
-          /*TODO*/std::cout << "III.18\n";
         }
-        /*TODO*/std::cout << "III.19\n";
       }
-      /*TODO*/std::cout << "III.20\n";
       if (!ctmps->empty()) {
-        /*TODO*/std::cout << "III.21\n";
         c->set_block(ib,jb, rpc::reduce1(matrix_t_add_action(),
                                          ctmps, ctmps->begin(), ctmps->end()));
-        /*TODO*/std::cout << "III.22\n";
       }
-      /*TODO*/std::cout << "III.23\n";
     }
-    /*TODO*/std::cout << "III.24\n";
   }
-  /*TODO*/std::cout << "III.25 c="<<c<<"\n";
-  c;
-  /*TODO*/std::cout << "III.25a\n";
-  *c;
-  /*TODO*/std::cout << "III.25b\n";
-  /*TODO*/std::cout << "III.25c *c="<<*c<<"\n";
   return c;
 }
 

@@ -96,16 +96,8 @@ namespace qthread {
     mutable syncvar m_ready;
     bool has_exception;
   public:
-    future_state(): has_exception(false) {
-      ///*TODO*/std::cout << "future_state.0 " << this << "\n";
- m_ready.empty();
-      ///*TODO*/std::cout << "future_state.1 " << this << "\n";
- }
-    ~future_state() {
-      ///*TODO*/std::cout << "future_state.2 " << this << "\n";
- m_ready.fill();
-      ///*TODO*/std::cout << "future_state.3 " << this << "\n";
- }
+    future_state(): has_exception(false) { m_ready.empty(); }
+    ~future_state() { m_ready.fill(); }
     future_state(const future_state&) = delete;
     future_state(future_state&&) = delete;
     future_state& operator=(const future_state&) = delete;
@@ -113,9 +105,7 @@ namespace qthread {
     bool ready() const { return m_ready.status(); }
     void wait() const
     {
-      ///*TODO*/std::cout << "future_state.wait.0" << this << "\n";
       m_ready.readFF();
-      ///*TODO*/std::cout << "future_state.wait.1\n";
     }
     void set_value()
     {
@@ -131,11 +121,8 @@ namespace qthread {
     }
     void get_value()
     {
-      ///*TODO*/std::cout << "future_state.get_value.0\n";
       wait();
-      ///*TODO*/std::cout << "future_state.get_value.1\n";
       RPC_ASSERT(!has_exception);
-      ///*TODO*/std::cout << "future_state.get_value.2\n";
     }
   };
   
@@ -411,11 +398,7 @@ namespace qthread {
     {
       return shared_future<value_type>(std::move(*this));
     }
-    value_type get() {
-      ///*TODO*/std::cout << "future.get.0\n";
-      ///*TODO*/struct atexit { ~atexit() { std::cout << "future.get.1\n"; } } x;
-      return state->get_value();
- };
+    value_type get() { return state->get_value(); };
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
     template<typename F>
@@ -435,12 +418,6 @@ namespace qthread {
   {
     std::swap(state, other.state);
   }
-  
-  // inline shared_future<void>::shared_future(future<void>&& other):
-  //   state(nullptr)
-  // {
-  //   std::swap(state, other.state);
-  // }
   
   
   

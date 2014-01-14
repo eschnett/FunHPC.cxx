@@ -35,7 +35,6 @@ namespace rpc {
   template<class Archive>
   void client<T>::save(Archive& ar, unsigned int version) const
   {
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.0\n";
 #if defined RPC_HPX || defined RPC_QTHREADS
     bool ready = data.ready();
 #else
@@ -44,50 +43,34 @@ namespace rpc {
 #endif
     ar << ready;
     if (ready) {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.1\n";
       // Send the global shared pointer of this client
       ar << data.get();
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.2\n";
     } else {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.3\n";
       // Create a global pointer to this client, and send it
       auto ptr = make_global<client>(*this);
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.4\n";
       ar << ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.5\n";
     }
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.save.9\n";
   }
   
   template<typename T>
   template<class Archive>
   void client<T>::load(Archive& ar, unsigned int version)
   {
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.0\n";
     RPC_ASSERT(!*this);
     bool ready;
     ar >> ready;
     if (ready) {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.1\n";
       // Receive global shared pointer, and create a client from it
       global_shared_ptr<T> ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.2\n";
       ar >> ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.3\n";
       *this = ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.4\n";
     } else {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.5\n";
       // Create a future waiting for the global shared pointer of the
       // client
       global_ptr<client> ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.6\n";
       ar >> ptr;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.7\n";
       *this = async(ptr.get_proc(), client_get_global_shared_action<T>(), ptr);
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.8\n";
     }
-    /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.load.9\n";
   }
   
   

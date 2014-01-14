@@ -65,18 +65,12 @@ namespace rpc {
     auto operator->() const -> decltype(this->get()) { return get(); }
     
     client make_local() const {
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.0\n";
-      data;
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.1\n";
-      data.get();
-      /*TODO*/std::cout << "["<<rpc::server->rank()<<"] client.make_local.2\n";
-      /*TODO*/struct atexit { ~atexit() { std::cout << "client.make_local.9\n"; } } x;
       return async([](const shared_future<global_shared_ptr<T> >& data) ->
                    global_shared_ptr<T>
                    {
                      return data.get().make_local().get();
                    }, data);
- }
+    }
     
     ostream& output(ostream& os) const
     {

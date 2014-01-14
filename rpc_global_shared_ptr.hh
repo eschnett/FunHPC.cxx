@@ -12,7 +12,7 @@ namespace rpc {
     void register_then_unregister(const global_ptr<global_manager_base>& owner,
                                   const global_ptr<global_manager_base>& other,
                                   const global_ptr<global_manager_base>& self);
-    void unregister(const global_ptr<global_manager_base>& self);
+    void unregister(const global_ptr<global_manager_base>& other);
     RPC_DECLARE_ACTION(register_then_unregister);
     RPC_DECLARE_ACTION(unregister);
   }

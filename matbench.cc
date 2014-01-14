@@ -4,6 +4,7 @@
 #include "block_matrix.hh"
 #include "matrix.hh"
 
+using rpc::find_all_threads;
 using rpc::server;
 
 #include <boost/serialization/utility.hpp>
@@ -74,20 +75,6 @@ inline ticks gettime()
 double elapsed(ticks t1, ticks t0)
 {
   return 1.0e-9 * std::chrono::nanoseconds(t1 - t0).count();
-}
-
-
-
-vector<int> find_all_threads()
-{
-  vector<int> threads;
-  for (int p=0; p<server->size(); ++p) {
-    // TODO: Collect thread counts from processes
-    for (int t=0; t<rpc::thread::hardware_concurrency(); ++t) {
-      threads.push_back(p);
-    }
-  }
-  return threads;
 }
 
 
@@ -374,14 +361,14 @@ int rpc_main(int argc, char** argv)
 {
   niters = 3;
   nsize = 1000;
-  nblocks = 20; // 10;
+  nblocks = 10;
   
-  // bench_dense();
-  // bench_fdense();
-  // bench_dense_parallel();
-  // bench_fdense_parallel();
+  bench_dense();
+  bench_fdense();
+  bench_dense_parallel();
+  bench_fdense_parallel();
   bench_fblock_local();
-  // bench_fblock_global();
+  bench_fblock_global();
   
   return 0;
 }

@@ -181,11 +181,11 @@ namespace rpc {
     {
       RPC_ASSERT(invariant());
     }
-    // global_shared_ptr(shared_ptr<T>&& ptr):
-    //   mgr(ptr ? new global_manager<T>(move(ptr)) : nullptr)
-    // {
-    //   RPC_ASSERT(invariant());
-    // }
+    global_shared_ptr(shared_ptr<T>&& ptr):
+      mgr(ptr ? new global_manager<T>(move(ptr)) : nullptr)
+    {
+      RPC_ASSERT(invariant());
+    }
     
     // Copy constructor and friends
     global_shared_ptr(const global_shared_ptr& other):
@@ -195,14 +195,14 @@ namespace rpc {
       if (mgr) mgr->incref();
       RPC_ASSERT(invariant());
     }
-    // global_shared_ptr(global_shared_ptr&& other):
-    //   global_shared_ptr()
-    // {
-    //   RPC_ASSERT(other.invariant());
-    //   RPC_ASSERT(invariant());
-    //   swap(other);
-    //   RPC_ASSERT(invariant());
-    // }
+    global_shared_ptr(global_shared_ptr&& other):
+      global_shared_ptr()
+    {
+      RPC_ASSERT(other.invariant());
+      RPC_ASSERT(invariant());
+      swap(other);
+      RPC_ASSERT(invariant());
+    }
     global_shared_ptr& operator=(const global_shared_ptr& other)
     {
       RPC_ASSERT(invariant() && other.invariant());
@@ -214,15 +214,15 @@ namespace rpc {
       RPC_ASSERT(invariant());
       return *this;
     }
-    // global_shared_ptr& operator=(global_shared_ptr&& other)
-    // {
-    //   RPC_ASSERT(invariant() && other.invariant());
-    //   if (mgr) mgr->decref();
-    //   mgr = nullptr;
-    //   swap(other);
-    //   RPC_ASSERT(invariant());
-    //   return *this;
-    // }
+    global_shared_ptr& operator=(global_shared_ptr&& other)
+    {
+      RPC_ASSERT(invariant() && other.invariant());
+      if (mgr) mgr->decref();
+      mgr = nullptr;
+      swap(other);
+      RPC_ASSERT(invariant());
+      return *this;
+    }
     
     ~global_shared_ptr()
     {

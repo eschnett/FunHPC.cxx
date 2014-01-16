@@ -1,46 +1,37 @@
-# export BOOST_DIR=/opt/local
-# export HPX_DIR=$HOME/hpx-clang33
-# export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
+# rsync -Paz Makefile*[^~] submit*[^~] *.hh *.cc eschnett@stampede.tacc.utexas.edu:/work/00507/eschnett/src/cc/mpi-rpc
+# source /work/00507/eschnett/q/boost-1.55.0/env.sh
+# source /work/00507/eschnett/q/gperftools-2.1/env.sh
+# source /work/00507/eschnett/q/hwloc-1.8/env.sh
+# source /work/00507/eschnett/q/llvm-3.4/env.sh
+# source /work/00507/eschnett/q/openmpi-1.7.3/env.sh
+# source /work/00507/eschnett/q/qthreads-1.10/env.sh
+# sbatch submit.clang34.stampede
 
-CC  = env OMPI_CC=clang-mp-3.3                  openmpicc
-CXX = env OMPI_CXX=clang++-mp-3.3               openmpic++
-FC  = env OMPI_FC=dragonegg-3.3-gfortran-mp-4.8 openmpif90
+CC  := ${MPICC}
+CXX := ${MPICXX}
+FC  := ${MPIFC}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
-# -I/Users/eschnett/hpx-clang33/include/hpx/external -I/Users/eschnett/hpx-clang33/include
-# -DHPX_LIMIT=6
-CPPFLAGS = \
-	-I/opt/local/include \
+# -DRPC_DEBUG_MISSING_EXPORTS
+# -DBLAS
+CPPFLAGS := \
 	-DBOOST_MPI_HOMOGENEOUS \
-	-I/Users/eschnett/qthread-1.10-clang33/include \
 	-DRPC_QTHREADS \
-	-DBLAS
-CFLAGS   = -g -Wall -Wno-deprecated-declarations -std=c99   -march=native
-CXXFLAGS = -g -Wall -Wno-deprecated-declarations -std=c++11 -march=native
-FFLAGS   = -g -Wall                                         -march=native
+	-DCBLAS -DMKL_CBLAS -I${MKLROOT}/include
+CFLAGS   := -g ${CFLAGS}   ${C99FLAGS}   -march=native
+CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native
+FFLAGS   := -g ${FFLAGS}                 -march=native
 
-# -fsanitize=thread,memory,undefined
-CFLAGS   += -ftrapv -fsanitize=bounds
-CXXFLAGS += -ftrapv -fsanitize=bounds
-FFLAGS   += -ftrapv
+# CFLAGS   += -ftrapv
+# CXXFLAGS += -ftrapv
+# FFLAGS   += -ftrapv
 
-# CFLAGS   += -Ofast
-# CXXFLAGS += -Ofast
-# # -fplugin-arg-llvm33gcc48-llvm-option=-mtriple:x86_64-apple-macosx10.9.0 -fplugin-arg-llvm33gcc48-enable-gcc-optzns
-# FFLAGS   += -Ofast
+CFLAGS   += -Ofast
+CXXFLAGS += -Ofast
+FFLAGS   += -Ofast
 
-# -L/Users/eschnett/hpx-clang33/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-clang33/lib/hpx
-LDFLAGS  = \
-	-L/opt/local/lib \
-	-L/Users/eschnett/qthread-1.10-clang33/lib \
-	-L/opt/local/lib/gcc48
-# -lhpxd -lhpx_initd -lhpx_serializationd\
-# -lboost_date_time-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_serialization-mt -lboost_system-mt -lboost_thread-mt -lboost_atomic-mt -lboost_chrono-mt -lboost_context-mt
-LIBS     = \
-	-lboost_mpi-mt -lboost_serialization-mt \
-	-lqthread \
-	-lhwloc \
-	-lgfortran
+LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS} -L${MKLROOT}/lib/intel64
+LIBS     := ${MPI_LIBS} ${LIBS} -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 
 
@@ -117,44 +108,25 @@ qthread_test: ${QTHREAD_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.o: %.c
-	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c -emit-llvm $*.c
+	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
 	@${PROCESS_DEPENDENCIES}
 	@mv $@.tmp $@
 
 %.o: %.cc
-	${CXX} -MD ${CPPFLAGS} ${CXXFLAGS} -o $@.tmp -c -emit-llvm $*.cc
+	${CXX} -MD ${CPPFLAGS} ${CXXFLAGS} -o $@.tmp -c $*.cc
 	@${PROCESS_DEPENDENCIES}
 	@mv $@.tmp $@
 
-%.ll: %.f
-	${FC} ${FFLAGS} -o $@ -S -fplugin-arg-llvm33gcc48-emit-ir $*.f
+%.o: %.f
+	${FC} ${FFLAGS} -c $*.f
 
-%.ll: %.f90
-	${FC} ${FFLAGS} -o $@ -S -fplugin-arg-llvm33gcc48-emit-ir $*.f90
+%.o: %.f90
+	${FC} ${FFLAGS} -c $*.f90
 
-%.o: %.ll
-	llvm-as-mp-3.3 -o $@ $*.ll
-
-#%.o: %.c
-#	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
-#	@${PROCESS_DEPENDENCIES}
-#	@mv $@.tmp $@
-#
-#%.o: %.cc
-#	${CXX} -MD ${CPPFLAGS} ${CXXFLAGS} -o $@.tmp -c $*.cc
-#	@${PROCESS_DEPENDENCIES}
-#	@mv $@.tmp $@
-#
-#%.o: %.f
-#	${FC} ${FFLAGS} -o $@ -c $*.f
-#
-#%.o: %.f90
-#	${FC} ${FFLAGS} -o $@ -c $*.f90
-
-${OBJS}: Makefile.clang33.redshift
+${OBJS}: Makefile.clang34.stampede
 
 clean:
-	${RM} ${DEPS} ${OBJS} ${OBJS:.o=.ll} ${EXES}
+	${RM} ${DEPS} ${OBJS} ${EXES}
 
 .PHONY: all clean
 

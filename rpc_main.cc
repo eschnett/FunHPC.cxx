@@ -21,7 +21,7 @@ namespace rpc {
     std::cout << "[" << rpc::server->rank() << "] Hardware concurrency: "
               << thread::hardware_concurrency() << "\n";
     int iret = rpc::server->event_loop(rpc_main);
-    if (true || rpc::server->rank() == 0) {
+    if (rpc::server->rank() == 0) {
       if (iret == 0) {
         std::cout << "Done: success.\n";
       } else {

@@ -8,33 +8,39 @@
 
 CC  := ${MPICC}
 CXX := ${MPICXX}
+FC  := ${MPIFC}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
 # -DRPC_DEBUG_MISSING_EXPORTS
 CPPFLAGS := \
 	-DBOOST_MPI_HOMOGENEOUS \
-	-DRPC_QTHREADS
-CFLAGS   := -g ${C99FLAGS}   ${CFLAGS}   -march=native
-CXXFLAGS := -g ${CXX11FLAGS} ${CXXFLAGS} -march=native
+	-DRPC_QTHREADS \
+	-DBLAS
+CFLAGS   := -g ${CFLAGS}   ${C99FLAGS}   -march=native
+CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native
+FFLAGS   := -g ${FFLAGS}                 -march=native
 
 # CFLAGS   +=
 # CXXFLAGS +=
+# DFLAGS   +=
 
 CFLAGS   += -Ofast
 CXXFLAGS += -Ofast
+FFLAGS   += -Ofast
 
 LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS}
 LIBS     := ${MPI_LIBS} ${LIBS}
 
 
 
-EXES = bench demo hwloc matbench mattest qthread_test
+# hpx_test
+EXES = bench demo hwloc_test matbench mattest qthread_test
 
-BLAS_SRCS    = # daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
-HPX_SRCS     = # hpx.cc
+BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
-RPC_SRCS     = \
-	rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
+HPX_SRCS     = # hpx.cc
+HWLOC_SRCS   = hwloc.cc
+RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
 	${QTHREAD_SRCS} ${HPX_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
@@ -42,15 +48,15 @@ MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 BENCH_SRCS        = bench.cc ${RPC_SRCS}
 DEMO_SRCS         = demo.cc ${RPC_SRCS}
 HPX_TEST_SRCS     = hpx_test.cc
-HWLOC_SRCS	  = hwloc.cc ${RPC_SRCS}
-MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
+HWLOC_TEST_SRCS	  = hwloc_main.cc ${HWLOC_SRCS} ${RPC_SRCS}
+MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_SRCS}
 MATTEST_SRCS      = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
 QTHREAD_TEST_SRCS = qthread_test.cc ${QTHREAD_SRCS}
 
 BENCH_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
 DEMO_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
 HPX_TEST_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
-HWLOC_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_SRCS}}}}}
+HWLOC_TEST_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_TEST_SRCS}}}}}
 MATBENCH_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
 MATTEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
 QTHREAD_TEST_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${QTHREAD_TEST_SRCS}}}}}
@@ -58,13 +64,13 @@ QTHREAD_TEST_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %
 BENCH_DEPS        = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
 DEMO_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
 HPX_TEST_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_TEST_SRCS}}}}}
-HWLOC_DEPS        = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HWLOC_SRCS}}}}}
+HWLOC_TEST_DEPS   = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HWLOC_TEST_SRCS}}}}}
 MATBENCH_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATBENCH_SRCS}}}}}
 MATTEST_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATTEST_SRCS}}}}}
 QTHREAD_TEST_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${QTHREAD_TEST_SRCS}}}}}
 
-OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${HPX_TEST_OBJS} ${HWLOC_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${QTHREAD_TEST_OBJS}
-DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${HPX_TEST_DEPS} ${HWLOC_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${QTHREAD_TEST_DEPS}
+OBJS = ${BENCH_OBJS} ${DEMO_OBJS} ${HPX_TEST_OBJS} ${HWLOC_TEST_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${QTHREAD_TEST_OBJS}
+DEPS = ${BENCH_DEPS} ${DEMO_DEPS} ${HPX_TEST_DEPS} ${HWLOC_TEST_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${QTHREAD_TEST_DEPS}
 
 
 
@@ -90,7 +96,7 @@ demo: ${DEMO_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 hpx_test: ${HPX_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-hwloc: ${HWLOC_OBJS}
+hwloc_test: ${HWLOC_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 matbench: ${MATBENCH_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}

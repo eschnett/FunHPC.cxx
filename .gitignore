@@ -11,3 +11,4 @@ matbench
 hpx_test
 qthread_test
 hwloc
+hwloc_test

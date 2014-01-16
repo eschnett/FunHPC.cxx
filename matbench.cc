@@ -1,3 +1,4 @@
+#include "hwloc.hh"
 #include "rpc.hh"
 
 #include "algorithms.hh"
@@ -359,6 +360,11 @@ void bench_fblock_global()
 
 int rpc_main(int argc, char** argv)
 {
+  cout << "Setting CPU bindings via hwloc:\n";
+  hwloc_bindings(true);
+  
+  // best: nsize=2000, blocks=20
+  // note: per-socket sheperds seem important
   niters = 3;
   nsize = 1000;
   nblocks = 10;

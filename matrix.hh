@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream& os, const scalar_t& x);
 struct vector_t {
   typedef boost::shared_ptr<const vector_t> const_ptr;
   typedef boost::shared_ptr<vector_t> ptr;
-  // typedef rpc::global_shared_ptr<vector_t> global_ptr;
+  typedef rpc::global_shared_ptr<vector_t> global_ptr;
   typedef rpc::client<vector_t> client;
   
   std::ptrdiff_t N;
@@ -130,6 +130,13 @@ public:
   auto fscal(double alpha) const -> ptr;
   auto fset(double alpha) const -> ptr;
   
+  auto gfaxpy(double alpha, global_ptr x) const -> global_ptr
+  {
+    auto xloc = x.make_local();
+    return faxpy(alpha, xloc.get());
+  }
+  RPC_DECLARE_CONST_MEMBER_ACTION(vector_t, gfaxpy);
+  
   // TODO: make actions capture copies intead of const references,
   // then update signatures of functions underlying actions
   auto cfaxpy(double alpha, client x) const -> client
@@ -165,10 +172,16 @@ RPC_DECLARE_COMPONENT(vector_t);
 std::ostream& operator<<(std::ostream& os, const vector_t& x);
 
 // TODO: put these into rpc::client<...>?
+// TODO: allow calling async on rpc::global_shared_ptr<...>?
 inline auto afaxpy(double alpha, const vector_t::client& x,
                    const vector_t::client& y0) -> vector_t::client
 {
   return vector_t::client(rpc::async(y0, vector_t::cfaxpy_action(), alpha, x));
+  // TODO: Try this instead, measure performance -- it has fewer
+  // asyncs, but also exposes less parallelism
+  // return rpc::async(y0.get_proc(), vector_t::gfaxpy_action(),
+  //                   y0.get_global_shared(),
+  //                   alpha, x.get_global_shared()));
 }
 inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {

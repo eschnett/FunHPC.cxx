@@ -1,3 +1,5 @@
+#include "hwloc.hh"
+
 #include "rpc.hh"
 
 #include <hwloc.h>
@@ -13,7 +15,7 @@
 
 
 
-using std::atomic;
+using std::atomic_flag;
 using std::cerr;
 using std::cout;
 using std::getenv;
@@ -25,6 +27,8 @@ using std::string;
 using std::vector;
 
 
+
+namespace {
 
 int stoi1(const char* str, int dflt)
 {
@@ -101,7 +105,7 @@ void set_affinity(ostream& os, const hwloc_topology_t& topology)
   const int node_num_threads = local_size * num_threads;
   const int node_thread = local_rank * num_threads + thread;
   
-  const bool oversubscribing = node_num_threads > num_pus;
+  // const bool oversubscribing = node_num_threads > num_pus;
   const bool undersubscribing = node_num_threads < num_pus;
   
   const int thread_num_pus = undersubscribing ? num_pus / node_num_threads : 1;
@@ -127,18 +131,15 @@ void set_affinity(ostream& os, const hwloc_topology_t& topology)
   hwloc_bitmap_free(cpuset);
 }
 
-pair<int,string> hwloc_run(bool do_set, atomic<int>* pcount)
+}
+
+void hwloc_run(bool do_set,
+               atomic_flag* worker_done,
+               vector<string>* infos)
 {
-  atomic<int>& count = *pcount;
   ostringstream os;
   const int thread = rpc::this_thread::get_worker_id();
-  const int nthreads = rpc::thread::hardware_concurrency();
-  // Wait until all threads are running to ensure all threads are
-  // running simultaneously, and thus are running on hardware threads
-  RPC_ASSERT(count < nthreads);
-  ++count;
-  while (count < nthreads); // busy-wait for all threads to arrive
-  RPC_ASSERT(count == nthreads);
+  if (worker_done[thread].test_and_set()) return;
   hwloc_topology_t topology;
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
@@ -146,51 +147,42 @@ pair<int,string> hwloc_run(bool do_set, atomic<int>* pcount)
     set_affinity(os, topology);
   }
   output_affinity(os, topology);
-  return { thread, os.str() };
+  infos->at(thread) = os.str();
 }
 
 string hwloc_run_on_threads(bool do_set)
 {
   ostringstream os;
   int nthreads = rpc::thread::hardware_concurrency();
-  const auto here = rpc::server->rank();
-  vector<rpc::future<pair<int,string> > > fs;
-  atomic<int> count;
-  count = 0;
-  for (int submit=0; submit<nthreads; ++submit) {
-    fs.push_back(rpc::async(hwloc_run, do_set, &count));
+  int nsubmit = 10 * nthreads;
+  int nattempts = 10;
+  for (int attempt=0; attempt<nattempts; ++attempt) {
+    os << "Attempt #" << attempt+1 << "\n";
+    vector<rpc::future<void> >fs;
+    atomic_flag* worker_done = new atomic_flag[nthreads];
+    for (int thread=0; thread<nthreads; ++thread) worker_done[thread].clear();
+    vector<string> infos(nthreads);
+    for (int submit=0; submit<nsubmit; ++submit) {
+      fs.push_back(rpc::async(hwloc_run, do_set, worker_done, &infos));
+    }
+    for (auto& f: fs) f.wait();
+    delete[] worker_done;
+    bool have_all_infos = true;
+    for (const auto& info: infos) have_all_infos &= !info.empty();
+    if (have_all_infos) {
+      for (const auto& info: infos) os << info;
+      return os.str();
+    }
   }
-  vector<string> infos(nthreads);
-  for (auto& f: fs) {
-    const auto thread_info = f.get();
-    const auto thread = thread_info.first;
-    const auto info = thread_info.second;
-    RPC_ASSERT(thread>=0 && thread<nthreads);
-    RPC_ASSERT(infos[thread].empty());
-    infos[thread] = info;
-  }
-  RPC_ASSERT(count == nthreads);
-  for (const auto& info: infos) {
-    os << info;
-  }
-  return os.str();
+  RPC_ASSERT(0);
 }
 RPC_ACTION(hwloc_run_on_threads);
 
-void hwloc_run_on_processes(bool do_set)
+void hwloc_bindings(bool do_set)
 {
   auto fs = rpc::broadcast(rpc::find_all_processes(),
                            hwloc_run_on_threads_action(), do_set);
   for (auto& f: fs) {
     cout << f.get();
   }
-}
-
-int rpc_main(int argc, char** argv)
-{
-  cout << "HWLOC information:\n";
-  hwloc_run_on_processes(false);
-  cout << "Setting CPU bindings:\n";
-  hwloc_run_on_processes(true);
-  return 0;
 }

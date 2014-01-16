@@ -167,14 +167,14 @@ namespace rpc {
       const auto sz = e - b;
       RPC_ASSERT(sz > 0);
       if (sz == 1) {
-        B res = async(b->get_proc(), f, *b);
-        return res;
+        return async(*b, f);
       }
       const auto m = b + sz/2;
-      B res1 = async(&map_reduce_impl::map_reduce1, this, b, m);
-      B res2 = async(&map_reduce_impl::map_reduce1, this, m, e);
-      auto res = async(res1.get_proc(), r, res1, res2);
-      return std::move(res);
+      B res1 = map_reduce1(b, m);
+      B res2 = map_reduce1(m, e);
+      // B res1 = async(&map_reduce_impl::map_reduce1, this, b, m);
+      // B res2 = async(&map_reduce_impl::map_reduce1, this, m, e);
+      return async(res1, r, res2);
     }
     
     B map_reduce(const I& b, const I& e) const
@@ -260,9 +260,11 @@ namespace rpc {
         return *b;
       }
       const auto m = b + sz/2;
-      B res1 = async(&reduce_impl::reduce1, this, b, m);
-      B res2 = async(&reduce_impl::reduce1, this, m, e);
-      return async(res1.get_proc(), r, res1, res2);
+      B res1 = reduce1(b, m);
+      B res2 = reduce1(m, e);
+      // B res1 = async(&reduce_impl::reduce1, this, b, m);
+      // B res2 = async(&reduce_impl::reduce1, this, m, e);
+      return async(res1, r, res2);
     }
     
     B reduce(const I& b, const I& e) const

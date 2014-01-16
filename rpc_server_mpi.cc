@@ -142,8 +142,7 @@ namespace rpc {
                 typeid(rpc::terminate_stage_4_action::evaluate))))
         {
           // TODO: move recv_call instead of copying it
-          // thread(&callable_base::execute, recv_call).detach();
-          thread([=]() { recv_call->execute(); }).detach();
+          thread(&callable_base::execute, recv_call).detach();
         }
         recv_call = nullptr;
         // Post next receive
@@ -161,6 +160,7 @@ namespace rpc {
       // Wait
       if (!did_communicate) {
         this_thread::yield();
+        // this_thread::sleep_for(std::chrono::microseconds(1));
       }
     }
     

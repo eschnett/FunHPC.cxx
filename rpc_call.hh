@@ -242,17 +242,16 @@ namespace rpc {
     return f.get();
   }
   
-#if 0
   template<typename F, typename... As>
   auto deferred(int dest, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value,
                        future<typename invoke_of<F, As...>::type> >::type
   {
-    // TODO: This call to sync may have the wrong argument types
-    return async
-      (launch::deferred, sync<F, As...>, dest, func, std::forward<As>(args)...);
+    return async(launch::deferred,
+                 [](int dest, const F& func, As&&... args) {
+                   return sync(dest, func, std::forward<As>(args)...);
+                 }, dest, func, std::forward<As>(args)...);
   }
-#endif
   
   
   
@@ -289,22 +288,27 @@ namespace rpc {
   
   // Call a member action via a client
   
-#if 0
   template<typename T, typename F, typename... As>
   auto deferred(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if
     <is_base_of<action_base<F>, F>::value,
      future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
-    return deferred(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+    return
+      async(launch::deferred,
+            [](const client<T>& ptr, const F& func, As&&... args) {
+              return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+            }, ptr, func, std::forward<As>(args)...);
   }
-#endif
   
   template<typename T, typename F, typename... As>
   auto detached(const client<T>& ptr, const F& func, As&&... args) ->
     typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
   {
-    return detached(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+    return
+      thread([](const client<T>& ptr, const F& func, As&&... args) {
+          return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+        }, ptr, func, std::forward<As>(args)...).detach();
   }
   
   template<typename T, typename F, typename... As>
@@ -313,7 +317,9 @@ namespace rpc {
     <is_base_of<action_base<F>, F>::value,
      future<typename invoke_of<F, const client<T>&, As...>::type> >::type
   {
-    return async(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+    return async([](const client<T>& ptr, const F& func, As&&... args) {
+        return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+      }, ptr, func, std::forward<As>(args)...);
   }
   
   template<typename T, typename F, typename... As>

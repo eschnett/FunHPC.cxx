@@ -121,26 +121,26 @@ void test_call()
   cout << "Calling out as action...\n" << flush;
   out_action()("hello");
   cout << "Calling out synchronously...\n" << flush;
-  rpc::sync(dest, out_action(), "hello");
+  rpc::sync(dest, out_action(), string("hello"));
   cout << "Calling out asynchronously...\n" << flush;
-  rpc::async(dest, out_action(), "hello").get();
+  rpc::async(dest, out_action(), string("hello")).get();
   cout << "Calling out detached...\n" << flush;
-  rpc::detached(dest, out_action(), "hello");
+  rpc::detached(dest, out_action(), string("hello"));
   cout << "Done calling out\n";
   
   auto p = rpc::make_client<point>();
   auto q = rpc::make_client<point>();
-  rpc::sync(p, point::init_action(), 1);
-  rpc::sync(q, point::init_action(), 2);
-  rpc::sync(p, point::translate_action(), q);
-  rpc::sync(p, point::output_action());
+  rpc::sync(point::init_action(), p, 1);
+  rpc::sync(point::init_action(), q, 2);
+  rpc::sync(point::translate_action(), p, q);
+  rpc::sync(point::output_action(), p);
   
   auto rp = rpc::make_remote_client<point>(1 % rpc::server->size());
   auto rq = rpc::make_remote_client<point>(2 % rpc::server->size());
-  rpc::sync(rp, point::init_action(), 3);
-  rpc::sync(rq, point::init_action(), 4);
-  rpc::sync(rp, point::translate_action(), rq);
-  rpc::sync(rp, point::output_action());
+  rpc::sync(point::init_action(), rp, 3);
+  rpc::sync(point::init_action(), rq, 4);
+  rpc::sync(point::translate_action(), rp, rq);
+  rpc::sync(point::output_action(), rp);
 }
 
 

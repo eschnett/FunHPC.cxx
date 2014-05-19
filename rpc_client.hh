@@ -35,12 +35,7 @@ namespace rpc {
   template<class Archive>
   void client<T>::save(Archive& ar, unsigned int version) const
   {
-#if defined RPC_HPX || defined RPC_QTHREADS
-    bool ready = data.ready();
-#else
-    // less efficient, but C++11
-    bool ready = false;
-#endif
+    bool ready = future_is_ready(data);
     ar << ready;
     if (ready) {
       // Send the global shared pointer of this client

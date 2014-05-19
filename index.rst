@@ -109,6 +109,11 @@ as function arguments -- must be serialized. User-defined types that
 need to be serialized need to use Boost.Serialize for this; the
 details are documented there.
 
+Note: Since ``std::shared_ptr`` and ``std::unique_ptr`` cannot be
+serialized by Boost, you need to use ``boost:shared_ptr`` and
+``boost::unique_ptr`` instead. These replacements have identical
+behaviour.
+
 Declaring functions globally
 ----------------------------
 

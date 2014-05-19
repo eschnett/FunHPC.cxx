@@ -1,6 +1,8 @@
 #ifndef STL_THREAD_HH
 #define STL_THREAD_HH
 
+#include "cxx_invoke.hh"
+
 #include <future>
 #include <mutex>
 #include <thread>
@@ -24,13 +26,13 @@ namespace rpc {
   using ::std::thread;
   
   template<typename T>
-  future<typename std::decay<T>::type> make_future(T&& obj)
+  future<typename std::decay<T>::type> make_ready_future(T&& obj)
   {
     promise<typename std::decay<T>::type> p;
     p.set_value(std::forward<T>(obj));
     return p.get_future();
   }
-  inline future<void> make_future()
+  inline future<void> make_ready_future()
   {
     promise<void> p;
     p.set_value();
@@ -38,13 +40,34 @@ namespace rpc {
   }
   
   template<typename T>
-  shared_future<typename std::decay<T>::type> make_shared_future(T&& obj)
+  inline bool future_is_ready(const future<T>& f)
   {
-    return make_future(std::forward<T>(obj)).share();
+    return false;               // punt
   }
-  inline shared_future<void> make_shared_future()
+  
+  template<typename T>
+  inline bool future_is_ready(const shared_future<T>& f)
   {
-    return make_future().share();
+    return false;               // punt
+  }
+  
+  template<typename T, typename F>
+  inline auto future_then(future<T>&& f, F&& func) ->
+    future<typename rpc::invoke_of<F, future<T>&&>::type>
+  {
+    auto f0 = new future<T>(std::move(f));
+    return async([=]() {
+        std::unique_ptr<future<T> > f(f0);
+        f->wait();
+        return rpc::invoke(func, std::move(*f));
+      });
+  }
+  
+  template<typename T, typename F>
+  inline auto future_then(const shared_future<T>& f, F&& func) ->
+    future<typename rpc::invoke_of<F, const shared_future<T>&>::type>
+  {
+    return async([=]() { f.wait(); return rpc::invoke(func, f); });
   }
   
   namespace this_thread {

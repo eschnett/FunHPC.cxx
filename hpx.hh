@@ -6,6 +6,7 @@
 #include <hpx/include/async.hpp>
 #include <hpx/include/future.hpp>
 #include <hpx/include/threads.hpp>
+#include <hpx/version.hpp>
 
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
@@ -32,44 +33,18 @@ namespace rpc {
   using ::hpx::promise;
   using ::hpx::thread;
   
-#if 0
-  // use unique_future and shared_future
-  
-  // future
-  template<typename T> using future = ::hpx::unique_future<T>;
-  
-  using ::hpx::shared_future;
-  
-  // async
-  template<typename T> class client;
-  namespace detail {
-    template<typename T>
-    struct is_client { static constexpr bool value = false; };
-    template<>
-    template<typename T>
-    struct is_client<client<T> > { static constexpr bool value = true; };
-  }
-  template<typename A0, typename... As>
-  auto async(A0 arg0, As... args) ->
-    typename std::enable_if<
-      !std::is_same<A0, int>::value && !detail::is_client<A0>::value,
-      decltype(::hpx::async(std::forward<A0>(arg0),
-                            std::forward<As>(args)...).unique())>::type
-  {
-    return ::hpx::async(std::forward<A0>(arg0),
-                        std::forward<As>(args)...).unique();
-  }
-  
-#else
-  // use future and shared_future
-  
   using ::hpx::future;
   using ::hpx::shared_future;
   
-#endif
-  
   namespace this_thread {
     using ::hpx::this_thread::yield;
+    using ::hpx::this_thread::get_id;
+    
+    // get_worker_id
+    inline std::size_t get_worker_id()
+    {
+      return ::hpx::get_worker_thread_num();
+    }
     
     // sleep_for
     template<typename Rep, typename Period>

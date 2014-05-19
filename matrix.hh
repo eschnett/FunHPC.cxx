@@ -6,6 +6,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <atomic>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
@@ -176,7 +177,7 @@ std::ostream& operator<<(std::ostream& os, const vector_t& x);
 inline auto afaxpy(double alpha, const vector_t::client& x,
                    const vector_t::client& y0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(y0, vector_t::cfaxpy_action(), alpha, x));
+  return vector_t::client(rpc::async(vector_t::cfaxpy_action(), y0, alpha, x));
   // TODO: Try this instead, measure performance -- it has fewer
   // asyncs, but also exposes less parallelism
   // return rpc::async(y0.get_proc(), vector_t::gfaxpy_action(),
@@ -185,19 +186,19 @@ inline auto afaxpy(double alpha, const vector_t::client& x,
 }
 inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(x0, vector_t::cfcopy_action()));
+  return vector_t::client(rpc::async(vector_t::cfcopy_action(), x0));
 }
 inline auto afnrm2(const vector_t::client& x0) -> scalar_t::client
 {
-  return scalar_t::client(rpc::async(x0, vector_t::cfnrm2_action()));
+  return scalar_t::client(rpc::async(vector_t::cfnrm2_action(), x0));
 }
 inline auto afscal(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(x0, vector_t::cfscal_action(), alpha));
+  return vector_t::client(rpc::async(vector_t::cfscal_action(), x0, alpha));
 }
 inline auto afset(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(x0, vector_t::cfset_action(), alpha));
+  return vector_t::client(rpc::async(vector_t::cfset_action(), x0, alpha));
 }
 
 
@@ -208,19 +209,35 @@ struct matrix_t {
   // typedef rpc::global_shared_ptr<matrix_t> global_ptr;
   typedef rpc::client<matrix_t> client;
   
+  static std::atomic<std::ptrdiff_t> elts_sent, elts_received;
+  static std::atomic<std::ptrdiff_t> objs_sent, objs_received;
+  static void reset_stats();
+  RPC_DECLARE_ACTION(reset_stats);
+  static std::string output_stats();
+  RPC_DECLARE_ACTION(output_stats);
+  
   std::ptrdiff_t NI, NJ;        // interpretation: row, column
   std::vector<double> elts;
   
 private:
   friend class boost::serialization::access;
   template<class Archive>
-  void serialize(Archive& ar, unsigned int version)
+  void save(Archive& ar, unsigned int version) const
   {
     ar & NI & NJ;
     ar & elts;
-    // TODO
-    RPC_ASSERT(NI * NJ == elts.size());
+    elts_sent += NI*NJ;
+    ++objs_sent;
   }
+  template<class Archive>
+  void load(Archive& ar, unsigned int version)
+  {
+    ar & NI & NJ;
+    ar & elts;
+    elts_received += NI*NJ;
+    ++objs_received;
+  }
+  BOOST_SERIALIZATION_SPLIT_MEMBER();
 public:
   
   explicit matrix_t(std::ptrdiff_t NI, std::ptrdiff_t NJ):
@@ -328,34 +345,34 @@ inline auto afaxpy(bool transa, bool transb0,
                    double alpha, const matrix_t::client& a,
                    const matrix_t::client& b0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(b0, matrix_t::cfaxpy_action(),
+  return matrix_t::client(rpc::async(matrix_t::cfaxpy_action(), b0,
                                      transa, transb0, alpha, a));
 }
 inline auto afcopy(bool trans, const matrix_t::client& a0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(a0, matrix_t::cfcopy_action(), trans));
+  return matrix_t::client(rpc::async(matrix_t::cfcopy_action(), a0, trans));
 }
 inline auto afgemv(bool trans,
                    double alpha, matrix_t::client a, vector_t::client x,
                    double beta, vector_t::client y0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(a, matrix_t::cfgemv_action(),
+  return vector_t::client(rpc::async(matrix_t::cfgemv_action(), a,
                                      trans, alpha, x, beta, y0));
 }
 inline auto afnrm2(const matrix_t::client& a0) -> scalar_t::client
 {
-  return scalar_t::client(rpc::async(a0, matrix_t::cfnrm2_action()));
+  return scalar_t::client(rpc::async(matrix_t::cfnrm2_action(), a0));
 }
 inline auto afscal(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return matrix_t::client(rpc::async(a0, matrix_t::cfscal_action(),
+  return matrix_t::client(rpc::async(matrix_t::cfscal_action(), a0,
                                      trans, alpha));
 }
 inline auto afset(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return matrix_t::client(rpc::async(a0, matrix_t::cfset_action(),
+  return matrix_t::client(rpc::async(matrix_t::cfset_action(), a0,
                                      trans, alpha));
 }
 inline auto afgemm(bool transa, bool transb, bool transc0,
@@ -363,7 +380,7 @@ inline auto afgemm(bool transa, bool transb, bool transc0,
                    const matrix_t::client& a, const matrix_t::client& b,
                    double beta, const matrix_t::client& c0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(a, matrix_t::cfgemm_action(),
+  return matrix_t::client(rpc::async(matrix_t::cfgemm_action(), a,
                                      transa, transb, transc0,
                                      alpha, b, beta, c0));
 }

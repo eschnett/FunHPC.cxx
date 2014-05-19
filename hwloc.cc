@@ -18,6 +18,7 @@
 using std::atomic_flag;
 using std::cerr;
 using std::cout;
+using std::flush;
 using std::getenv;
 using std::ostream;
 using std::ostringstream;
@@ -154,6 +155,7 @@ string hwloc_run_on_threads(bool do_set)
 {
   ostringstream os;
   int nthreads = rpc::thread::hardware_concurrency();
+  os << "nthreads=" << nthreads << "\n";
   int nsubmit = 10 * nthreads;
   int nattempts = 10;
   for (int attempt=0; attempt<nattempts; ++attempt) {
@@ -174,7 +176,9 @@ string hwloc_run_on_threads(bool do_set)
       return os.str();
     }
   }
-  RPC_ASSERT(0);
+  // RPC_ASSERT(0);
+  os << "Failed.\n";
+  return os.str();
 }
 RPC_ACTION(hwloc_run_on_threads);
 

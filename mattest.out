@@ -1,0 +1,66 @@
+QTHREADS: Using 1 Shepherds
+QTHREADS: Using 1 Workers per Shepherd
+QTHREADS: Guard Pages Enabled
+QTHREADS: Using 131072 byte stack size.
+Running...
+MPI processes: 2
+[0] Hardware concurrency: 1
+QTHREADS: Using 1 Shepherds
+QTHREADS: Using 1 Workers per Shepherd
+QTHREADS: Guard Pages Enabled
+QTHREADS: Using 131072 byte stack size.
+test_dense: running on process 0
+alpha=2, beta=3
+NI=4, NJ=3, NK=2
+MPI processes: 2
+[1] Hardware concurrency: 1
+x=[1,2,3]
+y=[2,3,4,5]
+z=[3,4,5,6]
+a=[[4,5,6],[7,8,9],[10,11,12],[13,14,15]]
+b=[[5,6],[7,8],[9,10],[11,12]]
+c=[[6,7,8],[9,10,11]]
+
+nrm2: |x| = 3.74166
+   (error = 4.44089e-16)
+axpy: alpha y + z = [7,10,13,16]
+   (error = 0)
+gemv: alpha a x + beta y = [70,109,148,187]
+   (error = 0)
+gemm: alpha b c + beta a = [[180,205,230],[249,282,315],[318,359,400],[387,436,485]]
+   (error = 0)
+fnrm2: |x| = 3.74166
+   (error = 4.44089e-16)
+faxpy: alpha y + z = [7,10,13,16]
+   (error = 0x7f9bf3d245e0)
+fgemv: alpha a x + beta y = [70,109,148,187]
+   (error = 0x7f9bf3d245e0)
+fgemm: alpha b c + beta a = [[180,205,230],[249,282,315],[318,359,400],[387,436,485]]
+   (error = 0x7f9bf3d245e0)
+
+test_block: running on process 0
+alpha=2, beta=3
+NI=10, NJ=6, NK=6
+istr={0,1,2,4,6,9}
+jstr={0,2,4,5}
+kstr={0,1,3}
+x={0:[1,2],2,4:[3],5}
+y={0,1:[2],2,4:[3,4],6,9:[5]}
+z={0,1:[3],2,4:[4,5],6,9:[6]}
+a={{(0,0),(0,2),(0,4),(0,5)},{(1,0):[[4,5]],(1,2),(1,4):[[6]],(1,5)},{(2,0),(2,2),(2,4),(2,5)},{(4,0):[[7,8],[10,11]],(4,2),(4,4):[[9],[12]],(4,5)},{(6,0),(6,2),(6,4),(6,5)},{(9,0):[[13,14]],(9,2),(9,4):[[15]],(9,5)}}
+b={{(0,0),(0,1),(0,3)},{(1,0),(1,1):[[5,6]],(1,3)},{(2,0),(2,1),(2,3)},{(4,0),(4,1):[[7,8],[9,10]],(4,3)},{(6,0),(6,1),(6,3)},{(9,0),(9,1):[[11,12]],(9,3)}}
+c={{(0,0),(0,2),(0,4),(0,5)},{(1,0):[[6,7],[9,10]],(1,2),(1,4):[[8],[11]],(1,5)},{(3,0),(3,2),(3,4),(3,5)}}
+
+fnrm2: |x| = 3.74166
+   (error = 0)
+faxpy: alpha y + z = {0,1:[7],2,4:[10,13],6,9:[16]}
+   (error = 0)
+fgemv: alpha a x + beta y = {0,1:[70],2,4:[109,148],6,9:[187]}
+   (error = 0)
+fnrm2: |a| = 35.0143
+   (error = 0)
+fgemm: alpha b c + beta a = {{(0,0),(0,2),(0,4),(0,5)},{(1,0):[[180,205]],(1,2),(1,4):[[230]],(1,5)},{(2,0),(2,2),(2,4),(2,5)},{(4,0):[[249,282],[318,359]],(4,2),(4,4):[[315],[400]],(4,5)},{(6,0),(6,2),(6,4),(6,5)},{(9,0):[[387,436]],(9,2),(9,4):[[485]],(9,5)}}
+   (error = 0)
+
+Done: success.
+Done: success.

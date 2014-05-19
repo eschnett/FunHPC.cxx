@@ -1,3 +1,4 @@
+#include "hwloc.hh"
 #include "rpc.hh"
 
 #include <algorithm>
@@ -438,6 +439,11 @@ void rpcbench_global_actions()
 
 int rpc_main(int argc, char** argv)
 {
+#if !defined RPC_HPX
+  cout << "Setting CPU bindings via hwloc:\n";
+  hwloc_bindings(true);
+#endif
+  
   const auto t0 = gettime();
   const auto t1 = gettime();
   const double dt = elapsed(t1, t0);

@@ -1,10 +1,4 @@
-# rsync -Paz Makefile*[^~] *.hh *.cc eschnetter@nvidia.pi.local:/xfs1/eschnetter/compute/src/cc/mpi-rpc
-# source /xfs1/eschnetter/compute/SIMFACTORY/boost-1_55_0/env.sh
-# source /xfs1/eschnetter/compute/SIMFACTORY/gperftools-2.1/env.sh
-# source /xfs1/eschnetter/compute/SIMFACTORY/hwloc-1.8/env.sh
-# source /xfs1/eschnetter/compute/SIMFACTORY/llvm-3.4/env.sh
-# source /xfs1/eschnetter/compute/SIMFACTORY/openmpi-1.7.3/env.sh
-# source /xfs1/eschnetter/compute/SIMFACTORY/qthreads-1.10/env.sh
+# source $HOME/SIMFACTORY/all-all/env.sh
 
 CC  := ${MPICC}
 CXX := ${MPICXX}
@@ -12,21 +6,25 @@ FC  := ${MPIFC}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
 # -DRPC_DEBUG_MISSING_EXPORTS
+# -DRPC_HPX -DRPC_QTHREADS -DRPC_STL
 CPPFLAGS := \
 	-DBOOST_MPI_HOMOGENEOUS \
 	-DRPC_QTHREADS \
 	-DBLAS
 CFLAGS   := -g ${CFLAGS}   ${C99FLAGS}   -march=native
-CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native
+CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native -ftemplate-backtrace-limit=0
 FFLAGS   := -g ${FFLAGS}                 -march=native
 
-# CFLAGS   +=
-# CXXFLAGS +=
-# DFLAGS   +=
+# CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+# CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+# Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
+CFLAGS   += # -fstack-protector-all -ftrapv
+CXXFLAGS += # -fstack-protector-all -ftrapv
+FFLAGS   += -fcheck=bounds,do,mem,pointer,recursion -finit-character=65 -finit-integer=42424242 -finit-real=nan -fstack-protector-all -ftrapv
 
-CFLAGS   += -Ofast
-CXXFLAGS += -Ofast
-FFLAGS   += -Ofast
+# CFLAGS   += -Ofast
+# CXXFLAGS += -Ofast
+# FFLAGS   += -Ofast
 
 LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS}
 LIBS     := ${MPI_LIBS} ${LIBS}
@@ -36,13 +34,13 @@ LIBS     := ${MPI_LIBS} ${LIBS}
 # hpx_test
 EXES = bench demo hwloc_test matbench mattest qthread_test
 
-BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
+BLAS_SRCS    = # daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = # hpx.cc
 HWLOC_SRCS   = hwloc.cc
 RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
-	${QTHREAD_SRCS} ${HPX_SRCS}
+	${QTHREAD_SRCS} ${HPX_SRCS} ${HWLOC_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
 BENCH_SRCS        = bench.cc ${RPC_SRCS}
@@ -121,12 +119,28 @@ qthread_test: ${QTHREAD_TEST_OBJS}
 %.o: %.f90
 	${FC} ${FFLAGS} -c $*.f90
 
-${OBJS}: Makefile.clang34.compute
+${OBJS}: Makefile.sf
+
+
+
+doc: index.html mpi-rpc.pdf
+
+index.html: index.rst
+	rst2html-2.7.py index.rst > $@
+
+mpi-rpc.pdf: index.rst
+	rst2latex-2.7.py index.rst > mpi-rpc.tex
+	pdflatex mpi-rpc.tex
+	pdflatex mpi-rpc.tex
+
+
 
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}
+	${RM} index.html
+	${RM} mpi-rpc.aux mpi-rpc.log mpi-rpc.out mpi-rpc.pdf mpi-rpc.tex
 
-.PHONY: all clean
+.PHONY: all clean doc
 
 .SUFFIXES:
 

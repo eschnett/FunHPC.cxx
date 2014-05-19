@@ -22,7 +22,6 @@ namespace rpc {
   using boost::shared_ptr;
   
   using std::atomic;
-  using std::move;
   using std::string;
   using std::swap;
   
@@ -94,7 +93,7 @@ namespace rpc {
       RPC_ASSERT(invariant());
     }
     global_manager(shared_ptr<T>&& ptr):
-      global_manager_base(), gptr(ptr.get()), sptr(move(ptr))
+      global_manager_base(), gptr(ptr.get()), sptr(std::move(ptr))
     {
       RPC_ASSERT(invariant());
     }
@@ -182,7 +181,7 @@ namespace rpc {
       RPC_ASSERT(invariant());
     }
     global_shared_ptr(shared_ptr<T>&& ptr):
-      mgr(ptr ? new global_manager<T>(move(ptr)) : nullptr)
+      mgr(ptr ? new global_manager<T>(std::move(ptr)) : nullptr)
     {
       RPC_ASSERT(invariant());
     }
@@ -245,11 +244,15 @@ namespace rpc {
     
     future<shared_ptr<T> > make_local() const
     {
-      if (!*this) return make_future(shared_ptr<T>(nullptr));
-      if (is_local()) return make_future(get());
-      return async([](const global_ptr<T>& ptr) {
-          return shared_ptr<T>(ptr.make_local().get());
-        }, get_global());
+      if (!*this) return rpc::make_ready_future(shared_ptr<T>(nullptr));
+      if (is_local()) return rpc::make_ready_future(get());
+      // return async([](const global_ptr<T>& ptr) {
+      //     return shared_ptr<T>(ptr.make_local().get());
+      //   }, get_global());
+      return future_then(get_global().make_local(),
+                         [](future<T*>&& ptr) -> shared_ptr<T> {
+                           return shared_ptr<T>(ptr.get());
+                         });
     }
     
     ostream& output(ostream& os) const

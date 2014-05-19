@@ -24,22 +24,34 @@ namespace rpc {
     // ownership of pointers
     client(): client(global_shared_ptr<T>()) {}
     client(const shared_ptr<T>& ptr): client(global_shared_ptr<T>(ptr)) {}
-    client(const global_shared_ptr<T>& ptr): data(make_shared_future(ptr)) {}
+    client(const global_shared_ptr<T>& ptr): data(make_ready_future(ptr)) {}
     client(const shared_future<global_shared_ptr<T> >& ptr): data(ptr) {}
     client(future<global_shared_ptr<T> >&& ptr): client(ptr.share()) {}
     
     client(const shared_future<shared_ptr<T> >& ptr):
-      client(async([=]() -> global_shared_ptr<T> {
-            return ptr.get();
-          }))
+      // client(async([=]() -> global_shared_ptr<T> {
+      //       return ptr.get();
+      //     }))
+      client(future_then(ptr,
+                         [](const shared_future<shared_ptr<T> >& ptr) ->
+                         global_shared_ptr<T>
+                         {
+                           return ptr.get();
+                         }))
     {
     }
     client(future<shared_ptr<T> >&& ptr): client(ptr.share()) {}
     
     client(const shared_future<client<T> >& ptr):
-      client(async([=]() -> global_shared_ptr<T> {
-            return ptr.get().data.get();
-          }))
+      // client(async([=]() -> global_shared_ptr<T> {
+      //       return ptr.get().data.get();
+      //     }))
+      client(future_then(ptr,
+                         [](const shared_future<client<T> >& ptr) ->
+                         global_shared_ptr<T>
+                         {
+                           return ptr.get().data.get();
+                         }))
     {
     }
     client(future<client<T> >&& ptr): client(ptr.share()) {}
@@ -65,11 +77,17 @@ namespace rpc {
     auto operator->() const -> decltype(this->get()) { return get(); }
     
     client make_local() const {
-      return async([](const shared_future<global_shared_ptr<T> >& data) ->
-                   global_shared_ptr<T>
-                   {
-                     return data.get().make_local().get();
-                   }, data);
+      // return async([](const shared_future<global_shared_ptr<T> >& data) ->
+      //              global_shared_ptr<T>
+      //              {
+      //                return data.get().make_local().get();
+      //              }, data);
+      return future_then(data,
+                         [](const shared_future<global_shared_ptr<T> >& data) ->
+                         global_shared_ptr<T>
+                         {
+                           return data.get().make_local().get();
+                         });
     }
     
     ostream& output(ostream& os) const

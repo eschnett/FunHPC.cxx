@@ -2,9 +2,11 @@
 
 #include <hpx/hpx_init.hpp>
 
+#include "cxx_utils.hh"
+
 #include <mpi.h>
 
-#include <cRPC_ASSERT>
+#include <cassert>
 #include <iostream>
 
 using std::cout;

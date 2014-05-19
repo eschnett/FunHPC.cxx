@@ -76,6 +76,29 @@ RPC_IMPLEMENT_CONST_MEMBER_ACTION(vector_t, cfset);
 
 
 
+std::atomic<std::ptrdiff_t> matrix_t::elts_sent = ATOMIC_VAR_INIT(0);
+std::atomic<std::ptrdiff_t> matrix_t::elts_received = ATOMIC_VAR_INIT(0);
+std::atomic<std::ptrdiff_t> matrix_t::objs_sent = ATOMIC_VAR_INIT(0);
+std::atomic<std::ptrdiff_t> matrix_t::objs_received = ATOMIC_VAR_INIT(0);
+
+void matrix_t::reset_stats()
+{
+  elts_sent = 0; elts_received = 0;
+  objs_sent = 0; objs_received = 0;
+}
+RPC_IMPLEMENT_ACTION(matrix_t::reset_stats);
+
+std::string matrix_t::output_stats()
+{
+  std::ostringstream os;
+  os << "   [" << rpc::server->rank() << "] matrix statistics:\n"
+     << "      sent:     " << elts_sent << "," << " " << objs_sent << "\n"
+     << "      received: " << elts_received << "," << " " << objs_received
+     << "\n";
+  return os.str();
+}
+RPC_IMPLEMENT_ACTION(matrix_t::output_stats);
+
 RPC_IMPLEMENT_COMPONENT(matrix_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(matrix_t, get_elt);
 RPC_IMPLEMENT_MEMBER_ACTION(matrix_t, set_elt);

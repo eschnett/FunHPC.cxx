@@ -1,6 +1,10 @@
 #ifndef RPC_HH
 #define RPC_HH
 
+#include "first.hh"
+
+#include "cxx_invoke.hh"
+#include "cxx_tuple.hh"
 #include "cxx_utils.hh"
 
 #include "rpc_future.hh"
@@ -15,7 +19,6 @@
 #include "rpc_global_ptr.hh"
 #include "rpc_global_shared_ptr.hh"
 #include "rpc_server.hh"
-#include "rpc_tuple.hh"
 
 #define RPC_HH_DONE
 #else

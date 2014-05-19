@@ -1,16 +1,20 @@
 #ifndef QTHREAD_THREAD_HH
 #define QTHREAD_THREAD_HH
 
+#include "qthread_thread_fwd.hh"
+
 #include "qthread_future.hh"
 #include "qthread_mutex.hh"
 
 #include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
 
+#include "cxx_invoke.hh"
 #include "cxx_utils.hh"
 
 #include <boost/make_shared.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <type_traits>
@@ -21,20 +25,31 @@
 
 namespace qthread {
   
+  // TODO: Introduce packaged_task; use this instead of function, and
+  // instead of turning thread into a template
+  
   // TODO: Turn this into a template on the return type. Use this in
   // async to create a future holding the return value.
   class thread {
     
+  public:
+    
+    static std::atomic<std::ptrdiff_t> threads_started;
+    static std::atomic<std::ptrdiff_t> threads_stopped;
+    
+  private:
+    
     struct thread_args {
       std::function<void()> func;
+      // rpc::unique_function<void()> func;
       promise<void> p;
-      // TODO: provide move constructor
       thread_args(const std::function<void()>& func): func(func) {}
+      // thread_args(rpc::unique_function<void()>&& func): func(std::move(func)) {}
     };
     
     static aligned_t run_thread(void* args_);
-    // TODO: move argument
     static future<void> start_thread(const std::function<void()>& func);
+    // static future<void> start_thread(rpc::unique_function<void()>&& func);
     
     future<void> handle;
     
@@ -46,19 +61,15 @@ namespace qthread {
     thread(thread&& other): thread() { swap(other); }
     
     template<typename F, typename... As>
-    explicit thread(F&& f, As&&... args)
+    explicit thread(const F& f, As&&... args)
     {
-      typedef typename rpc::invoke_of<F, As...>::type R;
-      // std::function<void()> fb =
-      //   std::bind(stmt<F, As...>,
-      //             std::forward<F>(f), std::forward<As>(args)...);
-      // TODO: don't use std::function, infer arguments types instead
-      std::function<R()> fbR =
-        std::bind(std::forward<F>(f), std::forward<As>(args)...);
-      // std::function<void()> fb = std::bind(stmt<F, As...>, /*std::move*/(fbR));
-      std::function<void()> fb = [fbR](){ fbR(); };
-      // TODO: use move (and elsewhere)
-      handle = start_thread(/*std::move*/(fb));
+      // typedef typename rpc::invoke_of<F, As...>::type R;
+      // std::function<R()> fbR = std::bind(f, std::forward<As>(args)...);
+      // std::function<void()> fb = [fbR](){ fbR(); };
+      std::function<void()> fb = std::bind<void>(f, std::forward<As>(args)...);
+      // rpc::unique_function<void()> fb =
+      //   rpc::unique_bind<void>(std::forward<F>(f), std::forward<As>(args)...);
+      handle = start_thread(fb);
     }
     
     thread(const thread&) = delete;
@@ -118,9 +129,7 @@ namespace qthread {
   
   
   
-  enum class launch { async, deferred, sync };
-  
-  // TODO: don't use std::function, infer arguments types instead
+#if 1
   template<typename R>
   void async_set_value(promise<R>* p, const std::function<R()>& f)
   {
@@ -144,17 +153,18 @@ namespace qthread {
     typedef typename rpc::invoke_of<F, As...>::type R;
     auto p = new promise<R>();
     auto f = p->get_future();
-    std::function<R()> fbR = std::bind(func, std::forward<As>(args)...);
-    thread(async_set_value<R>, p, /*std::move*/(fbR)).detach();
+    std::function<R()> fb = std::bind(func, std::forward<As>(args)...);
+    thread(async_set_value<R>, p, fb).detach();
     return f;
   }
+#endif
   
 #if 0
   template<typename R, typename F, typename... As>
-  auto async_set_value(promise<R>* p, const F& f, As&&... args) ->
+  auto async_set_value(promise<R>* p, const F& func, As&&... args) ->
     typename std::enable_if<!std::is_void<R>::value, void>::type
   {
-    p->set_value(rpc::invoke(f, std::forward<As>(args)...));
+    p->set_value(rpc::invoke(func, std::forward<As>(args)...));
     delete p;
   }
   
@@ -176,7 +186,8 @@ namespace qthread {
     auto f = p->get_future();
     // Note: This call fails since "F" expects && arguments while func
     // expects plain arguments
-    thread(async_set_value<R, F, As...>, p, func, std::forward<As>(args)...).
+    // thread(async_set_value<R, F, As...>, p, func, std::forward<As>(args)...).
+    thread(async_set_value<R, typename std::decay<F>::type, typename std::decay<As>::type...>, p, func, std::forward<As>(args)...).
       detach();
     return f;
   }

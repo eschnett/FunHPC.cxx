@@ -1,6 +1,7 @@
-#ifndef RPC_TUPLE_HH
-#define RPC_TUPLE_HH
+#ifndef CXX_TUPLE_HH
+#define CXX_TUPLE_HH
 
+#include "cxx_invoke.hh"
 #include "cxx_utils.hh"
 
 #include <boost/serialization/access.hpp>
@@ -10,16 +11,6 @@
 #include <type_traits>
 
 namespace rpc {
-  
-  using std::enable_if;
-  using std::forward;
-  using std::get;
-  using std::istream;
-  using std::make_tuple;
-  using std::ostream;
-  using std::tuple;
-  using std::tuple_cat;
-  using std::tuple_element;
   
   
   
@@ -35,25 +26,25 @@ namespace rpc {
   // struct tuple_apply0_impl {
   //   const F& f;
   //   const tuple<As...>& t;
-  //   typedef typename invoke_of<F, As...>::type R;
+  //   typedef typename rpc::invoke_of<F, As...>::type R;
   //   tuple_apply0_impl(const F& f, const tuple<As...>& t): f(f), t(t) {}
   //   template<typename... As1>
   //   auto apply(As1&&... args1) const ->
   //     typename enable_if<sizeof...(As1) < sizeof...(As), R>::type
   //   {
-  //     return apply(forward<As1>(args1)..., get<sizeof...(As1)>(t));
+  //     return apply(std::forward<As1>(args1)..., get<sizeof...(As1)>(t));
   //   }
   //   template<typename... As1>
   //   auto apply(As1&&... args1) const ->
   //     typename enable_if<sizeof...(As1) == sizeof...(As), R>::type
   //   {
-  //     return invoke(f, forward<As1>(args1)...);
+  //     return rpc::invoke(f, std::forward<As1>(args1)...);
   //   }
   // };
   
   // template<typename F, typename... As>
   // auto tuple_apply0(const F& f, const tuple<As...>& t) ->
-  //   typename invoke_of<F, As...>::type
+  //   typename rpc::invoke_of<F, As...>::type
   // {
   //   return tuple_apply0_impl<F, As...>(f, t).apply();
   // }
@@ -89,15 +80,16 @@ namespace rpc {
   
   
   template<typename F, typename... As, size_t... S>
-  auto tuple_apply_impl(const F& f, const tuple<As...>& t, detail::seq<S...>) ->
-    typename invoke_of<F, As...>::type
+  auto tuple_apply_impl(const F& f, const std::tuple<As...>& t,
+                        detail::seq<S...>) ->
+    typename rpc::invoke_of<F, As...>::type
   {
-    return invoke(f, get<S>(t)...);
+    return rpc::invoke(f, std::get<S>(t)...);
   }
   
   template<typename F, typename... As>
-  auto tuple_apply(const F& f, const tuple<As...>& t) ->
-    typename invoke_of<F, As...>::type
+  auto tuple_apply(const F& f, const std::tuple<As...>& t) ->
+    typename rpc::invoke_of<F, As...>::type
   {
     typename detail::make_seq<sizeof...(As)>::type s;
     return tuple_apply_impl(f, t, s);
@@ -105,16 +97,83 @@ namespace rpc {
   
   
   
+  // template<typename F, typename... As, size_t... S>
+  // auto tuple_apply_unique_impl(F&& f, std::tuple<As...>&& t, detail::seq<S...>) ->
+  //   typename rpc::invoke_of<F, As...>::type
+  // {
+  //   return rpc::invoke(std::forward<F>(f), std::move(std::get<S>(t))...);
+  // }
+  
+  // template<typename F, typename... As>
+  // auto tuple_apply_unique(F&& f, std::tuple<As...>&& t) ->
+  //   typename rpc::invoke_of<F, As...>::type
+  // {
+  //   typename detail::make_seq<sizeof...(As)>::type s;
+  //   return tuple_apply_unique_impl(std::forward<F>(f), std::move(t), s);
+  // }
+  
+  
+  
+  // // input: T&&
+  // // type: T, T&, or T&&
+  // // output: const T&, T&, or T&&
+  
+  // // temporaries are passed by value, and should become rvalue
+  // // references (or remain temporaries?)
+  // template<typename T>
+  // struct anti_decay {
+  //   typedef T&& type;
+  // };
+  // // lvalues should remain lvalues
+  // template<typename T>
+  // struct anti_decay<T&> {
+  //   typedef T& type;
+  // };
+  // // const lvalues should remain const lvalues
+  // template<typename T>
+  // struct anti_decay<const T&> {
+  //   typedef const T& type;
+  // };
+  // // do we need to handle rvalues as well? but then, decaying them
+  // // should turn them into values, shouldn't it?
+  
+  
+  
+  // template<typename F, typename... As, size_t... S>
+  // auto tuple_apply_unique1_impl
+  // (typename std::decay<F>::type&& f,
+  //  std::tuple<typename std::decay<As>::type...>&& t,
+  //  detail::seq<S...>) ->
+  //   typename rpc::invoke_of<F, As...>::type
+  // {
+  //   // return rpc::invoke(std::move(f), std::get<S>(t)...);
+  //   // return rpc::invoke(f, std::get<S>(t)...);
+  //   // return std::move(f)(std::get<S>(std::move(t))...);
+  //   return f(static_cast<typename anti_decay<As>::type>(std::get<S>(t))...);
+  //   // return f(std::get<S>(t)...);
+  // }
+  
+  // template<typename F, typename... As>
+  // auto tuple_apply_unique1(typename std::decay<F>::type&& f,
+  //                          std::tuple<typename std::decay<As>::type...>&& t) ->
+  //   typename rpc::invoke_of<F, As...>::type
+  // {
+  //   typename detail::make_seq<sizeof...(As)>::type s;
+  //   return tuple_apply_unique1_impl<F, As...>(std::move(f), std::move(t), s);
+  // }
+  
+  
+  
   template<template<typename> class F, typename... As, size_t... S>
-  auto tuple_map_impl(const tuple<As...>& t, detail::seq<S...>) ->
-    tuple<invoke_of<F<As>(As)>...>
+  auto tuple_map_impl(const std::tuple<As...>& t, detail::seq<S...>) ->
+    std::tuple<rpc::invoke_of<F<As>(As)>...>
   {
-    return make_tuple(F<As>()(get<S>(t))...);
+    return make_tuple(F<As>()(std::get<S>(t))...);
   }
   
   template<template<typename> class F, typename... As>
-  auto tuple_map(const tuple<As...>& t) ->
-    tuple<invoke_of<F<As>(As)>...>
+  auto tuple_map(const std::tuple<As...>& t) ->
+    std::tuple<rpc::invoke_of<F<As>(As)>...>
   {
     return tuple_map_impl<F>(t, detail::make_seq<sizeof...(As)>::type());
   }
@@ -124,17 +183,17 @@ namespace rpc {
   template<size_t N>
   struct input_tuple_impl {
     template<typename... As>
-    static void input(istream& is, tuple<As...>& t)
+    static void input(std::istream& is, std::tuple<As...>& t)
     {
       input_tuple_impl<N-1>::input(is, t);
-      is >> get<N-1>(t);
+      is >> std::get<N-1>(t);
     }
   };
   
   template<>
   struct input_tuple_impl<0> {
     template<typename... As>
-    static void input(istream& is, tuple<As...>& t)
+    static void input(std::istream& is, std::tuple<As...>& t)
     {
     }
   };
@@ -144,18 +203,18 @@ namespace rpc {
   template<size_t N>
   struct output_tuple_impl {
     template<typename... As>
-    static void output(ostream& os, const tuple<As...>& t)
+    static void output(std::ostream& os, const std::tuple<As...>& t)
     {
       output_tuple_impl<N-1>::output(os, t);
       if (N>1) os << ",";
-      os << get<N-1>(t);
+      os << std::get<N-1>(t);
     }
   };
   
   template<>
   struct output_tuple_impl<0> {
     template<typename... As>
-    static void output(ostream& os, const tuple<As...>& t)
+    static void output(std::ostream& os, const std::tuple<As...>& t)
     {
     }
   };
@@ -167,17 +226,17 @@ namespace rpc {
   template<size_t N>
   struct serialize_tuple_impl {
     template<class Archive, typename... As>
-    static void serialize(Archive& ar, tuple<As...>& t, unsigned int version)
+    static void serialize(Archive& ar, std::tuple<As...>& t, unsigned int version)
     {
       serialize_tuple_impl<N-1>::serialize(ar, t, version);
-      ar & get<N-1>(t);
+      ar & std::get<N-1>(t);
     }
   };
   
   template<>
   struct serialize_tuple_impl<0> {
     template<class Archive, typename... As>
-    static void serialize(Archive& ar, tuple<As...>& t, unsigned int version)
+    static void serialize(Archive& ar, std::tuple<As...>& t, unsigned int version)
     {
     }
   };
@@ -189,14 +248,14 @@ namespace rpc {
 namespace std {
   
   template<typename... As>
-  istream& operator>>(istream& is, std::tuple<As...>& t)
+  std::istream& operator>>(std::istream& is, std::tuple<As...>& t)
   {
     rpc::input_tuple_impl<sizeof...(As)>::input(is, t);
     return is;
   }
   
   template<typename... As>
-  ostream& operator<<(ostream& os, const std::tuple<As...>& t)
+  std::ostream& operator<<(std::ostream& os, const std::tuple<As...>& t)
   {
     os << "(";
     rpc::output_tuple_impl<sizeof...(As)>::output(os, t);
@@ -206,14 +265,18 @@ namespace std {
   
 }
 
-#if defined RPC_HPX
+
+
+#if defined HPX_VERSION_FULL    // RPC_HPX
 #  include <hpx/util/serialize_empty_type.hpp>
+#else
+#  define HPX_VERSION_DATE This file was included too early!
 #endif
 
 namespace boost {
   namespace serialization {
     
-#ifndef RPC_HPX
+#ifndef HPX_VERSION_FULL        // RPC_HPX
     
     template<class Archive, typename... As>
     void serialize(Archive & ar, std::tuple<As...>& t, unsigned int version)
@@ -262,9 +325,9 @@ namespace boost {
 }
 // #endif
 
-#define RPC_TUPLE_HH_DONE
+#define CXX_TUPLE_HH_DONE
 #else
-#  ifndef RPC_TUPLE_HH_DONE
+#  ifndef CXX_TUPLE_HH_DONE
 #    error "Cyclic include dependency"
 #  endif
-#endif  // #ifndef RPC_TUPLE_HH
+#endif  // #ifndef CXX_TUPLE_HH

@@ -29,9 +29,9 @@ namespace rpc {
   // Broadcast to all processes
   template<typename C, typename F, typename... As>
   auto broadcast(const C& dests, const F& func, const As&... args) ->
-    typename enable_if<
-      is_base_of<action_base<F>, F>::value,
-      vector<future<typename invoke_of<F, As...>::type> > >::type
+    typename enable_if
+    <is_action<F>::value,
+     vector<future<typename invoke_of<F, As...>::type> > >::type
   {
     vector<future<typename invoke_of<F, As...>::type> > fs;
     // TODO: use tree
@@ -43,7 +43,7 @@ namespace rpc {
   
   template<typename C, typename F, typename... As>
   auto broadcast_detached(const C& dests, const F& func, const As&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
+    typename enable_if<is_action<F>::value, void>::type
   {
     // TODO: use tree
     for (const int dest: dests) {
@@ -54,7 +54,7 @@ namespace rpc {
   // TODO: Use container instead of b and e?
   template<typename F, typename... As>
   auto broadcast_barrier(F func, const As&... args, int b=0, int e=-1) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value, future<void> >::type
+    typename enable_if<is_action<F>::value, future<void> >::type
   {
     if (e == -1) e = server->size();
     const auto sz = e - b;
@@ -167,14 +167,14 @@ namespace rpc {
       const auto sz = e - b;
       RPC_ASSERT(sz > 0);
       if (sz == 1) {
-        return async(*b, f);
+        return async(f, *b);
       }
       const auto m = b + sz/2;
       B res1 = map_reduce1(b, m);
       B res2 = map_reduce1(m, e);
       // B res1 = async(&map_reduce_impl::map_reduce1, this, b, m);
       // B res2 = async(&map_reduce_impl::map_reduce1, this, m, e);
-      return async(res1, r, res2);
+      return async(r, res1, res2);
     }
     
     B map_reduce(const I& b, const I& e) const
@@ -264,7 +264,7 @@ namespace rpc {
       B res2 = reduce1(m, e);
       // B res1 = async(&reduce_impl::reduce1, this, b, m);
       // B res2 = async(&reduce_impl::reduce1, this, m, e);
-      return async(res1, r, res2);
+      return async(r, res1, res2);
     }
     
     B reduce(const I& b, const I& e) const

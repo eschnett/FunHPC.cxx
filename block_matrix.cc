@@ -8,6 +8,7 @@
 #include <boost/utility/identity_type.hpp>
 
 #include <cmath>
+#include <iostream>
 
 
 
@@ -23,7 +24,7 @@ bool structure_t::invariant() const
   return true;
 }
 
-std::ptrdiff_t structure_t::find(std::ptrdiff_t i) const
+std::ptrdiff_t structure_t::find_block(std::ptrdiff_t i) const
 {
   RPC_ASSERT(i>=0 && i<N);
   std::ptrdiff_t b0 = 0, b1 = B;
@@ -47,12 +48,12 @@ std::ptrdiff_t structure_t::find(std::ptrdiff_t i) const
   return b0;
 }
 
-std::ostream& operator<<(std::ostream& os, const structure_t& str)
+std::ostream& structure_t::output(std::ostream& os) const
 {
   os << "{";
-  for (std::ptrdiff_t b=0; b<str.B; ++b) {
+  for (std::ptrdiff_t b=0; b<B; ++b) {
     if (b != 0) os << ",";
-    os << str.begin[b];
+    os << begin[b];
   }
   os << "}";
   return os;
@@ -61,16 +62,31 @@ std::ostream& operator<<(std::ostream& os, const structure_t& str)
 
 
 block_vector_t::block_vector_t(const structure_t::const_ptr& str):
-  str(str), has_block_(str->B, false), blocks(str->B)
+  str(str), has_block_(str->num_blocks(), false), blocks_(str->num_blocks())
 {
+}
+
+block_vector_t::block_vector_t(const structure_t::const_ptr& str,
+                               const std::initializer_list<block_t>& blks):
+  str(str), has_block_(str->num_blocks(), false), blocks_(str->num_blocks())
+{
+  for (const auto& blk: blks) {
+    auto b = str->find_block(blk.i);
+    RPC_ASSERT(str->block_begin(b) == blk.i);
+    RPC_ASSERT(!has_block(b));
+    has_block_[b] = true;
+    RPC_ASSERT(blk.x.N == str->block_size(b));
+    int proc = choose_proc(b);
+    blocks_[b] = rpc::make_remote_client<vector_t>(proc, blk.x);
+  }
 }
 
 void block_vector_t::make_block(std::ptrdiff_t b)
 {
-  RPC_ASSERT(b>=0 && b<str->B);
   RPC_ASSERT(!has_block(b));
   has_block_[b] = true;
-  blocks[b] = rpc::make_remote_client<vector_t>(str->locs[b], str->size(b));
+  int proc = choose_proc(b);
+  blocks_[b] = rpc::make_remote_client<vector_t>(proc, block_size(b));
 }
 // TODO: avoid this
 BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t, std::ptrdiff_t>))::evaluate);
@@ -78,20 +94,19 @@ BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t,
 
 void block_vector_t::remove_block(std::ptrdiff_t b)
 {
-  RPC_ASSERT(b>=0 && b<str->B);
   RPC_ASSERT(has_block(b));
   has_block_[b] = false;
-  blocks[b] = rpc::client<vector_t>();
+  blocks_[b] = rpc::client<vector_t>();
 }
 
-std::ostream& operator<<(std::ostream& os, const block_vector_t& x)
+std::ostream& block_vector_t::output(std::ostream& os) const
 {
   os << "{";
-  for (std::ptrdiff_t b=0; b<x.str->B; ++b) {
+  for (std::ptrdiff_t b=0; b<num_blocks(); ++b) {
     if (b != 0) os << ",";
-    os << x.str->begin[b];
-    if (x.has_block(b)) {
-      os << ":" << *x.block(b).make_local();
+    os << block_begin(b);
+    if (has_block(b)) {
+      os << ":" << *block(b).make_local();
     }
   }
   os << "}";
@@ -105,7 +120,7 @@ auto block_vector_t::faxpy(double alpha, const const_ptr& x) const -> ptr
   if (alpha == 0.0) return fcopy();
   RPC_ASSERT(str == x->str);
   auto y = boost::make_shared<block_vector_t>(str);
-  for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
+  for (std::ptrdiff_t ib=0; ib<y->num_blocks(); ++ib) {
     if (!x->has_block(ib)) {
       if (has_block(ib)) {
         y->set_block(ib, block(ib));
@@ -128,7 +143,7 @@ auto block_vector_t::faxpy(double alpha, const const_ptr& x) const -> ptr
 auto block_vector_t::fcopy() const -> ptr
 {
   auto y = boost::make_shared<block_vector_t>(str);
-  for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
+  for (std::ptrdiff_t ib=0; ib<y->num_blocks(); ++ib) {
     if (has_block(ib)) {
       y->set_block(ib, block(ib));
     }
@@ -166,23 +181,23 @@ auto block_vector_t::fnrm2() const -> scalar_t::client
   // extend map_reduce to allow skipping (or producing multiple)
   // elements.
   auto fs = rpc::make_client<std::vector<scalar_t::client> >();
-  for (std::ptrdiff_t ib=0; ib<str->B; ++ib) {
+  for (std::ptrdiff_t ib=0; ib<num_blocks(); ++ib) {
     if (has_block(ib)) {
       fs->push_back(afnrm2(block(ib)));
     }
   }
-  return rpc::async(rpc::map_reduce(fnrm2_process_action(),
+  return rpc::async(fnrm2_finalize_action(),
+                    rpc::map_reduce(fnrm2_process_action(),
                                     fnrm2_combine_action(),
                                     fnrm2_init_action(),
-                                    fs),
-                    fnrm2_finalize_action());
+                                    fs));
 }
 
 auto block_vector_t::fscal(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
   if (alpha != 0.0) {
-    for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
+    for (std::ptrdiff_t ib=0; ib<x->num_blocks(); ++ib) {
       if (has_block(ib)) {
         if (alpha == 1.0) {
           x->set_block(ib, block(ib));
@@ -199,10 +214,11 @@ auto block_vector_t::fset(double alpha) const -> ptr
 {
   auto x = boost::make_shared<block_vector_t>(str);
   if (alpha != 0.0) {
-    for (std::ptrdiff_t ib=0; ib<x->str->B; ++ib) {
+    for (std::ptrdiff_t ib=0; ib<x->num_blocks(); ++ib) {
       if (!has_block(ib)) {
+        int proc = choose_proc(ib);
         const auto tmp =
-          rpc::make_remote_client<vector_t>(str->locs[ib], str->size(ib));
+          rpc::make_remote_client<vector_t>(proc, block_size(ib));
         x->set_block(ib, afset(alpha, tmp));
       } else {
         x->set_block(ib, afset(alpha, block(ib)));
@@ -219,43 +235,64 @@ BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<vector_t,
 
 block_matrix_t::block_matrix_t(const structure_t::const_ptr& istr,
                                const structure_t::const_ptr& jstr):
-  istr(istr), jstr(jstr),
-  has_block_(istr->B*jstr->B, false), blocks(istr->B*jstr->B)
+  strs({istr, jstr}),
+  has_block_(linear_blocks(), false), blocks_(linear_blocks())
 {
+}
+
+block_matrix_t::block_matrix_t(const structure_t::const_ptr& istr,
+                               const structure_t::const_ptr& jstr,
+                               const std::initializer_list<block_t>& blks):
+  strs({istr, jstr}),
+  has_block_(linear_blocks(), false), blocks_(linear_blocks())
+{
+  for (const auto& blk: blks) {
+    auto ib = strs[0]->find_block(blk.i);
+    auto jb = strs[1]->find_block(blk.j);
+    RPC_ASSERT(strs[0]->block_begin(ib) == blk.i);
+    RPC_ASSERT(strs[1]->block_begin(jb) == blk.j);
+    auto b = linear_block(ib,jb);
+    RPC_ASSERT(!has_block_[b]);
+    has_block_[b] = true;
+    RPC_ASSERT(blk.a.NI == strs[0]->block_size(ib));
+    RPC_ASSERT(blk.a.NJ == strs[1]->block_size(jb));
+    int proc = choose_proc(ib,jb);
+    blocks_[b] = rpc::make_remote_client<matrix_t>(proc, blk.a);
+  }
 }
 
 void block_matrix_t::make_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 {
-  RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
   RPC_ASSERT(!has_block(ib,jb));
-  auto b = ib+istr->B*jb;
+  auto b = linear_block(ib,jb);
   has_block_[b] = true;
-  blocks[b] = rpc::make_remote_client<matrix_t>(istr->locs[ib],
-                                                istr->size(ib), jstr->size(jb));
+  int proc = choose_proc(ib,jb);
+  blocks_[b] =
+    rpc::make_remote_client<matrix_t>(proc,
+                                      block_size(0, ib), block_size(1, jb));
 }
 BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::evaluate);
 BOOST_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<matrix_t, std::ptrdiff_t, std::ptrdiff_t>))::finish);
 
 void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb)
 {
-  RPC_ASSERT(ib>=0 && ib<istr->B && jb>=0 && jb<jstr->B);
   RPC_ASSERT(has_block(ib,jb));
-  auto b = ib+istr->B*jb;
+  auto b = linear_block(ib,jb);
   has_block_[b] = false;
-  blocks[b] = rpc::client<matrix_t>();
+  blocks_[b] = rpc::client<matrix_t>();
 }
 
-std::ostream& operator<<(std::ostream& os, const block_matrix_t& a)
+std::ostream& block_matrix_t::output(std::ostream& os) const
 {
   os << "{";
-  for (std::ptrdiff_t ib=0; ib<a.istr->B; ++ib) {
+  for (std::ptrdiff_t ib=0; ib<num_blocks(0); ++ib) {
     if (ib != 0) os << ",";
     os << "{";
-    for (std::ptrdiff_t jb=0; jb<a.jstr->B; ++jb) {
+    for (std::ptrdiff_t jb=0; jb<num_blocks(1); ++jb) {
       if (jb != 0) os << ",";
-      os << "(" << a.istr->begin[ib] << "," << a.jstr->begin[jb] << ")";
-      if (a.has_block(ib,jb)) {
-        os << ":" << *a.block(ib,jb).make_local();
+      os << "(" << block_begin(0, ib) << "," << block_begin(1, jb) << ")";
+      if (has_block(ib,jb)) {
+        os << ":" << *block(ib,jb).make_local();
       }
     }
     os << "}";
@@ -270,20 +307,19 @@ auto block_matrix_t::faxpy(bool transa, bool transb0,
                            double alpha, const const_ptr& a) const -> ptr
 {
   if (alpha == 0.0) return fcopy(transb0);
-  const auto& istra = !transa ? a->istr : a->jstr;
-  const auto& jstra = !transa ? a->jstr : a->istr;
-  const auto& istrb0 = !transb0 ? istr : jstr;
-  const auto& jstrb0 = !transb0 ? jstr : istr;
-  RPC_ASSERT(istrb0 == istra);
-  RPC_ASSERT(jstrb0 == jstra);
-  auto b = boost::make_shared<block_matrix_t>(istrb0, jstrb0);
-  for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+  auto astrs = a->strs;
+  if (transa) std::swap(astrs[0], astrs[1]);
+  auto b0strs = strs;
+  if (transb0) std::swap(b0strs[0], b0strs[1]);
+  RPC_ASSERT(b0strs == astrs);
+  auto b = boost::make_shared<block_matrix_t>(b0strs[0], b0strs[1]);
+  for (std::ptrdiff_t jb=0; jb<b->num_blocks(1); ++jb) {
+    for (std::ptrdiff_t ib=0; ib<b->num_blocks(0); ++ib) {
       auto iba = !transa ? ib : jb;
       auto jba = !transa ? jb : ib;
       auto ibb0 = !transb0 ? ib : jb;
       auto jbb0 = !transb0 ? jb : ib;
-      if (!a->has_block(iba,jba)) {
+      if (!a->has_block(ib,jb)) {
         if (has_block(ibb0,jbb0)) {
           if (!transb0) {
             b->set_block(ib,jb, block(ibb0,jbb0));
@@ -307,11 +343,11 @@ auto block_matrix_t::faxpy(bool transa, bool transb0,
 
 auto block_matrix_t::fcopy(bool trans) const -> ptr
 {
-  const auto& istrb = !trans ? istr : jstr;
-  const auto& jstrb = !trans ? jstr : istr;
-  auto b = boost::make_shared<block_matrix_t>(istrb, jstrb);
-  for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+  auto a0strs = strs;
+  if (trans) std::swap(a0strs[0], a0strs[1]);
+  auto b = boost::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
+  for (std::ptrdiff_t jb=0; jb<b->num_blocks(1); ++jb) {
+    for (std::ptrdiff_t ib=0; ib<b->num_blocks(0); ++ib) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba)) {
@@ -339,12 +375,12 @@ auto block_matrix_t::fgemv(bool trans,
   const -> block_vector_t::ptr
 {
   if (alpha == 0.0) return y0->fscal(beta);
-  const auto& istra = !trans ? istr : jstr;
-  const auto& jstra = !trans ? jstr : istr;
-  RPC_ASSERT(x->str == jstra);
-  RPC_ASSERT(y0->str == istra);
+  auto astrs = strs;
+  if (trans) std::swap(astrs[0], astrs[1]);
+  RPC_ASSERT(x->str == astrs[1]);
+  RPC_ASSERT(y0->str == astrs[0]);
   auto y = boost::make_shared<block_vector_t>(y0->str);
-  for (std::ptrdiff_t ib=0; ib<y->str->B; ++ib) {
+  for (std::ptrdiff_t ib=0; ib<y->num_blocks(); ++ib) {
     auto ytmps = rpc::make_client<std::vector<vector_t::client> >();
     if (beta != 0.0 && y0->has_block(ib)) {
       if (beta == 1.0) {
@@ -353,12 +389,12 @@ auto block_matrix_t::fgemv(bool trans,
         ytmps->push_back(afscal(beta, y0->block(ib)));
       }
     }
-    for (std::ptrdiff_t jb=0; jb<x->str->B; ++jb) {
+    for (std::ptrdiff_t jb=0; jb<x->num_blocks(); ++jb) {
       auto iba = !trans ? ib : jb;
       auto jba = !trans ? jb : ib;
       if (has_block(iba,jba) && x->has_block(jb)) {
         ytmps->push_back(afgemv(trans, alpha, block(iba,jba), x->block(jb),
-                               0.0, vector_t::client()));
+                                0.0, vector_t::client()));
       }
     }
     if (!ytmps->empty()) {
@@ -367,7 +403,6 @@ auto block_matrix_t::fgemv(bool trans,
       y->block(ib).wait();
     }
   }
-  // std::cerr << "b5\n";
   return y;
 }
 
@@ -375,28 +410,28 @@ auto block_matrix_t::fnrm2() const -> scalar_t::client
 {
   auto fs = rpc::make_client<std::vector<scalar_t::client> >();
   // TODO: Parallelize jb loop
-  for (std::ptrdiff_t jb=0; jb<jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<istr->B; ++ib) {
+  for (std::ptrdiff_t jb=0; jb<num_blocks(1); ++jb) {
+    for (std::ptrdiff_t ib=0; ib<num_blocks(0); ++ib) {
       if (has_block(ib,jb)) {
         fs->push_back(afnrm2(block(ib,jb)));
       }
     }
   }
-  return rpc::async(rpc::map_reduce(fnrm2_process_action(),
+  return rpc::async(fnrm2_finalize_action(),
+                    rpc::map_reduce(fnrm2_process_action(),
                                     fnrm2_combine_action(),
                                     fnrm2_init_action(),
-                                    fs),
-                    fnrm2_finalize_action());
+                                    fs));
 }
 
 auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr
 {
-  const auto& istrb = !trans ? istr : jstr;
-  const auto& jstrb = !trans ? jstr : istr;
-  auto b = boost::make_shared<block_matrix_t>(istrb, jstrb);
+  auto a0strs = strs;
+  if (trans) std::swap(a0strs[0], a0strs[1]);
+  auto b = boost::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
   if (alpha != 0.0) {
-    for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-      for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+    for (std::ptrdiff_t jb=0; jb<b->num_blocks(1); ++jb) {
+      for (std::ptrdiff_t ib=0; ib<b->num_blocks(0); ++ib) {
         auto iba = !trans ? ib : jb;
         auto jba = !trans ? jb : ib;
         if (has_block(iba,jba)) {
@@ -414,19 +449,20 @@ auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr
 
 auto block_matrix_t::fset(bool trans, double alpha) const -> ptr
 {
-  const auto& istrb = !trans ? istr : jstr;
-  const auto& jstrb = !trans ? jstr : istr;
-  auto b = boost::make_shared<block_matrix_t>(istrb, jstrb);
+  auto a0strs = strs;
+  if (trans) std::swap(a0strs[0], a0strs[1]);
+  auto b = boost::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
   if (alpha != 0.0) {
-    for (std::ptrdiff_t jb=0; jb<b->jstr->B; ++jb) {
-      for (std::ptrdiff_t ib=0; ib<b->istr->B; ++ib) {
+    for (std::ptrdiff_t jb=0; jb<b->num_blocks(1); ++jb) {
+      for (std::ptrdiff_t ib=0; ib<b->num_blocks(0); ++ib) {
         auto iba = !trans ? ib : jb;
         auto jba = !trans ? jb : ib;
         if (!has_block(iba,jba)) {
-          // TODO: Add a wrapper for determining the location
+          int proc = choose_proc(iba,jba);
           const auto tmp =
-            rpc::make_remote_client<matrix_t>(istr->locs[iba],
-                                              istr->size(iba), jstr->size(jba));
+            rpc::make_remote_client<matrix_t>(proc,
+                                              block_size(0, iba),
+                                              block_size(1, jba));
           b->set_block(ib,jb, afset(trans, alpha, tmp));
         } else {
           b->set_block(ib,jb, afset(trans, alpha, block(iba,jba)));
@@ -451,20 +487,26 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
                            double beta, const const_ptr& c0) const -> ptr
 {
   if (alpha == 0.0) return c0->fscal(transc0, beta);
-  const auto& istra = !transa ? istr : jstr;
-  const auto& jstra = !transa ? jstr : istr;
-  const auto& istrb = !transb ? b->istr : b->jstr;
-  const auto& jstrb = !transb ? b->jstr : b->istr;
-  const auto& istrc0 = beta == 0.0 ? istra : !transc0 ? c0->istr : c0->jstr;
-  const auto& jstrc0 = beta == 0.0 ? jstrb : !transc0 ? c0->jstr : c0->istr;
-  RPC_ASSERT(istrb == jstra);
-  RPC_ASSERT(istrc0 == istra);
-  RPC_ASSERT(jstrc0 == jstrb);
-  auto c = boost::make_shared<block_matrix_t>(istrc0, jstrc0);
+  auto astrs = strs;
+  if (transa) std::swap(astrs[0], astrs[1]);
+  auto bstrs = b->strs;
+  if (transb) std::swap(bstrs[0], bstrs[1]);
+  std::array<structure_t::const_ptr, dim> c0strs;
+  if (beta == 0.0) {
+    c0strs[0] = astrs[0];
+    c0strs[1] = bstrs[1];
+  } else {
+    c0strs = c0->strs;
+    if (transc0) std::swap(c0strs[0], c0strs[1]);
+  }
+  RPC_ASSERT(bstrs[0] == astrs[1]);
+  RPC_ASSERT(c0strs[0] == astrs[0]);
+  RPC_ASSERT(c0strs[1] == bstrs[1]);
+  auto c = boost::make_shared<block_matrix_t>(c0strs[0], c0strs[1]);
   std::vector<rpc::future<void> > fs;
-  for (std::ptrdiff_t jb=0; jb<c->jstr->B; ++jb) {
-    for (std::ptrdiff_t ib=0; ib<c->istr->B; ++ib) {
-      fs.push_back(rpc::async([&, ib, jb]() {
+  for (std::ptrdiff_t jb=0; jb<c->num_blocks(1); ++jb) {
+    for (std::ptrdiff_t ib=0; ib<c->num_blocks(0); ++ib) {
+      fs.push_back(rpc::async([&, ib,jb]() {
             auto ibc0 = !transc0 ? ib : jb;
             auto jbc0 = !transc0 ? jb : ib;
             auto ctmps = rpc::make_client<std::vector<matrix_t::client> >();
@@ -475,7 +517,7 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
                 ctmps->push_back(afscal(transc0, beta, c0->block(ibc0,jbc0)));
               }
             }
-            for (std::ptrdiff_t kb=0; kb<jstr->B; ++kb) {
+            for (std::ptrdiff_t kb=0; kb<num_blocks(1); ++kb) {
               auto iba = !transa ? ib : kb;
               auto kba = !transa ? kb : ib;
               auto kbb = !transb ? kb : jb;
@@ -495,7 +537,7 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0,
           }));
     }
   }
-  for (auto& f: fs) f.wait();
+  for (auto& f: fs) f.wait();   // TODO: why wait?
   return c;
 }
 

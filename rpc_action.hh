@@ -14,9 +14,9 @@
 
 #define RPC_DECLARE_ACTION(f)                                           \
   struct f##_action:                                                    \
-    public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f> >    \
-  {                                                                     \
-  };
+    public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f> >   \
+    {                                                                   \
+    };
 
 #define RPC_IMPLEMENT_ACTION(f)                 \
   BOOST_CLASS_EXPORT(f##_action::evaluate);     \
@@ -31,9 +31,9 @@
 #define RPC_DECLARE_MEMBER_ACTION(c, f)                                 \
   struct f##_action:                                                    \
     public rpc::member_action_impl<f##_action,                          \
-                                   rpc::wrap<decltype(&c::f), &c::f> >   \
-  {                                                                     \
-  };
+                                   rpc::wrap<decltype(&c::f), &c::f> >  \
+    {                                                                   \
+    };
 
 #define RPC_IMPLEMENT_MEMBER_ACTION(c, f)       \
   BOOST_CLASS_EXPORT(c::f##_action::evaluate);  \
@@ -45,8 +45,8 @@
   struct f##_action:                                                    \
     public rpc::const_member_action_impl<f##_action,                    \
                                          rpc::wrap<decltype(&c::f), &c::f> > \
-  {                                                                     \
-  };
+    {                                                                   \
+    };
 
 #define RPC_IMPLEMENT_CONST_MEMBER_ACTION(c, f) \
   BOOST_CLASS_EXPORT(c::f##_action::evaluate);  \

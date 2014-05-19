@@ -1,10 +1,6 @@
 #ifndef RPC_THREAD_HH
 #define RPC_THREAD_HH
 
-// Note: HPX requires that this header is the first header to be
-// included, so that an HPX header is included before any boost
-// headers.
-
 // Choose threading implementation:
 //    STL:      works everywhere, may have bad performance
 //    qthreads: portable and efficient library, but the C++ wrapper is

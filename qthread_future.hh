@@ -1,11 +1,14 @@
 #ifndef QTHREAD_FUTURE_HH
 #define QTHREAD_FUTURE_HH
 
-#include <qthread/qthread.hpp>
+#include "qthread_future_fwd.hh"
 
-#include "rpc_tuple.hh"
+#include "qthread_thread_fwd.hh"
 
+#include "cxx_tuple.hh"
 #include "cxx_utils.hh"
+
+#include <qthread/qthread.hpp>
 
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
@@ -18,12 +21,8 @@
 
 namespace qthread {
   
-  template<typename T>
-  class future;
-  template<typename T>
-  class shared_future;
-  template<typename T>
-  class promise;
+  template<typename T> 
+  future<typename std::decay<T>::type> make_ready_future(T&& value);
   
   namespace detail {
     // TODO: remove these
@@ -62,23 +61,23 @@ namespace qthread {
     future_state(future_state&&) = delete;
     future_state& operator=(const future_state&) = delete;
     future_state& operator=(future_state&&) = delete;
-    bool ready() const { return m_ready.status(); }
+    bool is_ready() const { return m_ready.status(); }
     void wait() const { m_ready.readFF(); }
     void set_value(const T& value_)
     {
-      RPC_ASSERT(!ready());
+      RPC_ASSERT(!is_ready());
       value = value_;
       m_ready.fill();
     }
     void set_value(T&& value_)
     {
-      RPC_ASSERT(!ready());
+      RPC_ASSERT(!is_ready());
       std::swap(value, value_);
       m_ready.fill();
     }
     void set_exception()
     {
-      RPC_ASSERT(!ready());
+      RPC_ASSERT(!is_ready());
       has_exception = true;
       RPC_ASSERT(0);       // TODO
       m_ready.fill();
@@ -102,19 +101,19 @@ namespace qthread {
     future_state(future_state&&) = delete;
     future_state& operator=(const future_state&) = delete;
     future_state& operator=(future_state&&) = delete;
-    bool ready() const { return m_ready.status(); }
+    bool is_ready() const { return m_ready.status(); }
     void wait() const
     {
       m_ready.readFF();
     }
     void set_value()
     {
-      RPC_ASSERT(!ready());
+      RPC_ASSERT(!is_ready());
       m_ready.fill();
     }
     void set_exception()
     {
-      RPC_ASSERT(!ready());
+      RPC_ASSERT(!is_ready());
       has_exception = true;
       RPC_ASSERT(0);       // TODO
       m_ready.fill();
@@ -165,10 +164,16 @@ namespace qthread {
     {
       RPC_ASSERT(valid());
       // TODO: move func instead of copying it
-      // TODO: optimize this
-      return async([](const F& func, const shared_future& f) {
-          f.wait(); return rpc::invoke(func, f);
-        }, func, *this);
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, *this));
+      } else {
+        // TODO: optimize this
+        // TODO: create a packaged_task, return its future; store a
+        // function that runs the packaged_task
+        return async([=](const shared_future& f) {
+            f.wait(); return rpc::invoke(func, f);
+          }, *this);
+      }
     }
     template<typename U>
     typename std::enable_if<(std::is_same<U, T>::value &&
@@ -180,7 +185,7 @@ namespace qthread {
       // TODO: optimize this
       return then([](const shared_future& f) { return f.get().get(); });
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   template<typename T>
@@ -219,12 +224,16 @@ namespace qthread {
       future<typename rpc::invoke_of<F, const shared_future&>::type>
     {
       RPC_ASSERT(valid());
-      // TODO: optimize this
-      return async([](const F& func, const shared_future& f) {
-          f.wait(); return rpc::invoke(func, f);
-        }, func, *this);
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, *this));
+      } else {
+        // TODO: optimize this
+        return async([=](const shared_future& f) {
+            f.wait(); return rpc::invoke(func, f);
+          }, *this);
+      }
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   template<>
@@ -263,12 +272,16 @@ namespace qthread {
       future<typename rpc::invoke_of<F, const shared_future&>::type>
     {
       RPC_ASSERT(valid());
-      // TODO: optimize this
-      return async([](const F& func, const shared_future& f) {
-          f.wait(); return rpc::invoke(func, f);
-        }, func, *this);
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, *this));
+      } else {
+        // TODO: optimize this
+        return async([=](const shared_future& f) {
+            f.wait(); return rpc::invoke(func, f);
+          }, *this);
+      }
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   
@@ -313,10 +326,17 @@ namespace qthread {
       future<typename rpc::invoke_of<F, future&&>::type>
     {
       RPC_ASSERT(valid());
-      // TODO: optimize this
-      return async([](const F& func, future&& f) {
-          f.wait(); return rpc::invoke(func, std::move(f));
-        }, std::forward<F>(func), std::move(*this));
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, std::move(*this)));
+      } else {
+        // TODO: optimize this
+        auto f0 = new future(std::move(*this));
+        return async([=]() {
+            std::unique_ptr<future> f(f0);
+            f->wait();
+            return rpc::invoke(func, std::move(*f));
+          });
+      }
     }
     template<typename U>
     typename std::enable_if<(std::is_same<U, T>::value &&
@@ -330,7 +350,7 @@ namespace qthread {
           return f.get().get();
         });
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   template<typename T>
@@ -361,14 +381,23 @@ namespace qthread {
     bool valid() const { return bool(state); }
     void wait() const { state->wait(); }
     template<typename F>
-    auto then(F&& func) -> future<typename rpc::invoke_of<F, future&&>::type>
+    auto then(const F& func) ->
+      future<typename rpc::invoke_of<F, future&&>::type>
     {
       RPC_ASSERT(valid());
-      // TODO: optimize this
-      return async([func](future&& f) {
-          f.wait(); return func(std::move(f)); }, std::move(*this));
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, std::move(*this)));
+      } else {
+        // TODO: optimize this
+        auto f0 = new future(std::move(*this));
+        return async([=]() {
+            std::unique_ptr<future> f(f0);
+            f->wait();
+            return rpc::invoke(func, std::move(*f));
+          });
+      }
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   template<>
@@ -405,11 +434,19 @@ namespace qthread {
     auto then(F&& func) -> future<typename rpc::invoke_of<F, future&&>::type>
     {
       RPC_ASSERT(valid());
-      // TODO: optimize this
-      return async([func](future&& f) {
-          f.wait(); return func(std::move(f)); }, std::move(*this));
+      if (is_ready()) {
+        return make_ready_future(rpc::invoke(func, std::move(*this)));
+      } else {
+        // TODO: optimize this
+        auto f0 = new future(std::move(*this));
+        return async([=]() {
+            std::unique_ptr<future> f(f0);
+            f->wait();
+            return rpc::invoke(func, std::move(*f));
+          });
+      }
     }
-    bool ready() const { return state->ready(); }
+    bool is_ready() const { return state->is_ready(); }
   };
   
   template<typename T>
@@ -428,7 +465,7 @@ namespace qthread {
     promise(): state(boost::make_shared<future_state<T> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
-    ~promise() { if (state && !state->ready()) set_exception(); }
+    ~promise() { if (state && !state->is_ready()) set_exception(); }
     promise& operator=(promise&& other)
     {
       state = nullptr;
@@ -455,7 +492,7 @@ namespace qthread {
     promise(): state(boost::make_shared<future_state<T&> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
-    ~promise() { if (state && !state->ready()) set_exception(); }
+    ~promise() { if (state && !state->is_ready()) set_exception(); }
     promise& operator=(promise&& other)
     {
       state = nullptr;
@@ -477,7 +514,7 @@ namespace qthread {
     promise(): state(boost::make_shared<future_state<void> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
-    ~promise() { if (state && !state->ready()) set_exception(); }
+    ~promise() { if (state && !state->is_ready()) set_exception(); }
     promise& operator=(promise&& other)
     {
       state = nullptr;
@@ -500,29 +537,46 @@ namespace qthread {
   
   
   template<typename T> 
-  future<typename std::decay<T>::type> make_future(T&& value) 
+  future<typename std::decay<T>::type> make_ready_future(T&& value)
   {
     promise<typename std::decay<T>::type> p;
     p.set_value(std::forward<T>(value));
     return p.get_future();
   }
   
-  inline future<void> make_future() 
+  inline future<void> make_ready_future() 
   {
     promise<void> p;
     p.set_value();
     return p.get_future();
   }
   
-  template<typename T> 
-  shared_future<typename std::decay<T>::type> make_shared_future(T&& value) 
+  
+  
+  template<typename T>
+  inline bool future_is_ready(const shared_future<T>& f)
   {
-    return make_future(std::forward<T>(value)).share();
+    return f.is_ready();
   }
   
-  inline shared_future<void> make_shared_future() 
+  template<typename T>
+  inline bool future_is_ready(const future<T>& f)
   {
-    return make_future().share();
+    return f.is_ready();
+  }
+  
+  template<typename T, typename F>
+  inline auto future_then(const shared_future<T>& f, F&& func) ->
+    future<typename rpc::invoke_of<F, const shared_future<T>&>::type>
+  {
+    return f.then(func);
+  }
+  
+  template<typename T, typename F>
+  inline auto future_then(future<T>&& f, F&& func) ->
+    future<typename rpc::invoke_of<F, future<T>&&>::type>
+  {
+    return std::move(f).then(func);
   }
   
 }

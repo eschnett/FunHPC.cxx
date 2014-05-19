@@ -5,6 +5,7 @@
 #include "block_matrix.hh"
 #include "matrix.hh"
 
+using rpc::find_all_processes;
 using rpc::find_all_threads;
 using rpc::server;
 
@@ -23,10 +24,37 @@ using std::vector;
 
 
 
+static void reset_thread_stats()
+{
+#ifdef RPC_QTHREADS
+  qthread::thread::threads_started = 0;
+  qthread::thread::threads_stopped = 0;
+#endif
+}
+RPC_ACTION(reset_thread_stats);
+
+static std::string output_thread_stats()
+{
+#ifdef RPC_QTHREADS
+  std::ostringstream os;
+  // os << "   [" << rpc::server->rank() << "] thread statistics:\n"
+  //    << "      started: " << qthread::thread::threads_started << "\n"
+  //    << "      running: "
+  //    << qthread::thread::threads_started - qthread::thread::threads_stopped
+  //    << "\n";
+  return os.str();
+#else
+  return std::string();
+#endif
+}
+RPC_ACTION(output_thread_stats);
+
+
+
 namespace bench {
   ptrdiff_t niters;
   ptrdiff_t nsize;
-  ptrdiff_t nblocks;
+  ptrdiff_t bsize;
 }
 using namespace bench;
 
@@ -144,24 +172,25 @@ result_t run_dense_fbench(ptrdiff_t n)
 }
 RPC_ACTION(run_dense_fbench);
 
-result_t run_block_fbench(ptrdiff_t n, ptrdiff_t nb, bool run_global = false)
+result_t run_block_fbench(ptrdiff_t n, ptrdiff_t bs, bool run_global = false)
 {
-  nb = min(nb, n);
+  ptrdiff_t nb = div_up(n, bs);
   vector<ptrdiff_t> begin(nb+1);
   for (ptrdiff_t b=0; b<nb+1; ++b) {
     begin[b] = min(n, b * div_up(n, nb));
   }
-  vector<int> locs(nb);
+  vector<int> locs(nb*nb);
   if (!run_global) {
-    for (ptrdiff_t b=0; b<nb; ++b) locs[b] = server->rank();
+    for (ptrdiff_t b=0; b<nb*nb; ++b) locs[b] = server->rank();
   } else {
-    for (ptrdiff_t b=0; b<nb; ++b) locs[b] = b % server->size();
+    for (ptrdiff_t b=0; b<nb*nb; ++b) locs[b] = b % server->size();
+    // for (ptrdiff_t b=0; b<nb*nb; ++b) locs[b] = server->size() * b / (nb*nb);
   }
   auto str = boost::make_shared<structure_t>(n, nb, &begin[0], &locs[0]);
   
-  auto a = boost::make_shared<block_matrix_t>(str,str);
-  auto b = boost::make_shared<block_matrix_t>(str,str);
-  auto c = boost::make_shared<block_matrix_t>(str,str);
+  auto a = boost::make_shared<block_matrix_t>(str, str);
+  auto b = boost::make_shared<block_matrix_t>(str, str);
+  auto c = boost::make_shared<block_matrix_t>(str, str);
   a = a->fset(false, 1.0);
   b = b->fset(false, 1.0);
   c = c->fset(false, 1.0);
@@ -199,8 +228,8 @@ void bench_dense()
   const result_t res = run_dense_bench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -223,8 +252,8 @@ void bench_fdense()
   const result_t res = run_dense_fbench(nsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -255,8 +284,8 @@ void bench_dense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -288,8 +317,8 @@ void bench_fdense_parallel()
   
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for " << nthreads << " * DGEMM[N=" << nsize << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize), 3.0);
   const double mem = 3.0 * pow(double(nsize), 2.0) * sizeof(double);
@@ -309,13 +338,18 @@ void bench_fblock_local()
   const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
   
   cout << "bench_fblock_local "
-       << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
+       << "N=" << nsize1 << " S=" << bsize << " T=" << nthreads << "\n";
+  {
+    auto fs = rpc::broadcast(find_all_threads(),
+                             reset_thread_stats_action());
+    for (auto& f: fs) f.wait();
+  }
   
-  const result_t res = run_block_fbench(nsize1, nblocks);
+  const result_t res = run_block_fbench(nsize1, bsize);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize1), 3.0);
   const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
@@ -325,6 +359,11 @@ void bench_fblock_local()
   cout << "GByte/core:     " << gbyte << "\n";
   cout << "GFlop/sec/core: " << gflop / tavg << "\n";
   cout << "GByte/sec/core: " << gbyte / tavg << "\n";
+  {
+    auto fs = rpc::broadcast(find_all_processes(),
+                             output_thread_stats_action());
+    for (auto& f: fs) cout << f.get();
+  }
   
   cout << "\n";
 }
@@ -336,13 +375,23 @@ void bench_fblock_global()
   const auto nsize1 = lrint(nsize * sqrt(double(nthreads)));
   
   cout << "bench_fblock_global "
-       << "N=" << nsize1 << " B=" << nblocks << " T=" << nthreads << "\n";
+       << "N=" << nsize1 << " S=" << bsize << " T=" << nthreads << "\n";
+  {
+    auto fs = rpc::broadcast(find_all_threads(),
+                             reset_thread_stats_action());
+    for (auto& f: fs) f.wait();
+  }
+  {
+    auto fs = rpc::broadcast(find_all_threads(),
+                             matrix_t::reset_stats_action());
+    for (auto& f: fs) f.wait();
+  }
   
-  const result_t res = run_block_fbench(nsize1, nblocks, true);
+  const result_t res = run_block_fbench(nsize1, bsize, true);
   const double t = res.first, u = res.second;
   const double tavg = t / u;
-  cout << "CPU time for 1 * DGEMM[N=" << nsize1 << ",B=" << nblocks << "]: "
-       << nthreads * tavg << " sec\n";
+  cout << "CPU time/sec:   " << nthreads * tavg << "\n";
+  cout << "wall time/sec:  " << tavg << "\n";
   
   const double ops = 2.0 * pow(double(nsize1), 3.0);
   const double mem = 3.0 * pow(double(nsize1), 2.0) * sizeof(double);
@@ -352,6 +401,16 @@ void bench_fblock_global()
   cout << "GByte/core:     " << gbyte << "\n";
   cout << "GFlop/sec/core: " << gflop / tavg << "\n";
   cout << "GByte/sec/core: " << gbyte / tavg << "\n";
+  {
+    auto fs = rpc::broadcast(find_all_processes(),
+                             output_thread_stats_action());
+    for (auto& f: fs) cout << f.get();
+  }
+  {
+    auto fs = rpc::broadcast(find_all_processes(),
+                             matrix_t::output_stats_action());
+    for (auto& f: fs) cout << f.get();
+  }
   
   cout << "\n";
 }
@@ -360,14 +419,16 @@ void bench_fblock_global()
 
 int rpc_main(int argc, char** argv)
 {
+#if !defined RPC_HPX
   cout << "Setting CPU bindings via hwloc:\n";
   hwloc_bindings(true);
+#endif
   
-  // best: nsize=2000, blocks=20
+  // best: nsize=2000, bsize=100
   // note: per-socket sheperds seem important
   niters = 3;
-  nsize = 1000;
-  nblocks = 10;
+  nsize = 2000;
+  bsize = 100;
   
   bench_dense();
   bench_fdense();

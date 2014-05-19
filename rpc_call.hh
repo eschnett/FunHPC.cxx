@@ -7,8 +7,8 @@
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_server.hh"
-#include "rpc_tuple.hh"
 
+#include "cxx_tuple.hh"
 #include "cxx_utils.hh"
 
 #include <boost/make_shared.hpp>
@@ -38,6 +38,7 @@ namespace rpc {
   using std::istringstream;
   using std::ostringstream;
   using std::string;
+  using std::tuple;
   
   
   
@@ -148,6 +149,10 @@ namespace rpc {
   struct action_base {
   };
   
+  template<typename F>
+  struct member_action_base: action_base<F> {
+  };
+  
   template<typename T, T F>
   struct wrap {
     typedef T type;
@@ -191,9 +196,13 @@ namespace rpc {
   
   // Call an action on a given destination
   
+  // Whether a type is a (non-member) action
+  template<typename T>
+  using is_action = is_base_of<action_base<T>, T>;
+  
   template<typename F, typename... As>
   auto detached(int dest, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
+    typename enable_if<is_action<F>::value, void>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
@@ -208,7 +217,7 @@ namespace rpc {
   
   template<typename F, typename... As>
   auto async(int dest, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
+    typename enable_if<is_action<F>::value,
                        future<typename invoke_of<F, As...>::type> >::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -226,7 +235,7 @@ namespace rpc {
   
   template<typename F, typename... As>
   auto sync(int dest, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
+    typename enable_if<is_action<F>::value,
                        typename invoke_of<F, As...>::type>::type
   {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -244,7 +253,7 @@ namespace rpc {
   
   template<typename F, typename... As>
   auto deferred(int dest, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value,
+    typename enable_if<is_action<F>::value,
                        future<typename invoke_of<F, As...>::type> >::type
   {
     return async(launch::deferred,
@@ -255,9 +264,9 @@ namespace rpc {
   
   
   
-  // Template for an action
+  // Template for a member action
   template<typename F, typename W, typename R, typename T, typename... As>
-  struct member_action_impl_t: public action_base<F> {
+  struct member_action_impl_t: public member_action_base<F> {
     R operator()(const client<T>& obj, As... args) const
     {
       return (*obj.*W::get_value())(args...);
@@ -288,47 +297,71 @@ namespace rpc {
   
   // Call a member action via a client
   
-  template<typename T, typename F, typename... As>
-  auto deferred(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if
-    <is_base_of<action_base<F>, F>::value,
-     future<typename invoke_of<F, const client<T>&, As...>::type> >::type
+  // Whether a type is a member action
+  template<typename T>
+  using is_member_action = is_base_of<member_action_base<T>, T>;
+  
+  // Whether a type is a global type, and thus provides get_proc()
+  template<typename T>
+  struct is_global_helper: std::false_type {};
+  template<typename T>
+  struct is_global_helper<global_ptr<T> >: std::true_type {};
+  template<typename T>
+  struct is_global_helper<global_shared_ptr<T> >: std::true_type {};
+  template<typename T>
+  struct is_global_helper<client<T> >: std::true_type {};
+  template<typename T>
+  struct is_global:
+    is_global_helper<typename std::remove_cv
+                     <typename std::remove_reference<T>::type>::type> {};
+  
+  template<typename F, typename G, typename... As>
+  auto deferred(const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
+                       future<typename invoke_of<F, G, As...>::type> >::type
+  {
+    return async(launch::deferred,
+                 [](const F& func, G&& global, As&&... args) {
+                   int proc = global.get_proc();
+                   return sync(proc, func, std::forward<G>(global),
+                               std::forward<As>(args)...);
+                 }, func, std::forward<G>(global), std::forward<As>(args)...);
+  }
+  
+  template<typename F, typename G, typename... As>
+  auto detached(const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
+                       void>::type
   {
     return
-      async(launch::deferred,
-            [](const client<T>& ptr, const F& func, As&&... args) {
-              return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
-            }, ptr, func, std::forward<As>(args)...);
+      thread([](const F& func, G&& global, As&&... args) {
+          int proc = global.get_proc();
+          return sync(proc, func, std::forward<G>(global),
+                      std::forward<As>(args)...);
+        }, func, std::forward<G>(global), std::forward<As>(args)...).detach();
   }
   
-  template<typename T, typename F, typename... As>
-  auto detached(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if<is_base_of<action_base<F>, F>::value, void>::type
+  template<typename F, typename G, typename... As>
+  auto async(const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
+                       future<typename invoke_of<F, G, As...>::type> >::type
   {
-    return
-      thread([](const client<T>& ptr, const F& func, As&&... args) {
-          return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
-        }, ptr, func, std::forward<As>(args)...).detach();
+    return async([](const F& func, G&& global, As&&... args) ->
+                 typename invoke_of<F, G, As...>::type
+                 {
+                   int proc = global.get_proc();
+                   return sync(proc, func, std::forward<G>(global),
+                               std::forward<As>(args)...);
+                 }, func, std::forward<G>(global), std::forward<As>(args)...);
   }
   
-  template<typename T, typename F, typename... As>
-  auto async(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if
-    <is_base_of<action_base<F>, F>::value,
-     future<typename invoke_of<F, const client<T>&, As...>::type> >::type
+  template<typename F, typename G, typename... As>
+  auto sync(const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
+                       typename invoke_of<F, G, As...>::type>::type
   {
-    return async([](const client<T>& ptr, const F& func, As&&... args) {
-        return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
-      }, ptr, func, std::forward<As>(args)...);
-  }
-  
-  template<typename T, typename F, typename... As>
-  auto sync(const client<T>& ptr, const F& func, As&&... args) ->
-    typename enable_if
-    <is_base_of<action_base<F>, F>::value,
-     typename invoke_of<F, const client<T>&, As...>::type>::type
-  {
-    return sync(ptr.get_proc(), func, ptr, std::forward<As>(args)...);
+    int proc = global.get_proc();
+    return sync(proc, func, std::forward<G>(global), std::forward<As>(args)...);
   }
   
 }

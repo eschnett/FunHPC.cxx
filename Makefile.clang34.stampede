@@ -1,10 +1,11 @@
 # rsync -Paz Makefile*[^~] submit*[^~] *.hh *.cc eschnett@stampede.tacc.utexas.edu:/work/00507/eschnett/src/cc/mpi-rpc
-# source /work/00507/eschnett/q/boost-1.55.0/env.sh
-# source /work/00507/eschnett/q/gperftools-2.1/env.sh
-# source /work/00507/eschnett/q/hwloc-1.8/env.sh
-# source /work/00507/eschnett/q/llvm-3.4/env.sh
-# source /work/00507/eschnett/q/openmpi-1.7.3/env.sh
-# source /work/00507/eschnett/q/qthreads-1.10/env.sh
+# source /work/00507/eschnett/SIMFACTORY/boost-1_55_0/env.sh
+# source /work/00507/eschnett/SIMFACTORY/gperftools-2.1/env.sh
+# source /work/00507/eschnett/SIMFACTORY/hpx-master/env.sh
+# source /work/00507/eschnett/SIMFACTORY/hwloc-1.8/env.sh
+# source /work/00507/eschnett/SIMFACTORY/llvm-3.4/env.sh
+# source /work/00507/eschnett/SIMFACTORY/openmpi-1.7.3/env.sh
+# source /work/00507/eschnett/SIMFACTORY/qthreads-1.10/env.sh
 # sbatch submit.clang34.stampede
 
 CC  := ${MPICC}
@@ -40,11 +41,11 @@ EXES = bench demo hwloc_test matbench mattest qthread_test
 
 BLAS_SRCS    = daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
-HPX_SRCS     = # hpx.cc
+HPX_SRCS     = hpx.cc
 HWLOC_SRCS   = hwloc.cc
 RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
-	${QTHREAD_SRCS} ${HPX_SRCS}
+	${QTHREAD_SRCS} ${HPX_SRCS} ${HWLOC_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
 BENCH_SRCS        = bench.cc ${RPC_SRCS}

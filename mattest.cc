@@ -129,7 +129,9 @@ void test_dense()
   total_error += *yyp->fnrm2();
   std::cout << "   (error = " << yyp->fnrm2() << ")" << std::endl;
   
+  // std::cout << "AAA\n";
   aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
+  // std::cout << "BBB\n";
   std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
   const matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
   aap = aap->faxpy(false, false, -1.0, gemm_resultp);
@@ -252,13 +254,13 @@ void test_block()
   typedef block_vector_t::block_t B;
   typedef vector_t V;
   const block_vector_t axpy_result
-    (istr, 3, (B[3]){
+    (istr, {
       B(1,V(1,(double[1]){7})),
       B(4,V(2,(double[2]){10,13})),
       B(9,V(1,(double[1]){16}))
       });
   const block_vector_t gemv_result
-    (istr, 3, (B[3]){
+    (istr, {
       B(1,V(1,(double[1]){70})),
       B(4,V(2,(double[2]){109,148})),
       B(9,V(1,(double[1]){187})),
@@ -267,7 +269,7 @@ void test_block()
   typedef block_matrix_t::block_t A;
   typedef matrix_t M;
   const block_matrix_t gemm_result
-    (istr,jstr, 6, (A[6]){
+    (istr,jstr, {
       A(1,0, M(1,2,(double[1][2]){{180,205}})),
       A(1,4, M(1,1,(double[1][1]){{230}})),
       A(4,0, M(2,2,(double[2][2]){{249,282}, {318,359}})),

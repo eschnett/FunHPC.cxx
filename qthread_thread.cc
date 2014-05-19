@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <iostream>
 
 
 
@@ -13,6 +14,8 @@ namespace rpc {
 
 namespace qthread {
   
+  std::atomic<std::ptrdiff_t> thread::threads_started;
+  std::atomic<std::ptrdiff_t> thread::threads_stopped;
   
   aligned_t thread::run_thread(void* args_)
   {
@@ -20,13 +23,16 @@ namespace qthread {
     args->func();
     args->p.set_value();
     delete args;
+    // ++threads_stopped;
     return 0;
   }
   
   future<void> thread::start_thread(const std::function<void()>& func)
+  // future<void> thread::start_thread(rpc::unique_function<void()>&& func)
   {
-    auto args = new thread_args(std::move(func));
+    auto args = new thread_args(func);
     auto f = args->p.get_future();
+    // ++threads_started;
     int ierr = qthread_fork_syncvar(run_thread, args, NULL);
     RPC_ASSERT(!ierr);
     return f;
@@ -41,8 +47,6 @@ namespace qthread {
   
   void thread_initialize()
   {
-    setenv("QTHREAD_INFO", "1", 1);
-    setenv("QTHREAD_STACK_SIZE", "131071", 1);
     qthread_initialize();
   }
   

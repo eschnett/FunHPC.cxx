@@ -1,4 +1,4 @@
-TODO:
-- write trivial server with size=1
-- find better name for project
-- support RDMA (get/put), including atomic operations
+This is MPI-RPC, a C++ library that provides fine-grained
+multi-threading for distributed-memory systems.
+
+Documentation is in the file index.rst.

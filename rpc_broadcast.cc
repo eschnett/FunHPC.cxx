@@ -21,7 +21,8 @@ namespace rpc {
     auto dmed = (dmin + dmax) / 2;
     auto freshi = async(dmed, find_all_threads_partial_action(), dmed, dmax);
     auto res = find_all_threads_partial(dmin, dmed);
-    res.insert(res.end(), freshi.get().begin(), freshi.get().end());
+    auto reshi = freshi.get();
+    res.insert(res.end(), reshi.begin(), reshi.end());
     return res;
   }
   

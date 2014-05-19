@@ -4,9 +4,9 @@
 # # export HPX_DIR=$HOME/hpx-gcc48
 # # export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$BOOST_DIR/lib:$HPX_DIR/lib/hpx
 
-CC  = env OMPI_CC=gcc-mp-4.8      openmpicc
-CXX = env OMPI_CXX=g++-mp-4.8     openmpic++
-FC  = env OMPI_FC=gfortran-mp-4.8 openmpif90
+CC  = mpicc
+CXX = mpicxx
+FC  = mpif90
 
 # -DRPC_DISABLE_CALL_SHORTCUT
 # -DRPC_DEBUG_MISSING_EXPORTS
@@ -23,9 +23,9 @@ CXXFLAGS = -g -std=c++11 -march=native
 FFLAGS   = -g            -march=native
 
 # -fsanitize=thread
-CFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
-CXXFLAGS += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
-FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# CFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# CXXFLAGS += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
+# FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-protector-all
 
 # CFLAGS   += -Ofast
 # CXXFLAGS += -Ofast
@@ -34,7 +34,8 @@ FFLAGS   += -fbounds-check -ftrapv -fsanitize=address -fstack-check -fstack-prot
 # -L/Users/eschnett/hpx-gcc48/lib/hpx -Wl,-rpath,/Users/eschnett/hpx-gcc48/lib/hpx
 LDFLAGS  = \
 	-L/Users/eschnett/boost_1_55_0/lib \
-	-L/Users/eschnett/qthread-1.10-gcc48/lib
+	-L/Users/eschnett/qthread-1.10-gcc48/lib \
+	-L/opt/local/lib
 # -lhpxd -lhpx_initd -lhpx_serializationd
 # -lboost_date_time -lboost_filesystem -lboost_program_options -lboost_regex -lboost_serialization -lboost_system -lboost_thread -lboost_atomic -lboost_chrono -lboost_context
 LIBS     = \
@@ -54,7 +55,7 @@ HPX_SRCS     = # hpx.cc
 HWLOC_SRCS   = hwloc.cc
 RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc \
 	rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
-	${QTHREAD_SRCS} ${HPX_SRCS}
+	${QTHREAD_SRCS} ${HPX_SRCS} ${HWLOC_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
 BENCH_SRCS        = bench.cc ${RPC_SRCS}

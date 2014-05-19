@@ -153,8 +153,8 @@ Call a function remotely:
   // call f remotely and wait for the result
   int n4 = rpc::sync(dest, f_action(), 30);
 
-Define a class that can be serialized:
---------------------------------------
+Define a class that can be serialized and communicated:
+-------------------------------------------------------
 
 ::
 
@@ -175,3 +175,17 @@ Define a class that can be serialized:
   RPC_COMPONENT(point);
   RPC_IMPLEMENT_MEMBER_ACTION(point, translate);
   RPC_IMPLEMENT_CONST_MEMBER_ACTION(point, output);
+
+Call member functions remotely:
+-------------------------------
+
+::
+
+  auto p = make_client<point>();
+  auto q = make_remote_client<point>(1);
+  auto f1 = async(point::init_action(), p, 3);
+  auto f2 = async(point::init_action(), q, 4);
+  wait(f1); wait(f2);
+  auto f3 = async(point::translate_action(), p, q);
+  wait(f3);
+  sync(point::output_action(), p);

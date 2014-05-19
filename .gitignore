@@ -12,3 +12,9 @@ hpx_test
 qthread_test
 hwloc
 hwloc_test
+mpi-rpc.tex
+index.html
+mpi-rpc.aux
+mpi-rpc.log
+mpi-rpc.out
+mpi-rpc.pdf

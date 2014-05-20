@@ -29,10 +29,9 @@ namespace rpc {
   // Broadcast to all processes
   template<typename C, typename F, typename... As>
   auto broadcast(const C& dests, const F& func, const As&... args) ->
-    // typename enable_if
-    // <is_action<F>::value,
-    //  vector<future<typename invoke_of<F, As...>::type> > >::type
-    vector<future<typename invoke_of<F, As...>::type> >
+    typename enable_if
+    <is_action<F>::value,
+     vector<future<typename invoke_of<F, As...>::type> > >::type
   {
     vector<future<typename invoke_of<F, As...>::type> > fs;
     // TODO: use tree
@@ -44,8 +43,7 @@ namespace rpc {
   
   template<typename C, typename F, typename... As>
   auto broadcast_detached(const C& dests, const F& func, const As&... args) ->
-  // typename enable_if<is_action<F>::value, void>::type
-    void
+    typename enable_if<is_action<F>::value, void>::type
   {
     // TODO: use tree
     for (const int dest: dests) {
@@ -56,8 +54,7 @@ namespace rpc {
   // TODO: Use container instead of b and e?
   template<typename F, typename... As>
   auto broadcast_barrier(F func, const As&... args, int b=0, int e=-1) ->
-    // typename enable_if<is_action<F>::value, future<void> >::type
-    future<void>
+    typename enable_if<is_action<F>::value, future<void> >::type
   {
     if (e == -1) e = server->size();
     const auto sz = e - b;

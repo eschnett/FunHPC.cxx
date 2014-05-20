@@ -29,39 +29,42 @@ namespace rpc {
   // Broadcast to all processes
   template<typename C, typename F, typename... As>
   auto broadcast(const C& dests, const F& func, const As&... args) ->
-    typename enable_if
-    <is_action<F>::value,
-     vector<future<typename invoke_of<F, As...>::type> > >::type
+    // typename enable_if
+    // <is_action<F>::value,
+    //  vector<future<typename invoke_of<F, As...>::type> > >::type
+    vector<future<typename invoke_of<F, As...>::type> >
   {
     vector<future<typename invoke_of<F, As...>::type> > fs;
     // TODO: use tree
     for (const int dest: dests) {
-      fs.push_back(async(dest, func, args...));
+      fs.push_back(async(remote::async, dest, func, args...));
     }
     return fs;
   }
   
   template<typename C, typename F, typename... As>
   auto broadcast_detached(const C& dests, const F& func, const As&... args) ->
-    typename enable_if<is_action<F>::value, void>::type
+  // typename enable_if<is_action<F>::value, void>::type
+    void
   {
     // TODO: use tree
     for (const int dest: dests) {
-      detached(dest, func, args...);
+      detached(remote::detached, dest, func, args...);
     }
   }
   
   // TODO: Use container instead of b and e?
   template<typename F, typename... As>
   auto broadcast_barrier(F func, const As&... args, int b=0, int e=-1) ->
-    typename enable_if<is_action<F>::value, future<void> >::type
+    // typename enable_if<is_action<F>::value, future<void> >::type
+    future<void>
   {
     if (e == -1) e = server->size();
     const auto sz = e - b;
     RPC_ASSERT(sz > 0);
     // TODO: execute on different processes
     // TODO: create an action for this?
-    if (sz == 1) return async(b, func, args...);
+    if (sz == 1) return async(remote::async, b, func, args...);
     const auto m = b + sz/2;
     const auto fs0 = broadcast_barrier(func, args..., b, m);
     const auto fs1 = broadcast_barrier(func, args..., m, e);

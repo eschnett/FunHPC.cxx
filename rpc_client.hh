@@ -64,7 +64,8 @@ namespace rpc {
       // client
       global_ptr<client> ptr;
       ar >> ptr;
-      *this = async(ptr.get_proc(), client_get_global_shared_action<T>(), ptr);
+      *this = async(remote::async, ptr.get_proc(),
+                    client_get_global_shared_action<T>(), ptr);
     }
   }
   
@@ -81,7 +82,8 @@ namespace rpc {
   template<typename T, typename... As>
   client<T> make_remote_client(int proc, const As&... args)
   {
-    return async(proc, make_global_shared_action<T, As...>(), args...);
+    return async(remote::async, proc,
+                 make_global_shared_action<T, As...>(), args...);
   }
   
 }

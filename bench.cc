@@ -90,7 +90,8 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
   }
   case do_daisychain: {
     const auto here = rpc::server->rank();
-    auto f = rpc::async(here, busywait_action(), time, cont, njobs);
+    auto f = rpc::async(rpc::remote::async, here,
+                        busywait_action(), time, cont, njobs);
     f.wait();
     break;
   }
@@ -107,8 +108,10 @@ void run_next(double time, continuation_t cont, ptrdiff_t njobs)
     const auto here = rpc::server->rank();
     auto njobs1 = (njobs+1) / 2;
     auto njobs2 = njobs - njobs1;
-    auto f1 = rpc::async(here, busywait_action(), time, cont, njobs1);
-    auto f2 = rpc::async(here, busywait_action(), time, cont, njobs2);
+    auto f1 = rpc::async(rpc::remote::async, here,
+                         busywait_action(), time, cont, njobs1);
+    auto f2 = rpc::async(rpc::remote::async, here,
+                         busywait_action(), time, cont, njobs2);
     f1.wait();
     f2.wait();
     break;
@@ -151,7 +154,8 @@ void run_sync(double time, ptrdiff_t njobs,
   cout << "    Configuration: action sync...         " << flush;
   const auto t0 = gettime();
   for (ptrdiff_t n=0; n<njobs; ++n) {
-    rpc::sync(locs[n % locs.size()], busywait_action(), time, do_nothing, 1);
+    rpc::sync(rpc::remote::sync, locs[n % locs.size()],
+              busywait_action(), time, do_nothing, 1);
   }
   const auto t1 = gettime();
   const double usec = elapsed(t1, t0) / njobs * 1.0e+6;
@@ -203,8 +207,8 @@ void run_multi(double time, ptrdiff_t njobs,
   for (ptrdiff_t t=0; t<nthreads; ++t) {
     const auto njobs2 = min(njobs1, njobs_left);
     njobs_left -= njobs2;
-    fs[t] = rpc::async(locs[t % locs.size()], run_single_action(),
-                       time, njobs2);
+    fs[t] = rpc::async(rpc::remote::async, locs[t % locs.size()],
+                       run_single_action(), time, njobs2);
   }
   RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();
@@ -232,8 +236,8 @@ void run_serial(double time, ptrdiff_t njobs,
   cout << "    Configuration: action serial...       " << flush;
   const auto t0 = gettime();
   for (ptrdiff_t n=0; n<njobs; ++n) {
-    auto f = rpc::async(locs[n % locs.size()], busywait_action(),
-                        time, do_nothing, 1);
+    auto f = rpc::async(rpc::remote::async, locs[n % locs.size()],
+                        busywait_action(), time, do_nothing, 1);
     f.wait();
   }
   const auto t1 = gettime();
@@ -285,8 +289,8 @@ void run_parallel(double time, ptrdiff_t njobs,
   vector<future<void> > fs(njobs);
   const auto t0 = gettime();
   for (ptrdiff_t n=0; n<njobs; ++n) {
-    fs[n] = rpc::async(locs[n % locs.size()], busywait_action(),
-                       time, do_nothing, 1);
+    fs[n] = rpc::async(rpc::remote::async, locs[n % locs.size()],
+                       busywait_action(), time, do_nothing, 1);
   }
   for (auto& f: fs) f.wait();
   const auto t1 = gettime();
@@ -346,8 +350,8 @@ void run_sqrt(double time, ptrdiff_t njobs,
   for (ptrdiff_t n=0; n<njobs_par; ++n) {
     const auto njobs2 = min(njobs1, njobs_left);
     njobs_left -= njobs2;
-    fs[n] = rpc::async(locs[n % locs.size()], busywait_action(),
-                       time, do_daisychain, njobs2);
+    fs[n] = rpc::async(rpc::remote::async, locs[n % locs.size()],
+                       busywait_action(), time, do_daisychain, njobs2);
   }
   RPC_ASSERT(njobs_left == 0);
   for (auto& f: fs) f.wait();

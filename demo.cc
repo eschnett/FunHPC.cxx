@@ -97,11 +97,11 @@ void test_call()
   cout << "Calling f as action... " << flush;
   cout << f_action()(20) << "\n";
   cout << "Calling f synchronously... " << flush;
-  cout << rpc::sync(dest, f_action(), 30) << "\n";
+  cout << rpc::sync(rpc::remote::sync, dest, f_action(), 30) << "\n";
   cout << "Calling f asynchronously... " << flush;
-  cout << rpc::async(dest, f_action(), 40).get() << "\n";
+  cout << rpc::async(rpc::remote::async, dest, f_action(), 40).get() << "\n";
   cout << "Calling f detached...\n" << flush;
-  rpc::detached(dest, f_action(), 50);
+  rpc::detached(rpc::remote::detached, dest, f_action(), 50);
   cout << "Done calling f\n";
   
   cout << "Calling add directly... " << flush;
@@ -109,11 +109,11 @@ void test_call()
   cout << "Calling add as action... " << flush;
   cout << add_action()(1,2) << "\n";
   cout << "Calling add synchronously... " << flush;
-  cout << rpc::sync(dest, add_action(), 1,2) << "\n";
+  cout << rpc::sync(rpc::remote::sync, dest, add_action(), 1,2) << "\n";
   cout << "Calling add asynchronously... " << flush;
-  cout << rpc::async(dest, add_action(), 1,2).get() << "\n";
+  cout << rpc::async(rpc::remote::async, dest, add_action(), 1,2).get() << "\n";
   cout << "Calling add detached...\n" << flush;
-  rpc::detached(dest, add_action(), 1,2);
+  rpc::detached(rpc::remote::detached, dest, add_action(), 1,2);
   cout << "Done calling add\n";
   
   cout << "Calling out directly...\n" << flush;
@@ -121,26 +121,26 @@ void test_call()
   cout << "Calling out as action...\n" << flush;
   out_action()("hello");
   cout << "Calling out synchronously...\n" << flush;
-  rpc::sync(dest, out_action(), string("hello"));
+  rpc::sync(rpc::remote::sync, dest, out_action(), string("hello"));
   cout << "Calling out asynchronously...\n" << flush;
-  rpc::async(dest, out_action(), string("hello")).get();
+  rpc::async(rpc::remote::async, dest, out_action(), string("hello")).get();
   cout << "Calling out detached...\n" << flush;
-  rpc::detached(dest, out_action(), string("hello"));
+  rpc::detached(rpc::remote::detached, dest, out_action(), string("hello"));
   cout << "Done calling out\n";
   
   auto p = rpc::make_client<point>();
   auto q = rpc::make_client<point>();
-  rpc::sync(point::init_action(), p, 1);
-  rpc::sync(point::init_action(), q, 2);
-  rpc::sync(point::translate_action(), p, q);
-  rpc::sync(point::output_action(), p);
+  rpc::sync(rpc::remote::sync, point::init_action(), p, 1);
+  rpc::sync(rpc::remote::sync, point::init_action(), q, 2);
+  rpc::sync(rpc::remote::sync, point::translate_action(), p, q);
+  rpc::sync(rpc::remote::sync, point::output_action(), p);
   
   auto rp = rpc::make_remote_client<point>(1 % rpc::server->size());
   auto rq = rpc::make_remote_client<point>(2 % rpc::server->size());
-  rpc::sync(point::init_action(), rp, 3);
-  rpc::sync(point::init_action(), rq, 4);
-  rpc::sync(point::translate_action(), rp, rq);
-  rpc::sync(point::output_action(), rp);
+  rpc::sync(rpc::remote::sync, point::init_action(), rp, 3);
+  rpc::sync(rpc::remote::sync, point::init_action(), rq, 4);
+  rpc::sync(rpc::remote::sync, point::translate_action(), rp, rq);
+  rpc::sync(rpc::remote::sync, point::output_action(), rp);
 }
 
 
@@ -231,7 +231,8 @@ void tgsp(rpc::global_shared_ptr<s> igs, ptrdiff_t count, ptrdiff_t level)
   for (int child=0; child<nchildren; ++child) {
     ptrdiff_t child_count = count / 4;
     int dest = (rpc::server->rank() + 1001 + 5 * child) % rpc::server->size();
-    fs.push_back(async(dest, tgsp_action(), igs, child_count, level+1));
+    fs.push_back(async(rpc::remote::async, dest,
+                       tgsp_action(), igs, child_count, level+1));
     count -= child_count;
   }
   vector<rpc::global_shared_ptr<s> > locals(count, igs);
@@ -256,7 +257,7 @@ void test_ptr()
   auto igs2 = igs;
   
   tpc(is, ig, igs);
-  rpc::sync(dest, tpc_action(), is, ig, igs);
+  rpc::sync(rpc::remote::sync, dest, tpc_action(), is, ig, igs);
   tgsp(rpc::make_global_shared<s>(5), 100000);
   
   delete ip2;

@@ -25,7 +25,7 @@ namespace rpc {
     termination_stage = 1;
     stage_1_counter = 0;
     for (int proc = child_min(); proc < child_max(); ++proc) {
-      detached(proc, terminate_stage_1_action());
+      detached(remote::detached, proc, terminate_stage_1_action());
     }
     terminate_stage_2();
   }
@@ -37,11 +37,11 @@ namespace rpc {
     if (value == child_count() + 1) {
       const int proc = parent();
       if (proc >= 0) {
-        detached(proc, terminate_stage_2_action());
+        detached(remote::detached, proc, terminate_stage_2_action());
       }
       termination_stage = 2;
       if (proc < 0) {
-        detached(0, terminate_stage_3_action());
+        detached(remote::detached, 0, terminate_stage_3_action());
         }
     }
   }
@@ -52,7 +52,7 @@ namespace rpc {
     termination_stage = 3;
     stage_3_counter = 0;
     for (int proc = child_min(); proc < child_max(); ++proc) {
-      detached(proc, terminate_stage_3_action());
+      detached(remote::detached, proc, terminate_stage_3_action());
     }
     terminate_stage_4();
   }
@@ -64,7 +64,7 @@ namespace rpc {
     if (value == child_count() + 1) {
       const int proc = parent();
       if (proc >= 0) {
-        detached(proc, terminate_stage_4_action());
+        detached(remote::detached, proc, terminate_stage_4_action());
       }
       termination_stage = 4;
     }

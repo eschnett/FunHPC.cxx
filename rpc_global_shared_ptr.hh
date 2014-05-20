@@ -60,7 +60,8 @@ namespace rpc {
         // The object is local: use the owner as manager
         mgr = (global_manager<T>*)owner.get();
         mgr->incref();
-        detached(other.get_proc(), global_shared::unregister_action(), other);
+        detached(remote::detached, other.get_proc(),
+                 global_shared::unregister_action(), other);
       } else {
         mgr = new global_manager<T>(owner, other, gptr);
       }

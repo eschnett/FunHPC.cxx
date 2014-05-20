@@ -21,6 +21,8 @@
 
 namespace qthread {
   
+  
+  
   template<typename T> 
   future<typename std::decay<T>::type> make_ready_future(T&& value);
   

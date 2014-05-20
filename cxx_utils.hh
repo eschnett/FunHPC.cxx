@@ -19,12 +19,10 @@ namespace rpc {
   
   // decay_copy, taken from libc++ 3.4
   
-  template <class _Tp>
-  inline
-  typename std::decay<_Tp>::type
-  decay_copy(const _Tp& __t)
+  template<typename T>
+  inline typename std::decay<T>::type decay_copy(T&& t)
   {
-    return std::forward<_Tp>(__t);
+    return std::forward<T>(t);
   }
   
   
@@ -41,14 +39,14 @@ namespace rpc {
   
   
   
-  // // make_ptr
-  // 
-  // template<typename T>
-  // auto make_ptr(T&& value) ->
-  //   decltype(new typename std::decay<T>::type(std::forward<T>(value)))
-  // {
-  //   return new typename std::decay<T>::type(std::forward<T>(value));
-  // }
+  // make_ptr
+  
+  template<typename T>
+  auto make_ptr(T&& value) ->
+    decltype(new typename std::decay<T>::type(std::forward<T>(value)))
+  {
+    return new typename std::decay<T>::type(std::forward<T>(value));
+  }
   
   
   

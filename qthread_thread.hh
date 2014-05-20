@@ -10,6 +10,7 @@
 #include <qthread/qt_syscalls.h>
 
 #include "cxx_invoke.hh"
+#include "cxx_tuple.hh"
 #include "cxx_utils.hh"
 
 #include <boost/make_shared.hpp>
@@ -41,15 +42,12 @@ namespace qthread {
     
     struct thread_args {
       std::function<void()> func;
-      // rpc::unique_function<void()> func;
       promise<void> p;
       thread_args(const std::function<void()>& func): func(func) {}
-      // thread_args(rpc::unique_function<void()>&& func): func(std::move(func)) {}
     };
     
     static aligned_t run_thread(void* args_);
     static future<void> start_thread(const std::function<void()>& func);
-    // static future<void> start_thread(rpc::unique_function<void()>&& func);
     
     future<void> handle;
     
@@ -61,15 +59,18 @@ namespace qthread {
     thread(thread&& other): thread() { swap(other); }
     
     template<typename F, typename... As>
-    explicit thread(const F& f, As&&... args)
+    explicit thread(const F& func, As&&... args)
     {
-      // typedef typename rpc::invoke_of<F, As...>::type R;
-      // std::function<R()> fbR = std::bind(f, std::forward<As>(args)...);
-      // std::function<void()> fb = [fbR](){ fbR(); };
-      std::function<void()> fb = std::bind<void>(f, std::forward<As>(args)...);
-      // rpc::unique_function<void()> fb =
-      //   rpc::unique_bind<void>(std::forward<F>(f), std::forward<As>(args)...);
-      handle = start_thread(fb);
+      // std::function<void()> funcbnd =
+      //   std::bind<void>(func, std::forward<As>(args)...);
+      auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+      auto argsptr =
+        boost::make_shared<std::tuple<typename std::decay<As>::type...> >
+        (std::forward<As>(args)...);
+      std::function<void()> funcbnd = [funcptr, argsptr]() {
+        rpc::tuple_apply(*funcptr, *argsptr);
+      };
+      handle = start_thread(funcbnd);
     }
     
     thread(const thread&) = delete;
@@ -129,7 +130,7 @@ namespace qthread {
   
   
   
-#if 1
+#if 0
   template<typename R>
   void async_set_value(promise<R>* p, const std::function<R()>& f)
   {
@@ -177,29 +178,74 @@ namespace qthread {
     delete p;
   }
   
-  template<typename F, typename... As> 
+  template<typename F, typename... As>
   auto async(launch policy, const F& func, As&&... args) ->
     future<typename rpc::invoke_of<F, As...>::type>
   {
     typedef typename rpc::invoke_of<F, As...>::type R;
-    auto p = new promise<R>();
+    auto p = new promise<R>();  // TODO: make_unique
     auto f = p->get_future();
     // Note: This call fails since "F" expects && arguments while func
     // expects plain arguments
     // thread(async_set_value<R, F, As...>, p, func, std::forward<As>(args)...).
-    thread(async_set_value<R, typename std::decay<F>::type, typename std::decay<As>::type...>, p, func, std::forward<As>(args)...).
+    thread(async_set_value<R, const F&, typename std::decay<As>::type...>,
+           p, func, std::forward<As>(args)...).
       detach();
     return f;
   }
 #endif
   
-  template<typename F, typename... As> 
-  auto async(const F& func, As&&... args) ->
-    typename std::enable_if<!std::is_same<F, launch>::value,
-                            future<typename rpc::invoke_of<F, As...>::type>
-                            >::type
+#if 1
+  template<typename F, typename... As>
+  auto async(launch policy, const F& func, As&&... args) ->
+    typename std::enable_if
+    <!std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
+     future<typename rpc::invoke_of<F, As...>::type> >::type
   {
-    return async(launch::async, func, std::forward<As>(args)...);
+    auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+    auto argsptr =
+      boost::make_shared<std::tuple<typename std::decay<As>::type...> >
+      (std::forward<As>(args)...);
+    typedef typename rpc::invoke_of<F, As...>::type R;
+    auto p = boost::make_shared<promise<R> >();
+    auto f = p->get_future();
+    auto funcbnd = [func, argsptr, p]() {
+      p->set_value(rpc::tuple_apply(func, *argsptr));
+    };
+    thread(funcbnd).detach();
+    return f;
+  }
+  
+  template<typename F, typename... As>
+  auto async(launch policy, const F& func, As&&... args) ->
+    typename std::enable_if
+    <std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
+     future<typename rpc::invoke_of<F, As...>::type> >::type
+  {
+    auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+    auto argsptr =
+      boost::make_shared<std::tuple<typename std::decay<As>::type...> >
+      (std::forward<As>(args)...);
+    auto p = boost::make_shared<promise<void> >();
+    auto f = p->get_future();
+    auto funcbnd = [funcptr, argsptr, p]() {
+      rpc::tuple_apply(*funcptr, *argsptr);
+      p->set_value();
+    };
+    thread(funcbnd).detach();
+    return f;
+  }
+#endif
+  
+  template<typename F, typename... As>
+  auto async(const F& func, As&&... args) ->
+    // typename std::enable_if<!std::is_same<F, launch>::value,
+    //                         future<typename rpc::invoke_of<F, As...>::type>
+    //                         >::type
+    future<typename rpc::invoke_of<F, As...>::type>
+  {
+    return async(launch::async | launch::deferred,
+                 func, std::forward<As>(args)...);
   }
   
   

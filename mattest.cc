@@ -120,23 +120,21 @@ void test_dense()
   const vector_t::const_ptr axpy_resultp(&axpy_result, null_deleter());
   zzp = zzp->faxpy(-1.0, axpy_resultp);
   total_error += *zzp->fnrm2();
-  std::cout << "   (error = " << zzp->fnrm2() << ")" << std::endl;
+  std::cout << "   (error = " << *zzp->fnrm2() << ")" << std::endl;
   
   yyp = ap->fgemv(false, alpha, xp, beta, yp);
   std::cout << "fgemv: alpha a x + beta y = " << *yyp << std::endl;
   const vector_t::const_ptr gemv_resultp(&gemv_result, null_deleter());
   yyp = yyp->faxpy(-1.0, gemv_resultp);
   total_error += *yyp->fnrm2();
-  std::cout << "   (error = " << yyp->fnrm2() << ")" << std::endl;
+  std::cout << "   (error = " << *yyp->fnrm2() << ")" << std::endl;
   
-  // std::cout << "AAA\n";
   aap = bp->fgemm(false, false, false, alpha, cp, beta, ap);
-  // std::cout << "BBB\n";
   std::cout << "fgemm: alpha b c + beta a = " << *aap << std::endl;
   const matrix_t::const_ptr gemm_resultp(&gemm_result, null_deleter());
   aap = aap->faxpy(false, false, -1.0, gemm_resultp);
   total_error += *aap->fnrm2();
-  std::cout << "   (error = " << aap->fnrm2() << ")" << std::endl;
+  std::cout << "   (error = " << *aap->fnrm2() << ")" << std::endl;
   
   
   

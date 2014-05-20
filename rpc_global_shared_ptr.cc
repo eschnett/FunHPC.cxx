@@ -26,7 +26,7 @@ namespace rpc {
     //     there
     if (other != owner) {
       refcount = 2;
-      detached(owner.get_proc(),
+      detached(remote::detached, owner.get_proc(),
                global_shared::register_then_unregister_action(),
                owner, other, this);
     }
@@ -38,7 +38,8 @@ namespace rpc {
     RPC_ASSERT(invariant());
     RPC_ASSERT(refcount==0);
     if (!owner.is_local()) {
-      detached(owner.get_proc(), global_shared::unregister_action(), owner);
+      detached(remote::detached,
+               owner.get_proc(), global_shared::unregister_action(), owner);
     } else {
       RPC_ASSERT(owner.get() == this);
     }
@@ -52,8 +53,8 @@ namespace rpc {
                                   const global_ptr<global_manager_base>& self)
     {
       owner->incref();
-      detached(other.get_proc(), unregister_action(), other);
-      detached(self.get_proc(), unregister_action(), self);
+      detached(remote::detached, other.get_proc(), unregister_action(), other);
+      detached(remote::detached, self.get_proc(), unregister_action(), self);
     }
     
     void unregister(const global_ptr<global_manager_base>& other)

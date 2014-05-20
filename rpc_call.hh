@@ -30,6 +30,7 @@
 
 namespace rpc {
   
+  // TODO: don't use using
   using boost::make_shared;
   using boost::shared_ptr;
   
@@ -149,10 +150,6 @@ namespace rpc {
   struct action_base {
   };
   
-  template<typename F>
-  struct member_action_base: action_base<F> {
-  };
-  
   template<typename T, T F>
   struct wrap {
     typedef T type;
@@ -194,6 +191,65 @@ namespace rpc {
   
   
   
+  // Remote call policies
+  
+  enum class remote: int { async = 1, deferred = 2, sync = 4, detached = 8 };
+  
+  inline constexpr remote operator~(remote a)
+  {
+    return static_cast<remote>(~ static_cast<int>(a));
+  }
+  
+  inline constexpr remote operator&(remote a, remote b)
+  {
+    return static_cast<remote>(static_cast<int>(a) & static_cast<int>(b));
+  }
+  inline constexpr remote operator|(remote a, remote b)
+  {
+    return static_cast<remote>(static_cast<int>(a) | static_cast<int>(b));
+  }
+  inline constexpr remote operator^(remote a, remote b)
+  {
+    return static_cast<remote>(static_cast<int>(a) ^ static_cast<int>(b));
+  }
+  
+  inline remote& operator&=(remote& a, remote b)
+  {
+    return a = a & b;
+  }
+  inline remote& operator|=(remote& a, remote b)
+  {
+    return a = a | b;
+  }
+  inline remote& operator^=(remote& a, remote b)
+  {
+    return a = a ^ b;
+  }
+  
+  inline remote interpret(remote policy)
+  {
+    if ((policy & remote::async) != remote(0)) return remote::async;
+    if ((policy & remote::deferred) != remote(0)) return remote::deferred;
+    if ((policy & remote::sync) != remote(0)) return remote::sync;
+    if ((policy & remote::detached) != remote(0)) return remote::detached;
+    RPC_ASSERT(0);
+  }
+  
+  inline launch remote2launch(remote policy)
+  {
+    switch (interpret(policy)) {
+    case remote::async: return launch::async;
+    case remote::deferred: return launch::deferred;
+      // sync and detached have no local equivalent. However, they
+      // should run as soon as possible, thus we map them to async.
+    case remote::sync:          // fall-through
+    case remote::detached: return launch::async;
+    }
+    RPC_ASSERT(0);
+  }
+  
+  
+  
   // Call an action on a given destination
   
   // Whether a type is a (non-member) action
@@ -201,9 +257,11 @@ namespace rpc {
   using is_action = is_base_of<action_base<T>, T>;
   
   template<typename F, typename... As>
-  auto detached(int dest, const F& func, As&&... args) ->
+  auto detached(remote policy, int dest, const F& func, As&&... args) ->
     typename enable_if<is_action<F>::value, void>::type
+  // void
   {
+    RPC_ASSERT(interpret(policy) == remote::detached);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return thread(func, std::forward<As>(args)...).detach();
@@ -216,28 +274,12 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto async(int dest, const F& func, As&&... args) ->
-    typename enable_if<is_action<F>::value,
-                       future<typename invoke_of<F, As...>::type> >::type
-  {
-#ifndef RPC_DISABLE_CALL_SHORTCUT
-    if (dest == server->rank()) {
-      return async(func, std::forward<As>(args)...);
-    }
-#endif
-    typedef typename invoke_of<F, As...>::type R;
-    auto p = new promise<R>;
-    auto f = p->get_future();
-    server->call
-      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
-    return f;
-  }
-  
-  template<typename F, typename... As>
-  auto sync(int dest, const F& func, As&&... args) ->
+  auto sync(remote policy, int dest, const F& func, As&&... args) ->
     typename enable_if<is_action<F>::value,
                        typename invoke_of<F, As...>::type>::type
+  // typename invoke_of<F, As...>::type
   {
+    RPC_ASSERT(interpret(policy) == remote::sync);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       return func(std::forward<As>(args)...);
@@ -252,21 +294,42 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
-  auto deferred(int dest, const F& func, As&&... args) ->
+  auto async(remote policy, int dest, const F& func, As&&... args) ->
     typename enable_if<is_action<F>::value,
                        future<typename invoke_of<F, As...>::type> >::type
   {
-    return async(launch::deferred,
-                 [](int dest, const F& func, As&&... args) {
-                   return sync(dest, func, std::forward<As>(args)...);
-                 }, dest, func, std::forward<As>(args)...);
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+    if (dest == server->rank()) {
+      return async(remote2launch(policy), func, std::forward<As>(args)...);
+    }
+#endif
+    if (interpret(policy) == remote::deferred) {
+      typedef typename invoke_of<F, As...>::type R;
+      // TODO: This will leak p if the thread never executes
+      auto p = new promise<R>();
+      auto evalptr =
+        make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+      return async(remote2launch(policy),
+                   [dest, p, evalptr]() {
+                     auto f = p->get_future();
+                     server->call(dest, evalptr);
+                     return f.get();
+                   });
+    }
+    typedef typename invoke_of<F, As...>::type R;
+    auto p = new promise<R>;
+    auto f = p->get_future();
+    server->call
+      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
+    if (interpret(policy) == remote::sync) f.wait();
+    return f;
   }
   
   
   
   // Template for a member action
   template<typename F, typename W, typename R, typename T, typename... As>
-  struct member_action_impl_t: public member_action_base<F> {
+  struct member_action_impl_t: public action_base<F> {
     R operator()(const client<T>& obj, As... args) const
     {
       return (*obj.*W::get_value())(args...);
@@ -297,10 +360,6 @@ namespace rpc {
   
   // Call a member action via a client
   
-  // Whether a type is a member action
-  template<typename T>
-  using is_member_action = is_base_of<member_action_base<T>, T>;
-  
   // Whether a type is a global type, and thus provides get_proc()
   template<typename T>
   struct is_global_helper: std::false_type {};
@@ -316,23 +375,12 @@ namespace rpc {
                      <typename std::remove_reference<T>::type>::type> {};
   
   template<typename F, typename G, typename... As>
-  auto deferred(const F& func, G&& global, As&&... args) ->
-    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
-                       future<typename invoke_of<F, G, As...>::type> >::type
+  auto detached(remote policy, const F& func, G&& global, As&&... args) ->
+  typename enable_if<(is_action<F>::value && is_global<G>::value),
+                     void>::type
+  // void
   {
-    return async(launch::deferred,
-                 [](const F& func, G&& global, As&&... args) {
-                   int proc = global.get_proc();
-                   return sync(proc, func, std::forward<G>(global),
-                               std::forward<As>(args)...);
-                 }, func, std::forward<G>(global), std::forward<As>(args)...);
-  }
-  
-  template<typename F, typename G, typename... As>
-  auto detached(const F& func, G&& global, As&&... args) ->
-    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
-                       void>::type
-  {
+    RPC_ASSERT(interpret(policy) == remote::detached);
     return
       thread([](const F& func, G&& global, As&&... args) {
           int proc = global.get_proc();
@@ -342,26 +390,35 @@ namespace rpc {
   }
   
   template<typename F, typename G, typename... As>
-  auto async(const F& func, G&& global, As&&... args) ->
-    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
-                       future<typename invoke_of<F, G, As...>::type> >::type
+  auto async(remote policy, const F& func, G&& global, As&&... args) ->
+  typename enable_if<(is_action<F>::value && is_global<G>::value),
+                     future<typename invoke_of<F, G, As...>::type> >::type
+  // future<typename invoke_of<F, G, As...>::type>
   {
-    return async([](const F& func, G&& global, As&&... args) ->
-                 typename invoke_of<F, G, As...>::type
-                 {
-                   int proc = global.get_proc();
-                   return sync(proc, func, std::forward<G>(global),
-                               std::forward<As>(args)...);
-                 }, func, std::forward<G>(global), std::forward<As>(args)...);
+    assert(0);                  // TODO: are we getting here?
+    auto f = async(remote2launch(policy),
+                   [policy](const F& func, G&& global, As&&... args) ->
+                   typename invoke_of<F, G, As...>::type
+                   {
+                     int proc = global.get_proc();
+                     return sync(policy, proc, func, std::forward<G>(global),
+                                 std::forward<As>(args)...);
+                   },
+                   func, std::forward<G>(global), std::forward<As>(args)...);
+    if (interpret(policy) == remote::sync) f.wait();
+    return f;
   }
   
   template<typename F, typename G, typename... As>
-  auto sync(const F& func, G&& global, As&&... args) ->
-    typename enable_if<(is_member_action<F>::value && is_global<G>::value),
+  auto sync(remote policy, const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_action<F>::value && is_global<G>::value),
                        typename invoke_of<F, G, As...>::type>::type
+  // typename invoke_of<F, G, As...>::type
   {
+    RPC_ASSERT(interpret(policy) == remote::sync);
     int proc = global.get_proc();
-    return sync(proc, func, std::forward<G>(global), std::forward<As>(args)...);
+    return sync(policy, proc,
+                func, std::forward<G>(global), std::forward<As>(args)...);
   }
   
 }

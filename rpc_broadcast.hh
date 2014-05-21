@@ -65,7 +65,7 @@ namespace rpc {
     const auto m = b + sz/2;
     const auto fs0 = broadcast_barrier(func, args..., b, m);
     const auto fs1 = broadcast_barrier(func, args..., m, e);
-    return rpc::async([=](){ fs0.wait(); fs1.wait(); });
+    return async([=](){ fs0.wait(); fs1.wait(); });
   }
   
   
@@ -155,7 +155,8 @@ namespace rpc {
                   "");
     static_assert(std::is_same<typename C::value_type, A>::value,
                   "");
-    static_assert(std::is_same<typename iterator_traits<I>::value_type, A>::value,
+    static_assert(std::is_same
+                  <typename iterator_traits<I>::value_type, A>::value,
                   "");
     
     // Assert that B can be constructed from a future to B
@@ -167,14 +168,14 @@ namespace rpc {
       const auto sz = e - b;
       RPC_ASSERT(sz > 0);
       if (sz == 1) {
-        return async(f, *b);
+        return async(remote::async, f, *b);
       }
       const auto m = b + sz/2;
       B res1 = map_reduce1(b, m);
       B res2 = map_reduce1(m, e);
       // B res1 = async(&map_reduce_impl::map_reduce1, this, b, m);
       // B res2 = async(&map_reduce_impl::map_reduce1, this, m, e);
-      return async(r, res1, res2);
+      return async(remote::async, r, res1, res2);
     }
     
     B map_reduce(const I& b, const I& e) const
@@ -245,7 +246,8 @@ namespace rpc {
                   "");
     static_assert(std::is_same<typename C::value_type, A>::value,
                   "");
-    static_assert(std::is_same<typename iterator_traits<I>::value_type, A>::value,
+    static_assert(std::is_same
+                  <typename iterator_traits<I>::value_type, A>::value,
                   "");
     
     // Assert that B can be constructed from a future to B
@@ -264,7 +266,7 @@ namespace rpc {
       B res2 = reduce1(m, e);
       // B res1 = async(&reduce_impl::reduce1, this, b, m);
       // B res2 = async(&reduce_impl::reduce1, this, m, e);
-      return async(r, res1, res2);
+      return async(remote::async, r, res1, res2);
     }
     
     B reduce(const I& b, const I& e) const

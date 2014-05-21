@@ -177,28 +177,34 @@ std::ostream& operator<<(std::ostream& os, const vector_t& x);
 inline auto afaxpy(double alpha, const vector_t::client& x,
                    const vector_t::client& y0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(vector_t::cfaxpy_action(), y0, alpha, x));
+  return vector_t::client(rpc::async(rpc::remote::async,
+                                     vector_t::cfaxpy_action(), y0, alpha, x));
   // TODO: Try this instead, measure performance -- it has fewer
   // asyncs, but also exposes less parallelism
-  // return rpc::async(y0.get_proc(), vector_t::gfaxpy_action(),
+  // return rpc::async(rpc::remote::async, y0.get_proc(),
+  //                   vector_t::gfaxpy_action(),
   //                   y0.get_global_shared(),
   //                   alpha, x.get_global_shared()));
 }
 inline auto afcopy(const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(vector_t::cfcopy_action(), x0));
+  return vector_t::client(rpc::async(rpc::remote::async,
+                                     vector_t::cfcopy_action(), x0));
 }
 inline auto afnrm2(const vector_t::client& x0) -> scalar_t::client
 {
-  return scalar_t::client(rpc::async(vector_t::cfnrm2_action(), x0));
+  return scalar_t::client(rpc::async(rpc::remote::async,
+                                     vector_t::cfnrm2_action(), x0));
 }
 inline auto afscal(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(vector_t::cfscal_action(), x0, alpha));
+  return vector_t::client(rpc::async(rpc::remote::async,
+                                     vector_t::cfscal_action(), x0, alpha));
 }
 inline auto afset(double alpha, const vector_t::client& x0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(vector_t::cfset_action(), x0, alpha));
+  return vector_t::client(rpc::async(rpc::remote::async,
+                                     vector_t::cfset_action(), x0, alpha));
 }
 
 
@@ -345,34 +351,40 @@ inline auto afaxpy(bool transa, bool transb0,
                    double alpha, const matrix_t::client& a,
                    const matrix_t::client& b0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(matrix_t::cfaxpy_action(), b0,
+  return matrix_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfaxpy_action(), b0,
                                      transa, transb0, alpha, a));
 }
 inline auto afcopy(bool trans, const matrix_t::client& a0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(matrix_t::cfcopy_action(), a0, trans));
+  return matrix_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfcopy_action(), a0, trans));
 }
 inline auto afgemv(bool trans,
                    double alpha, matrix_t::client a, vector_t::client x,
                    double beta, vector_t::client y0) -> vector_t::client
 {
-  return vector_t::client(rpc::async(matrix_t::cfgemv_action(), a,
+  return vector_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfgemv_action(), a,
                                      trans, alpha, x, beta, y0));
 }
 inline auto afnrm2(const matrix_t::client& a0) -> scalar_t::client
 {
-  return scalar_t::client(rpc::async(matrix_t::cfnrm2_action(), a0));
+  return scalar_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfnrm2_action(), a0));
 }
 inline auto afscal(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return matrix_t::client(rpc::async(matrix_t::cfscal_action(), a0,
+  return matrix_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfscal_action(), a0,
                                      trans, alpha));
 }
 inline auto afset(bool trans, double alpha, const matrix_t::client& a0) ->
   matrix_t::client
 {
-  return matrix_t::client(rpc::async(matrix_t::cfset_action(), a0,
+  return matrix_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfset_action(), a0,
                                      trans, alpha));
 }
 inline auto afgemm(bool transa, bool transb, bool transc0,
@@ -380,7 +392,8 @@ inline auto afgemm(bool transa, bool transb, bool transc0,
                    const matrix_t::client& a, const matrix_t::client& b,
                    double beta, const matrix_t::client& c0) -> matrix_t::client
 {
-  return matrix_t::client(rpc::async(matrix_t::cfgemm_action(), a,
+  return matrix_t::client(rpc::async(rpc::remote::async,
+                                     matrix_t::cfgemm_action(), a,
                                      transa, transb, transc0,
                                      alpha, b, beta, c0));
 }

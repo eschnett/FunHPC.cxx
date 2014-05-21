@@ -56,7 +56,7 @@ namespace rpc {
     }
     bool is_local() const
     {
-      // Nullptr is always local
+      // nullptr is always local
       return !*this || proc == server->rank();
     }
     

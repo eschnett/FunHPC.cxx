@@ -467,7 +467,12 @@ namespace qthread {
     promise(): state(boost::make_shared<future_state<T> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
-    ~promise() { if (state && !state->is_ready()) set_exception(); }
+    ~promise()
+    {
+      if (!state) return;
+      if (state.unique()) return;
+      if (!state->is_ready()) set_exception(); // cannot handle this yet
+    }
     promise& operator=(promise&& other)
     {
       state = nullptr;
@@ -516,7 +521,12 @@ namespace qthread {
     promise(): state(boost::make_shared<future_state<void> >()) {}
     promise(promise&& other): state(nullptr) { swap(other); }
     promise(const promise& other) = delete;
-    ~promise() { if (state && !state->is_ready()) set_exception(); }
+    ~promise()
+    {
+      if (!state) return;
+      if (state.unique()) return;
+      if (!state->is_ready()) set_exception(); // cannot handle this yet
+    }
     promise& operator=(promise&& other)
     {
       state = nullptr;

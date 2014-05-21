@@ -143,15 +143,8 @@ namespace rpc {
       return mgr->get_global();
     }
     
-    int get_proc() const
-    {
-      return get_global().get_proc();
-    }
-    
-    bool is_local() const
-    {
-      return get_global().is_local();
-    }
+    int get_proc() const { return get_global().get_proc(); }
+    bool is_local() const { return get_global().is_local(); }
     
     // Can only get local objects
     const shared_ptr<T>& get() const

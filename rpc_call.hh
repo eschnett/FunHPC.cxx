@@ -226,28 +226,6 @@ namespace rpc {
     return a = a ^ b;
   }
   
-  inline remote interpret(remote policy)
-  {
-    if ((policy & remote::async) != remote(0)) return remote::async;
-    if ((policy & remote::deferred) != remote(0)) return remote::deferred;
-    if ((policy & remote::sync) != remote(0)) return remote::sync;
-    if ((policy & remote::detached) != remote(0)) return remote::detached;
-    RPC_ASSERT(0);
-  }
-  
-  inline launch remote2launch(remote policy)
-  {
-    switch (interpret(policy)) {
-    case remote::async: return launch::async;
-    case remote::deferred: return launch::deferred;
-      // sync and detached have no local equivalent. However, they
-      // should run as soon as possible, thus we map them to async.
-    case remote::sync:          // fall-through
-    case remote::detached: return launch::async;
-    }
-    RPC_ASSERT(0);
-  }
-  
   
   
   // Call an action on a given destination
@@ -257,32 +235,14 @@ namespace rpc {
   using is_action = is_base_of<action_base<T>, T>;
   
   template<typename F, typename... As>
-  auto detached(remote policy, int dest, const F& func, As&&... args) ->
-    typename enable_if<is_action<F>::value, void>::type
-  // void
-  {
-    RPC_ASSERT(interpret(policy) == remote::detached);
-#ifndef RPC_DISABLE_CALL_SHORTCUT
-    if (dest == server->rank()) {
-      return thread(func, std::forward<As>(args)...).detach();
-    }
-#endif
-    typedef typename invoke_of<F, As...>::type R;
-    promise<R>* p = nullptr;
-    server->call
-      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
-  }
-  
-  template<typename F, typename... As>
   auto sync(remote policy, int dest, const F& func, As&&... args) ->
     typename enable_if<is_action<F>::value,
                        typename invoke_of<F, As...>::type>::type
-  // typename invoke_of<F, As...>::type
   {
-    RPC_ASSERT(interpret(policy) == remote::sync);
+    RPC_ASSERT(policy == remote::sync);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return func(std::forward<As>(args)...);
+      return F()(std::forward<As>(args)...);
     }
 #endif
     typedef typename invoke_of<F, As...>::type R;
@@ -294,35 +254,55 @@ namespace rpc {
   }
   
   template<typename F, typename... As>
+  auto detached(remote policy, int dest, const F& func, As&&... args) ->
+    typename enable_if<is_action<F>::value, void>::type
+  {
+    RPC_ASSERT(policy == remote::detached);
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+    if (dest == server->rank()) {
+      thread(F(), std::forward<As>(args)...).detach();
+      return;
+    }
+#endif
+    typedef typename invoke_of<F, As...>::type R;
+    promise<R>* p = nullptr;
+    server->call
+      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
+  }
+  
+  template<typename F, typename... As>
   auto async(remote policy, int dest, const F& func, As&&... args) ->
     typename enable_if<is_action<F>::value,
                        future<typename invoke_of<F, As...>::type> >::type
   {
+    RPC_ASSERT((policy & (remote::async | remote::deferred)) != remote(0));
+    RPC_ASSERT((policy & ~(remote::async | remote::deferred)) == remote(0));
+    bool is_deferred = (policy & remote::deferred) == remote::deferred;
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
-      return async(remote2launch(policy), func, std::forward<As>(args)...);
+      launch lpolicy = is_deferred ? launch::deferred : launch::async;
+      return async(lpolicy, F(), std::forward<As>(args)...);
     }
 #endif
-    if (interpret(policy) == remote::deferred) {
-      typedef typename invoke_of<F, As...>::type R;
-      // TODO: This will leak p if the thread never executes
-      auto p = new promise<R>();
-      auto evalptr =
-        make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
-      return async(remote2launch(policy),
-                   [dest, p, evalptr]() {
-                     auto f = p->get_future();
+    typedef typename invoke_of<F, As...>::type R;
+    auto p = new promise<R>;
+    auto evalptr =
+      make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+    if (is_deferred) {
+      // TODO: This will leak p if the thread never executes. Need to
+      // change F::evaluate to accept global_ptr<shared_ptr<promise<R>
+      // > > instead.
+      return async(launch::deferred,
+                   [dest, evalptr]() {
+                     auto f = evalptr->p->get_future();
                      server->call(dest, evalptr);
                      return f.get();
                    });
+    } else {
+      auto f = p->get_future();
+      server->call(dest, evalptr);
+      return f;
     }
-    typedef typename invoke_of<F, As...>::type R;
-    auto p = new promise<R>;
-    auto f = p->get_future();
-    server->call
-      (dest, make_shared<typename F::evaluate>(p, std::forward<As>(args)...));
-    if (interpret(policy) == remote::sync) f.wait();
-    return f;
   }
   
   
@@ -375,50 +355,67 @@ namespace rpc {
                      <typename std::remove_reference<T>::type>::type> {};
   
   template<typename F, typename G, typename... As>
+  auto sync(remote policy, const F& func, G&& global, As&&... args) ->
+    typename enable_if<(is_action<F>::value && is_global<G>::value),
+                       typename invoke_of<F, G, As...>::type>::type
+  {
+    RPC_ASSERT((policy & remote::sync) != remote(0));
+    RPC_ASSERT((policy & ~remote::sync) == remote(0));
+    int dest = global.get_proc();
+    return sync(policy, dest,
+                F(), std::forward<G>(global), std::forward<As>(args)...);
+  }
+  
+  template<typename F, typename G, typename... As>
   auto detached(remote policy, const F& func, G&& global, As&&... args) ->
   typename enable_if<(is_action<F>::value && is_global<G>::value),
                      void>::type
-  // void
   {
-    RPC_ASSERT(interpret(policy) == remote::detached);
-    return
-      thread([](const F& func, G&& global, As&&... args) {
-          int proc = global.get_proc();
-          return sync(proc, func, std::forward<G>(global),
-                      std::forward<As>(args)...);
-        }, func, std::forward<G>(global), std::forward<As>(args)...).detach();
+    RPC_ASSERT(policy == remote::detached);
+    typedef typename invoke_of<F, As...>::type R;
+    promise<R>* p = nullptr;
+    auto evalptr = make_shared<typename F::evaluate>(p,
+                                                     std::forward<G>(global),
+                                                     std::forward<As>(args)...);
+    thread([evalptr]() {
+        int dest = std::get<0>(evalptr->args)->get_proc();
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+        if (dest == server->rank()) {
+          tuple_apply(F(), evalptr->args);
+          return;
+        }
+#endif
+        server->call(dest, evalptr);
+      }).detach();
   }
   
   template<typename F, typename G, typename... As>
   auto async(remote policy, const F& func, G&& global, As&&... args) ->
   typename enable_if<(is_action<F>::value && is_global<G>::value),
                      future<typename invoke_of<F, G, As...>::type> >::type
-  // future<typename invoke_of<F, G, As...>::type>
   {
-    assert(0);                  // TODO: are we getting here?
-    auto f = async(remote2launch(policy),
-                   [policy](const F& func, G&& global, As&&... args) ->
-                   typename invoke_of<F, G, As...>::type
-                   {
-                     int proc = global.get_proc();
-                     return sync(policy, proc, func, std::forward<G>(global),
-                                 std::forward<As>(args)...);
-                   },
-                   func, std::forward<G>(global), std::forward<As>(args)...);
-    if (interpret(policy) == remote::sync) f.wait();
-    return f;
-  }
-  
-  template<typename F, typename G, typename... As>
-  auto sync(remote policy, const F& func, G&& global, As&&... args) ->
-    typename enable_if<(is_action<F>::value && is_global<G>::value),
-                       typename invoke_of<F, G, As...>::type>::type
-  // typename invoke_of<F, G, As...>::type
-  {
-    RPC_ASSERT(interpret(policy) == remote::sync);
-    int proc = global.get_proc();
-    return sync(policy, proc,
-                func, std::forward<G>(global), std::forward<As>(args)...);
+    RPC_ASSERT((policy & (remote::async | remote::deferred)) != remote(0));
+    RPC_ASSERT((policy & ~(remote::async | remote::deferred)) == remote(0));
+    bool is_deferred = (policy & remote::deferred) == remote::deferred;
+    launch lpolicy = is_deferred ? launch::deferred : launch::async;
+    typedef typename invoke_of<F, G, As...>::type R;
+    auto p = new promise<R>;
+    auto evalptr = make_shared<typename F::evaluate>(p,
+                                                     std::forward<G>(global),
+                                                     std::forward<As>(args)...);
+    return async(lpolicy,
+                 [evalptr]() {
+                   int dest = std::get<0>(evalptr->args).get_proc();
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+                   if (dest == server->rank()) {
+                     delete evalptr->p.get();
+                     return tuple_apply(F(), evalptr->args);
+                   }
+#endif
+                   auto f = evalptr->p->get_future();
+                   server->call(dest, evalptr);
+                   return f.get();
+                 });
   }
   
 }

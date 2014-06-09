@@ -81,7 +81,6 @@ namespace rpc {
   }
   inline void thread_initialize() {}
   inline void thread_finalize() {}
-  inline void thread_finalize2() {}
   
 }
 

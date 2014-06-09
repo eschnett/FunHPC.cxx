@@ -26,7 +26,6 @@ namespace rpc {
   using ::qthread::thread_main;
   using ::qthread::thread_initialize;
   using ::qthread::thread_finalize;
-  using ::qthread::thread_finalize2;
   
 }
 

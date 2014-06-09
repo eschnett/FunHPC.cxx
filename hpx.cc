@@ -13,7 +13,9 @@ namespace hpx {
   
   int thread_main(int argc, char** argv)
   {
-    return hpx::init(argc, argv);
+    int iret = hpx::init(argc, argv);
+    hpx::finalize();
+    return iret;
   }
   
   void thread_initialize()
@@ -22,11 +24,6 @@ namespace hpx {
   
   void thread_finalize()
   {
-  }
-  
-  void thread_finalize2()
-  {
-    hpx::finalize();
   }
   
 }

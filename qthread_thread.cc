@@ -55,8 +55,4 @@ namespace qthread {
     qthread_finalize();
   }
   
-  void thread_finalize2()
-  {
-  }
-  
 }

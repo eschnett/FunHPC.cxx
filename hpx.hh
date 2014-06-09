@@ -19,7 +19,6 @@ namespace hpx {
   int thread_main(int argc, char** argv);
   void thread_initialize();
   void thread_finalize();
-  void thread_finalize2();
 }
 
 namespace rpc {
@@ -59,7 +58,6 @@ namespace rpc {
   using ::hpx::thread_main;
   using ::hpx::thread_initialize;
   using ::hpx::thread_finalize;
-  using ::hpx::thread_finalize2;
   
 }
 

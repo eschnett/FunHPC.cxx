@@ -31,7 +31,6 @@ namespace rpc {
     rpc::thread_finalize();
     delete rpc::server;
     rpc::server = nullptr;
-    rpc::thread_finalize2();
     return iret;
   }
   

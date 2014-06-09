@@ -26,7 +26,6 @@
 //             rpc_main [application]
 //             thread_finalize
 //             MPI server destruct
-//             thread_finalize2
 
 #define RPC_THREAD_HH_DONE
 #else

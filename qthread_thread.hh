@@ -403,7 +403,6 @@ namespace qthread {
   int thread_main(int argc, char** argv);
   void thread_initialize();
   void thread_finalize();
-  void thread_finalize2();
   
 }
 

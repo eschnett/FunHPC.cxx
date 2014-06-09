@@ -15,9 +15,9 @@ CFLAGS   := -g ${CFLAGS}   ${C99FLAGS}   -march=native
 CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native -ftemplate-backtrace-limit=0
 FFLAGS   := -g ${FFLAGS}                 -march=native
 
-# CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-# CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-# Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
+# # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+# # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+# # Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
 # CFLAGS   += -fstack-protector-all -ftrapv
 # CXXFLAGS += -fstack-protector-all -ftrapv
 # FFLAGS   += -fcheck=bounds,do,mem,pointer,recursion -finit-character=65 -finit-integer=42424242 -finit-real=nan -fstack-protector-all -ftrapv

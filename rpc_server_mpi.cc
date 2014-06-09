@@ -5,9 +5,9 @@ namespace rpc {
   server_mpi::server_mpi(int& argc, char**& argv):
     argc(argc), argv(argv),
     env(argc, argv),
+    comm(MPI_COMM_WORLD, boost::mpi::comm_duplicate),
     termination_stage(0)
   {
-    comm = boost::mpi::communicator(MPI_COMM_WORLD, boost::mpi::comm_duplicate);
     rank_ = comm.rank();
     size_ = comm.size();
   }

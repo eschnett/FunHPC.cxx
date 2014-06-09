@@ -12,6 +12,7 @@ namespace rpc {
   
   int real_main(int argc, char** argv)
   {
+    // MPI_Init(&argc, &argv);
     rpc::server = new rpc::server_mpi(argc, argv);
     rpc::thread_initialize();
     if (rpc::server->rank() == 0) {
@@ -31,6 +32,7 @@ namespace rpc {
     rpc::thread_finalize();
     delete rpc::server;
     rpc::server = nullptr;
+    // MPI_Finalize();
     return iret;
   }
   

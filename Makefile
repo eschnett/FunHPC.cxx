@@ -54,7 +54,7 @@ MATBENCH_SRCS     = matbench.cc ${BLAS_SRCS} ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_
 MATTEST_SRCS      = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
 MPI_BW_LAT_SRCS   = mpi_bw_lat.cc
 QTHREAD_TEST_SRCS = qthread_test.cc ${QTHREAD_SRCS}
-RPC_BW_LAT_SRCS   = rpc_bw_lat.cc
+RPC_BW_LAT_SRCS   = rpc_bw_lat.cc ${RPC_SRCS}
 WAVE_SRCS         = wave.cc ${RPC_SRCS}
 
 BENCH_OBJS        = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
@@ -121,6 +121,7 @@ mpi_bw_lat: ${MPI_BW_LAT_OBJS}
 qthread_test: ${QTHREAD_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 rpc_bw_lat: ${RPC_BW_LAT_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 wave: ${WAVE_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 

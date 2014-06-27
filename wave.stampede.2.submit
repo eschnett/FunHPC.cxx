@@ -1,0 +1,70 @@
+#! /bin/bash
+
+# sbatch wave.stampede.2.submit
+
+#SBATCH -A TG-ASC120003
+#SBATCH -p normal
+#SBATCH -t 1:00:00
+#SBATCH -N 2 -n 2
+#SBATCH -J mpi-rpc
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=schnetter@gmail.com
+#SBATCH -o /home1/00507/eschnett/src/mpi-rpc/wave.2.out
+#SBATCH -e /home1/00507/eschnett/src/mpi-rpc/wave.2.err
+
+set -e
+set -x
+set -u
+cd /home1/00507/eschnett/src/mpi-rpc
+source /work/00507/eschnett/SIMFACTORY/all-all/env.sh
+
+echo '[BEGIN ENV]'
+env | sort
+echo '[END ENV]'
+
+echo '[BEGIN NODES]'
+echo $SLURM_JOB_NODELIST
+echo '[END NODES]'
+
+# # While trying to determine what resources are available, the SLURM
+# # resource allocator expects to find the following environment variables:
+# # 
+# #     SLURM_NODELIST
+# #     SLURM_TASKS_PER_NODE
+# 
+# # get node list
+# nodelist=$SLURM_NODELIST
+# # convert brackets to braces
+# nodelist=$(echo $nodelist | sed -e 's/\[/\{/g;s/\]/\}/g')
+# # convert commas to spaces
+# nodelist=$(echo $nodelist | sed -e 's/,/ /g')
+# # expand brace notation to list of nodes
+# nodelist=$(sh -c "echo $nodelist")
+# # split list onto individual lines
+# for node in $nodelist; do echo $node; done > hostfile
+# 
+# for var in $(env); do
+#     var=$(echo $var | sed -e 's/=.*//')
+#     if echo $var | grep -q '^SLURM_'; then
+#         unset $var
+#     fi
+# done
+# 
+# echo '[BEGIN ENV]'
+# env | sort
+# echo '[END ENV]'
+
+date
+echo '[BEGIN MPIRUN]'
+export QTHREAD_NUM_SHEPHERDS=2
+export QTHREAD_NUM_WORKERS_PER_SHEPHERD=8
+export QTHREAD_STACK_SIZE=65536
+export QTHREAD_INFO=1
+ibrun tacc_affinity                             \
+    ./wave                                      \
+    --hpx:ini=hpx.parcel.mpi.enable=0           \
+    --hpx:numa-sensitive                        \
+    --hpx:threads=16                            \
+    >wave.2.log 2>&1
+echo '[END MPIRUN]'
+date

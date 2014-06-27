@@ -1,0 +1,74 @@
+#! /bin/bash
+
+# qsub rpc_bw_lat.shelob.submit
+
+#PBS -A hpc_numrel05
+#PBS -q checkpt
+#PBS -r n
+#PBS -l walltime=1:00:00
+#PBS -l nodes=2:ppn=16
+#PBS -V
+#PBS -N mpi-rpc
+#PBS -m abe
+#PBS -o /home/eschnett/src/mpi-rpc/rpc_bw_lat.out
+#PBS -e /home/eschnett/src/mpi-rpc/rpc_bw_lat.err
+
+set -e
+set -x
+set -u
+cd /home/eschnett/src/mpi-rpc
+source /home/eschnett/SIMFACTORY/all-all/env.sh
+
+echo '[BEGIN ENV]'
+env | sort
+echo '[END ENV]'
+
+echo '[BEGIN NODES]'
+cat $PBS_NODEFILE
+echo '[END NODES]'
+
+{
+    
+    date
+    echo '[BEGIN MPIRUN OPENIB]'
+    $MPIRUN                                     \
+        -np 2                                   \
+        --map-by ppr:1:node                     \
+        -display-map                            \
+        --mca btl self,openib                   \
+        --bind-to none                          \
+        -report-bindings                        \
+        -x QTHREAD_NUM_SHEPHERDS=2              \
+        -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=8   \
+        -x QTHREAD_STACK_SIZE=65536             \
+        -x QTHREAD_INFO=1                       \
+        ./rpc_bw_lat                            \
+        --hpx:ini=hpx.parcel.mpi.enable=0       \
+        --hpx:ini=hpx.stacks.small_size=0x80000 \
+        --hpx:numa-sensitive                    \
+        --hpx:threads=16
+    echo '[END MPIRUN OPENIB]'
+    date
+    
+    date
+    echo '[BEGIN MPIRUN TCP]'
+    $MPIRUN                                     \
+        -np 2                                   \
+        --map-by ppr:1:node                     \
+        -display-map                            \
+        --mca btl self,tcp                      \
+        --bind-to none                          \
+        -report-bindings                        \
+        -x QTHREAD_NUM_SHEPHERDS=2              \
+        -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=8   \
+        -x QTHREAD_STACK_SIZE=65536             \
+        -x QTHREAD_INFO=1                       \
+        ./rpc_bw_lat                            \
+        --hpx:ini=hpx.parcel.mpi.enable=0       \
+        --hpx:ini=hpx.stacks.small_size=0x80000 \
+        --hpx:numa-sensitive                    \
+        --hpx:threads=16
+    echo '[END MPIRUN TCP]'
+    date
+    
+} >rpc_bw_lat.log 2>&1

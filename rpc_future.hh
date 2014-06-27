@@ -5,7 +5,7 @@
 
 #define RPC_FUTURE_HH_DONE
 #else
-#  ifndef RPC_FUTURE_HH_DONE
-#    error "Cyclic include dependency"
-#  endif
-#endif  // RPC_FUTURE_HH
+#ifndef RPC_FUTURE_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // RPC_FUTURE_HH

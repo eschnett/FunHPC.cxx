@@ -18,3 +18,8 @@ mpi-rpc.aux
 mpi-rpc.log
 mpi-rpc.out
 mpi-rpc.pdf
+hpx_bw_lat
+mpi_bw_lat
+wave
+wave.1.txt
+wave.2.txt

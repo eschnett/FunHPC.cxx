@@ -11,16 +11,13 @@
 
 using std::cout;
 
-
-
 namespace rpc {
-  int real_main(int argc, char** argv) { RPC_ASSERT(0); }
+int real_main(int argc, char **argv) { RPC_ASSERT(0); }
 }
 
 void outx(int x) { cout << "x=" << x << "\n"; }
 
-int rpc_main(int argc, char** argv)
-{
+int rpc_main(int argc, char **argv) {
   // MPI_Init(&argc, &argv);
   auto f = hpx::async(outx, 1);
   f.wait();
@@ -30,14 +27,10 @@ int rpc_main(int argc, char** argv)
   return 0;
 }
 
-int hpx_main(int argc, char** argv)
-{
+int hpx_main(int argc, char **argv) {
   int iret = rpc_main(argc, argv);
   hpx::finalize();
   return iret;
 }
 
-int main(int argc, char** argv)
-{
-  return hpx::init(argc, argv);
-}
+int main(int argc, char **argv) { return hpx::init(argc, argv); }

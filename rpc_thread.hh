@@ -8,13 +8,13 @@
 //    HPX:      good performance, but difficult to build
 
 #if defined RPC_STL
-#  include "stl_thread.hh"
+#include "stl_thread.hh"
 #elif defined RPC_QTHREADS
-#  include "qthread.hh"
+#include "qthread.hh"
 #elif defined RPC_HPX
-#  include "hpx.hh"
+#include "hpx.hh"
 #else
-#  error "No threading library specified"
+#error "No threading library specified"
 #endif
 
 // Initialization sequence:
@@ -29,7 +29,7 @@
 
 #define RPC_THREAD_HH_DONE
 #else
-#  ifndef RPC_THREAD_HH_DONE
-#    error "Cyclic include dependency"
-#  endif
-#endif  // RPC_THREAD_HH
+#ifndef RPC_THREAD_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // RPC_THREAD_HH

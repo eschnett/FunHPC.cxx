@@ -8,6 +8,7 @@
 #include "cxx_utils.hh"
 
 #include "rpc_future.hh"
+#include "rpc_memory.hh"
 #include "rpc_mutex.hh"
 #include "rpc_thread.hh"
 
@@ -22,7 +23,7 @@
 
 #define RPC_HH_DONE
 #else
-#  ifndef RPC_HH_DONE
-#    error "Cyclic include dependency"
-#  endif
-#endif  // RPC_HH
+#ifndef RPC_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // RPC_HH

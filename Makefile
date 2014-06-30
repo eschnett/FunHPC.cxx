@@ -169,12 +169,17 @@ mpi-rpc.pdf: index.rst
 
 
 
+format:
+	clang-format -i *.hh *.cc
+
+
+
 clean:
 	${RM} ${DEPS} ${OBJS} ${EXES}
 	${RM} index.html
 	${RM} mpi-rpc.aux mpi-rpc.log mpi-rpc.out mpi-rpc.pdf mpi-rpc.tex
 
-.PHONY: all clean doc
+.PHONY: all clean doc format
 
 .SUFFIXES:
 

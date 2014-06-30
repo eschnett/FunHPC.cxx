@@ -28,6 +28,7 @@ cat $PBS_NODEFILE
 echo '[END NODES]'
 
 {
+    
     date
     echo '[BEGIN MPIRUN OPENIB]'
     $MPIRUN                                     \
@@ -56,6 +57,36 @@ echo '[END NODES]'
         --hpx:numa-sensitive                    \
         --hpx:threads=16
     echo '[END MPIRUN TCP]'
+    date
+    
+    date
+    echo '[BEGIN MPIRUN]'
+    $MPIRUN                                     \
+        -np 2                                   \
+        --map-by ppr:1:node                     \
+        -display-map                            \
+        --mca btl self,openib                   \
+        --bind-to none                          \
+        -report-bindings                        \
+        osu_latency                             \
+        --hpx:numa-sensitive                    \
+        --hpx:threads=16
+    echo '[END MPIRUN]'
+    date
+    
+    date
+    echo '[BEGIN MPIRUN]'
+    $MPIRUN                                     \
+        -np 2                                   \
+        --map-by ppr:1:node                     \
+        -display-map                            \
+        --mca btl self,openib                   \
+        --bind-to none                          \
+        -report-bindings                        \
+        osu_bw                                  \
+        --hpx:numa-sensitive                    \
+        --hpx:threads=16
+    echo '[END MPIRUN]'
     date
     
 } >hpx_bw_lat.log 2>&1

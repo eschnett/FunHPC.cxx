@@ -24,3 +24,5 @@ wave
 wave.1.txt
 wave.2.txt
 rpc_bw_lat
+boost_bw_lat
+cereal_bw_lat

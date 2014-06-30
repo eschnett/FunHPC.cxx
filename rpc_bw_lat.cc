@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 using rpc::async;
@@ -12,6 +13,7 @@ using rpc::remote;
 
 using std::cout;
 using std::flush;
+using std::numeric_limits;
 using std::ptrdiff_t;
 using std::vector;
 
@@ -20,11 +22,14 @@ vector<unsigned char> xfer(vector<unsigned char> payload) { return payload; }
 RPC_ACTION(ping);
 RPC_ACTION(xfer);
 
+constexpr double min_elapsed = 1.0;
+constexpr ptrdiff_t maxn = numeric_limits<ptrdiff_t>::max();
+
 void ping_direct() {
   cout << "   latency direct: " << flush;
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     volatile unsigned char r __attribute__((unused)) = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -35,18 +40,20 @@ void ping_direct() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 1.0e+9 * elapsed / 2 / n << " nsec   (iterations: " << n
-       << ", time: " << elapsed << " s)\n" << flush;
+  double count = 2.0 * n;
+  double lat = elapsed / count;
+  cout << lat * 1.0e+9 << " nsec   (iterations: " << n << ", time: " << elapsed
+       << " s)\n" << flush;
 }
 
 void ping_local() {
   cout << "   latency local: " << flush;
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     volatile unsigned char r __attribute__((unused)) = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -57,11 +64,13 @@ void ping_local() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 1.0e+9 * elapsed / 2 / n << " nsec   (iterations: " << n
-       << ", time: " << elapsed << " s)\n" << flush;
+  double count = 2.0 * n;
+  double lat = elapsed / count;
+  cout << lat * 1.0e+9 << " nsec   (iterations: " << n << ", time: " << elapsed
+       << " s)\n" << flush;
 }
 
 void ping_remote() {
@@ -71,7 +80,7 @@ void ping_remote() {
   cout << "   latency remote: " << flush;
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     volatile unsigned char r __attribute__((unused)) = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -82,11 +91,13 @@ void ping_remote() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 1.0e+9 * elapsed / 2 / n << " nsec   (iterations: " << n
-       << ", time: " << elapsed << " s)\n" << flush;
+  double count = 2.0 * n;
+  double lat = elapsed / count;
+  cout << lat * 1.0e+9 << " nsec   (iterations: " << n << ", time: " << elapsed
+       << " s)\n" << flush;
 }
 
 void xfer_direct(ptrdiff_t sz) {
@@ -95,7 +106,7 @@ void xfer_direct(ptrdiff_t sz) {
   vector<unsigned char> payload(sz, 'a');
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     unsigned char r = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -106,10 +117,12 @@ void xfer_direct(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 2.0 * n *sz / (1.0e+9 * elapsed) << " GByte/s   (iterations: " << n
+  double count = 2.0 * n;
+  double bw = 1.0 * sz * count / elapsed;
+  cout << bw / 1.0e+9 << " GByte/s   (iterations: " << n
        << ", time: " << elapsed << " s)\n" << flush;
 }
 
@@ -119,7 +132,7 @@ void xfer_local(ptrdiff_t sz) {
   vector<unsigned char> payload(sz, 'a');
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     unsigned char r = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -130,10 +143,12 @@ void xfer_local(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 2.0 * n *sz / (1.0e+9 * elapsed) << " GByte/s   (iterations: " << n
+  double count = 2.0 * n;
+  double bw = 1.0 * sz * count / elapsed;
+  cout << bw / 1.0e+9 << " GByte/s   (iterations: " << n
        << ", time: " << elapsed << " s)\n" << flush;
 }
 
@@ -146,7 +161,7 @@ void xfer_remote(ptrdiff_t sz) {
   vector<unsigned char> payload(sz, 'a');
   double elapsed;
   ptrdiff_t n;
-  for (n = 1; n < 1000 * 1000 * 1000; n *= 2) {
+  for (n = 1; n <= maxn / 2; n *= 2) {
     unsigned char r = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
@@ -157,10 +172,12 @@ void xfer_remote(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
-  cout << 2.0 * n *sz / (1.0e+9 * elapsed) << " GByte/s   (iterations: " << n
+  double count = 2.0 * n;
+  double bw = 1.0 * sz * count / elapsed;
+  cout << bw / 1.0e+9 << " GByte/s   (iterations: " << n
        << ", time: " << elapsed << " s)\n" << flush;
 }
 

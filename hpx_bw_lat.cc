@@ -25,6 +25,7 @@ vector<unsigned char> xfer(vector<unsigned char> payload) { return payload; }
 HPX_PLAIN_ACTION(ping, ping_action);
 HPX_PLAIN_ACTION(xfer, xfer_action);
 
+constexpr double min_elapsed = 1.0;
 constexpr ptrdiff_t maxn = numeric_limits<ptrdiff_t>::max();
 
 void ping_direct() {
@@ -42,7 +43,7 @@ void ping_direct() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;
@@ -66,7 +67,7 @@ void ping_local() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;
@@ -93,7 +94,7 @@ void ping_remote() {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;
@@ -119,7 +120,7 @@ void xfer_direct(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;
@@ -145,7 +146,7 @@ void xfer_local(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;
@@ -174,7 +175,7 @@ void xfer_remote(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    if (elapsed >= 0.1)
+    if (elapsed >= min_elapsed)
       break;
   }
   double count = 2.0 * n;

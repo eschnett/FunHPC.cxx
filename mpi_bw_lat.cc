@@ -13,6 +13,7 @@ using std::numeric_limits;
 using std::ptrdiff_t;
 using std::vector;
 
+constexpr double min_elapsed = 1.0;
 constexpr ptrdiff_t maxn = numeric_limits<ptrdiff_t>::max();
 
 void ping(ptrdiff_t sz) {
@@ -49,7 +50,7 @@ void ping(ptrdiff_t sz) {
     elapsed =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
         1.0e+9;
-    int done = elapsed >= 0.1;
+    int done = elapsed >= min_elapsed;
     MPI_Bcast(&done, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (done)
       break;

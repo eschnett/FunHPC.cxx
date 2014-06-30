@@ -28,9 +28,8 @@ using std::vector;
 
 constexpr int recv_buffer_size = 256;
 
-template<typename T>
-void send(const boost::mpi::communicator &comm, int dest, int tag, const T& d)
-{
+template <typename T>
+void send(const boost::mpi::communicator &comm, int dest, int tag, const T &d) {
   stringstream ss;
   {
     cereal::BinaryOutputArchive oa(ss);
@@ -51,15 +50,15 @@ void send(const boost::mpi::communicator &comm, int dest, int tag, const T& d)
   }
 }
 
-template<typename T>
-boost::mpi::status
-recv(const boost::mpi::communicator &comm, int src, int tag, T& d)
-{
+template <typename T>
+boost::mpi::status recv(const boost::mpi::communicator &comm, int src, int tag,
+                        T &d) {
   boost::mpi::status st;
   string s;
   s.resize(recv_buffer_size);
   st = comm.recv(src, tag, &s[0], recv_buffer_size);
-  if (st.error()) return st;
+  if (st.error())
+    return st;
   int sz = st.count<char>().get();
   if (sz < recv_buffer_size) {
     s.resize(sz);
@@ -69,7 +68,8 @@ recv(const boost::mpi::communicator &comm, int src, int tag, T& d)
     memcpy(&sz, &s[offset], sizeof sz);
     s.resize(sz);
     st = comm.recv(src, tag, &s[offset], sz - offset);
-    if (st.error()) return st;
+    if (st.error())
+      return st;
   }
   stringstream ss(std::move(s));
   {

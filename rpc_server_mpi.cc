@@ -262,21 +262,13 @@ void server_mpi::call(int dest, const std::shared_ptr<callable_base> &func) {
       typeid(*func) != typeid(rpc::terminate_stage_3_action::evaluate) &&
       typeid(*func) != typeid(rpc::terminate_stage_4_action::evaluate)) {
     // // TODO: block thread instead of sleeping
-    // nthis_thread::sleep_for(std::chrono::seconds(1000000));
+    // this_thread::sleep_for(std::chrono::seconds(1000000));
     // RPC_ASSERT(0);
     // This assumes that the calling thread will not attempt to
     // perform significant work
     return;
   }
-// RPC_ASSERT(!we_should_terminate());
-// Enable this output to debug unregistered and unexported classes
-#ifdef RPC_DEBUG_MISSING_EXPORTS
-  rpc::with_lock(rpc::io_mutex, [&] {
-    std::cout << "[" << rank() << "] "
-              << "sending type " << typeid(*func).name() << " "
-              << "to " << dest << "\n";
-  });
-#endif
+  // RPC_ASSERT(!we_should_terminate());
   // TODO: use atomic swaps instead of a mutex
   with_lock(send_queue_mutex,
             [&] { send_queue.push_back(send_item_t{ dest, func }); });

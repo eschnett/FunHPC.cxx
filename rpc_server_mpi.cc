@@ -191,7 +191,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
   // Pending requests
   typedef std::shared_ptr<callable_base> call_t;
   recv_req_t<call_t> recv_req(comm);
-  std::vector<std::unique_ptr<send_req_t<call_t> > > send_reqs;
+  std::vector<std::shared_ptr<send_req_t<call_t> > > send_reqs;
 
   bool did_communicate = true;
   while (!(we_should_terminate() &&
@@ -213,9 +213,9 @@ int server_mpi::event_loop(const user_main_t &user_main) {
       // which calls the load function, which triggers an mpi::send,
       // which doesn't happen immediately since the event loop is
       // still trapped in mpi::test.
-      bool did_receive = recv_req.test([this](call_t &&call) {
+      bool did_receive = recv_req.test([this](const call_t &call) {
         if (!we_should_ignore_call(call))
-          thread(&callable_base::execute, std::move(call)).detach();
+          thread(&callable_base::execute, call).detach();
       });
       if (!did_receive)
         break;
@@ -227,7 +227,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
       std::size_t old_size = send_reqs.size();
       send_reqs.erase(
           std::remove_if(std::begin(send_reqs), std::end(send_reqs),
-                         [](const std::unique_ptr<send_req_t<call_t> > &call) {
+                         [](const std::shared_ptr<send_req_t<call_t> > &call) {
             return call->test();
           }),
           std::end(send_reqs));
@@ -270,8 +270,7 @@ void server_mpi::call(int dest, const std::shared_ptr<callable_base> &func) {
   }
   // RPC_ASSERT(!we_should_terminate());
   // TODO: use atomic swaps instead of a mutex
-  with_lock(send_queue_mutex,
-            [&] { send_queue.push_back(send_item_t{ dest, func }); });
+  with_lock(send_queue_mutex, [&] { send_queue.push_back({ dest, func }); });
 }
 
 void terminate_stage_1() { ((server_mpi *)server)->terminate_stage_1(); }

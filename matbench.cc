@@ -9,8 +9,7 @@ using rpc::find_all_processes;
 using rpc::find_all_threads;
 using rpc::server;
 
-#include <boost/serialization/utility.hpp>
-#include <boost/utility/identity_type.hpp>
+#include <cereal/types/utility.hpp>
 
 #include <algorithm>
 #include <iostream>

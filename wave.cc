@@ -1,8 +1,7 @@
 #include "hwloc.hh"
 #include "rpc.hh"
 
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/vector.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -12,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using rpc::async;
@@ -40,6 +40,7 @@ using std::ostream;
 using std::ostringstream;
 using std::ptrdiff_t;
 using std::string;
+using std::tuple;
 using std::vector;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,11 +78,12 @@ template <typename T> T mod_ceil(T x, T y) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // An empty serializable type as mix-in
-struct empty {
-private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {}
-};
+// struct empty {
+// private:
+//   friend class cereal::access;
+//   template <class Archive> void serialize(Archive &ar) {}
+// };
+using empty = tuple<>;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,10 +119,8 @@ struct norm_t {
   double sum, sum2, count;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &sum &sum2 &count;
-  }
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(sum, sum2, count); }
 
 public:
   norm_t() : sum(0.0), sum2(0.0), count(0.0) {}
@@ -144,10 +144,8 @@ struct cell_t {
   double v;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &u &rho &v;
-  }
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(u, rho, v); }
 
 public:
   // For safety
@@ -218,9 +216,9 @@ struct grid_t {
   vector<cell_t> cells;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &t &imin &imax &cells;
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) {
+    ar(t, imin, imax, cells);
   }
 
 public:

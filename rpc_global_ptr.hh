@@ -7,20 +7,22 @@
 
 namespace rpc {
 
-template <typename T> T *global_ptr_get(const global_ptr<T> &ptr) {
-  return ptr.get();
-}
-template <typename T>
-struct global_ptr_get_action
-    : public rpc::action_impl<
-          global_ptr_get_action<T>,
-          rpc::wrap<decltype(&global_ptr_get<T>), &global_ptr_get<T> > > {};
-
-template <typename T> future<T *> global_ptr<T>::make_local() const {
-  // Don't know whether to copy or not for local pointers
-  RPC_ASSERT(!is_local());
-  return async(remote::async, get_proc(), global_ptr_get_action<T>(), *this);
-}
+// template <typename T> shared_ptr<T> global_ptr_get(const global_ptr<T> &ptr)
+// {
+//   return shared_ptr<T>(ptr.get());
+// }
+// template <typename T>
+// struct global_ptr_get_action
+//     : public rpc::action_impl<
+//           global_ptr_get_action<T>,
+//           rpc::wrap<decltype(&global_ptr_get<T>), &global_ptr_get<T> > > {};
+//
+// template <typename T> future<shared_ptr<T> > global_ptr<T>::make_local()
+// const {
+//   // Don't know whether to copy or not for local pointers
+//   RPC_ASSERT(!is_local());
+//   return async(remote::async, get_proc(), global_ptr_get_action<T>(), *this);
+// }
 
 template <typename T, typename... As>
 struct make_global_action

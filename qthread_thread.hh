@@ -13,11 +13,10 @@
 #include "cxx_tuple.hh"
 #include "cxx_utils.hh"
 
-#include <boost/make_shared.hpp>
-
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -63,9 +62,9 @@ public:
   explicit thread(const F &func, As &&... args) {
     // std::function<void()> funcbnd =
     //   std::bind<void>(func, std::forward<As>(args)...);
-    auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+    auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
     auto argsptr =
-        boost::make_shared<std::tuple<typename std::decay<As>::type...> >(
+        std::make_shared<std::tuple<typename std::decay<As>::type...> >(
             std::forward<As>(args)...);
     std::function<void()> funcbnd = [funcptr, argsptr]() {
       rpc::tuple_apply(*funcptr, *argsptr);
@@ -127,9 +126,9 @@ auto async(launch policy, const F &func, As &&... args)
           future<typename rpc::invoke_of<F, As...>::type> >::type {
   bool is_deferred = (policy & launch::deferred) == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
-  auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+  auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
   auto argsptr =
-      boost::make_shared<std::tuple<typename std::decay<As>::type...> >(
+      std::make_shared<std::tuple<typename std::decay<As>::type...> >(
           std::forward<As>(args)...);
   typedef typename rpc::invoke_of<F, As...>::type R;
   if (is_deferred) {
@@ -160,9 +159,9 @@ auto async(launch policy, const F &func, As &&... args)
           future<typename rpc::invoke_of<F, As...>::type> >::type {
   bool is_deferred = (policy & launch::deferred) == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
-  auto funcptr = boost::make_shared<typename std::decay<F>::type>(func);
+  auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
   auto argsptr =
-      boost::make_shared<std::tuple<typename std::decay<As>::type...> >(
+      std::make_shared<std::tuple<typename std::decay<As>::type...> >(
           std::forward<As>(args)...);
   if (is_deferred) {
     auto funcbnd = [funcptr, argsptr]() {
@@ -175,7 +174,7 @@ auto async(launch policy, const F &func, As &&... args)
     rpc::tuple_apply(*funcptr, *argsptr);
     return make_ready_future();
   } else {
-    auto p = boost::make_shared<promise<void> >();
+    auto p = std::make_shared<promise<void> >();
     auto f = p->get_future();
     auto funcbnd = [funcptr, argsptr, p]() {
       rpc::tuple_apply(*funcptr, *argsptr);

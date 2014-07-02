@@ -6,7 +6,7 @@
 
 #include "cxx_utils.hh"
 
-#include <boost/serialization/access.hpp>
+#include <cereal/archives/binary.hpp>
 
 #include <cstdint>
 #include <iostream>
@@ -60,17 +60,15 @@ public:
   T &operator*() const { return *get(); }
   auto operator -> () const -> decltype(this -> get()) { return get(); }
 
-  future<T *> make_local() const;
+  // future<shared_ptr<T> > make_local() const;
 
   std::ostream &output(std::ostream &os) const {
     return os << proc << ":" << (T *)uiptr;
   }
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &proc &uiptr;
-  }
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(proc, uiptr); }
 };
 
 template <typename T>

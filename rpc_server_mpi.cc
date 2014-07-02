@@ -2,9 +2,114 @@
 
 #include "cxx_utils.hh"
 
+#include <cereal/archives/binary.hpp>
+
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstring>
 #include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace rpc {
+
+// Note: The small message optimisation is currently disabled, as it may not
+// yield any benefit
+const int max_small_size = 0;
+enum tags {
+  tag_small = 1,
+  tag_large = 2
+};
+
+template <typename T> class send_req_t {
+  std::string buf;
+  boost::mpi::request req;
+
+  void pack(std::string &buf, const T &obj) {
+    std::stringstream ss;
+    {
+      cereal::BinaryOutputArchive oa(ss);
+      oa(obj);
+    }
+    buf = std::move(ss).str();
+  }
+
+public:
+  // Send requests cannot be copied or moved, since the buffer must
+  // remain untouched while MPI is using it
+  send_req_t() = delete;
+  send_req_t(const send_req_t &) = delete;
+  send_req_t(send_req_t &&) = delete;
+  send_req_t &operator=(const send_req_t &) = delete;
+  send_req_t &operator=(send_req_t &&) = delete;
+  send_req_t(const boost::mpi::communicator &comm, int dest, const T &obj) {
+    pack(buf, obj);
+    int tag = buf.size() <= max_small_size ? tag_small : tag_large;
+    req = comm.isend(dest, tag, buf.data(), buf.size());
+  }
+  bool test() { return bool(req.test()); }
+  void cancel() { req.cancel(); }
+};
+
+template <typename T> class recv_req_t {
+  boost::mpi::communicator comm;
+  std::string buf;
+  boost::mpi::request req;
+
+  void post_irecv() {
+    buf.resize(max_small_size);
+    req = comm.irecv(boost::mpi::any_source, tag_small,
+                     const_cast<char *>(buf.data()), buf.size());
+  }
+  void unpack(T &obj, std::string &&buf) {
+    std::stringstream ss(std::move(buf));
+    cereal::BinaryInputArchive ia(ss);
+    ia(obj);
+  }
+
+public:
+  // Receive requests cannot be copied or moved, since the buffer must
+  // remain untouched while MPI is using it
+  recv_req_t() = delete;
+  recv_req_t(const recv_req_t &) = delete;
+  recv_req_t(recv_req_t &&) = delete;
+  recv_req_t &operator=(const recv_req_t &) = delete;
+  recv_req_t &operator=(recv_req_t &&) = delete;
+  recv_req_t(const boost::mpi::communicator &comm) : comm(comm) {
+    post_irecv();
+  }
+  template <typename F> bool test(const F &func) {
+    // Check for a small message
+    auto st = req.test();
+    if (st) {
+      // int sz = *st->count<char>();
+      // buf.resize(sz);
+      T obj;
+      unpack(obj, std::move(buf));
+      post_irecv();
+      func(std::move(obj));
+      return true;
+    }
+    // Check for a large message
+    st = comm.iprobe(boost::mpi::any_source, tag_large);
+    if (st) {
+      int sz = *st->template count<char>();
+      std::string lbuf;
+      lbuf.resize(sz);
+      comm.recv(st->source(), st->tag(), const_cast<char *>(lbuf.data()),
+                lbuf.size());
+      T obj;
+      unpack(obj, std::move(lbuf));
+      func(std::move(obj));
+      return true;
+    }
+    return false;
+  }
+  void cancel() { req.cancel(); }
+};
 
 server_mpi::server_mpi(int &argc, char **&argv)
     : argc(argc), argv(argv),
@@ -83,103 +188,50 @@ int server_mpi::event_loop(const user_main_t &user_main) {
            }).detach();
   }
 
-  // Note: Can't have multiple receives open with any_source,
-  // since Boost may break MPI messages into two that then don't
-  // match any more!
-  const int num_recvs = 1;
-  // const int num_recvs = size();
-  const auto source = [](int i) { return boost::mpi::any_source; };
-  // const auto source = [](int i){ return i; };
-  const int tag = 0;
-
-  // Post receives
-  // TODO std::vector<rpc::shared_ptr<callable_base> > recv_calls(num_recvs);
-  std::vector<callable_base *> recv_calls(num_recvs);
-  std::vector<boost::mpi::request> recv_reqs(num_recvs);
-  for (int i = 0; i < num_recvs; ++i) {
-    recv_reqs[i] = comm.irecv(source(i), tag, recv_calls[i]);
-  }
-  std::list<boost::mpi::request> send_reqs;
+  // Pending requests
+  typedef rpc::shared_ptr<callable_base> call_t;
+  recv_req_t<call_t> recv_req(comm);
+  std::vector<std::unique_ptr<send_req_t<call_t> > > send_reqs;
 
   bool did_communicate = true;
   while (!(we_should_terminate() &&
            with_lock(send_queue_mutex, [&] { return send_queue.empty(); }))) {
     did_communicate = false;
-    // Send
-    send_queue_t my_queue;
-    with_lock(send_queue_mutex, [&] { send_queue.swap(my_queue); });
-    for (const auto &send_item : my_queue) {
-      did_communicate = true;
-      try {
-        // TODO send_reqs.push_back(comm.isend(send_item.dest, tag,
-        // TODO                                send_item.call));
-        send_reqs.push_back(
-            comm.isend(send_item.dest, tag, send_item.call.get()));
-      }
-      catch (boost::archive::archive_exception &ex) {
-        std::cerr << "Caught Boost archive exception "
-                  << "while sending an object:\n"
-                  << "   Exception type: " << typeid(ex).name() << "\n"
-                  << "   Exception description: " << ex.what() << "\n"
-                  << "   Destination process: " << send_item.dest << "\n"
-                  << "   Type of sent object: "
-                  << typeid(*send_item.call).name() << "\n";
-        throw;
+    {
+      // Send all pending items
+      send_queue_t my_queue;
+      with_lock(send_queue_mutex, [&] { std::swap(send_queue, my_queue); });
+      did_communicate |= !my_queue.empty();
+      for (auto &send_item : my_queue) {
+        send_reqs.push_back(rpc::make_unique<send_req_t<call_t> >(
+            comm, send_item.dest, std::move(send_item.call)));
       }
     }
-    // Receive
+    // Receive as many items as possible
     for (;;) {
       // Note: In this mpi::test call, the object is deserialized,
       // which calls the load function, which triggers an mpi::send,
       // which doesn't happen immediately since the event loop is
       // still trapped in mpi::test.
-
-      // TODO: To save power: if there are no threads running
-      // locally and the send queue is empty, use wait_any instead
-      // of test_any...
-      boost::optional<std::pair<
-          boost::mpi::status, std::vector<boost::mpi::request>::iterator> > st;
-      try {
-        st = boost::mpi::test_any(recv_reqs.begin(), recv_reqs.end());
-      }
-      catch (boost::archive::archive_exception &ex) {
-        std::cerr << "Caught Boost archive exception "
-                  << "while receiving an object:\n"
-                  << "   Exception type: " << typeid(ex).name() << "\n"
-                  << "   Exception description: " << ex.what() << "\n";
-        throw;
-      }
-      if (!st)
+      bool did_receive = recv_req.test([this](call_t &&call) {
+        if (!we_should_ignore_call(call))
+          thread(&callable_base::execute, std::move(call)).detach();
+      });
+      if (!did_receive)
         break;
       did_communicate = true;
-      auto &recv_req = *st->second;
-      const int i = st->second - recv_reqs.begin();
-      auto &recv_call = recv_calls[i];
-      if (!(we_should_stop_sending() &&
-            (typeid(*recv_call) !=
-             typeid(rpc::terminate_stage_3_action::evaluate)) &&
-            (typeid(*recv_call) !=
-             typeid(rpc::terminate_stage_4_action::evaluate)))) {
-        // TODO: move recv_call instead of copying it
-        // TODO thread(&callable_base::execute, recv_call).detach();
-        thread(&callable_base::execute,
-               rpc::shared_ptr<callable_base>(recv_call)).detach();
-      }
-      recv_call = nullptr;
       ++stats.messages_received;
-      // Post next receive
-      recv_req = comm.irecv(source(i), tag, recv_call);
     }
-    // Finalize sends
-    for (;;) {
-      boost::optional<std::pair<boost::mpi::status,
-                                std::list<boost::mpi::request>::iterator> > st =
-          boost::mpi::test_any(send_reqs.begin(), send_reqs.end());
-      if (!st)
-        break;
-      did_communicate = true;
-      send_reqs.erase(st->second);
-      ++stats.messages_sent;
+    // Finalize all completed sends
+    {
+      std::size_t old_size = send_reqs.size();
+      send_reqs.erase(
+          std::remove_if(std::begin(send_reqs), std::end(send_reqs),
+                         [](const std::unique_ptr<send_req_t<call_t> > &call) {
+            return call->test();
+          }),
+          std::end(send_reqs));
+      did_communicate |= send_reqs.size() != old_size;
     }
     // Wait
     if (!did_communicate) {
@@ -188,12 +240,10 @@ int server_mpi::event_loop(const user_main_t &user_main) {
     }
   }
 
-  // Cancel receives
-  for (auto &recv_req : recv_reqs)
-    recv_req.cancel();
-  // Cancel sends
+  // Cancel receives and sends
+  recv_req.cancel();
   for (auto &send_req : send_reqs)
-    send_req.cancel();
+    send_req->cancel();
 
   // Broadcast return value
   boost::mpi::broadcast(comm, iret, 0);
@@ -237,7 +287,6 @@ void terminate_stage_2() { ((server_mpi *)server)->terminate_stage_2(); }
 void terminate_stage_3() { ((server_mpi *)server)->terminate_stage_3(); }
 void terminate_stage_4() { ((server_mpi *)server)->terminate_stage_4(); }
 }
-
 RPC_IMPLEMENT_ACTION(rpc::terminate_stage_1);
 RPC_IMPLEMENT_ACTION(rpc::terminate_stage_2);
 RPC_IMPLEMENT_ACTION(rpc::terminate_stage_3);

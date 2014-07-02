@@ -4,8 +4,6 @@
 #include "cxx_invoke.hh"
 #include "cxx_utils.hh"
 
-#include <boost/serialization/access.hpp>
-
 #include <iostream>
 #include <tuple>
 #include <type_traits>
@@ -145,23 +143,6 @@ template <> struct output_tuple_impl<0> {
   template <typename... As>
   static void output(std::ostream &os, const std::tuple<As...> &t) {}
 };
-
-// Inspired by Sydius at
-// <https://sydius.me/2011/02/c0x-tuple-boost-serialization/>
-template <size_t N> struct serialize_tuple_impl {
-  template <class Archive, typename... As>
-  static void serialize(Archive &ar, std::tuple<As...> &t,
-                        unsigned int version) {
-    serialize_tuple_impl<N - 1>::serialize(ar, t, version);
-    ar &std::get<N - 1>(t);
-  }
-};
-
-template <> struct serialize_tuple_impl<0> {
-  template <class Archive, typename... As>
-  static void serialize(Archive &ar, std::tuple<As...> &t,
-                        unsigned int version) {}
-};
 }
 
 namespace std {
@@ -180,57 +161,6 @@ std::ostream &operator<<(std::ostream &os, const std::tuple<As...> &t) {
   return os;
 }
 }
-
-#if defined HPX_VERSION_FULL // RPC_HPX
-#include <hpx/util/serialize_empty_type.hpp>
-#else
-#define HPX_VERSION_DATE This file was included too early !
-#endif
-
-namespace boost {
-namespace serialization {
-
-#ifndef HPX_VERSION_FULL // RPC_HPX
-
-template <class Archive, typename... As>
-void serialize(Archive &ar, std::tuple<As...> &t, unsigned int version) {
-  rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
-}
-
-#else
-
-// HPX provides a serialization function for its own archives and
-// empty types. This conflicts with tuples when the tuple is
-// empty. We thus need to provide tuple serialization functions
-// only for either non-HPX archives or non-empty tuples.
-
-template <class Archive, typename... As>
-typename std::enable_if<
-    (!std::is_same<Archive, hpx::util::portable_binary_iarchive>::value &&
-     !std::is_same<Archive, hpx::util::portable_binary_oarchive>::value),
-    void>::type
-serialize(Archive &ar, std::tuple<As...> &t, unsigned int version) {
-  rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
-}
-
-template <typename... As>
-typename std::enable_if<!std::is_empty<std::tuple<As...> >::value, void>::type
-serialize(hpx::util::portable_binary_iarchive &ar, std::tuple<As...> &t,
-          unsigned int version) {
-  rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
-}
-
-template <typename... As>
-typename std::enable_if<!std::is_empty<std::tuple<As...> >::value, void>::type
-serialize(hpx::util::portable_binary_oarchive &ar, std::tuple<As...> &t,
-          unsigned int version) {
-  rpc::serialize_tuple_impl<sizeof...(As)>::serialize(ar, t, version);
-}
-
-#endif
-}
-}
-// #endif
 
 #define CXX_TUPLE_HH_DONE
 #else

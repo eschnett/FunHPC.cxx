@@ -6,9 +6,6 @@
 
 #include "cxx_utils.hh"
 
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/split_member.hpp>
-
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
@@ -23,13 +20,13 @@ namespace rpc {
 // Pointer:
 //    - ptr<M>:               manager
 //    - maybe: global_ptr<M>: owner
-//    - maybe: shared_ptr<T>: pointer (if not local)
+//    - maybe: shared_ptr<T>: pointer (if local)
 //
 // Manager:
 //    - atomic<ptrdiff_t>: reference count
 //    - global_ptr<M>:     owner (may point to itself)
 //    - global_ptr<T>:     pointer
-//    - shared_ptr<T>:     pointer (if not local)
+//    - shared_ptr<T>:     pointer (if local)
 
 class global_manager_base {
   std::atomic<ptrdiff_t> refcount;
@@ -222,16 +219,7 @@ public:
   T &operator*() const { return *get(); }
   auto operator -> () const -> decltype(this -> get()) { return get(); }
 
-  future<rpc::shared_ptr<T> > make_local() const {
-    if (!*this)
-      return rpc::make_ready_future(rpc::shared_ptr<T>(nullptr));
-    if (is_local())
-      return rpc::make_ready_future(get());
-    return future_then(get_global().make_local(),
-                       [](future<T *> && ptr)->rpc::shared_ptr<T> {
-      return rpc::shared_ptr<T>(ptr.get());
-    });
-  }
+  future<rpc::shared_ptr<T> > make_local() const;
 
   std::ostream &output(std::ostream &os) const {
     // TODO: output mgr itself as well
@@ -239,10 +227,9 @@ public:
   }
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void save(Archive &ar, unsigned int version) const;
-  template <class Archive> void load(Archive &ar, unsigned int version);
-  BOOST_SERIALIZATION_SPLIT_MEMBER();
+  friend class cereal::access;
+  template <class Archive> void save(Archive &ar) const;
+  template <class Archive> void load(Archive &ar);
 };
 
 template <typename T>

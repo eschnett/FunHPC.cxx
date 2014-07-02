@@ -6,10 +6,7 @@
 #include "rpc_future.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
 
-#include <boost/mpi/packed_iarchive.hpp>
-#include <boost/mpi/packed_oarchive.hpp>
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/split_free.hpp>
+#include <cereal/archives/binary.hpp>
 
 #include <cassert>
 #include <utility>
@@ -79,8 +76,8 @@ public:
   std::ostream &output(std::ostream &os) const { return os << data.get(); }
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version);
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar);
 };
 
 template <typename T>

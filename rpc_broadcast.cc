@@ -2,7 +2,7 @@
 
 #include "rpc_action.hh"
 
-#include <boost/serialization/vector.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <numeric>
 

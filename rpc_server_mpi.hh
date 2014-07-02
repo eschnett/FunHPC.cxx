@@ -72,6 +72,11 @@ private:
   friend void terminate_stage_3();
   void terminate_stage_4();
   friend void terminate_stage_4();
+  bool we_should_ignore_call(const rpc::shared_ptr<callable_base> &call) {
+    return we_should_stop_sending() &&
+           typeid(*call) != typeid(rpc::terminate_stage_3_action::evaluate) &&
+           typeid(*call) != typeid(rpc::terminate_stage_4_action::evaluate);
+  }
 
   void run_application(const user_main_t &user_main);
 

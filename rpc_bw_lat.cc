@@ -1,6 +1,6 @@
 #include "rpc.hh"
 
-#include <boost/serialization/vector.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <cstddef>
 #include <iostream>

@@ -6,7 +6,7 @@
 #include "rpc_call.hh"
 #include "rpc_global_shared_ptr.hh"
 
-#include <boost/serialization/export.hpp>
+#include <cereal/archives/binary.hpp>
 
 #include <utility>
 
@@ -27,106 +27,40 @@ struct shared_future_get_action
 };
 }
 
-namespace boost {
-namespace serialization {
+namespace cereal {
 
-#ifdef HPX_DISABLE_FUTURE_SERIALIZE
-
-// These don't work with HPX, since HPX's futures can already be
-// serialized
 template <typename Archive, typename T>
-inline void save(Archive &ar, const rpc::shared_future<T> &data,
-                 const unsigned int file_version) {
+inline void save(Archive &ar, const rpc::shared_future<T> &data) {
   bool ready = rpc::future_is_ready(data);
-  ar << ready;
+  ar(ready);
   if (ready) {
     // Send the data of the future
-    ar << data.get();
+    ar(data.get());
   } else {
     // Create a global pointer to the future, and send it
     auto ptr = rpc::make_global<rpc::shared_future<T> >(data);
-    ar << ptr;
+    ar(ptr);
   }
 }
 
 template <typename Archive, typename T>
-inline void load(Archive &ar, rpc::shared_future<T> &data,
-                 const unsigned int file_version) {
+inline void load(Archive &ar, rpc::shared_future<T> &data) {
   // RPC_ASSERT(!data.valid());
   bool ready;
-  ar >> ready;
+  ar(ready);
   if (ready) {
     // Receive the data, and create a future from it
     T data_;
-    ar >> data_;
+    ar(data_);
     data = rpc::make_ready_future(std::move(data_));
   } else {
     // Create a future that is waiting for the data of the remote
     // future
     rpc::global_ptr<rpc::shared_future<T> > ptr;
-    ar >> ptr;
+    ar(ptr);
     data = async(rpc::remote::async, ptr.get_proc(),
                  rpc::shared_future_get_action<T>(), ptr);
   }
-}
-
-template <typename Archive, typename T>
-inline void serialize(Archive &ar, rpc::shared_future<T> &data,
-                      const unsigned int file_version) {
-  split_free(ar, data, file_version);
-}
-
-#else
-
-typedef boost::mpi::packed_oarchive OArchive;
-template <typename T>
-inline void save(OArchive &ar, const rpc::shared_future<T> &data,
-                 const unsigned int file_version) {
-  bool ready = rpc::future_is_ready(data);
-  ar << ready;
-  if (ready) {
-    // Send the data of the future
-    ar << data.get();
-  } else {
-    // Create a global pointer to the future, and send it
-    auto ptr = rpc::make_global<rpc::shared_future<T> >(data);
-    ar << ptr;
-  }
-}
-template <typename T>
-inline void serialize(OArchive &ar, rpc::shared_future<T> &data,
-                      const unsigned int file_version) {
-  split_free(ar, data, file_version);
-}
-
-typedef boost::mpi::packed_iarchive IArchive;
-template <typename T>
-inline void load(IArchive &ar, rpc::shared_future<T> &data,
-                 const unsigned int file_version) {
-  // RPC_ASSERT(!data.valid());
-  bool ready;
-  ar >> ready;
-  if (ready) {
-    // Receive the data, and create a future from it
-    T data_;
-    ar >> data_;
-    data = rpc::make_ready_future(std::move(data_));
-  } else {
-    // Create a future that is waiting for the data of the remote
-    // future
-    rpc::global_ptr<rpc::shared_future<T> > ptr;
-    ar >> ptr;
-    data = async(rpc::remote::async, ptr.get_proc(),
-                 rpc::shared_future_get_action<T>(), ptr);
-  }
-}
-template <typename T>
-inline void serialize(IArchive &ar, rpc::shared_future<T> &data,
-                      const unsigned int file_version) {
-  split_free(ar, data, file_version);
-}
-
-#endif
 }
 }
 
@@ -134,8 +68,8 @@ namespace rpc {
 
 template <typename T>
 template <class Archive>
-void client<T>::serialize(Archive &ar, unsigned int version) {
-  ar &data;
+void client<T>::serialize(Archive &ar) {
+  ar(data);
 }
 
 template <typename T, typename... As>

@@ -1,9 +1,5 @@
 #include "rpc.hh"
 
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/shared_ptr.hpp>
-#include <boost/serialization/string.hpp>
-
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -57,10 +53,8 @@ struct point {
   RPC_DECLARE_CONST_MEMBER_ACTION(point, output);
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &x &y;
-  }
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(x, y); }
 };
 RPC_COMPONENT(point);
 RPC_IMPLEMENT_MEMBER_ACTION(point, init);
@@ -165,18 +159,17 @@ struct s {
   }
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void save(Archive &ar, unsigned int version) const {
+  friend class cereal::access;
+  template <class Archive> void save(Archive &ar) const {
     cout << "[" << rpc::server->rank() << "] "
          << "Saving s(" << i << ") at " << this << "\n" << flush;
-    ar << i;
+    ar(i);
   }
-  template <class Archive> void load(Archive &ar, unsigned int version) {
-    ar >> i;
+  template <class Archive> void load(Archive &ar) {
+    ar(i);
     cout << "[" << rpc::server->rank() << "] "
          << "Loading s(" << i << ") at " << this << "\n" << flush;
   }
-  BOOST_SERIALIZATION_SPLIT_MEMBER();
 };
 
 // TODO: use const&

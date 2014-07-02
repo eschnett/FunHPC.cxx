@@ -10,10 +10,8 @@
 
 #include <qthread/qthread.hpp>
 
-#include <boost/make_shared.hpp>
-#include <boost/shared_ptr.hpp>
-
 #include <functional>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -135,9 +133,9 @@ public:
 
 template <typename T> class shared_future {
   typedef T value_type;
-  boost::shared_ptr<future_state<value_type> > state;
+  std::shared_ptr<future_state<value_type> > state;
   void swap(shared_future &other) { std::swap(state, other.state); }
-  shared_future(const boost::shared_ptr<future_state<value_type> > &state)
+  shared_future(const std::shared_ptr<future_state<value_type> > &state)
       : state(state) {}
   friend class future<value_type>;
   friend class promise<value_type>;
@@ -195,9 +193,9 @@ public:
 
 template <typename T> class shared_future<T &> {
   typedef T &value_type;
-  boost::shared_ptr<future_state<T> > state;
+  std::shared_ptr<future_state<T> > state;
   void swap(shared_future &other) { std::swap(state, other.state); }
-  shared_future(const boost::shared_ptr<future_state<value_type> > &state)
+  shared_future(const std::shared_ptr<future_state<value_type> > &state)
       : state(state) {}
   friend class future<value_type>;
   friend class promise<value_type>;
@@ -243,9 +241,9 @@ public:
 
 template <> class shared_future<void> {
   typedef void value_type;
-  boost::shared_ptr<future_state<value_type> > state;
+  std::shared_ptr<future_state<value_type> > state;
   void swap(shared_future &other) { std::swap(state, other.state); }
-  shared_future(const boost::shared_ptr<future_state<value_type> > &state)
+  shared_future(const std::shared_ptr<future_state<value_type> > &state)
       : state(state) {}
   friend class future<value_type>;
   friend class promise<value_type>;
@@ -291,9 +289,9 @@ public:
 
 template <typename T> class future {
   typedef T value_type;
-  boost::shared_ptr<future_state<value_type> > state;
+  std::shared_ptr<future_state<value_type> > state;
   void swap(future &other) { std::swap(state, other.state); }
-  future(const boost::shared_ptr<future_state<value_type> > &state)
+  future(const std::shared_ptr<future_state<value_type> > &state)
       : state(state) {}
   friend class shared_future<value_type>;
   friend class promise<value_type>;
@@ -350,9 +348,9 @@ public:
 
 template <typename T> class future<T &> {
   typedef T &value_type;
-  boost::shared_ptr<future_state<value_type> > state;
+  std::shared_ptr<future_state<value_type> > state;
   void swap(future &other) { std::swap(state, other.state); }
-  future(const boost::shared_ptr<future_state<T> > &state) : state(state) {}
+  future(const std::shared_ptr<future_state<T> > &state) : state(state) {}
   friend class shared_future<value_type>;
   friend class promise<value_type>;
   friend class deferred<value_type>;
@@ -397,9 +395,9 @@ public:
 
 template <> class future<void> {
   typedef void value_type;
-  boost::shared_ptr<future_state<value_type> > state;
+  std::shared_ptr<future_state<value_type> > state;
   void swap(future &other) { std::swap(state, other.state); }
-  future(const boost::shared_ptr<future_state<value_type> > &state)
+  future(const std::shared_ptr<future_state<value_type> > &state)
       : state(state) {}
   friend class shared_future<value_type>;
   friend class promise<value_type>;
@@ -449,10 +447,10 @@ shared_future<T>::shared_future(future<T> &&other)
 }
 
 template <typename T> class promise {
-  boost::shared_ptr<future_state<T> > state;
+  std::shared_ptr<future_state<T> > state;
 
 public:
-  promise() : state(boost::make_shared<future_state<T> >()) {}
+  promise() : state(std::make_shared<future_state<T> >()) {}
   promise(promise &&other) : state(nullptr) { swap(other); }
   promise(const promise &other) = delete;
   ~promise() {
@@ -481,10 +479,10 @@ public:
 };
 
 template <typename T> class promise<T &> {
-  boost::shared_ptr<future_state<T> > state;
+  std::shared_ptr<future_state<T> > state;
 
 public:
-  promise() : state(boost::make_shared<future_state<T> >()) {}
+  promise() : state(std::make_shared<future_state<T> >()) {}
   promise(promise &&other) : state(nullptr) { swap(other); }
   promise(const promise &other) = delete;
   ~promise() {
@@ -508,10 +506,10 @@ public:
 };
 
 template <> class promise<void> {
-  boost::shared_ptr<future_state<void> > state;
+  std::shared_ptr<future_state<void> > state;
 
 public:
-  promise() : state(boost::make_shared<future_state<void> >()) {}
+  promise() : state(std::make_shared<future_state<void> >()) {}
   promise(promise &&other) : state(nullptr) { swap(other); }
   promise(const promise &other) = delete;
   ~promise() {
@@ -539,12 +537,12 @@ template <typename T> void swap(promise<T> &lhs, promise<T> &rhs) {
 }
 
 template <typename T> class deferred {
-  boost::shared_ptr<future_state<T> > state;
+  std::shared_ptr<future_state<T> > state;
 
 public:
   deferred() {}
   deferred(const std::function<T()> func)
-      : state(boost::make_shared<future_state<T> >(func)) {}
+      : state(std::make_shared<future_state<T> >(func)) {}
   deferred(deferred &&other) : deferred() { swap(other); }
   deferred(const deferred &other) = delete;
   deferred &operator=(deferred &&other) {

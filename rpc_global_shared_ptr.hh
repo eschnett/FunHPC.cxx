@@ -8,6 +8,17 @@
 
 namespace rpc {
 
+template <typename T>
+shared_ptr<T>
+global_shared_ptr_get(const global_ptr<global_manager_base> &owner) {
+  return static_cast<global_manager<T> *>(owner.get())->get_shared();
+}
+template <typename T>
+struct global_shared_ptr_get_action
+    : public rpc::action_impl<global_shared_ptr_get_action<T>,
+                              rpc::wrap<decltype(&global_shared_ptr_get<T>),
+                                        &global_shared_ptr_get<T> > > {};
+
 namespace global_shared {
 void register_then_unregister(const global_ptr<global_manager_base> &owner,
                               const global_ptr<global_manager_base> &other,
@@ -15,6 +26,16 @@ void register_then_unregister(const global_ptr<global_manager_base> &owner,
 void unregister(const global_ptr<global_manager_base> &other);
 RPC_DECLARE_ACTION(register_then_unregister);
 RPC_DECLARE_ACTION(unregister);
+}
+
+template <typename T>
+future<rpc::shared_ptr<T> > global_shared_ptr<T>::make_local() const {
+  if (!*this)
+    return rpc::make_ready_future(rpc::shared_ptr<T>(nullptr));
+  if (is_local())
+    return rpc::make_ready_future(get());
+  return async(remote::async, global_shared_ptr_get_action<T>(),
+               mgr->get_owner());
 }
 
 template <typename T, typename... As>
@@ -25,28 +46,28 @@ struct make_global_shared_action
 
 template <typename T>
 template <class Archive>
-void global_shared_ptr<T>::save(Archive &ar, unsigned int version) const {
+void global_shared_ptr<T>::save(Archive &ar) const {
   RPC_ASSERT(invariant());
   const global_ptr<T> gptr = get_global();
-  ar << gptr;
+  ar(gptr);
   if (gptr) {
     mgr->incref();
     const global_ptr<global_manager_base> owner = mgr->get_owner();
     const global_ptr<global_manager_base> other = mgr;
-    ar << owner << other;
+    ar(owner, other);
   }
 }
 
 template <typename T>
 template <class Archive>
-void global_shared_ptr<T>::load(Archive &ar, unsigned int version) {
+void global_shared_ptr<T>::load(Archive &ar) {
   RPC_ASSERT(invariant());
   RPC_ASSERT(!mgr);
   global_ptr<T> gptr;
-  ar >> gptr;
+  ar(gptr);
   if (gptr) {
     global_ptr<global_manager_base> owner, other;
-    ar >> owner >> other;
+    ar(owner, other);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     RPC_ASSERT(!other.is_local());
 #endif

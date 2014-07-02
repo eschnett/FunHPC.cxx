@@ -3,7 +3,7 @@
 
 #include "rpc.hh"
 
-#include <boost/serialization/vector.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <atomic>
 #include <cassert>
@@ -33,10 +33,8 @@ struct scalar_t {
   double elts;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &elts;
-  }
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(elts); }
 
 public:
   explicit scalar_t() {}
@@ -76,10 +74,9 @@ struct vector_t {
   std::vector<double> elts;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void serialize(Archive &ar, unsigned int version) {
-    ar &N;
-    ar &elts;
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) {
+    ar(N, elts);
     // TODO
     RPC_ASSERT(N == elts.size());
   }
@@ -194,20 +191,17 @@ struct matrix_t {
   std::vector<double> elts;
 
 private:
-  friend class boost::serialization::access;
-  template <class Archive> void save(Archive &ar, unsigned int version) const {
-    ar &NI &NJ;
-    ar &elts;
+  friend class cereal::access;
+  template <class Archive> void save(Archive &ar) const {
+    ar(NI, NJ, elts);
     elts_sent += NI * NJ;
     ++objs_sent;
   }
-  template <class Archive> void load(Archive &ar, unsigned int version) {
-    ar &NI &NJ;
-    ar &elts;
+  template <class Archive> void load(Archive &ar) {
+    ar(NI, NJ, elts);
     elts_received += NI * NJ;
     ++objs_received;
   }
-  BOOST_SERIALIZATION_SPLIT_MEMBER();
 
 public:
   explicit matrix_t(std::ptrdiff_t NI, std::ptrdiff_t NJ)

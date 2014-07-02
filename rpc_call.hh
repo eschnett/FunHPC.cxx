@@ -15,13 +15,9 @@
 #include "cxx_tuple.hh"
 #include "cxx_utils.hh"
 
-// Note: <boost/mpi/packed_[io]archive.hpp> need to be included before
-// using the macro BOOST_CLASS_EXPORT
-#include <boost/mpi/packed_iarchive.hpp>
-#include <boost/mpi/packed_oarchive.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/export.hpp>
-#include <boost/serialization/shared_ptr.hpp>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/polymorphic.hpp>
+#include <cereal/types/tuple.hpp>
 
 #include <cassert>
 #include <chrono>
@@ -36,11 +32,6 @@ namespace rpc {
 struct callable_base {
   virtual ~callable_base() {}
   virtual void execute() = 0;
-
-private:
-  friend class boost::serialization::access;
-  template <typename Archive>
-  void serialize(Archive &ar, unsigned int file_version) {}
 };
 
 template <typename F, typename R> struct action_finish : public callable_base {
@@ -56,12 +47,8 @@ template <typename F, typename R> struct action_finish : public callable_base {
   }
 
 private:
-  friend class boost::serialization::access;
-  template <typename Archive>
-  void serialize(Archive &ar, unsigned int file_version) {
-    ar &boost::serialization::base_object<callable_base>(*this);
-    ar &p &res;
-  }
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(p, res); }
 };
 template <typename F> struct action_finish<F, void> : public callable_base {
   global_ptr<promise<void> > p;
@@ -74,12 +61,8 @@ template <typename F> struct action_finish<F, void> : public callable_base {
   }
 
 private:
-  friend class boost::serialization::access;
-  template <typename Archive>
-  void serialize(Archive &ar, unsigned int file_version) {
-    ar &boost::serialization::base_object<callable_base>(*this);
-    ar &p;
-  }
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(p); }
 };
 
 template <typename F, typename R, typename... As>
@@ -98,12 +81,8 @@ struct action_evaluate : public callable_base {
   }
 
 private:
-  friend class boost::serialization::access;
-  template <typename Archive>
-  void serialize(Archive &ar, unsigned int file_version) {
-    ar &boost::serialization::base_object<callable_base>(*this);
-    ar &p &args;
-  }
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(p, args); }
 };
 template <typename F, typename... As>
 struct action_evaluate<F, void, As...> : public callable_base {
@@ -121,12 +100,8 @@ struct action_evaluate<F, void, As...> : public callable_base {
   }
 
 private:
-  friend class boost::serialization::access;
-  template <typename Archive>
-  void serialize(Archive &ar, unsigned int file_version) {
-    ar &boost::serialization::base_object<callable_base>(*this);
-    ar &p &args;
-  }
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(p, args); }
 };
 
 // Base type for all actions

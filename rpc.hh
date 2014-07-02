@@ -8,7 +8,6 @@
 #include "cxx_utils.hh"
 
 #include "rpc_future.hh"
-#include "rpc_memory.hh"
 #include "rpc_mutex.hh"
 #include "rpc_thread.hh"
 

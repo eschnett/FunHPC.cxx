@@ -25,16 +25,16 @@ public:
   // We require explicit conversions for constructors that take
   // ownership of pointers
   client() : client(global_shared_ptr<T>()) {}
-  client(const rpc::shared_ptr<T> &ptr) : client(global_shared_ptr<T>(ptr)) {}
+  client(const std::shared_ptr<T> &ptr) : client(global_shared_ptr<T>(ptr)) {}
   client(const global_shared_ptr<T> &ptr) : data(make_ready_future(ptr)) {}
   client(const rpc::shared_future<global_shared_ptr<T> > &ptr) : data(ptr) {}
   client(future<global_shared_ptr<T> > &&ptr) : client(ptr.share()) {}
 
-  client(const rpc::shared_future<rpc::shared_ptr<T> > &ptr)
+  client(const rpc::shared_future<std::shared_ptr<T> > &ptr)
       : client(future_then(
-            ptr, [](const rpc::shared_future<rpc::shared_ptr<T> > & ptr)
+            ptr, [](const rpc::shared_future<std::shared_ptr<T> > & ptr)
                      ->global_shared_ptr<T> { return ptr.get(); })) {}
-  client(future<rpc::shared_ptr<T> > &&ptr) : client(ptr.share()) {}
+  client(future<std::shared_ptr<T> > &&ptr) : client(ptr.share()) {}
 
   client(const rpc::shared_future<client<T> > &ptr)
       : client(future_then(
@@ -62,7 +62,7 @@ public:
   bool operator!=(const client &other) const { return !(*this == other); }
 
   void wait() const { data.wait(); }
-  const rpc::shared_ptr<T> &get() const { return data.get().get(); }
+  const std::shared_ptr<T> &get() const { return data.get().get(); }
   T &operator*() const { return *get(); }
   auto operator -> () const -> decltype(this -> get()) { return get(); }
 

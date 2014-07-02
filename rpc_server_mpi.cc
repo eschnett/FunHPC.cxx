@@ -189,7 +189,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
   }
 
   // Pending requests
-  typedef rpc::shared_ptr<callable_base> call_t;
+  typedef std::shared_ptr<callable_base> call_t;
   recv_req_t<call_t> recv_req(comm);
   std::vector<std::unique_ptr<send_req_t<call_t> > > send_reqs;
 
@@ -250,7 +250,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
   return iret;
 }
 
-void server_mpi::call(int dest, const rpc::shared_ptr<callable_base> &func) {
+void server_mpi::call(int dest, const std::shared_ptr<callable_base> &func) {
   RPC_ASSERT(dest >= 0 && dest < size());
   RPC_ASSERT(func != nullptr);
 #ifndef RPC_DISABLE_CALL_SHORTCUT

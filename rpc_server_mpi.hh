@@ -30,7 +30,7 @@ class server_mpi : public server_base {
 
   struct send_item_t {
     int dest;
-    rpc::shared_ptr<callable_base> call;
+    std::shared_ptr<callable_base> call;
   };
   typedef std::vector<send_item_t> send_queue_t;
   send_queue_t send_queue;
@@ -72,7 +72,7 @@ private:
   friend void terminate_stage_3();
   void terminate_stage_4();
   friend void terminate_stage_4();
-  bool we_should_ignore_call(const rpc::shared_ptr<callable_base> &call) {
+  bool we_should_ignore_call(const std::shared_ptr<callable_base> &call) {
     return we_should_stop_sending() &&
            typeid(*call) != typeid(rpc::terminate_stage_3_action::evaluate) &&
            typeid(*call) != typeid(rpc::terminate_stage_4_action::evaluate);
@@ -82,7 +82,7 @@ private:
 
 public:
   virtual int event_loop(const user_main_t &user_main);
-  virtual void call(int dest, const rpc::shared_ptr<callable_base> &func);
+  virtual void call(int dest, const std::shared_ptr<callable_base> &func);
 };
 }
 

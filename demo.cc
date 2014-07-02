@@ -8,15 +8,15 @@
 #include <vector>
 
 using rpc::future;
-using rpc::make_shared;
 using rpc::mutex;
 using rpc::shared_future;
-using rpc::shared_ptr;
 
 using std::cerr;
 using std::cout;
 using std::flush;
+using std::make_shared;
 using std::printf;
+using std::shared_ptr;
 using std::string;
 using std::vector;
 

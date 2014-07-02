@@ -8,7 +8,6 @@
 #include "rpc_future.hh"
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
-#include "rpc_memory.hh"
 #include "rpc_server.hh"
 #include "rpc_thread.hh"
 
@@ -77,7 +76,7 @@ struct action_evaluate : public callable_base {
     if (!p)
       return;
     server->call(p.get_proc(),
-                 rpc::make_shared<typename F::finish>(p, std::move(res)));
+                 std::make_shared<typename F::finish>(p, std::move(res)));
   }
 
 private:
@@ -96,7 +95,7 @@ struct action_evaluate<F, void, As...> : public callable_base {
     tuple_apply(F(), std::move(args));
     if (!p)
       return;
-    server->call(p.get_proc(), rpc::make_shared<typename F::finish>(p));
+    server->call(p.get_proc(), std::make_shared<typename F::finish>(p));
   }
 
 private:
@@ -159,7 +158,7 @@ auto sync(remote policy, int dest, const F &func, As &&... args)
   typedef typename invoke_of<F, As...>::type R;
   auto p = new promise<R>;
   auto f = p->get_future();
-  server->call(dest, rpc::make_shared<typename F::evaluate>(
+  server->call(dest, std::make_shared<typename F::evaluate>(
                          p, std::forward<As>(args)...));
   return f.get();
 }
@@ -176,7 +175,7 @@ auto detached(remote policy, int dest, const F &func, As &&... args)
 #endif
   typedef typename invoke_of<F, As...>::type R;
   promise<R> *p = nullptr;
-  server->call(dest, rpc::make_shared<typename F::evaluate>(
+  server->call(dest, std::make_shared<typename F::evaluate>(
                          p, std::forward<As>(args)...));
 }
 
@@ -228,7 +227,7 @@ auto async(remote policy, int dest, const F &func, As &&... args)
 #endif
   auto p = new promise<R>;
   auto evalptr =
-      rpc::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+      std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
   if (is_deferred) {
     // TODO: This leaks p if the thread never executes. Need to change
     // F::evaluate to accept global_ptr<shared_ptr<promise<R> > >
@@ -304,7 +303,7 @@ auto detached(remote policy, const F &func, G &&global, As &&... args)
   RPC_ASSERT(policy == remote::detached);
   typedef typename invoke_of<F, As...>::type R;
   promise<R> *p = nullptr;
-  auto evalptr = rpc::make_shared<typename F::evaluate>(
+  auto evalptr = std::make_shared<typename F::evaluate>(
       p, std::forward<G>(global), std::forward<As>(args)...);
   thread([evalptr]() {
            int dest = std::get<0>(evalptr->args)->get_proc();
@@ -336,7 +335,7 @@ auto async(remote policy, const F &func, G &&global, As &&... args)
   }
   typedef typename invoke_of<F, G, As...>::type R;
   auto p = new promise<R>;
-  auto evalptr = rpc::make_shared<typename F::evaluate>(
+  auto evalptr = std::make_shared<typename F::evaluate>(
       p, std::forward<G>(global), std::forward<As>(args)...);
   return future_then(global.get_proc_future(),
                      [evalptr](const shared_future<int> & fdest)->R {

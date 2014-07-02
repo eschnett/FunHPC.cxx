@@ -115,7 +115,7 @@ auto block_vector_t::faxpy(double alpha, const const_ptr &x) const -> ptr {
   if (alpha == 0.0)
     return fcopy();
   RPC_ASSERT(str == x->str);
-  auto y = rpc::make_shared<block_vector_t>(str);
+  auto y = std::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib = 0; ib < y->num_blocks(); ++ib) {
     if (!x->has_block(ib)) {
       if (has_block(ib)) {
@@ -137,7 +137,7 @@ auto block_vector_t::faxpy(double alpha, const const_ptr &x) const -> ptr {
 }
 
 auto block_vector_t::fcopy() const -> ptr {
-  auto y = rpc::make_shared<block_vector_t>(str);
+  auto y = std::make_shared<block_vector_t>(str);
   for (std::ptrdiff_t ib = 0; ib < y->num_blocks(); ++ib) {
     if (has_block(ib)) {
       y->set_block(ib, block(ib));
@@ -183,7 +183,7 @@ auto block_vector_t::fnrm2() const -> scalar_t::client {
 }
 
 auto block_vector_t::fscal(double alpha) const -> ptr {
-  auto x = rpc::make_shared<block_vector_t>(str);
+  auto x = std::make_shared<block_vector_t>(str);
   if (alpha != 0.0) {
     for (std::ptrdiff_t ib = 0; ib < x->num_blocks(); ++ib) {
       if (has_block(ib)) {
@@ -199,7 +199,7 @@ auto block_vector_t::fscal(double alpha) const -> ptr {
 }
 
 auto block_vector_t::fset(double alpha) const -> ptr {
-  auto x = rpc::make_shared<block_vector_t>(str);
+  auto x = std::make_shared<block_vector_t>(str);
   if (alpha != 0.0) {
     for (std::ptrdiff_t ib = 0; ib < x->num_blocks(); ++ib) {
       if (!has_block(ib)) {
@@ -298,7 +298,7 @@ auto block_matrix_t::faxpy(bool transa, bool transb0, double alpha,
   if (transb0)
     std::swap(b0strs[0], b0strs[1]);
   RPC_ASSERT(b0strs == astrs);
-  auto b = rpc::make_shared<block_matrix_t>(b0strs[0], b0strs[1]);
+  auto b = std::make_shared<block_matrix_t>(b0strs[0], b0strs[1]);
   for (std::ptrdiff_t jb = 0; jb < b->num_blocks(1); ++jb) {
     for (std::ptrdiff_t ib = 0; ib < b->num_blocks(0); ++ib) {
       auto iba = !transa ? ib : jb;
@@ -330,7 +330,7 @@ auto block_matrix_t::fcopy(bool trans) const -> ptr {
   auto a0strs = strs;
   if (trans)
     std::swap(a0strs[0], a0strs[1]);
-  auto b = rpc::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
+  auto b = std::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
   for (std::ptrdiff_t jb = 0; jb < b->num_blocks(1); ++jb) {
     for (std::ptrdiff_t ib = 0; ib < b->num_blocks(0); ++ib) {
       auto iba = !trans ? ib : jb;
@@ -363,7 +363,7 @@ auto block_matrix_t::fgemv(
     std::swap(astrs[0], astrs[1]);
   RPC_ASSERT(x->str == astrs[1]);
   RPC_ASSERT(y0->str == astrs[0]);
-  auto y = rpc::make_shared<block_vector_t>(y0->str);
+  auto y = std::make_shared<block_vector_t>(y0->str);
   for (std::ptrdiff_t ib = 0; ib < y->num_blocks(); ++ib) {
     auto ytmps = rpc::make_client<std::vector<vector_t::client> >();
     if (beta != 0.0 && y0->has_block(ib)) {
@@ -410,7 +410,7 @@ auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr {
   auto a0strs = strs;
   if (trans)
     std::swap(a0strs[0], a0strs[1]);
-  auto b = rpc::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
+  auto b = std::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
   if (alpha != 0.0) {
     for (std::ptrdiff_t jb = 0; jb < b->num_blocks(1); ++jb) {
       for (std::ptrdiff_t ib = 0; ib < b->num_blocks(0); ++ib) {
@@ -433,7 +433,7 @@ auto block_matrix_t::fset(bool trans, double alpha) const -> ptr {
   auto a0strs = strs;
   if (trans)
     std::swap(a0strs[0], a0strs[1]);
-  auto b = rpc::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
+  auto b = std::make_shared<block_matrix_t>(a0strs[0], a0strs[1]);
   if (alpha != 0.0) {
     for (std::ptrdiff_t jb = 0; jb < b->num_blocks(1); ++jb) {
       for (std::ptrdiff_t ib = 0; ib < b->num_blocks(0); ++ib) {
@@ -484,7 +484,7 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0, double alpha,
   RPC_ASSERT(bstrs[0] == astrs[1]);
   RPC_ASSERT(c0strs[0] == astrs[0]);
   RPC_ASSERT(c0strs[1] == bstrs[1]);
-  auto c = rpc::make_shared<block_matrix_t>(c0strs[0], c0strs[1]);
+  auto c = std::make_shared<block_matrix_t>(c0strs[0], c0strs[1]);
   std::vector<rpc::future<void> > fs;
   for (std::ptrdiff_t jb = 0; jb < c->num_blocks(1); ++jb) {
     for (std::ptrdiff_t ib = 0; ib < c->num_blocks(0); ++ib) {

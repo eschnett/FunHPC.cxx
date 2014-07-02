@@ -9,7 +9,7 @@
 namespace rpc {
 
 template <typename T>
-shared_ptr<T>
+std::shared_ptr<T>
 global_shared_ptr_get(const global_ptr<global_manager_base> &owner) {
   return static_cast<global_manager<T> *>(owner.get())->get_shared();
 }
@@ -29,9 +29,9 @@ RPC_DECLARE_ACTION(unregister);
 }
 
 template <typename T>
-future<rpc::shared_ptr<T> > global_shared_ptr<T>::make_local() const {
+future<std::shared_ptr<T> > global_shared_ptr<T>::make_local() const {
   if (!*this)
-    return rpc::make_ready_future(rpc::shared_ptr<T>(nullptr));
+    return rpc::make_ready_future(std::shared_ptr<T>(nullptr));
   if (is_local())
     return rpc::make_ready_future(get());
   return async(remote::async, global_shared_ptr_get_action<T>(),

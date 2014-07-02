@@ -158,7 +158,7 @@ void test_block() {
   int ilocs[BI];
   for (std::ptrdiff_t i = 0; i < BI; ++i)
     ilocs[i] = locs[i % nlocs];
-  auto istr = rpc::make_shared<structure_t>(NI, BI, ibegin, ilocs);
+  auto istr = std::make_shared<structure_t>(NI, BI, ibegin, ilocs);
   std::cout << "istr=" << *istr << std::endl;
 
   const std::ptrdiff_t BJ = 4;
@@ -166,7 +166,7 @@ void test_block() {
   int jlocs[BJ];
   for (std::ptrdiff_t j = 0; j < BJ; ++j)
     jlocs[j] = locs[(j + 1) % nlocs];
-  auto jstr = rpc::make_shared<structure_t>(NJ, BJ, jbegin, jlocs);
+  auto jstr = std::make_shared<structure_t>(NJ, BJ, jbegin, jlocs);
   std::cout << "jstr=" << *jstr << std::endl;
 
   const std::ptrdiff_t BK = 3;
@@ -174,7 +174,7 @@ void test_block() {
   int klocs[BK];
   for (std::ptrdiff_t k = 0; k < BK; ++k)
     klocs[k] = locs[(k + 2) % nlocs];
-  auto kstr = rpc::make_shared<structure_t>(NK, BK, kbegin, klocs);
+  auto kstr = std::make_shared<structure_t>(NK, BK, kbegin, klocs);
   std::cout << "kstr=" << *kstr << std::endl;
 
   block_vector_t x(jstr);

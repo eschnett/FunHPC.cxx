@@ -1,9 +1,8 @@
 #ifndef RPC_SERVER_HH
 #define RPC_SERVER_HH
 
-#include "rpc_memory.hh"
-
 #include <functional>
+#include <memory>
 
 namespace rpc {
 
@@ -32,7 +31,7 @@ public:
 
   virtual int event_loop(const user_main_t &user_main) = 0;
 
-  virtual void call(int dest, const rpc::shared_ptr<callable_base> &func) = 0;
+  virtual void call(int dest, const std::shared_ptr<callable_base> &func) = 0;
 };
 
 extern server_base *server;

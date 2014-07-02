@@ -24,8 +24,8 @@ struct vector_t;
 struct matrix_t;
 
 struct scalar_t {
-  typedef rpc::shared_ptr<const scalar_t> const_ptr;
-  typedef rpc::shared_ptr<scalar_t> ptr;
+  typedef std::shared_ptr<const scalar_t> const_ptr;
+  typedef std::shared_ptr<scalar_t> ptr;
   // TODO: remove all global_ptr?
   // typedef rpc::global_shared_ptr<scalar_t> global_ptr;
   typedef rpc::client<scalar_t> client;
@@ -65,8 +65,8 @@ RPC_DECLARE_COMPONENT(scalar_t);
 std::ostream &operator<<(std::ostream &os, const scalar_t &x);
 
 struct vector_t {
-  typedef rpc::shared_ptr<const vector_t> const_ptr;
-  typedef rpc::shared_ptr<vector_t> ptr;
+  typedef std::shared_ptr<const vector_t> const_ptr;
+  typedef std::shared_ptr<vector_t> ptr;
   typedef rpc::global_shared_ptr<vector_t> global_ptr;
   typedef rpc::client<vector_t> client;
 
@@ -175,8 +175,8 @@ inline auto afset(double alpha, const vector_t::client &x0)
 }
 
 struct matrix_t {
-  typedef rpc::shared_ptr<const matrix_t> const_ptr;
-  typedef rpc::shared_ptr<matrix_t> ptr;
+  typedef std::shared_ptr<const matrix_t> const_ptr;
+  typedef std::shared_ptr<matrix_t> ptr;
   // typedef rpc::global_shared_ptr<matrix_t> global_ptr;
   typedef rpc::client<matrix_t> client;
 

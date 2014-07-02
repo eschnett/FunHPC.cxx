@@ -109,9 +109,9 @@ result_t run_dense_bench(ptrdiff_t n) {
 RPC_ACTION(run_dense_bench);
 
 result_t run_dense_fbench(ptrdiff_t n) {
-  auto a = rpc::make_shared<matrix_t>(n, n);
-  auto b = rpc::make_shared<matrix_t>(n, n);
-  auto c = rpc::make_shared<matrix_t>(n, n);
+  auto a = std::make_shared<matrix_t>(n, n);
+  auto b = std::make_shared<matrix_t>(n, n);
+  auto c = std::make_shared<matrix_t>(n, n);
   set(1.0, *a);
   set(1.0, *b);
   set(1.0, *c);
@@ -153,11 +153,11 @@ result_t run_block_fbench(ptrdiff_t n, ptrdiff_t bs, bool run_global = false) {
       locs[b] = b % server->size();
     // for (ptrdiff_t b=0; b<nb*nb; ++b) locs[b] = server->size() * b / (nb*nb);
   }
-  auto str = rpc::make_shared<structure_t>(n, nb, &begin[0], &locs[0]);
+  auto str = std::make_shared<structure_t>(n, nb, &begin[0], &locs[0]);
 
-  auto a = rpc::make_shared<block_matrix_t>(str, str);
-  auto b = rpc::make_shared<block_matrix_t>(str, str);
-  auto c = rpc::make_shared<block_matrix_t>(str, str);
+  auto a = std::make_shared<block_matrix_t>(str, str);
+  auto b = std::make_shared<block_matrix_t>(str, str);
+  auto c = std::make_shared<block_matrix_t>(str, str);
   a = a->fset(false, 1.0);
   b = b->fset(false, 1.0);
   c = c->fset(false, 1.0);

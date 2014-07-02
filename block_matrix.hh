@@ -16,7 +16,7 @@
 
 class structure_t {
 public:
-  typedef rpc::shared_ptr<const structure_t> const_ptr;
+  typedef std::shared_ptr<const structure_t> const_ptr;
 
 private:
   const std::ptrdiff_t N, B;
@@ -55,8 +55,8 @@ class block_matrix_t;
 
 class block_vector_t {
 public:
-  typedef rpc::shared_ptr<const block_vector_t> const_ptr;
-  typedef rpc::shared_ptr<block_vector_t> ptr;
+  typedef std::shared_ptr<const block_vector_t> const_ptr;
+  typedef std::shared_ptr<block_vector_t> ptr;
 
 private:
   friend class block_matrix_t;
@@ -136,8 +136,8 @@ inline std::ostream &operator<<(std::ostream &os, const block_vector_t &x) {
 
 class block_matrix_t {
 public:
-  typedef rpc::shared_ptr<const block_matrix_t> const_ptr;
-  typedef rpc::shared_ptr<block_matrix_t> ptr;
+  typedef std::shared_ptr<const block_matrix_t> const_ptr;
+  typedef std::shared_ptr<block_matrix_t> ptr;
 
   static const int dim = 2;
 

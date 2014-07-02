@@ -29,24 +29,24 @@ std::ostream &operator<<(std::ostream &os, const vector_t &x) {
 // Level 1
 
 auto vector_t::faxpy(double alpha, const const_ptr &x) const -> ptr {
-  auto y = rpc::make_shared<vector_t>(N);
+  auto y = std::make_shared<vector_t>(N);
   copy(*this, *y);
   axpy(alpha, *x, *y);
   return y;
 }
 
 auto vector_t::fcopy() const -> ptr {
-  auto y = rpc::make_shared<vector_t>(N);
+  auto y = std::make_shared<vector_t>(N);
   copy(*this, *y);
   return y;
 }
 
 auto vector_t::fnrm2() const -> scalar_t::ptr {
-  return rpc::make_shared<scalar_t>(nrm2(*this));
+  return std::make_shared<scalar_t>(nrm2(*this));
 }
 
 auto vector_t::fscal(double alpha) const -> ptr {
-  auto x = rpc::make_shared<vector_t>(N);
+  auto x = std::make_shared<vector_t>(N);
   if (alpha != 0.0)
     copy(*this, *x);
   scal(alpha, *x);
@@ -54,7 +54,7 @@ auto vector_t::fscal(double alpha) const -> ptr {
 }
 
 auto vector_t::fset(double alpha) const -> ptr {
-  auto x = rpc::make_shared<vector_t>(N);
+  auto x = std::make_shared<vector_t>(N);
   set(alpha, *x);
   return x;
 }
@@ -116,7 +116,7 @@ auto matrix_t::faxpy(bool transa, bool transb0, double alpha,
                      const const_ptr &a) const -> ptr {
   auto nib0 = !transb0 ? NI : NJ;
   auto njb0 = !transb0 ? NJ : NI;
-  auto b = rpc::make_shared<matrix_t>(nib0, njb0);
+  auto b = std::make_shared<matrix_t>(nib0, njb0);
   copy(transb0, *this, *b);
   axpy(transa, alpha, *a, *b);
   return b;
@@ -125,7 +125,7 @@ auto matrix_t::faxpy(bool transa, bool transb0, double alpha,
 auto matrix_t::fcopy(bool trans) const -> ptr {
   auto nib = !trans ? NI : NJ;
   auto njb = !trans ? NJ : NI;
-  auto b = rpc::make_shared<matrix_t>(nib, njb);
+  auto b = std::make_shared<matrix_t>(nib, njb);
   copy(trans, *this, *b);
   return b;
 }
@@ -135,7 +135,7 @@ auto matrix_t::fgemv(bool trans, double alpha, const vector_t::const_ptr &x,
                      const vector_t::const_ptr &y0) const -> vector_t::ptr {
   if (alpha == 0.0)
     return y0->fscal(beta);
-  auto y = rpc::make_shared<vector_t>(NI);
+  auto y = std::make_shared<vector_t>(NI);
   if (beta != 0.0)
     copy(*y0, *y);
   gemv(trans, alpha, *this, *x, beta, *y);
@@ -143,13 +143,13 @@ auto matrix_t::fgemv(bool trans, double alpha, const vector_t::const_ptr &x,
 }
 
 auto matrix_t::fnrm2() const -> scalar_t::ptr {
-  return rpc::make_shared<scalar_t>(nrm2(*this));
+  return std::make_shared<scalar_t>(nrm2(*this));
 }
 
 auto matrix_t::fscal(bool trans, double alpha) const -> matrix_t::ptr {
   auto nia0 = !trans ? NI : NJ;
   auto nja0 = !trans ? NJ : NI;
-  auto a = rpc::make_shared<matrix_t>(nia0, nja0);
+  auto a = std::make_shared<matrix_t>(nia0, nja0);
   if (alpha != 0.0)
     copy(trans, *this, *a);
   scal(alpha, *a);
@@ -159,7 +159,7 @@ auto matrix_t::fscal(bool trans, double alpha) const -> matrix_t::ptr {
 auto matrix_t::fset(bool trans, double alpha) const -> ptr {
   auto nia0 = !trans ? NI : NJ;
   auto nja0 = !trans ? NJ : NI;
-  auto a = rpc::make_shared<matrix_t>(nia0, nja0);
+  auto a = std::make_shared<matrix_t>(nia0, nja0);
   set(alpha, *a);
   return a;
 }
@@ -180,7 +180,7 @@ auto matrix_t::fgemm(bool transa, bool transb, bool transc0, double alpha,
   RPC_ASSERT(nib == nja);
   RPC_ASSERT(nic0 == nia);
   RPC_ASSERT(njc0 == njb);
-  auto c = rpc::make_shared<matrix_t>(nic0, njc0);
+  auto c = std::make_shared<matrix_t>(nic0, njc0);
   if (beta != 0.0)
     copy(transc0, *c0, *c);
   gemm(transa, transb, alpha, *this, *b, beta, *c);

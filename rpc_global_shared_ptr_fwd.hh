@@ -2,7 +2,6 @@
 #define RPC_GLOBAL_SHARED_PTR_FWD_HH
 
 #include "rpc_global_ptr_fwd.hh"
-#include "rpc_memory.hh"
 
 #include "cxx_utils.hh"
 
@@ -67,7 +66,7 @@ public:
 
 template <typename T> class global_manager : public global_manager_base {
   global_ptr<T> gptr;
-  rpc::shared_ptr<T> sptr;
+  std::shared_ptr<T> sptr;
 
 public:
   bool invariant() const {
@@ -80,11 +79,11 @@ public:
     return true;
   }
   // Create object from scratch
-  global_manager(const rpc::shared_ptr<T> &ptr)
+  global_manager(const std::shared_ptr<T> &ptr)
       : global_manager_base(), gptr(ptr.get()), sptr(ptr) {
     RPC_ASSERT(invariant());
   }
-  global_manager(rpc::shared_ptr<T> &&ptr)
+  global_manager(std::shared_ptr<T> &&ptr)
       : global_manager_base(), gptr(ptr.get()), sptr(std::move(ptr)) {
     RPC_ASSERT(invariant());
   }
@@ -106,7 +105,7 @@ public:
   global_manager &operator=(global_manager &&) = delete;
 
   const global_ptr<T> &get_global() const { return gptr; }
-  const rpc::shared_ptr<T> &get_shared() const {
+  const std::shared_ptr<T> &get_shared() const {
     RPC_ASSERT(sptr);
     return sptr;
   }
@@ -136,9 +135,9 @@ public:
   bool is_local() const { return get_global().is_local(); }
 
   // Can only get local objects
-  const rpc::shared_ptr<T> &get() const {
+  const std::shared_ptr<T> &get() const {
     RPC_ASSERT(is_local());
-    static const rpc::shared_ptr<T> null(nullptr);
+    static const std::shared_ptr<T> null(nullptr);
     if (!*this)
       return null;
     return mgr->get_shared();
@@ -158,11 +157,11 @@ public:
   global_shared_ptr() : mgr(nullptr) { RPC_ASSERT(invariant()); }
 
   // Create from shared pointer
-  global_shared_ptr(const rpc::shared_ptr<T> &ptr)
+  global_shared_ptr(const std::shared_ptr<T> &ptr)
       : mgr(ptr ? new global_manager<T>(ptr) : nullptr) {
     RPC_ASSERT(invariant());
   }
-  global_shared_ptr(rpc::shared_ptr<T> &&ptr)
+  global_shared_ptr(std::shared_ptr<T> &&ptr)
       : mgr(ptr ? new global_manager<T>(std::move(ptr)) : nullptr) {
     RPC_ASSERT(invariant());
   }
@@ -219,7 +218,7 @@ public:
   T &operator*() const { return *get(); }
   auto operator -> () const -> decltype(this -> get()) { return get(); }
 
-  future<rpc::shared_ptr<T> > make_local() const;
+  future<std::shared_ptr<T> > make_local() const;
 
   std::ostream &output(std::ostream &os) const {
     // TODO: output mgr itself as well
@@ -239,7 +238,7 @@ std::ostream &operator<<(std::ostream &os, const global_shared_ptr<T> &ptr) {
 
 template <typename T, typename... As>
 global_shared_ptr<T> make_global_shared(const As &... args) {
-  return rpc::make_shared<T>(args...);
+  return std::make_shared<T>(args...);
 }
 }
 

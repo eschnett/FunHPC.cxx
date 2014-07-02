@@ -12,9 +12,9 @@
 #include <hpx/version.hpp>
 
 #include <boost/thread/lock_guard.hpp>
-// #include <boost/thread/mutex.hpp>
 
 #include <chrono>
+#include <memory>
 #include <utility>
 #include <type_traits>
 
@@ -34,7 +34,6 @@ void thread_finalize();
 namespace rpc {
 
 using ::boost::lock_guard;
-// using ::boost::mutex;
 
 using ::hpx::async;
 using ::hpx::future;
@@ -86,6 +85,15 @@ using hpx::get_thread_stats;
 using ::hpx::thread_main;
 using ::hpx::thread_initialize;
 using ::hpx::thread_finalize;
+}
+
+// Recognize std::shared_ptr as pointer type
+namespace std {
+template <class T>
+inline typename std::shared_ptr<T>::element_type *
+get_pointer(std::shared_ptr<T> const &p) BOOST_NOEXCEPT {
+  return p.get();
+}
 }
 
 namespace std {

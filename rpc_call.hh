@@ -39,6 +39,10 @@ template <typename F, typename R> struct action_finish : public callable_base {
   action_finish() {} // only for boost::serialize
   action_finish(const global_ptr<promise<R> > &p, const R &res)
       : p(p), res(res) {}
+  virtual ~action_finish() {
+    if (p && p.is_local())
+      delete p.get();
+  }
   virtual void execute() {
     p->set_value(std::move(res));
     delete p.get();
@@ -53,6 +57,10 @@ template <typename F> struct action_finish<F, void> : public callable_base {
   global_ptr<promise<void> > p;
   action_finish() {} // only for boost::serialize
   action_finish(const global_ptr<promise<void> > &p) : p(p) {}
+  virtual ~action_finish() {
+    if (p && p.is_local())
+      delete p.get();
+  }
   virtual void execute() {
     p->set_value();
     delete p.get();
@@ -71,12 +79,17 @@ struct action_evaluate : public callable_base {
   action_evaluate() {} // only for boost::serialize
   action_evaluate(const global_ptr<promise<R> > &p, const As &... args)
       : p(p), args(args...) {}
+  virtual ~action_evaluate() {
+    if (p && p.is_local())
+      delete p.get();
+  }
   virtual void execute() {
     R res = tuple_apply(F(), std::move(args));
     if (!p)
       return;
     server->call(p.get_proc(),
                  std::make_shared<typename F::finish>(p, std::move(res)));
+    p = nullptr;
   }
 
 private:
@@ -90,12 +103,17 @@ struct action_evaluate<F, void, As...> : public callable_base {
   action_evaluate() {} // only for boost::serialize
   action_evaluate(const global_ptr<promise<void> > &p, const As &... args)
       : p(p), args(args...) {}
+  virtual ~action_evaluate() {
+    if (p && p.is_local())
+      delete p.get();
+  }
   // TODO: Allow moving arguments via &&?
   virtual void execute() {
     tuple_apply(F(), std::move(args));
     if (!p)
       return;
     server->call(p.get_proc(), std::make_shared<typename F::finish>(p));
+    p = nullptr;
   }
 
 private:
@@ -343,6 +361,7 @@ auto async(remote policy, const F &func, G &&global, As &&... args)
 #ifndef RPC_DISABLE_CALL_SHORTCUT
     if (dest == server->rank()) {
       delete evalptr->p.get();
+      evalptr->p = nullptr;
       return tuple_apply(F(), evalptr->args);
     }
 #endif

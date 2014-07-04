@@ -14,9 +14,6 @@ int real_main(int argc, char **argv) {
   // MPI_Init(&argc, &argv);
   rpc::server = new rpc::server_mpi(argc, argv);
   rpc::thread_initialize();
-  if (rpc::server->rank() == 0) {
-    std::cout << "Running...\n";
-  }
   std::cout << "[" << rpc::server->rank() << "] "
             << "MPI processes: " << rpc::server->size() << "\n";
   {
@@ -27,6 +24,12 @@ int real_main(int argc, char **argv) {
   std::cout << "[" << rpc::server->rank() << "] "
             << "Hardware concurrency: " << thread::hardware_concurrency()
             << "\n";
+  // Prevent the above info output from cluttering the real program
+  // output
+  server->barrier();
+  if (rpc::server->rank() == 0) {
+    std::cout << "Running...\n";
+  }
   int iret = rpc::server->event_loop(rpc_main);
   if (rpc::server->rank() == 0) {
     if (iret == 0) {
@@ -35,6 +38,8 @@ int real_main(int argc, char **argv) {
       std::cout << "Done: failure (error=" << iret << ").\n";
     }
   }
+  // Prevent shutdown messages from cluttering the real program output
+  server->barrier();
   rpc::thread_finalize();
   delete rpc::server;
   rpc::server = nullptr;

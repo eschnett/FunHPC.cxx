@@ -1,16 +1,16 @@
 #! /bin/bash
 
-# sbatch wave.stampede.1.submit
+# sbatch wave.stampede.8.submit
 
 #SBATCH -A TG-ASC120003
 #SBATCH -p normal
 #SBATCH -t 1:00:00
-#SBATCH -N 1 -n 1
+#SBATCH -N 8 -n 8
 #SBATCH -J mpi-rpc
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=schnetter@gmail.com
-#SBATCH -o /home1/00507/eschnett/src/mpi-rpc/wave.1.out
-#SBATCH -e /home1/00507/eschnett/src/mpi-rpc/wave.1.err
+#SBATCH -o /home1/00507/eschnett/src/mpi-rpc/wave.8.out
+#SBATCH -e /home1/00507/eschnett/src/mpi-rpc/wave.8.err
 
 set -e
 set -x
@@ -23,7 +23,7 @@ env | sort
 echo '[END ENV]'
 
 echo '[BEGIN NODES]'
-echo $SLURM_NODELIST
+echo $SLURM_JOB_NODELIST
 echo '[END NODES]'
 
 date
@@ -37,6 +37,6 @@ ibrun tacc_affinity                             \
     --hpx:ini=hpx.parcel.mpi.enable=0           \
     --hpx:numa-sensitive                        \
     --hpx:threads=16                            \
-    >wave.1.log 2>&1
+    >wave.8.log 2>&1
 echo '[END MPIRUN]'
 date

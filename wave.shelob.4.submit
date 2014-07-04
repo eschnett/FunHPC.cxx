@@ -1,17 +1,17 @@
 #! /bin/bash
 
-# qsub wave.shelob.8.submit
+# qsub wave.shelob.4.submit
 
 #PBS -A hpc_numrel05
 #PBS -q checkpt
 #PBS -r n
 #PBS -l walltime=1:00:00
-#PBS -l nodes=8:ppn=16
+#PBS -l nodes=4:ppn=16
 #PBS -V
 #PBS -N mpi-rpc
 #PBS -m abe
-#PBS -o /home/eschnett/src/mpi-rpc/wave.8.out
-#PBS -e /home/eschnett/src/mpi-rpc/wave.8.err
+#PBS -o /home/eschnett/src/mpi-rpc/wave.4.out
+#PBS -e /home/eschnett/src/mpi-rpc/wave.4.err
 
 set -e
 set -x
@@ -30,7 +30,7 @@ echo '[END NODES]'
 date
 echo '[BEGIN MPIRUN]'
 $MPIRUN                                         \
-    -np 8                                       \
+    -np 4                                       \
     --map-by ppr:1:node                         \
     -display-map                                \
     --mca btl self,openib                       \
@@ -44,6 +44,6 @@ $MPIRUN                                         \
     --hpx:ini=hpx.parcel.mpi.enable=0           \
     --hpx:numa-sensitive                        \
     --hpx:threads=16                            \
-    >wave.8.log 2>&1
+    >wave.4.log 2>&1
 echo '[END MPIRUN]'
 date

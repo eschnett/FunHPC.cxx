@@ -36,13 +36,9 @@ struct callable_base {
 template <typename F, typename R> struct action_finish : public callable_base {
   global_ptr<promise<R> > p;
   R res;
-  action_finish() {} // only for boost::serialize
+  action_finish() {} // only for cereal::serialize
   action_finish(const global_ptr<promise<R> > &p, const R &res)
       : p(p), res(res) {}
-  virtual ~action_finish() {
-    if (p && p.is_local())
-      delete p.get();
-  }
   virtual void execute() {
     p->set_value(std::move(res));
     delete p.get();
@@ -55,12 +51,8 @@ private:
 };
 template <typename F> struct action_finish<F, void> : public callable_base {
   global_ptr<promise<void> > p;
-  action_finish() {} // only for boost::serialize
+  action_finish() {} // only for cereal::serialize
   action_finish(const global_ptr<promise<void> > &p) : p(p) {}
-  virtual ~action_finish() {
-    if (p && p.is_local())
-      delete p.get();
-  }
   virtual void execute() {
     p->set_value();
     delete p.get();
@@ -76,19 +68,22 @@ template <typename F, typename R, typename... As>
 struct action_evaluate : public callable_base {
   global_ptr<promise<R> > p;
   std::tuple<typename std::decay<As>::type...> args;
-  action_evaluate() {} // only for boost::serialize
+  action_evaluate() {} // only for cereal::serialize
   action_evaluate(const global_ptr<promise<R> > &p, const As &... args)
       : p(p), args(args...) {}
-  virtual ~action_evaluate() {
-    if (p && p.is_local())
-      delete p.get();
-  }
   virtual void execute() {
     R res = tuple_apply(F(), std::move(args));
-    if (!p)
+    if (p)
       return;
     server->call(p.get_proc(),
                  std::make_shared<typename F::finish>(p, std::move(res)));
+  }
+  void execute_locally() {
+    R res = tuple_apply(F(), std::move(args));
+    if (!p)
+      return;
+    p->set_value(std::move(res));
+    delete p.get();
     p = nullptr;
   }
 
@@ -100,19 +95,22 @@ template <typename F, typename... As>
 struct action_evaluate<F, void, As...> : public callable_base {
   global_ptr<promise<void> > p;
   std::tuple<typename std::decay<As>::type...> args;
-  action_evaluate() {} // only for boost::serialize
+  action_evaluate() {} // only for cereal::serialize
   action_evaluate(const global_ptr<promise<void> > &p, const As &... args)
       : p(p), args(args...) {}
-  virtual ~action_evaluate() {
-    if (p && p.is_local())
-      delete p.get();
-  }
   // TODO: Allow moving arguments via &&?
   virtual void execute() {
     tuple_apply(F(), std::move(args));
     if (!p)
       return;
     server->call(p.get_proc(), std::make_shared<typename F::finish>(p));
+  }
+  void execute_locally() {
+    tuple_apply(F(), std::move(args));
+    if (!p)
+      return;
+    p->set_value();
+    delete p.get();
     p = nullptr;
   }
 
@@ -164,7 +162,7 @@ using action_impl = decltype(get_action_impl_t<F, W>(W::value));
 template <typename T> using is_action = std::is_base_of<action_base<T>, T>;
 
 template <typename F, typename... As>
-auto sync(remote policy, int dest, const F &func, As &&... args)
+auto sync(remote policy, int dest, const F &, As &&... args)
     -> typename std::enable_if<is_action<F>::value,
                                typename invoke_of<F, As...>::type>::type {
   RPC_ASSERT(policy == remote::sync);
@@ -182,7 +180,15 @@ auto sync(remote policy, int dest, const F &func, As &&... args)
 }
 
 template <typename F, typename... As>
-auto detached(remote policy, int dest, const F &func, As &&... args)
+auto sync(remote policy, const shared_future<int> &dest, const F &,
+          As &&... args)
+    -> typename std::enable_if<is_action<F>::value,
+                               typename invoke_of<F, As...>::type>::type {
+  return sync(policy, dest.get(), F(), std::forward<As>(args)...);
+}
+
+template <typename F, typename... As>
+auto detached(remote policy, int dest, const F &, As &&... args)
     -> typename std::enable_if<is_action<F>::value, void>::type {
   RPC_ASSERT(policy == remote::detached);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -197,25 +203,47 @@ auto detached(remote policy, int dest, const F &func, As &&... args)
                          p, std::forward<As>(args)...));
 }
 
+template <typename F, typename... As>
+auto detached(remote policy, const shared_future<int> &dest, const F &,
+              As &&... args)
+    -> typename std::enable_if<is_action<F>::value, void>::type {
+  RPC_ASSERT(policy == remote::detached);
+  if (future_is_ready(dest)) {
+    return detached(policy, dest.get(), F(), std::forward<As>(args)...);
+  }
+  typedef typename invoke_of<F, As...>::type R;
+  promise<R> *p = nullptr;
+  auto evalptr =
+      std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+  thread([dest, evalptr]() {
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+           if (dest.get() == server->rank()) {
+             return evalptr->execute_locally();
+           }
+#endif
+           server->call(dest.get(), evalptr);
+         }).detach();
+}
+
 namespace detail {
 template <typename F, typename... As>
-auto sync(const F &func, As &&... args)
+auto make_ready_future(const F &, As &&... args)
     -> typename std::enable_if<
           !std::is_void<typename invoke_of<F, As...>::type>::value,
           future<typename invoke_of<F, As...>::type> >::type {
   return rpc::make_ready_future(F()(std::forward<As>(args)...));
 }
 template <typename F, typename... As>
-auto sync(const F &func, As &&... args)
+auto make_ready_future(const F &, As &&... args)
     -> typename std::enable_if<
           std::is_void<typename invoke_of<F, As...>::type>::value,
           future<typename invoke_of<F, As...>::type> >::type {
-  return F()(std::forward<As>(args)...), make_ready_future();
+  return F()(std::forward<As>(args)...), rpc::make_ready_future();
 }
 }
 
 template <typename F, typename... As>
-auto async(remote policy, int dest, const F &func, As &&... args)
+auto async(remote policy, int dest, const F &, As &&... args)
     -> typename std::enable_if<
           is_action<F>::value,
           future<typename invoke_of<F, As...>::type> >::type {
@@ -229,15 +257,7 @@ auto async(remote policy, int dest, const F &func, As &&... args)
 #ifndef RPC_DISABLE_CALL_SHORTCUT
   if (dest == server->rank()) {
     if (is_sync) {
-      // Note: make_ready_future cannot handle R==void
-      // return make_ready_future(F()(std::forward<As>(args)...));
-      // Note: launch::sync is not define by the STL or HPX
-      // return async(launch::sync, F(), std::forward<As>(args)...);
-      // Note: this is inefficient
-      // auto f = async(launch::async, F(), std::forward<As>(args)...);
-      // f.wait();
-      // return f;
-      return detail::sync(F(), std::forward<As>(args)...);
+      return detail::make_ready_future(F(), std::forward<As>(args)...);
     }
     launch lpolicy = is_deferred ? launch::deferred : launch::async;
     return async(lpolicy, F(), std::forward<As>(args)...);
@@ -247,10 +267,13 @@ auto async(remote policy, int dest, const F &func, As &&... args)
   auto evalptr =
       std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
   if (is_deferred) {
-    // TODO: This leaks p if the thread never executes. Need to change
-    // F::evaluate to accept global_ptr<shared_ptr<promise<R> > >
-    // instead.
-    return async(launch::deferred, [dest, evalptr]() {
+    // If the promise_deleter is destructed, it will destruct the
+    // promise as well. This will happen only when the thread never
+    // runs. If the thread runs, it will disable the promise_deleter,
+    // so that the promise continues to live.
+    auto promise_deleter = std::make_shared<std::unique_ptr<promise<R> > >(p);
+    return async(launch::deferred, [dest, evalptr, promise_deleter]() {
+      promise_deleter->release(); // disable deleter
       auto f = evalptr->p->get_future();
       server->call(dest, evalptr);
       return f.get();
@@ -260,6 +283,52 @@ auto async(remote policy, int dest, const F &func, As &&... args)
   server->call(dest, evalptr);
   if (is_sync)
     f.wait();
+  return f;
+}
+
+template <typename F, typename... As>
+auto async(remote policy, const shared_future<int> &dest, const F &,
+           As &&... args)
+    -> typename std::enable_if<
+          is_action<F>::value,
+          future<typename invoke_of<F, As...>::type> >::type {
+  RPC_ASSERT((policy & (remote::async | remote::deferred | remote::sync)) !=
+             remote(0));
+  RPC_ASSERT((policy & ~(remote::async | remote::deferred | remote::sync)) ==
+             remote(0));
+  bool is_deferred = (policy & remote::deferred) == remote::deferred;
+  bool is_sync = (policy & remote::sync) == remote::sync;
+  if (is_sync || future_is_ready(dest)) {
+    return async(policy, dest.get(), F(), std::forward<As>(args)...);
+  }
+  typedef typename invoke_of<F, As...>::type R;
+  auto p = new promise<R>;
+  auto evalptr =
+      std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+  if (is_deferred) {
+    auto promise_deleter = std::make_shared<std::unique_ptr<promise<R> > >(p);
+    return async(launch::deferred, [dest, evalptr, promise_deleter]() {
+      promise_deleter->release(); // disable deleter
+      auto f = evalptr->p->get_future();
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+      if (dest.get() == server->rank()) {
+        evalptr->execute_locally();
+        return f.get();
+      }
+#endif
+      server->call(dest.get(), evalptr);
+      return f.get();
+    });
+  }
+  auto f = p->get_future();
+  thread([dest, evalptr]() {
+#ifndef RPC_DISABLE_CALL_SHORTCUT
+           if (dest.get() == server->rank()) {
+             return evalptr->execute_locally();
+           }
+#endif
+           server->call(dest.get(), evalptr);
+         }).detach();
   return f;
 }
 
@@ -304,71 +373,28 @@ struct is_global : is_global_helper<typename std::remove_cv<
                        typename std::remove_reference<T>::type>::type> {};
 
 template <typename F, typename G, typename... As>
-auto sync(remote policy, const F &func, G &&global, As &&... args)
+auto sync(remote policy, const F &, G &&global, As &&... args)
     -> typename std::enable_if<(is_action<F>::value &&is_global<G>::value),
                                typename invoke_of<F, G, As...>::type>::type {
-  RPC_ASSERT((policy & remote::sync) != remote(0));
-  RPC_ASSERT((policy & ~remote::sync) == remote(0));
-  int dest = global.get_proc();
-  return sync(policy, dest, F(), std::forward<G>(global),
+  return sync(policy, global.get_proc_future(), F(), std::forward<G>(global),
               std::forward<As>(args)...);
 }
 
 template <typename F, typename G, typename... As>
-auto detached(remote policy, const F &func, G &&global, As &&... args)
+auto detached(remote policy, const F &, G &&global, As &&... args)
     -> typename std::enable_if<(is_action<F>::value &&is_global<G>::value),
                                void>::type {
-  RPC_ASSERT(policy == remote::detached);
-  typedef typename invoke_of<F, As...>::type R;
-  promise<R> *p = nullptr;
-  auto evalptr = std::make_shared<typename F::evaluate>(
-      p, std::forward<G>(global), std::forward<As>(args)...);
-  thread([evalptr]() {
-           int dest = std::get<0>(evalptr->args)->get_proc();
-#ifndef RPC_DISABLE_CALL_SHORTCUT
-           if (dest == server->rank()) {
-             tuple_apply(F(), evalptr->args);
-             return;
-           }
-#endif
-           server->call(dest, evalptr);
-         }).detach();
+  return detached(policy, global.get_proc_future(), F(),
+                  std::forward<G>(global), std::forward<As>(args)...);
 }
 
 template <typename F, typename G, typename... As>
-auto async(remote policy, const F &func, G &&global, As &&... args)
+auto async(remote policy, const F &, G &&global, As &&... args)
     -> typename std::enable_if<
           (is_action<F>::value &&is_global<G>::value),
           future<typename invoke_of<F, G, As...>::type> >::type {
-  RPC_ASSERT((policy & (remote::async | remote::deferred | remote::sync)) !=
-             remote(0));
-  RPC_ASSERT((policy & ~(remote::async | remote::deferred | remote::sync)) ==
-             remote(0));
-  bool is_deferred = (policy & remote::deferred) == remote::deferred;
-  bool is_sync = (policy & remote::sync) == remote::sync;
-  if (is_sync || global.proc_is_ready()) {
-    int dest = global.get_proc();
-    return async(policy, dest, func, std::forward<G>(global),
-                 std::forward<As>(args)...);
-  }
-  typedef typename invoke_of<F, G, As...>::type R;
-  auto p = new promise<R>;
-  auto evalptr = std::make_shared<typename F::evaluate>(
-      p, std::forward<G>(global), std::forward<As>(args)...);
-  return future_then(global.get_proc_future(),
-                     [evalptr](const shared_future<int> & fdest)->R {
-    int dest = fdest.get();
-#ifndef RPC_DISABLE_CALL_SHORTCUT
-    if (dest == server->rank()) {
-      delete evalptr->p.get();
-      evalptr->p = nullptr;
-      return tuple_apply(F(), evalptr->args);
-    }
-#endif
-    auto f = evalptr->p->get_future();
-    server->call(dest, evalptr);
-    return f.get();
-  });
+  return async(policy, global.get_proc_future(), F(), std::forward<G>(global),
+               std::forward<As>(args)...);
 }
 }
 

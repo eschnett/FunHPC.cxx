@@ -78,7 +78,19 @@ client<T> make_remote_client(int proc, const As &... args) {
 }
 
 template <typename T, typename... As>
+client<T> make_remote_client(const shared_future<int> &proc,
+                             const As &... args) {
+  return make_remote_client<T>(remote::async, proc, args...);
+}
+
+template <typename T, typename... As>
 client<T> make_remote_client(remote policy, int proc, const As &... args) {
+  return async(policy, proc, make_global_shared_action<T, As...>(), args...);
+}
+
+template <typename T, typename... As>
+client<T> make_remote_client(remote policy, const shared_future<int> &proc,
+                             const As &... args) {
   return async(policy, proc, make_global_shared_action<T, As...>(), args...);
 }
 }

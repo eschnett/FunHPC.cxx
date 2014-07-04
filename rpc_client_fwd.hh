@@ -102,7 +102,15 @@ template <typename T, typename... As>
 client<T> make_remote_client(int proc, const As &... args);
 
 template <typename T, typename... As>
+client<T> make_remote_client(const shared_future<int> &proc,
+                             const As &... args);
+
+template <typename T, typename... As>
 client<T> make_remote_client(rpc::remote policy, int proc, const As &... args);
+
+template <typename T, typename... As>
+client<T> make_remote_client(rpc::remote policy, const shared_future<int> &,
+                             const As &... args);
 }
 
 #define RPC_CLIENT_FWD_HH_DONE

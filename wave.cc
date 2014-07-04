@@ -78,11 +78,6 @@ template <typename T> T mod_ceil(T x, T y) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // An empty serializable type as mix-in
-// struct empty {
-// private:
-//   friend class cereal::access;
-//   template <class Archive> void serialize(Archive &ar) {}
-// };
 using empty = tuple<>;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +85,7 @@ using empty = tuple<>;
 // Global definitions, a poor man's parameter file
 
 namespace defs {
-const ptrdiff_t rho = 10; // resolution scale
+const ptrdiff_t rho = 100; // resolution scale
 
 const double tmin = 0.0;
 const double xmin = 0.0;
@@ -103,7 +98,7 @@ double x(ptrdiff_t i) { return xmin + (i + 0.5) * dx; }
 const double cfl = 0.5;
 const double dt = cfl * dx;
 
-const int nsteps = 2 * ncells;
+const int nsteps = 2 * 100; // ncells;
 const int wait_every = 0;
 const int info_every = nsteps / 10;
 const int file_every = 0; // nsteps;
@@ -204,8 +199,6 @@ RPC_COMPONENT(cell_t);
 // Output
 ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 
-norm_t cell_norm(const cell_t &c) { return c.norm(); }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // Each grid lives on a process
@@ -223,15 +216,21 @@ private:
 
 public:
   grid_t() {} // only for serialization
+
+private:
   grid_t(double t, ptrdiff_t imin, ptrdiff_t imax)
       : t(t), imin(imin), imax(imax), cells(imax - imin) {}
   grid_t(const client<grid_t> &g) : grid_t(g->t, g->imin, g->imax) {}
-
-private:
   void set(ptrdiff_t i, const cell_t &c) {
     assert(i >= imin && i < imax);
     cells[i - imin] = c;
   }
+  // template <typename F> void set_cells(const F &f) {
+  //   void(sizeof cell_t(f(ptrdiff_t())));
+  //   for (ptrdiff_t i = imin; i < imax; ++i) {
+  //     set(i, f(i));
+  //   }
+  // }
 
 public:
   const cell_t &get(ptrdiff_t i) const {
@@ -257,10 +256,16 @@ public:
   // Linear combination
   struct axpy : empty {};
   grid_t(axpy, double a, client<grid_t> x, client<grid_t> y) : grid_t(y) {
+    // TODO: Call make_local on incoming clients
+    // TODO: Implement futurize: convert client args to shared_ptr, then create
+    // remote client
     t = a * x->t + y->t;
     for (ptrdiff_t i = imin; i < imax; ++i) {
       set(i, cell_t(cell_t::axpy(), a, x->get(i), y->get(i)));
     }
+    // set_cells([&](ptrdiff_t i) {
+    //   return cell_t(cell_t::axpy(), a, x->get(i), y->get(i));
+    // });
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, client<grid_t>, client<grid_t>);
 
@@ -268,10 +273,11 @@ public:
   norm_t norm() const {
     norm_t n;
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      n = norm_t(n, cell_norm(get(i)));
+      n = norm_t(n, get(i).norm());
     }
     return n;
   }
+  RPC_DECLARE_CONST_MEMBER_ACTION(grid_t, norm);
 
   // Initial condition
   struct initial : empty {};
@@ -285,73 +291,69 @@ public:
 
   // Error
   struct error : empty {};
-  grid_t(error, client<grid_t> s) : grid_t(s) {
+  grid_t(error, client<grid_t> g) : grid_t(g) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::error(), s->get(i), t, defs::x(i)));
+      set(i, cell_t(cell_t::error(), g->get(i), t, defs::x(i)));
     }
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>);
 
   // RHS
   struct rhs : empty {};
-  grid_t(rhs, client<grid_t> s, rpc::shared_future<cell_t> bm,
-         rpc::shared_future<cell_t> bp)
-      : grid_t(s) {
+  grid_t(rhs, client<grid_t> g, shared_future<cell_t> bm,
+         shared_future<cell_t> bp)
+      : grid_t(g) {
     t = 1.0; // dt/dt
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      const cell_t &c = s->get(i);
+      const cell_t &c = g->get(i);
       // choose left neighbour
       ptrdiff_t im = i - 1;
       cell_t cm;
       if (im >= imin) { // same grid (interior)
-        cm = s->get(im);
+        cm = g->get(im);
       } else if (im >= 0) { // other grid (ghost)
         cm = bm.get();
       } else { // boundary
-        cm = cell_t(cell_t::boundary(), s->t, defs::x(im));
+        cm = cell_t(cell_t::boundary(), g->t, defs::x(im));
       }
       // choose right neighbour
       ptrdiff_t ip = i + 1;
       cell_t cp;
       if (ip < imax) { // same grid (interior)
-        cp = s->get(ip);
+        cp = g->get(ip);
       } else if (ip < defs::ncells) { // other grid (ghost)
         cp = bp.get();
       } else { // boundary
-        cp = cell_t(cell_t::boundary(), s->t, defs::x(ip));
+        cp = cell_t(cell_t::boundary(), g->t, defs::x(ip));
       }
       set(i, cell_t(cell_t::rhs(), c, cm, cp));
     }
   }
-  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>,
-                          rpc::shared_future<cell_t>,
-                          rpc::shared_future<cell_t>);
+  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>, shared_future<cell_t>,
+                          shared_future<cell_t>);
 };
 RPC_COMPONENT(grid_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::axpy, double, client<grid_t>,
                           client<grid_t>);
+RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, norm);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
                           ptrdiff_t);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
-                          rpc::shared_future<cell_t>,
-                          rpc::shared_future<cell_t>);
+                          shared_future<cell_t>, shared_future<cell_t>);
 
 // Output
 ostream &operator<<(ostream &os, const client<grid_t> &g) {
   return g->output(os);
 }
 
-// Norm
-norm_t grid_norm(client<grid_t> g) { return g->norm(); }
-RPC_ACTION(grid_norm);
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // The domain is distributed over multiple processes
 
 struct domain_t {
+  // TODO: implement serialize routine
 
   double t;
 
@@ -364,12 +366,11 @@ struct domain_t {
   }
   vector<client<grid_t> > grids;
 
+private:
   // Note: The grids are not allocated in the constructor; this has to
   // be done explicitly.
   domain_t(double t) : t(t), grids(ngrids()) {}
   domain_t(const client<domain_t> &d) : t(d->t), grids(ngrids()) {}
-
-private:
   void set(ptrdiff_t i, const client<grid_t> &g) {
     assert(i >= 0 && i < ngrids() && grids.size() == ngrids());
     grids[i] = g;
@@ -407,8 +408,9 @@ public:
       : domain_t(y) {
     t = a * x->t + y->t;
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      set(i, make_remote_client<grid_t>(y->get(i).get_proc(), grid_t::axpy(), a,
-                                        x->get(i), y->get(i)));
+      set(i,
+          make_remote_client<grid_t>(y->get(i).get_proc_future(),
+                                     grid_t::axpy(), a, x->get(i), y->get(i)));
     }
   }
 
@@ -417,7 +419,7 @@ public:
     // TODO: Use a proper reduction operation
     vector<future<norm_t> > fns;
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      fns.push_back(async(remote::async, grid_norm_action(), get(i)));
+      fns.push_back(async(remote::async, grid_t::norm_action(), get(i)));
     }
     norm_t n;
     for (auto &fn : fns)
@@ -443,20 +445,22 @@ public:
   domain_t(error, const client<domain_t> &s) : domain_t(s) {
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       const client<grid_t> &si = s->get(i);
-      set(i, make_remote_client<grid_t>(si.get_proc(), grid_t::error(), si));
+      set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::error(),
+                                        si));
     }
   }
 
   // RHS
   struct rhs : empty {};
   domain_t(rhs, const client<domain_t> &s) : domain_t(s) {
+    // TODO: handle outer boundary conditions as well
     t = 1.0; // dt/dt
-    const rpc::shared_future<cell_t> fake = make_ready_future(cell_t());
+    const shared_future<cell_t> fake = make_ready_future(cell_t());
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       const client<grid_t> &si = s->get(i);
       // left buondary
       ptrdiff_t im = i - 1;
-      rpc::shared_future<cell_t> cm;
+      shared_future<cell_t> cm;
       if (im >= 0) {
         const client<grid_t> &sim = s->get(im);
         cm = async(remote::async, grid_t::get_boundary_action(), sim, true);
@@ -465,15 +469,15 @@ public:
       }
       // right boundary
       ptrdiff_t ip = i + 1;
-      rpc::shared_future<cell_t> cp;
+      shared_future<cell_t> cp;
       if (ip < ngrids()) {
         const client<grid_t> &sip = s->get(ip);
         cp = async(remote::async, grid_t::get_boundary_action(), sip, false);
       } else {
         cp = fake;
       }
-      set(i,
-          make_remote_client<grid_t>(si.get_proc(), grid_t::rhs(), si, cm, cp));
+      set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::rhs(), si,
+                                        cm, cp));
     }
   }
 };
@@ -482,9 +486,6 @@ public:
 ostream &operator<<(ostream &os, const client<domain_t> &d) {
   return d->output(os);
 }
-
-// Norm
-norm_t domain_norm(const client<domain_t> &x) { return x->norm(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -495,11 +496,11 @@ struct memoized_t {
   client<domain_t> state;
   client<domain_t> rhs;
   client<domain_t> error;
-  rpc::shared_future<norm_t> error_norm;
+  shared_future<norm_t> error_norm;
   memoized_t(ptrdiff_t n, const client<domain_t> &state) : n(n), state(state) {
     rhs = make_client<domain_t>(launch::deferred, domain_t::rhs(), state);
     error = make_client<domain_t>(launch::deferred, domain_t::error(), state);
-    error_norm = async(launch::deferred, domain_norm, error);
+    error_norm = async(launch::deferred, &domain_t::norm, error);
   }
 };
 
@@ -561,7 +562,7 @@ shared_future<ostream *> file_output(shared_future<ostream *> fos,
 string get_thread_stats() {
   ostringstream os;
   rpc::thread_stats_t thread_stats = rpc::get_thread_stats();
-  os << "[" << rpc::server->rank() << "] Qthreads statistics:\n"
+  os << "[" << rpc::server->rank() << "] Thread statistics:\n"
      << "   threads started: " << thread_stats.threads_started << "\n"
      << "   threads stopped: " << thread_stats.threads_stopped << "\n"
      << "   threads still running: "
@@ -573,7 +574,7 @@ RPC_ACTION(get_thread_stats);
 string get_server_stats() {
   ostringstream os;
   rpc::server_base::stats_t server_stats = rpc::server->get_stats();
-  os << "[" << rpc::server->rank() << "] MPI server statistics:\n"
+  os << "[" << rpc::server->rank() << "] Server statistics:\n"
      << "   messages sent: " << server_stats.messages_sent << "\n"
      << "   messages received: " << server_stats.messages_received << "\n";
   return os.str();
@@ -586,28 +587,28 @@ int rpc_main(int argc, char **argv) {
   // cout << "Setting CPU bindings via hwloc:\n";
   // hwloc_bindings(true);
 
+  shared_future<ostream *> fio = make_ready_future<ostream *>(&cout);
   ostringstream filename;
   filename << "wave." << rpc::server->size() << ".txt";
   ofstream file(filename.str(), ios_base::trunc);
+  shared_future<ostream *> ffo = make_ready_future<ostream *>(&file);
 
   auto t0 = std::chrono::high_resolution_clock::now();
 
-  int n = 0;
   auto s = make_client<domain_t>(domain_t::initial(), defs::tmin);
-  auto m = make_shared<memoized_t>(n, s);
-  auto fio = info_output(make_ready_future<ostream *>(&cout), m);
-  auto ffo = file_output(make_ready_future<ostream *>(&file), m);
+  auto m = make_shared<memoized_t>(0, s);
+  fio = info_output(fio, m);
+  ffo = file_output(ffo, m);
 
-  while (n < defs::nsteps) {
+  while (m->n < defs::nsteps) {
 
-    if (defs::wait_every != 0 && n > 0 && n % defs::wait_every == 0) {
+    if (defs::wait_every != 0 && m->n > 0 && m->n % defs::wait_every == 0) {
       // Rate limiter
-      s.wait();
+      m->state.wait();
     }
 
     s = rk2(m);
-    ++n;
-    m = make_shared<memoized_t>(n, s);
+    m = make_shared<memoized_t>(m->n + 1, s);
     fio = info_output(fio, m);
     ffo = file_output(ffo, m);
   }

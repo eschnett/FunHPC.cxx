@@ -10,8 +10,8 @@ CPPFLAGS :=					\
 	-DHPX_LIMIT=10				\
 	-DRPC_QTHREADS				\
 	-DBLAS
-CFLAGS   := -g ${CFLAGS}   ${C11FLAGS}   -march=native
-CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native -ftemplate-backtrace-limit=0
+CFLAGS   := -g ${CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
+CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
 FFLAGS   := -g ${FFLAGS}                 -march=native
 
 # # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
@@ -48,6 +48,7 @@ CEREAL_BW_LAT_SRCS = cereal_bw_lat.cc
 DEMO_SRCS          = demo.cc ${RPC_SRCS}
 HPX_BW_LAT_SRCS    = hpx_bw_lat.cc
 HPX_TEST_SRCS      = hpx_test.cc
+HPX_WAVE_SRCS      = hpx_wave.cc
 HWLOC_TEST_SRCS	   = hwloc_main.cc ${HWLOC_SRCS} ${RPC_SRCS}
 MATBENCH_SRCS      = matbench.cc ${BLAS_SRCS} ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_SRCS}
 MATTEST_SRCS       = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
@@ -61,8 +62,9 @@ BOOST_BW_LAT_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %
 CEREAL_BW_LAT_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${CEREAL_BW_LAT_SRCS}}}}}
 RPC_BW_LAT_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${RPC_BW_LAT_SRCS}}}}}
 DEMO_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
-HPX_TEST_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
 HPX_BW_LAT_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_BW_LAT_SRCS}}}}}
+HPX_TEST_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
+HPX_WAVE_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_WAVE_SRCS}}}}}
 HWLOC_TEST_OBJS   = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_TEST_SRCS}}}}}
 MATBENCH_OBJS     = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
 MATTEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
@@ -76,6 +78,7 @@ CEREAL_BW_LAT_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, 
 DEMO_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
 HPX_BW_LAT_DEPS   = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_BW_LAT_SRCS}}}}}
 HPX_TEST_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_TEST_SRCS}}}}}
+HPX_WAVE_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_HPX_SRCS}}}}}
 HWLOC_TEST_DEPS   = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HWLOC_TEST_SRCS}}}}}
 MATBENCH_DEPS     = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATBENCH_SRCS}}}}}
 MATTEST_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATTEST_SRCS}}}}}
@@ -84,8 +87,8 @@ QTHREAD_TEST_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, ,
 RPC_BW_LAT_DEPS   = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${RPC_BW_LAT_SRCS}}}}}
 WAVE_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_SRCS}}}}}
 
-OBJS = ${BENCH_OBJS} ${BOOST_BW_LAT_OBJS} ${CEREAL_BW_LAT_OBJS} ${DEMO_OBJS} ${HPX_BW_LAT_OBJS} ${HPX_TEST_OBJS} ${HWLOC_TEST_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${MPI_BW_LAT_OBJS} ${QTHREAD_TEST_OBJS} ${RPC_BW_LAT_OBJS} ${WAVE_OBJS}
-DEPS = ${BENCH_DEPS} ${BOOST_BW_LAT_DEPS} ${CEREAL_BW_LAT_DEPS} ${DEMO_DEPS} ${HPX_BW_LAT_DEPS} ${HPX_TEST_DEPS} ${HWLOC_TEST_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${MPI_BW_LAT_DEPS} ${QTHREAD_TEST_DEPS} ${RPC_BW_LAT_DEPS} ${WAVE_DEPS}
+OBJS = ${BENCH_OBJS} ${BOOST_BW_LAT_OBJS} ${CEREAL_BW_LAT_OBJS} ${DEMO_OBJS} ${HPX_BW_LAT_OBJS} ${HPX_TEST_OBJS} ${HPX_WAVE_OBJS} ${HWLOC_TEST_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${MPI_BW_LAT_OBJS} ${QTHREAD_TEST_OBJS} ${RPC_BW_LAT_OBJS} ${WAVE_OBJS}
+DEPS = ${BENCH_DEPS} ${BOOST_BW_LAT_DEPS} ${CEREAL_BW_LAT_DEPS} ${DEMO_DEPS} ${HPX_BW_LAT_DEPS} ${HPX_TEST_DEPS} ${HPX_WAVE_DEPS} ${HWLOC_TEST_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${MPI_BW_LAT_DEPS} ${QTHREAD_TEST_DEPS} ${RPC_BW_LAT_DEPS} ${WAVE_DEPS}
 
 
 
@@ -116,6 +119,8 @@ demo: ${DEMO_OBJS}
 hpx_bw_lat: ${HPX_BW_LAT_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 hpx_test: ${HPX_TEST_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+hpx_wave: ${HPX_WAVE_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 hwloc_test: ${HWLOC_TEST_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}

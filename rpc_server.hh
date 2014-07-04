@@ -15,9 +15,12 @@ protected:
 
 public:
   server_base() : rank_(-1), size_(-1) {}
+  virtual ~server_base() {}
 
   int rank() const { return rank_; }
   int size() const { return size_; }
+
+  virtual void barrier() = 0;
 
   struct stats_t {
     std::ptrdiff_t messages_sent;
@@ -26,8 +29,6 @@ public:
   virtual stats_t get_stats() const = 0;
 
   typedef std::function<int(int argc, char **argv)> user_main_t;
-
-  virtual ~server_base() {}
 
   virtual int event_loop(const user_main_t &user_main) = 0;
 

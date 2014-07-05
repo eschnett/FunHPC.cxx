@@ -33,7 +33,6 @@ LIBS     := ${MPI_LIBS} ${LIBS}
 # hpx_test
 EXES = bench boost_bw_lat cereal_bw_lat demo hpx_bw_lat hwloc_test matbench mattest mpi_bw_lat qthread_test rpc_bw_lat wave
 
-BLAS_SRCS    = # daxpy.f dcopy.f dgemm.f dgemv.f dnrm2.f dscal.f lsame.f xerbla.f
 QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = hpx.cc
 HWLOC_SRCS   = hwloc.cc
@@ -50,8 +49,8 @@ HPX_BW_LAT_SRCS    = hpx_bw_lat.cc
 HPX_TEST_SRCS      = hpx_test.cc
 HPX_WAVE_SRCS      = hpx_wave.cc
 HWLOC_TEST_SRCS	   = hwloc_main.cc ${HWLOC_SRCS} ${RPC_SRCS}
-MATBENCH_SRCS      = matbench.cc ${BLAS_SRCS} ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_SRCS}
-MATTEST_SRCS       = mattest.cc ${BLAS_SRCS} ${RPC_SRCS} ${MATRIX_SRCS}
+MATBENCH_SRCS      = matbench.cc ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_SRCS}
+MATTEST_SRCS       = mattest.cc ${RPC_SRCS} ${MATRIX_SRCS}
 MPI_BW_LAT_SRCS    = mpi_bw_lat.cc
 QTHREAD_TEST_SRCS  = qthread_test.cc ${QTHREAD_SRCS}
 RPC_BW_LAT_SRCS    = rpc_bw_lat.cc ${RPC_SRCS}

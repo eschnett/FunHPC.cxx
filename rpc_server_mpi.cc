@@ -122,8 +122,6 @@ server_mpi::server_mpi(int &argc, char **&argv)
 
 server_mpi::~server_mpi() { RPC_ASSERT(we_should_terminate()); }
 
-void server_mpi::barrier() { comm.barrier(); }
-
 void server_mpi::terminate_stage_1() {
   RPC_ASSERT(termination_stage == 0);
   termination_stage = 1;

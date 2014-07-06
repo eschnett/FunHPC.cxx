@@ -49,8 +49,6 @@ public:
 
   virtual stats_t get_stats() const { return stats; }
 
-  virtual void barrier();
-
 private:
   // Communication tree
   const int fan_out = 3;

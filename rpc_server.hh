@@ -20,8 +20,6 @@ public:
   int rank() const { return rank_; }
   int size() const { return size_; }
 
-  virtual void barrier() = 0;
-
   struct stats_t {
     std::ptrdiff_t messages_sent;
     std::ptrdiff_t messages_received;

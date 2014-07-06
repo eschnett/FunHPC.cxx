@@ -560,7 +560,7 @@ ostream *do_file_output(const shared_future<ostream *> fos,
   ostream *os = fos.get();
   *os << "State: " << m->state << "RHS: " << m->rhs
       << "L2-norm[error]: " << m->error_norm.get().norm2() << "\n"
-      << "\n" << std::flush;
+      << "\n" << flush;
   return os;
 }
 

@@ -136,6 +136,12 @@ rpc_bw_lat: ${RPC_BW_LAT_OBJS}
 wave: ${WAVE_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
+%.h.pch: %.h
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} -x c-header -o $@ $*.h
+
+%.hh.pch: %.hh
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} -x c++-header -o $@ $*.hh
+
 %.o: %.c
 	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
 	@${PROCESS_DEPENDENCIES}

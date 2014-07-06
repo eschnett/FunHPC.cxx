@@ -10,9 +10,9 @@ CPPFLAGS :=					\
 	-DHPX_LIMIT=10				\
 	-DRPC_QTHREADS				\
 	-DBLAS
-CFLAGS   := -g ${CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
-CXXFLAGS := -g ${CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
-FFLAGS   := -g ${FFLAGS}                 -march=native
+CFLAGS   := -g -Wall ${CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
+CXXFLAGS := -g -Wall ${CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
+FFLAGS   := -g -Wall ${FFLAGS}                 -march=native
 
 # # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
 # # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
@@ -25,7 +25,7 @@ CFLAGS   += -Ofast
 CXXFLAGS += -Ofast
 FFLAGS   += -Ofast
 
-LDFLAGS  := ${MPI_LDFLAGS} ${LDFLAGS}
+LDFLAGS  := ${LDFLAGS} ${MPI_LDFLAGS}
 LIBS     := ${MPI_LIBS} ${LIBS}
 
 

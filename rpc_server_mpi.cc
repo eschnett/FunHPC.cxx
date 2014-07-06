@@ -214,7 +214,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
   // Pending requests
   typedef std::shared_ptr<callable_base> call_t;
   recv_req_t<call_t> recv_req(comm);
-  std::vector<std::shared_ptr<send_req_t<call_t> > > send_reqs;
+  std::vector<std::unique_ptr<send_req_t<call_t> > > send_reqs;
 
   bool did_communicate = true;
   while (!(we_should_terminate() &&
@@ -250,7 +250,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
       std::size_t old_size = send_reqs.size();
       send_reqs.erase(
           std::remove_if(std::begin(send_reqs), std::end(send_reqs),
-                         [](const std::shared_ptr<send_req_t<call_t> > &call) {
+                         [](const std::unique_ptr<send_req_t<call_t> > &call) {
             return call->test();
           }),
           std::end(send_reqs));

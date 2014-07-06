@@ -26,6 +26,7 @@ int real_main(int argc, char **argv) {
             << "\n";
   // Prevent the above info output from cluttering the real program
   // output
+  std::cout << std::flush;
   server->barrier();
   if (rpc::server->rank() == 0) {
     std::cout << "Running...\n";
@@ -38,6 +39,7 @@ int real_main(int argc, char **argv) {
       std::cout << "Done: failure (error=" << iret << ").\n";
     }
   }
+  std::cout << std::flush;
   // Prevent shutdown messages from cluttering the real program output
   server->barrier();
   rpc::thread_finalize();

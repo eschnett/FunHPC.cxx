@@ -620,9 +620,11 @@ int rpc_main(int argc, char **argv) {
 
   while (m->n < defs::nsteps) {
 
-    if (defs::wait_every != 0 && m->n > 0 && m->n % defs::wait_every == 0) {
+    if (defs::wait_every != 0 && m->n % defs::wait_every == 0) {
       // Rate limiter
-      m->state.wait();
+      s.wait();
+      fio.wait();
+      ffo.wait();
     }
 
     s = rk2(m);

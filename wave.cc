@@ -600,8 +600,8 @@ string get_server_stats() {
 RPC_ACTION(get_server_stats);
 
 int rpc_main(int argc, char **argv) {
-  cout << "Determining CPU bindings via hwloc:\n";
-  hwloc_bindings(false);
+  // cout << "Determining CPU bindings via hwloc:\n";
+  // hwloc_bindings(false);
   // cout << "Setting CPU bindings via hwloc:\n";
   // hwloc_bindings(true);
 

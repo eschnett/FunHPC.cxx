@@ -181,7 +181,7 @@ auto map_reduce1(const F &f, const R &r, const client<C> &c, const I &b,
 template <typename F, typename R, typename C>
 auto map_reduce1(const F &f, const R &r, const client<C> &c)
     -> typename invoke_of<F, typename C::value_type>::type {
-  return map_reduce1(f, r, c, c->begin(), c->end());
+  return map_reduce1(f, r, c, c->cbegin(), c->cend());
 }
 
 template <typename F, typename R, typename Z, typename C, typename I>
@@ -195,8 +195,8 @@ auto map_reduce(const F &f, const R &r, const Z &z, const client<C> &c,
 
 template <typename F, typename R, typename Z, typename C>
 auto map_reduce(const F &f, const R &r, const Z &z, const C &c)
-    -> typename std::decay<decltype(f(*c -> begin()))>::type {
-  return map_reduce(f, r, z, c, c->begin(), c->end());
+    -> typename std::decay<decltype(f(*c -> cbegin()))>::type {
+  return map_reduce(f, r, z, c, c->cbegin(), c->cend());
 }
 
 template <typename A, typename B, typename R, typename Z, typename C,
@@ -255,7 +255,7 @@ auto reduce1(const R &r, const client<C> &c, const I &b, const I &e)
 
 template <typename R, typename C>
 auto reduce1(const R &r, const C &c) -> typename C::value_type {
-  return reduce1(r, c, c->begin(), c->end());
+  return reduce1(r, c, c->cbegin(), c->cend());
 }
 
 template <typename R, typename Z, typename C, typename I>
@@ -268,7 +268,7 @@ auto reduce(const R &r, const Z &z, const client<C> &c, const I &b, const I &e)
 
 template <typename R, typename Z, typename C>
 auto reduce(const R &r, const Z &z, const C &c) -> typename C::value_type {
-  return reduce(r, z, c, c->begin(), c->end());
+  return reduce(r, z, c, c->cbegin(), c->cend());
 }
 }
 

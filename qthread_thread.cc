@@ -26,8 +26,7 @@ aligned_t thread::run_thread(void *args_) {
   return 0;
 }
 
-future<void> thread::start_thread(const std::function<void()> &func)
-{
+future<void> thread::start_thread(const std::function<void()> &func) {
   auto args = new thread_args(func);
   auto f = args->p.get_future();
   ++threads_started;

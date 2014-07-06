@@ -34,6 +34,7 @@ using std::ios_base;
 using std::make_shared;
 using std::max;
 using std::min;
+using std::move;
 using std::numeric_limits;
 using std::ostream;
 using std::ostringstream;
@@ -120,6 +121,7 @@ private:
 public:
   norm_t() : sum(0.0), sum2(0.0), count(0.0) {}
   norm_t(double val) : sum(val), sum2(pow(val, 2)), count(1.0) {}
+  // norm_t(future<norm_t> &&x) : norm_t(move(x.get())) {}
   norm_t(const norm_t &x, const norm_t &y)
       : sum(x.sum + y.sum), sum2(x.sum2 + y.sum2), count(x.count + y.count) {}
   double avg() const { return sum / count; }
@@ -384,6 +386,11 @@ public:
     return grids[i];
   }
 
+  // // Iterator interface
+  // typedef decltype(grids)::value_type value_type;
+  // auto cbegin() const -> decltype(grids.cbegin()) { return grids.cbegin(); }
+  // auto cend() const -> decltype(grids.cend()) { return grids.cend(); }
+
   // Wait until all grids are ready
   void wait() const {
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
@@ -426,6 +433,17 @@ public:
       n = norm_t(n, fn.get());
     return n;
   }
+  // static norm_t norm(const client<domain_t> &d) {
+  //   struct reduce {
+  //     norm_t operator()(const norm_t &a, const norm_t &b) const {
+  //       return norm_t(a, b);
+  //     }
+  //   };
+  //   struct zero {
+  //     norm_t operator()() const { return norm_t(); }
+  //   };
+  //   return map_reduce(grid_t::norm_action(), reduce(), zero(), d);
+  // }
 
   // Initial condition
   struct initial : empty {};

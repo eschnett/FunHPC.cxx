@@ -27,7 +27,6 @@ aligned_t thread::run_thread(void *args_) {
 }
 
 future<void> thread::start_thread(const std::function<void()> &func)
-    // future<void> thread::start_thread(rpc::unique_function<void()>&& func)
 {
   auto args = new thread_args(func);
   auto f = args->p.get_future();

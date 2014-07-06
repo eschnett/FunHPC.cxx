@@ -27,6 +27,7 @@ enum tags {
 template <typename T> class send_req_t {
   std::string buf;
   boost::mpi::request req;
+  bool req_complete;
 
   void pack(std::string &buf, const T &obj) {
     std::stringstream ss;
@@ -49,20 +50,32 @@ public:
     pack(buf, obj);
     int tag = buf.size() <= max_small_size ? tag_small : tag_large;
     req = comm.isend(dest, tag, buf.data(), buf.size());
+    req_complete = false;
   }
-  bool test() { return bool(req.test()); }
-  void cancel() { req.cancel(); }
+  ~send_req_t() {
+    if (!req_complete)
+      req.cancel();
+  }
+  bool test() { return req_complete = bool(req.test()); }
+  void cancel() {
+    assert(!req_complete);
+    req.cancel();
+    req_complete = true;
+  }
 };
 
 template <typename T> class recv_req_t {
   boost::mpi::communicator comm;
   std::string buf;
   boost::mpi::request req;
+  bool req_complete;
 
   void post_irecv() {
+    assert(req_complete);
     buf.resize(max_small_size);
     req = comm.irecv(boost::mpi::any_source, tag_small,
                      const_cast<char *>(buf.data()), buf.size());
+    req_complete = false;
   }
   void unpack(T &obj, std::string &&buf) {
     std::stringstream ss(std::move(buf));
@@ -78,13 +91,19 @@ public:
   recv_req_t(recv_req_t &&) = delete;
   recv_req_t &operator=(const recv_req_t &) = delete;
   recv_req_t &operator=(recv_req_t &&) = delete;
-  recv_req_t(const boost::mpi::communicator &comm) : comm(comm) {
+  recv_req_t(const boost::mpi::communicator &comm)
+      : comm(comm), req_complete(true) {
     post_irecv();
+  }
+  ~recv_req_t() {
+    if (!req_complete)
+      req.cancel();
   }
   template <typename F> bool test(const F &func) {
     // Check for a small message
     auto st = req.test();
     if (st) {
+      req_complete = true;
       // int sz = *st->count<char>();
       // buf.resize(sz);
       T obj;
@@ -108,7 +127,11 @@ public:
     }
     return false;
   }
-  void cancel() { req.cancel(); }
+  void cancel() {
+    assert(!req_complete);
+    req.cancel();
+    req_complete = true;
+  }
 };
 
 server_mpi::server_mpi(int &argc, char **&argv)

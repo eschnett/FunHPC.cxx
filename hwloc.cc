@@ -139,7 +139,7 @@ void hwloc_run(bool do_set, int nthreads, atomic_flag *worker_done,
     double x = 0.1;
     for (ptrdiff_t i = 0; i < 1000 * 1000; ++i)
       x = sqrt(x);
-    volatile double r = x;
+    volatile double r __attribute__((unused)) = x;
     return;
   }
   hwloc_topology_t topology;

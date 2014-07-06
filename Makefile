@@ -31,7 +31,7 @@ LIBS     := ${MPI_LIBS} ${LIBS}
 
 
 # hpx_test
-EXES = bench boost_bw_lat cereal_bw_lat demo hpx_bw_lat hwloc_test matbench mattest mpi_bw_lat qthread_test rpc_bw_lat wave
+EXES = bench boost_bw_lat cereal_bw_lat demo hpx_bw_lat hpx_wave hwloc_test matbench mattest mpi_bw_lat qthread_test rpc_bw_lat wave
 
 QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = hpx.cc

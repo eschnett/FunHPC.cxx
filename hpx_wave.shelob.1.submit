@@ -1,0 +1,45 @@
+#! /bin/bash
+
+# qsub hpx_wave.shelob.1.submit
+
+#PBS -A hpc_numrel05
+#PBS -q checkpt
+#PBS -r n
+#PBS -l walltime=1:00:00
+#PBS -l nodes=1:ppn=16
+#PBS -V
+#PBS -N mpi-rpc
+#PBS -m abe
+#PBS -o /home/eschnett/src/mpi-rpc/hpx_wave.1.out
+#PBS -e /home/eschnett/src/mpi-rpc/hpx_wave.1.err
+
+set -e
+set -x
+set -u
+cd /home/eschnett/src/mpi-rpc
+source /home/eschnett/SIMFACTORY/all-all/env.sh
+
+echo '[BEGIN ENV]'
+env | sort
+echo '[END ENV]'
+
+echo '[BEGIN NODES]'
+cat $PBS_NODEFILE
+echo '[END NODES]'
+
+date
+echo '[BEGIN MPIRUN]'
+$MPIRUN                                         \
+    -np 1                                       \
+    --map-by ppr:1:node                         \
+    -display-map                                \
+    --mca btl self                              \
+    --bind-to none                              \
+    -report-bindings                            \
+    ./hpx_wave                                  \
+    --hpx:ini=hpx.parcel.mpi.enable=0           \
+    --hpx:numa-sensitive                        \
+    --hpx:threads=16                            \
+    >hpx_wave.1.log 2>&1
+echo '[END MPIRUN]'
+date

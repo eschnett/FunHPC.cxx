@@ -105,8 +105,8 @@ double x(ptrdiff_t i) { return xmin + (i + 0.5) * dx; }
 const double cfl = 0.5;
 const double dt = cfl * dx;
 
-const int nsteps = 2 * ncells;
-const int wait_every = 0;
+const int nsteps = 2 * 100; // 2 * ncells
+const int wait_every = 1;
 const int info_every = nsteps / 10;
 const int file_every = 0; // nsteps;
 
@@ -127,18 +127,6 @@ public:
   component() {}
   component(const shared_ptr<T> &ptr) : ptr(ptr) {}
   component(shared_ptr<T> &&ptr) : ptr(std::move(ptr)) {}
-  // void swap(component &other) { std::swap(ptr, other.ptr); }
-  // component(const component &other) : component(other.ptr) {}
-  // component(component &&other) : component() { swap(other); }
-  // component &operator=(const component &other) {
-  //   ptr = other.ptr;
-  //   return *this;
-  // }
-  // component &operator=(component &&other) {
-  //   *this = component();
-  //   swap(other);
-  //   return *this;
-  // }
   shared_ptr<T> get() const { return ptr; }
   HPX_DEFINE_COMPONENT_CONST_ACTION_TPL(component, get, get_action);
 };
@@ -234,7 +222,6 @@ public:
   double avg() const { return sum / count; }
   double norm2() const { return sqrt(sum2 / count); }
 };
-// RPC_COMPONENT(norm_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -305,7 +292,6 @@ public:
     v = (cp.rho - cm.rho) / (2 * defs::dx);
   }
 };
-// RPC_COMPONENT(cell_t);
 
 // Output
 ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
@@ -348,7 +334,6 @@ public:
   cell_t get_boundary(bool face_upper) const {
     return get(face_upper ? imax - 1 : imin);
   }
-  // HPX_DEFINE_COMPONENT_CONST_ACTION(grid_t, get_boundary);
 
   // Output
   ostream &output(ostream &os) const {
@@ -368,8 +353,6 @@ public:
       set(i, cell_t(cell_t::axpy(), a, x->get(i), y->get(i)));
     }
   }
-  // RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, client<grid_t>,
-  // client<grid_t>);
 
   // Norm
   norm_t norm() const {
@@ -379,7 +362,6 @@ public:
     }
     return n;
   }
-  // HPX_DEFINE_COMPONENT_CONST_ACTION(grid_t, norm);
 
   // Initial condition
   struct initial : empty {};
@@ -389,7 +371,6 @@ public:
       set(i, cell_t(cell_t::initial(), t, defs::x(i)));
     }
   }
-  // RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
 
   // Error
   struct error : empty {};
@@ -398,7 +379,6 @@ public:
       set(i, cell_t(cell_t::error(), s->get(i), t, defs::x(i)));
     }
   }
-  // RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>);
 
   // RHS
   struct rhs : empty {};
@@ -431,21 +411,11 @@ public:
       set(i, cell_t(cell_t::rhs(), c, cm, cp));
     }
   }
-  // RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>,
-  //                         shared_future<cell_t>,
-  //                         shared_future<cell_t>);
 };
-// RPC_COMPONENT(grid_t);
-// RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
-// RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::axpy, double, client<grid_t>,
-//                           client<grid_t>);
-// RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
-//                           ptrdiff_t);
-// RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>);
-// RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
-//                           shared_future<cell_t>,
-//                           shared_future<cell_t>);
-// HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(component<grid_t>, grid_component);
+typedef component<grid_t> grid_t_component;
+HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
+    hpx::components::managed_component<component<grid_t> >, grid_t_component);
+
 HPX_REGISTER_ACTION_DECLARATION(component<grid_t>::get_action,
                                 grid_t_component_get_action);
 HPX_REGISTER_ACTION(component<grid_t>::get_action, grid_t_component_get_action);
@@ -605,6 +575,10 @@ public:
     }
   }
 };
+typedef component<domain_t> domain_t_component;
+HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
+    hpx::components::managed_component<component<domain_t> >,
+    domain_t_component);
 
 // Output
 ostream &operator<<(ostream &os, const client<domain_t> &d) {
@@ -690,7 +664,7 @@ shared_future<ostream *> file_output(shared_future<ostream *> fos,
 
 // Driver
 
-int rpc_main(int argc, char **argv) {
+int hpx_main(int argc, char **argv) {
   ostringstream filename;
   auto locs = find_all_localities();
   auto nlocs = locs.size();

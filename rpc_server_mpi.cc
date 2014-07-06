@@ -260,9 +260,7 @@ void server_mpi::call(int dest, const std::shared_ptr<callable_base> &func) {
 #endif
   // Threads may still be active when we need to terminate; let
   // them enqueue requests (why not?)
-  if (we_should_stop_sending() &&
-      typeid(*func) != typeid(rpc::terminate_stage_3_action::evaluate) &&
-      typeid(*func) != typeid(rpc::terminate_stage_4_action::evaluate)) {
+  if (we_should_ignore_call(func)) {
     // // TODO: block thread instead of sleeping
     // this_thread::sleep_for(std::chrono::seconds(1000000));
     // RPC_ASSERT(0);

@@ -124,7 +124,7 @@ auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
           !std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
           future<typename rpc::invoke_of<F, As...>::type> >::type {
-  bool is_deferred = (policy & launch::deferred) == launch::deferred;
+  bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
   auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
   auto argsptr =
@@ -157,7 +157,7 @@ auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
           std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
           future<typename rpc::invoke_of<F, As...>::type> >::type {
-  bool is_deferred = (policy & launch::deferred) == launch::deferred;
+  bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
   auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
   auto argsptr =

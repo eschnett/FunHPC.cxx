@@ -251,7 +251,7 @@ auto async(remote policy, int dest, const F &, As &&... args)
              remote(0));
   RPC_ASSERT((policy & ~(remote::async | remote::deferred | remote::sync)) ==
              remote(0));
-  bool is_deferred = (policy & remote::deferred) == remote::deferred;
+  bool is_deferred = policy == remote::deferred;
   bool is_sync = (policy & remote::sync) == remote::sync;
   typedef typename invoke_of<F, As...>::type R;
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -296,7 +296,7 @@ auto async(remote policy, const shared_future<int> &dest, const F &,
              remote(0));
   RPC_ASSERT((policy & ~(remote::async | remote::deferred | remote::sync)) ==
              remote(0));
-  bool is_deferred = (policy & remote::deferred) == remote::deferred;
+  bool is_deferred = policy == remote::deferred;
   bool is_sync = (policy & remote::sync) == remote::sync;
   if (is_sync || future_is_ready(dest)) {
     return async(policy, dest.get(), F(), std::forward<As>(args)...);

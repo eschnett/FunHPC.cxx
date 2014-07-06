@@ -73,7 +73,7 @@ struct action_evaluate : public callable_base {
       : p(p), args(args...) {}
   virtual void execute() {
     R res = tuple_apply(F(), std::move(args));
-    if (p)
+    if (!p)
       return;
     server->call(p.get_proc(),
                  std::make_shared<typename F::finish>(p, std::move(res)));

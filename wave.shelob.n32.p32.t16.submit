@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# qsub wave.shelob.32.submit
+# qsub wave.shelob.n32.p32.t16.submit
 
 #PBS -A hpc_numrel05
 #PBS -q checkpt
@@ -10,8 +10,8 @@
 #PBS -V
 #PBS -N mpi-rpc
 #PBS -m abe
-#PBS -o /home/eschnett/src/mpi-rpc/wave.32.out
-#PBS -e /home/eschnett/src/mpi-rpc/wave.32.err
+#PBS -o /home/eschnett/src/mpi-rpc/wave.n32.p32.t16.out
+#PBS -e /home/eschnett/src/mpi-rpc/wave.n32.p32.t16.err
 
 set -e
 set -x
@@ -42,6 +42,6 @@ $MPIRUN                                                 \
     --hpx:ini=hpx.parcel.mpi.enable=0                   \
     --hpx:numa-sensitive                                \
     --hpx:threads=16                                    \
-    >wave.32.log 2>&1
+    >wave.n32.p32.t16.log 2>&1
 echo '[END MPIRUN]'
 date

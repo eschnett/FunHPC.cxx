@@ -123,13 +123,7 @@ shared_ptr<defs_t> defs;
 void set_defs(shared_ptr<defs_t> defs) { ::defs = defs; }
 RPC_ACTION(set_defs);
 void set_all_defs(const shared_ptr<defs_t> &defs) {
-  vector<future<void> > fs;
-  for (int p = 0; p < rpc::server->size(); ++p) {
-    fs.push_back(async(remote::async, p, set_defs_action(), defs));
-  }
-  for (auto &f : fs) {
-    f.wait();
-  }
+  async_broadcast(set_defs_action(), defs).get();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

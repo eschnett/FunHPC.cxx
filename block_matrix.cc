@@ -222,13 +222,13 @@ RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
 
 block_matrix_t::block_matrix_t(const structure_t::const_ptr &istr,
                                const structure_t::const_ptr &jstr)
-    : strs({ istr, jstr }), has_block_(linear_blocks(), false),
+    : strs({ { istr, jstr } }), has_block_(linear_blocks(), false),
       blocks_(linear_blocks()) {}
 
 block_matrix_t::block_matrix_t(const structure_t::const_ptr &istr,
                                const structure_t::const_ptr &jstr,
                                const std::initializer_list<block_t> &blks)
-    : strs({ istr, jstr }), has_block_(linear_blocks(), false),
+    : strs({ { istr, jstr } }), has_block_(linear_blocks(), false),
       blocks_(linear_blocks()) {
   for (const auto &blk : blks) {
     auto ib = strs[0]->find_block(blk.i);

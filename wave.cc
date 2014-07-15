@@ -1,6 +1,8 @@
 #include "hwloc.hh"
+#include "cxx_monad.hh"
 #include "rpc.hh"
 
+#include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 
 #include <algorithm>
@@ -15,7 +17,9 @@
 #include <vector>
 
 using rpc::async;
+using rpc::broadcast;
 using rpc::client;
+using rpc::find_all_processes;
 using rpc::future;
 using rpc::launch;
 using rpc::make_client;
@@ -25,6 +29,7 @@ using rpc::remote;
 using rpc::server;
 using rpc::shared_future;
 using rpc::sync;
+using rpc::thread;
 
 using std::cerr;
 using std::cout;
@@ -85,26 +90,46 @@ using empty = tuple<>;
 
 // Global definitions, a poor man's parameter file
 
-namespace defs {
-const ptrdiff_t rho = 100; // resolution scale
+struct defs_t {
+  const ptrdiff_t rho = 10; // resolution scale
+  const ptrdiff_t ncells_per_grid = 10;
 
-const double tmin = 0.0;
-const double xmin = 0.0;
-const double xmax = 1.0;
+  const double xmin = 0.0;
+  const double xmax = 1.0;
+  const double cfl = 0.5;
+  const double tmin = 0.0;
+  const ptrdiff_t nsteps = 10; // 2 * ncells;
 
-const ptrdiff_t ncells = 10 * rho;
-const double dx = (xmax - xmin) / ncells;
-double x(ptrdiff_t i) { return xmin + (i + 0.5) * dx; }
+  ptrdiff_t ncells;
+  double dx;
+  double dt;
+  double x(ptrdiff_t i) const { return xmin + (i + 0.5) * dx; }
 
-const double cfl = 0.5;
-const double dt = cfl * dx;
+  const ptrdiff_t wait_every = 0;
+  const ptrdiff_t info_every = nsteps / 10;
+  const ptrdiff_t file_every = 0; // nsteps;
+  defs_t(int nprocs, int nthreads)
+      : ncells(rho * ncells_per_grid * nprocs * nthreads),
+        dx((xmax - xmin) / ncells), dt(cfl * dx) {}
 
-const int nsteps = 2 * 100; // ncells;
-const int wait_every = 0;
-const int info_every = nsteps / 10;
-const int file_every = 0; // nsteps;
+private:
+  friend class cereal::access;
+  template <class Archive> void serialize(Archive &ar) { ar(ncells, dx, dt); }
 
-const ptrdiff_t ncells_per_grid = 10;
+public:
+  defs_t() {} // only for serialize
+};
+shared_ptr<defs_t> defs;
+void set_defs(shared_ptr<defs_t> defs) { ::defs = defs; }
+RPC_ACTION(set_defs);
+void set_all_defs(const shared_ptr<defs_t> &defs) {
+  vector<future<void> > fs;
+  for (int p = 0; p < rpc::server->size(); ++p) {
+    fs.push_back(async(remote::async, p, set_defs_action(), defs));
+  }
+  for (auto &f : fs) {
+    f.wait();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +153,9 @@ public:
   double norm2() const { return sqrt(sum2 / count); }
 };
 RPC_COMPONENT(norm_t);
+inline norm_t operator+(const norm_t &x, const norm_t &y) {
+  return norm_t(x, y);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,9 +191,7 @@ public:
   }
 
   // Norm
-  norm_t norm() const {
-    return norm_t(norm_t(norm_t(u), norm_t(rho)), norm_t(v));
-  }
+  norm_t norm() const { return norm_t(u) + norm_t(rho) + norm_t(v); }
 
   // Analytic solution
   struct analytic : empty {};
@@ -192,8 +218,8 @@ public:
   struct rhs : empty {};
   cell_t(rhs, const cell_t &c, const cell_t &cm, const cell_t &cp) {
     u = c.rho;
-    rho = (cp.v - cm.v) / (2 * defs::dx);
-    v = (cp.rho - cm.rho) / (2 * defs::dx);
+    rho = (cp.v - cm.v) / (2 * defs->dx);
+    v = (cp.rho - cm.rho) / (2 * defs->dx);
   }
 };
 RPC_COMPONENT(cell_t);
@@ -250,7 +276,7 @@ public:
     RPC_ASSERT(server->rank() == 0);
     os << "grid: t=" << t << "\n";
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      os << "   i=" << i << " x=" << defs::x(i) << " " << get(i) << "\n";
+      os << "   i=" << i << " x=" << defs->x(i) << " " << get(i) << "\n";
     }
     return os;
   }
@@ -275,7 +301,7 @@ public:
   norm_t norm() const {
     norm_t n;
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      n = norm_t(n, get(i).norm());
+      n = n + get(i).norm();
     }
     return n;
   }
@@ -286,7 +312,7 @@ public:
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
       : grid_t(t, imin, imax) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::initial(), t, defs::x(i)));
+      set(i, cell_t(cell_t::initial(), t, defs->x(i)));
     }
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
@@ -295,7 +321,7 @@ public:
   struct error : empty {};
   grid_t(error, client<grid_t> g) : grid_t(g) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::error(), g->get(i), t, defs::x(i)));
+      set(i, cell_t(cell_t::error(), g->get(i), t, defs->x(i)));
     }
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>);
@@ -316,17 +342,17 @@ public:
       } else if (im >= 0) { // other grid (ghost)
         cm = bm.get();
       } else { // boundary
-        cm = cell_t(cell_t::boundary(), g->t, defs::x(im));
+        cm = cell_t(cell_t::boundary(), g->t, defs->x(im));
       }
       // choose right neighbour
       ptrdiff_t ip = i + 1;
       cell_t cp;
       if (ip < imax) { // same grid (interior)
         cp = g->get(ip);
-      } else if (ip < defs::ncells) { // other grid (ghost)
+      } else if (ip < defs->ncells) { // other grid (ghost)
         cp = bp.get();
       } else { // boundary
-        cp = cell_t(cell_t::boundary(), g->t, defs::x(ip));
+        cp = cell_t(cell_t::boundary(), g->t, defs->x(ip));
       }
       set(i, cell_t(cell_t::rhs(), c, cm, cp));
     }
@@ -360,11 +386,11 @@ struct domain_t {
   double t;
 
   static ptrdiff_t ngrids() {
-    return div_ceil(defs::ncells, defs::ncells_per_grid);
+    return div_ceil(defs->ncells, defs->ncells_per_grid);
   }
   static ptrdiff_t cell2grid(ptrdiff_t icell) {
-    assert(icell >= 0 && icell < defs::ncells);
-    return div_floor(icell, defs::ncells_per_grid);
+    assert(icell >= 0 && icell < defs->ncells);
+    return div_floor(icell, defs->ncells_per_grid);
   }
   vector<client<grid_t> > grids;
 
@@ -430,7 +456,7 @@ public:
     }
     norm_t n;
     for (auto &fn : fns)
-      n = norm_t(n, fn.get());
+      n = n + fn.get();
     return n;
   }
   // static norm_t norm(const client<domain_t> &d) {
@@ -451,8 +477,8 @@ public:
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       // Choose a domain decomposition
       int proc = mod_floor(rpc::server->rank() + int(i), rpc::server->size());
-      ptrdiff_t imin = i * defs::ncells_per_grid;
-      ptrdiff_t imax = min((i + 1) * defs::ncells_per_grid, defs::ncells);
+      ptrdiff_t imin = i * defs->ncells_per_grid;
+      ptrdiff_t imax = min((i + 1) * defs->ncells_per_grid, defs->ncells);
       set(i,
           make_remote_client<grid_t>(proc, grid_t::initial(), t, imin, imax));
     }
@@ -527,10 +553,10 @@ client<domain_t> rk2(const shared_ptr<memoized_t> &m) {
   const client<domain_t> &s0 = m->state;
   const client<domain_t> &r0 = m->rhs;
   // Step 1
-  auto s1 = make_client<domain_t>(domain_t::axpy(), 0.5 * defs::dt, r0, s0);
+  auto s1 = make_client<domain_t>(domain_t::axpy(), 0.5 * defs->dt, r0, s0);
   auto r1 = make_client<domain_t>(domain_t::rhs(), s1);
   // Step 2
-  return make_client<domain_t>(domain_t::axpy(), defs::dt, r1, s0);
+  return make_client<domain_t>(domain_t::axpy(), defs->dt, r1, s0);
 }
 
 // Output
@@ -547,8 +573,8 @@ ostream *do_info_output(const shared_future<ostream *> &fos,
 
 shared_future<ostream *> info_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs::info_every != 0 &&
-      (m->n == defs::nsteps || m->n % defs::info_every == 0)) {
+  if (defs->info_every != 0 &&
+      (m->n == defs->nsteps || m->n % defs->info_every == 0)) {
     fos = async(do_info_output, fos, m);
   }
   return fos;
@@ -566,8 +592,8 @@ ostream *do_file_output(const shared_future<ostream *> fos,
 
 shared_future<ostream *> file_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs::file_every != 0 &&
-      (m->n == defs::nsteps || m->n % defs::file_every == 0)) {
+  if (defs->file_every != 0 &&
+      (m->n == defs->nsteps || m->n % defs->file_every == 0)) {
     fos = async(do_file_output, fos, m);
   }
   return fos;
@@ -605,6 +631,9 @@ int rpc_main(int argc, char **argv) {
   // cout << "Setting CPU bindings via hwloc:\n";
   // hwloc_bindings(true);
 
+  set_all_defs(
+      make_shared<defs_t>(server->size(), thread::hardware_concurrency()));
+
   shared_future<ostream *> fio = make_ready_future<ostream *>(&cout);
   ostringstream filename;
   filename << "wave." << rpc::server->size() << ".txt";
@@ -613,14 +642,14 @@ int rpc_main(int argc, char **argv) {
 
   auto t0 = std::chrono::high_resolution_clock::now();
 
-  auto s = make_client<domain_t>(domain_t::initial(), defs::tmin);
+  auto s = make_client<domain_t>(domain_t::initial(), defs->tmin);
   auto m = make_shared<memoized_t>(0, s);
   fio = info_output(fio, m);
   ffo = file_output(ffo, m);
 
-  while (m->n < defs::nsteps) {
+  while (m->n < defs->nsteps) {
 
-    if (defs::wait_every != 0 && m->n % defs::wait_every == 0) {
+    if (defs->wait_every != 0 && m->n % defs->wait_every == 0) {
       // Rate limiter
       s.wait();
       fio.wait();

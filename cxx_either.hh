@@ -3,6 +3,7 @@
 
 #include "cxx_invoke.hh"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <type_traits>

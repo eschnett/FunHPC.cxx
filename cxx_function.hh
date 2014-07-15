@@ -29,7 +29,7 @@ struct unique_function_impl<F, R(Args...)> : public unique_function_impl_base<
   unique_function_impl(F &&f) : f(std::move(f)) {}
   virtual ~unique_function_impl() {}
   virtual R operator()(Args &&... args) {
-    return rpc::invoke(std::move(f), std::forward<Args>(args)...);
+    return cxx::invoke(std::move(f), std::forward<Args>(args)...);
   }
 };
 }
@@ -58,7 +58,7 @@ public:
 
   operator bool() const { return impl; }
   R operator()(Args &&... args) {
-    return rpc::invoke(std::move(impl), std::forward<Args>(args)...);
+    return cxx::invoke(std::move(impl), std::forward<Args>(args)...);
   }
   std::function<R(Args...)> share() {
     std::function<R(Args...)> f;

@@ -21,8 +21,9 @@ template <typename C, typename F, typename... As>
 auto broadcast(const C &dests, const F &func, const As &... args)
     -> typename std::enable_if<
           is_action<F>::value,
-          std::vector<future<typename invoke_of<F, As...>::type> > >::type {
-  std::vector<future<typename invoke_of<F, As...>::type> > fs;
+          std::vector<
+              future<typename cxx::invoke_of<F, As...>::type> > >::type {
+  std::vector<future<typename cxx::invoke_of<F, As...>::type> > fs;
   // TODO: use tree
   for (const int dest : dests) {
     fs.push_back(async(remote::async, dest, func, args...));
@@ -134,9 +135,11 @@ struct map_reduce_impl {
   }
 
   // Assert the type relationships above
-  static_assert(std::is_same<typename invoke_of<F, A>::type, B>::value, "");
-  static_assert(std::is_same<typename invoke_of<R, B, B>::type, B>::value, "");
-  static_assert(std::is_same<typename invoke_of<Z>::type, B>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<F, A>::type, B>::value,
+                "");
+  static_assert(std::is_same<typename cxx::invoke_of<R, B, B>::type, B>::value,
+                "");
+  static_assert(std::is_same<typename cxx::invoke_of<Z>::type, B>::value, "");
   static_assert(std::is_same<typename C::value_type, A>::value, "");
   static_assert(
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");
@@ -168,9 +171,9 @@ struct map_reduce_impl {
 template <typename F, typename R, typename C, typename I>
 auto map_reduce1(const F &f, const R &r, const client<C> &c, const I &b,
                  const I &e)
-    -> typename invoke_of<F, typename C::value_type>::type {
+    -> typename cxx::invoke_of<F, typename C::value_type>::type {
   typedef typename C::value_type A;
-  typedef typename invoke_of<F, A>::type B;
+  typedef typename cxx::invoke_of<F, A>::type B;
   auto z = []()->B {
     std::terminate();
   };
@@ -180,7 +183,7 @@ auto map_reduce1(const F &f, const R &r, const client<C> &c, const I &b,
 
 template <typename F, typename R, typename C>
 auto map_reduce1(const F &f, const R &r, const client<C> &c)
-    -> typename invoke_of<F, typename C::value_type>::type {
+    -> typename cxx::invoke_of<F, typename C::value_type>::type {
   return map_reduce1(f, r, c, c->cbegin(), c->cend());
 }
 
@@ -189,7 +192,7 @@ auto map_reduce(const F &f, const R &r, const Z &z, const client<C> &c,
                 const I &b, const I &e)
     -> typename std::decay<decltype(f(*b))>::type {
   typedef typename C::value_type A;
-  typedef typename invoke_of<F, A>::type B;
+  typedef typename cxx::invoke_of<F, A>::type B;
   return map_reduce_impl<A, B, F, R, Z, C, I>(f, r, z, c).map_reduce(b, e);
 }
 
@@ -211,8 +214,9 @@ struct reduce_impl {
 
   // Assert the type relationships above
   static_assert(std::is_same<A, B>::value, "");
-  static_assert(std::is_same<typename invoke_of<R, B, B>::type, B>::value, "");
-  static_assert(std::is_same<typename invoke_of<Z>::type, B>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<R, B, B>::type, B>::value,
+                "");
+  static_assert(std::is_same<typename cxx::invoke_of<Z>::type, B>::value, "");
   static_assert(std::is_same<typename C::value_type, A>::value, "");
   static_assert(
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");

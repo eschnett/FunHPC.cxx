@@ -54,12 +54,12 @@ template <typename T> inline bool future_is_ready(const shared_future<T> &f) {
 
 template <typename T, typename F>
 inline auto future_then(future<T> &&f, F &&func)
-    -> future<typename rpc::invoke_of<F, future<T> &&>::type> {
+    -> future<typename cxx::invoke_of<F, future<T> &&>::type> {
   return std::move(f).then(func);
 }
 template <typename T, typename F>
 inline auto future_then(const shared_future<T> &f, F &&func)
-    -> future<typename rpc::invoke_of<F, const shared_future<T> &>::type> {
+    -> future<typename cxx::invoke_of<F, const shared_future<T> &>::type> {
   return shared_future<T>(f).then(func);
 }
 

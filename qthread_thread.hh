@@ -67,7 +67,7 @@ public:
         std::make_shared<std::tuple<typename std::decay<As>::type...> >(
             std::forward<As>(args)...);
     std::function<void()> funcbnd = [funcptr, argsptr]() {
-      rpc::tuple_apply(*funcptr, *argsptr);
+      cxx::tuple_apply(*funcptr, *argsptr);
     };
     handle = start_thread(funcbnd);
   }
@@ -122,29 +122,29 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
-          !std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
-          future<typename rpc::invoke_of<F, As...>::type> >::type {
+          !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
+          future<typename cxx::invoke_of<F, As...>::type> >::type {
   bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
   auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
   auto argsptr =
       std::make_shared<std::tuple<typename std::decay<As>::type...> >(
           std::forward<As>(args)...);
-  typedef typename rpc::invoke_of<F, As...>::type R;
+  typedef typename cxx::invoke_of<F, As...>::type R;
   if (is_deferred) {
     auto funcbnd = [ funcptr, argsptr ]()->R {
-      return rpc::tuple_apply(*funcptr, *argsptr);
+      return cxx::tuple_apply(*funcptr, *argsptr);
     };
     auto d = deferred<R>(funcbnd);
     auto f = d.get_future();
     return f;
   } else if (is_sync) {
-    return make_ready_future(rpc::tuple_apply(*funcptr, *argsptr));
+    return make_ready_future(cxx::tuple_apply(*funcptr, *argsptr));
   } else {
     auto p = new promise<R>();
     auto f = p->get_future();
     auto funcbnd = [funcptr, argsptr, p]() {
-      p->set_value(rpc::tuple_apply(*funcptr, *argsptr));
+      p->set_value(cxx::tuple_apply(*funcptr, *argsptr));
       delete p;
     };
     thread(funcbnd).detach();
@@ -155,8 +155,8 @@ auto async(launch policy, const F &func, As &&... args)
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
-          std::is_void<typename rpc::invoke_of<F, As...>::type>::value,
-          future<typename rpc::invoke_of<F, As...>::type> >::type {
+          std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
+          future<typename cxx::invoke_of<F, As...>::type> >::type {
   bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
   auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
@@ -165,19 +165,19 @@ auto async(launch policy, const F &func, As &&... args)
           std::forward<As>(args)...);
   if (is_deferred) {
     auto funcbnd = [funcptr, argsptr]() {
-      rpc::tuple_apply(*funcptr, *argsptr);
+      cxx::tuple_apply(*funcptr, *argsptr);
     };
     auto d = deferred<void>(funcbnd);
     auto f = d.get_future();
     return f;
   } else if (is_sync) {
-    rpc::tuple_apply(*funcptr, *argsptr);
+    cxx::tuple_apply(*funcptr, *argsptr);
     return make_ready_future();
   } else {
     auto p = std::make_shared<promise<void> >();
     auto f = p->get_future();
     auto funcbnd = [funcptr, argsptr, p]() {
-      rpc::tuple_apply(*funcptr, *argsptr);
+      cxx::tuple_apply(*funcptr, *argsptr);
       p->set_value();
     };
     thread(funcbnd).detach();
@@ -188,9 +188,9 @@ auto async(launch policy, const F &func, As &&... args)
 template <typename F, typename... As>
 auto async(const F &func, As &&... args) ->
     // typename std::enable_if<!std::is_same<F, launch>::value,
-    //                         future<typename rpc::invoke_of<F, As...>::type>
+    //                         future<typename cxx::invoke_of<F, As...>::type>
     //                         >::type
-    future<typename rpc::invoke_of<F, As...>::type> {
+    future<typename cxx::invoke_of<F, As...>::type> {
   return async(launch::async | launch::deferred, func,
                std::forward<As>(args)...);
 }

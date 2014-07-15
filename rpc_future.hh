@@ -3,6 +3,8 @@
 
 #include "rpc_thread.hh"
 
+#include "cxx_invoke.hh"
+
 #define RPC_FUTURE_HH_DONE
 #else
 #ifndef RPC_FUTURE_HH_DONE

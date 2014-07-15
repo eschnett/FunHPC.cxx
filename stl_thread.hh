@@ -47,21 +47,21 @@ template <typename T> inline bool future_is_ready(const shared_future<T> &f) {
 
 template <typename T, typename F>
 inline auto future_then(future<T> &&f, F &&func)
-    -> future<typename rpc::invoke_of<F, future<T> &&>::type> {
+    -> future<typename cxx::invoke_of<F, future<T> &&>::type> {
   auto f0 = new future<T>(std::move(f));
   return async([=]() {
     std::unique_ptr<future<T> > f(f0);
     f->wait();
-    return rpc::invoke(func, std::move(*f));
+    return cxx::invoke(func, std::move(*f));
   });
 }
 
 template <typename T, typename F>
 inline auto future_then(const shared_future<T> &f, F &&func)
-    -> future<typename rpc::invoke_of<F, const shared_future<T> &>::type> {
+    -> future<typename cxx::invoke_of<F, const shared_future<T> &>::type> {
   return async([=]() {
     f.wait();
-    return rpc::invoke(func, f);
+    return cxx::invoke(func, f);
   });
 }
 

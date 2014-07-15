@@ -8,7 +8,7 @@
 #include <tuple>
 #include <type_traits>
 
-namespace rpc {
+namespace cxx {
 
 // template<size_t N>
 // struct tuple_bind_impl {
@@ -31,13 +31,13 @@ template <size_t... S> struct make_seq<0, S...> {
 
 template <typename F, typename... As, size_t... S>
 auto tuple_apply_impl(const F &f, const std::tuple<As...> &t, detail::seq<S...>)
-    -> typename rpc::invoke_of<F, As...>::type {
-  return rpc::invoke(f, std::get<S>(t)...);
+    -> typename cxx::invoke_of<F, As...>::type {
+  return cxx::invoke(f, std::get<S>(t)...);
 }
 
 template <typename F, typename... As>
 auto tuple_apply(const F &f, const std::tuple<As...> &t)
-    -> typename rpc::invoke_of<F, As...>::type {
+    -> typename cxx::invoke_of<F, As...>::type {
   typename detail::make_seq<sizeof...(As)>::type s;
   return tuple_apply_impl(f, t, s);
 }
@@ -45,14 +45,14 @@ auto tuple_apply(const F &f, const std::tuple<As...> &t)
 // template<typename F, typename... As, size_t... S>
 // auto tuple_apply_unique_impl(F&& f, std::tuple<As...>&& t, detail::seq<S...>)
 // ->
-//   typename rpc::invoke_of<F, As...>::type
+//   typename cxx::invoke_of<F, As...>::type
 // {
-//   return rpc::invoke(std::forward<F>(f), std::move(std::get<S>(t))...);
+//   return cxx::invoke(std::forward<F>(f), std::move(std::get<S>(t))...);
 // }
 
 // template<typename F, typename... As>
 // auto tuple_apply_unique(F&& f, std::tuple<As...>&& t) ->
-//   typename rpc::invoke_of<F, As...>::type
+//   typename cxx::invoke_of<F, As...>::type
 // {
 //   typename detail::make_seq<sizeof...(As)>::type s;
 //   return tuple_apply_unique_impl(std::forward<F>(f), std::move(t), s);
@@ -86,10 +86,10 @@ auto tuple_apply(const F &f, const std::tuple<As...> &t)
 // (typename std::decay<F>::type&& f,
 //  std::tuple<typename std::decay<As>::type...>&& t,
 //  detail::seq<S...>) ->
-//   typename rpc::invoke_of<F, As...>::type
+//   typename cxx::invoke_of<F, As...>::type
 // {
-//   // return rpc::invoke(std::move(f), std::get<S>(t)...);
-//   // return rpc::invoke(f, std::get<S>(t)...);
+//   // return cxx::invoke(std::move(f), std::get<S>(t)...);
+//   // return cxx::invoke(f, std::get<S>(t)...);
 //   // return std::move(f)(std::get<S>(std::move(t))...);
 //   return f(static_cast<typename anti_decay<As>::type>(std::get<S>(t))...);
 //   // return f(std::get<S>(t)...);
@@ -98,7 +98,7 @@ auto tuple_apply(const F &f, const std::tuple<As...> &t)
 // template<typename F, typename... As>
 // auto tuple_apply_unique1(typename std::decay<F>::type&& f,
 //                          std::tuple<typename std::decay<As>::type...>&& t) ->
-//   typename rpc::invoke_of<F, As...>::type
+//   typename cxx::invoke_of<F, As...>::type
 // {
 //   typename detail::make_seq<sizeof...(As)>::type s;
 //   return tuple_apply_unique1_impl<F, As...>(std::move(f), std::move(t), s);
@@ -106,13 +106,13 @@ auto tuple_apply(const F &f, const std::tuple<As...> &t)
 
 template <template <typename> class F, typename... As, size_t... S>
 auto tuple_map_impl(const std::tuple<As...> &t, detail::seq<S...>)
-    -> std::tuple<rpc::invoke_of<F<As>(As)>...> {
+    -> std::tuple<cxx::invoke_of<F<As>(As)>...> {
   return make_tuple(F<As>()(std::get<S>(t))...);
 }
 
 template <template <typename> class F, typename... As>
 auto tuple_map(const std::tuple<As...> &t)
-    -> std::tuple<rpc::invoke_of<F<As>(As)>...> {
+    -> std::tuple<cxx::invoke_of<F<As>(As)>...> {
   return tuple_map_impl<F>(t, detail::make_seq<sizeof...(As)>::type());
 }
 
@@ -149,14 +149,14 @@ namespace std {
 
 template <typename... As>
 std::istream &operator>>(std::istream &is, std::tuple<As...> &t) {
-  rpc::input_tuple_impl<sizeof...(As)>::input(is, t);
+  cxx::input_tuple_impl<sizeof...(As)>::input(is, t);
   return is;
 }
 
 template <typename... As>
 std::ostream &operator<<(std::ostream &os, const std::tuple<As...> &t) {
   os << "(";
-  rpc::output_tuple_impl<sizeof...(As)>::output(os, t);
+  cxx::output_tuple_impl<sizeof...(As)>::output(os, t);
   os << ")";
   return os;
 }

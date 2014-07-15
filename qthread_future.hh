@@ -163,18 +163,18 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      const -> future<typename rpc::invoke_of<F, const shared_future &>::type> {
+      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     // TODO: move func instead of copying it
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, *this));
+      return make_ready_future(cxx::invoke(func, *this));
     } else {
       // TODO: optimize this
       // TODO: create a packaged_task, return its future; store a
       // function that runs the packaged_task
       return async([=](const shared_future &f) {
                      f.wait();
-                     return rpc::invoke(func, f);
+                     return cxx::invoke(func, f);
                    },
                    *this);
     }
@@ -223,15 +223,15 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      const -> future<typename rpc::invoke_of<F, const shared_future &>::type> {
+      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, *this));
+      return make_ready_future(cxx::invoke(func, *this));
     } else {
       // TODO: optimize this
       return async([=](const shared_future &f) {
                      f.wait();
-                     return rpc::invoke(func, f);
+                     return cxx::invoke(func, f);
                    },
                    *this);
     }
@@ -271,15 +271,15 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      const -> future<typename rpc::invoke_of<F, const shared_future &>::type> {
+      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, *this));
+      return make_ready_future(cxx::invoke(func, *this));
     } else {
       // TODO: optimize this
       return async([=](const shared_future &f) {
                      f.wait();
-                     return rpc::invoke(func, f);
+                     return cxx::invoke(func, f);
                    },
                    *this);
     }
@@ -320,17 +320,17 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      -> future<typename rpc::invoke_of<F, future &&>::type> {
+      -> future<typename cxx::invoke_of<F, future &&>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, std::move(*this)));
+      return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
       auto f0 = new future(std::move(*this));
       return async([=]() {
         std::unique_ptr<future> f(f0);
         f->wait();
-        return rpc::invoke(func, std::move(*f));
+        return cxx::invoke(func, std::move(*f));
       });
     }
   }
@@ -376,17 +376,17 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      -> future<typename rpc::invoke_of<F, future &&>::type> {
+      -> future<typename cxx::invoke_of<F, future &&>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, std::move(*this)));
+      return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
       auto f0 = new future(std::move(*this));
       return async([=]() {
         std::unique_ptr<future> f(f0);
         f->wait();
-        return rpc::invoke(func, std::move(*f));
+        return cxx::invoke(func, std::move(*f));
       });
     }
   }
@@ -423,17 +423,17 @@ public:
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(F &&func) -> future<typename rpc::invoke_of<F, future &&>::type> {
+  auto then(F &&func) -> future<typename cxx::invoke_of<F, future &&>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
-      return make_ready_future(rpc::invoke(func, std::move(*this)));
+      return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
       auto f0 = new future(std::move(*this));
       return async([=]() {
         std::unique_ptr<future> f(f0);
         f->wait();
-        return rpc::invoke(func, std::move(*f));
+        return cxx::invoke(func, std::move(*f));
       });
     }
   }
@@ -585,13 +585,13 @@ template <typename T> inline bool future_is_ready(const future<T> &f) {
 
 template <typename T, typename F>
 inline auto future_then(const shared_future<T> &f, F &&func)
-    -> future<typename rpc::invoke_of<F, const shared_future<T> &>::type> {
+    -> future<typename cxx::invoke_of<F, const shared_future<T> &>::type> {
   return f.then(func);
 }
 
 template <typename T, typename F>
 inline auto future_then(future<T> &&f, F &&func)
-    -> future<typename rpc::invoke_of<F, future<T> &&>::type> {
+    -> future<typename cxx::invoke_of<F, future<T> &&>::type> {
   return std::move(f).then(func);
 }
 }

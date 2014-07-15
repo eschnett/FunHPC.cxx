@@ -7,7 +7,7 @@
 #define __has_feature(x) 0
 #endif
 
-namespace rpc {
+namespace cxx {
 
 // internal declarations from libc++ 3.4
 

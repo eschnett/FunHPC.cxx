@@ -13,22 +13,19 @@
 #define RPC_ASSERT(x) assert(x)
 #endif
 
-namespace rpc {
+namespace cxx {
 
 // decay_copy, taken from libc++ 3.4
-
 template <typename T> inline typename std::decay<T>::type decay_copy(T &&t) {
   return std::forward<T>(t);
 }
 
 // Convert a type into a constant reference (const&)
-
 template <typename T> struct const_ref {
   typedef const typename std::decay<T>::type &type;
 };
 
 // Assert wrapper
-
 inline void rpc_assert(bool cond) {
   if (cond)
     return;
@@ -38,7 +35,6 @@ inline void rpc_assert(bool cond) {
 }
 
 // make_ptr
-
 template <typename T>
 auto make_ptr(T &&value)
     -> decltype(new typename std::decay<T>::type(std::forward<T>(value))) {
@@ -46,7 +42,6 @@ auto make_ptr(T &&value)
 }
 
 // make_unique
-
 template <typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args &&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));

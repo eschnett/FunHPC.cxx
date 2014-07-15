@@ -13,9 +13,9 @@ extern mutex io_mutex;
 
 template <typename M, typename F, typename... As>
 auto with_lock(M &m, const F &f, As &&... args)
-    -> typename invoke_of<F, As...>::type {
+    -> typename cxx::invoke_of<F, As...>::type {
   lock_guard<decltype(m)> g(m);
-  return invoke(f, std::forward<As>(args)...);
+  return cxx::invoke(f, std::forward<As>(args)...);
 }
 
 char *strdup(const char *str);

@@ -226,7 +226,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
       with_lock(send_queue_mutex, [&] { std::swap(send_queue, my_queue); });
       did_communicate |= !my_queue.empty();
       for (auto &send_item : my_queue) {
-        send_reqs.push_back(rpc::make_unique<send_req_t<call_t> >(
+        send_reqs.push_back(cxx::make_unique<send_req_t<call_t> >(
             comm, send_item.dest, std::move(send_item.call)));
       }
     }

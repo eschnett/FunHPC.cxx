@@ -1,5 +1,7 @@
 # source $HOME/SIMFACTORY/all-all/env.sh
 
+DEBUG =
+
 CC  := ${MPICC}
 CXX := ${MPICXX}
 FC  := ${MPIFC}
@@ -14,16 +16,19 @@ CFLAGS   := -g -Wall ${CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-l
 CXXFLAGS := -g -Wall ${CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
 FFLAGS   := -g -Wall ${FFLAGS}                 -march=native
 
-# # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-# # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-# # Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
-# CFLAGS   += -fstack-protector-all -ftrapv
-# CXXFLAGS += -fstack-protector-all -ftrapv
-# FFLAGS   += -fcheck=bounds,do,mem,pointer,recursion -finit-character=65 -finit-integer=42424242 -finit-real=nan -fstack-protector-all -ftrapv
-
-CFLAGS   += -Ofast
-CXXFLAGS += -Ofast
-FFLAGS   += -Ofast
+TODO: treat 0 and spaces as "unset"
+ifneq (${DEBUG},)
+  # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+  # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
+  # Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
+  CFLAGS   += -fstack-protector-all -ftrapv
+  CXXFLAGS += -fstack-protector-all -ftrapv
+  FFLAGS   += -fcheck=bounds,do,mem,pointer,recursion -finit-character=65 -finit-integer=42424242 -finit-real=nan -fstack-protector-all -ftrapv
+else
+  CFLAGS   += -Ofast
+  CXXFLAGS += -Ofast
+  FFLAGS   += -Ofast
+endif
 
 LDFLAGS  := ${LDFLAGS} ${MPI_LDFLAGS}
 LIBS     := ${MPI_LIBS} ${LIBS}

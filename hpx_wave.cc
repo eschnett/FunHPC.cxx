@@ -1,4 +1,5 @@
 #include <hpx/hpx.hpp>
+#include <hpx/hpx_main.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
@@ -17,6 +18,7 @@
 #include <vector>
 
 using hpx::async;
+using hpx::finalize;
 using hpx::find_all_localities;
 using hpx::find_here;
 using hpx::future;
@@ -49,6 +51,9 @@ using std::string;
 using std::true_type;
 using std::tuple;
 using std::vector;
+
+#warning "TODO: deferred does not yet work"
+#define deferred async
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,7 +97,7 @@ using empty = tuple<>;
 // Global definitions, a poor man's parameter file
 
 namespace defs {
-const ptrdiff_t rho = 100; // resolution scale
+const ptrdiff_t rho = 1; // 100; // resolution scale
 
 const double tmin = 0.0;
 const double xmin = 0.0;
@@ -105,7 +110,7 @@ double x(ptrdiff_t i) { return xmin + (i + 0.5) * dx; }
 const double cfl = 0.5;
 const double dt = cfl * dx;
 
-const int nsteps = 2 * 100; // 2 * ncells
+const int nsteps = 2 * 1; // 2 * 100; // 2 * ncells
 const int wait_every = 1;
 const int info_every = nsteps / 10;
 const int file_every = 0; // nsteps;
@@ -150,6 +155,7 @@ public:
   client(future<id_type> &&gid) : client_base(move(gid)) {}
   client(const shared_future<id_type> &gid) : client_base(gid) {}
   client(future<client> &&other) : client_base(move(other)) {}
+  client(const shared_future<client> &other) : client_base(other) {}
   //
   id_type get_loc() const { return get_locality_from_id(get_gid()); }
   bool is_local() const { return get_loc() == find_here(); }
@@ -664,7 +670,7 @@ shared_future<ostream *> file_output(shared_future<ostream *> fos,
 
 // Driver
 
-int hpx_main(int argc, char **argv) {
+int main(int argc, char **argv) {
   ostringstream filename;
   auto locs = find_all_localities();
   auto nlocs = locs.size();

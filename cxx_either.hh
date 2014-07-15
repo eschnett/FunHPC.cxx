@@ -131,12 +131,11 @@ public:
                R>::value)),
           gmap>::type,
       F f, G g, const As &... as) {
-    std::array<bool, sizeof...(As)> is_lefts = { { unwrap_either<As>().is_left(
+    std::array<bool, sizeof...(As)> is_lefts{ { unwrap_either<As>().is_left(
         as)... } };
     bool is_left = *std::min_element(is_lefts.begin(), is_lefts.end());
-    std::array<bool, sizeof...(As)> is_rights = {
-      { unwrap_either<As>().is_right(as)... }
-    };
+    std::array<bool, sizeof...(As)> is_rights{ { unwrap_either<As>().is_right(
+        as)... } };
     bool is_right = *std::min_element(is_rights.begin(), is_rights.end());
     // If there are no eithers, treat it as left
     if (is_left) {
@@ -239,7 +238,7 @@ typename std::enable_if<
         R>::value),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> is_rights = {
+  std::array<bool, sizeof...(As)> is_rights{
     { detail::unwrap_cxx_either<As>().is_right(as)... }
   };
   bool is_right = *std::min_element(is_rights.begin(), is_rights.end());

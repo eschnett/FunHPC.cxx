@@ -72,7 +72,7 @@ typename std::enable_if<
                    R>::value)),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<std::size_t, sizeof...(As)> sizes = {
+  std::array<std::size_t, sizeof...(As)> sizes{
     { detail::unwrap_std_vector<As>().size(as)... }
   };
   std::size_t s = *std::max_element(sizes.begin(), sizes.end());
@@ -130,7 +130,7 @@ typename std::enable_if<((detail::is_std_vector<M<T> >::value) &&
                         M<T> >::type
 plus(const M<T> &x, const M<As> &... as) {
   M<T> r(x);
-  std::array<const M<T> *, sizeof...(As)> xs = { { &as... } };
+  std::array<const M<T> *, sizeof...(As)> xs{ { &as... } };
   for (auto x : xs)
     r.insert(r.end(), x->begin(), x->end());
   return r;

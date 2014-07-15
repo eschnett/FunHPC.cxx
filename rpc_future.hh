@@ -76,7 +76,7 @@ typename std::enable_if<
          R>::value)),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> valids = {
+  std::array<bool, sizeof...(As)> valids{
     { detail::unwrap_rpc_shared_future<As>().valid(as)... }
   };
   bool valid = *std::min_element(valids.begin(), valids.end());

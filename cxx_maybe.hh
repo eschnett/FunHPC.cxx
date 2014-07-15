@@ -159,7 +159,7 @@ typename std::enable_if<
         R>::value),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> is_justs = {
+  std::array<bool, sizeof...(As)> is_justs{
     { detail::unwrap_cxx_maybe<As>().is_just(as)... }
   };
   bool is_just = *std::min_element(is_justs.begin(), is_justs.end());

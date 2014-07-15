@@ -76,7 +76,7 @@ typename std::enable_if<
                    R>::value)),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> is_nonnulls = {
+  std::array<bool, sizeof...(As)> is_nonnulls{
     { detail::unwrap_std_shared_ptr<As>().is_nonnull(as)... }
   };
   bool is_nonnull = *std::min_element(is_nonnulls.begin(), is_nonnulls.end());

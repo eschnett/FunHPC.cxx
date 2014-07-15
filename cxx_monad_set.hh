@@ -102,7 +102,7 @@ typename std::enable_if<((detail::is_std_set<M<T> >::value) &&
                         M<T> >::type
 plus(const M<T> &x, const M<As> &... as) {
   M<T> r(x);
-  std::array<const M<T> *, sizeof...(As)> xs = { { &as... } };
+  std::array<const M<T> *, sizeof...(As)> xs{ { &as... } };
   for (auto x : xs)
     r.insert(x->begin(), x->end());
   return r;

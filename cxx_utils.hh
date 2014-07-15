@@ -46,6 +46,38 @@ template <typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args &&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
+
+// Identity function (different from decay_copy, this does not always
+// copy the argument)
+template <typename T> T identity(T &&x) { return std::forward<T>(x); }
+
+// Identity type (mimicking a pointer)
+// TODO: handle references, void
+// TODO: add make_identity_type
+// TODO: make this a monad
+// TODO: should this be a container?
+// TODO: use array<T,1> instead?
+template <typename T> struct identity_type {
+  typedef T type;
+  T value;
+  operator bool() const { return true; } // never null
+  const T &operator*() const { return value; }
+  T &operator*() { return value; }
+  const T *operator->() const { return &value; }
+  T *operator->() { return &value; }
+};
+
+// Boolean operations on template argument packs
+template <bool...> struct all;
+template <> struct all<> : std::true_type {};
+template <bool... xs> struct all<true, xs...> : all<xs...> {};
+template <bool... xs> struct all<false, xs...> : std::false_type {};
+
+template <bool... xs>
+struct any : std::integral_constant<bool, !all<!xs...>::value> {};
+
+template <bool... xs>
+struct none : std::integral_constant<bool, all<!xs...>::value> {};
 }
 
 #define CXX_UTILS_HH_DONE

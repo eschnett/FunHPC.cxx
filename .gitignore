@@ -27,3 +27,5 @@ rpc_bw_lat
 boost_bw_lat
 cereal_bw_lat
 hpx_wave
+tree
+deferred

@@ -55,20 +55,6 @@ bind(const M<T> &x, const F &f) {
       x, [f](const M<T> &x) { return cxx::invoke(f, x.get()).get(); });
 }
 
-#if 0
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_rpc_shared_future<M<T> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, R>::value)),
-    M<R> >::type
-fmap(const F &f, const M<T> &x) {
-  if (!x.valid())
-    return rpc::shared_future<R>();
-  return rpc::future_then(
-      x, [f](const M<T> &x) { return cxx::invoke(f, x.get()); });
-}
-#endif
-
 namespace detail {
 template <typename T> struct unwrap_rpc_shared_future {
   typedef T type;

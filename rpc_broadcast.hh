@@ -1,6 +1,7 @@
 #ifndef RPC_BROADCAST_HH
 #define RPC_BROADCAST_HH
 
+#include "rpc_action.hh"
 #include "rpc_call.hh"
 #include "rpc_client_fwd.hh"
 
@@ -8,6 +9,7 @@
 
 #include <cassert>
 #include <iterator>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
@@ -59,6 +61,35 @@ auto broadcast_barrier(F func, const As &... args, int b = 0, int e = -1)
     fs0.wait();
     fs1.wait();
   });
+}
+
+namespace detail {
+void async_broadcast(int b, int e,
+                     const std::shared_ptr<callable_base> &evalptr);
+RPC_DECLARE_ACTION(async_broadcast);
+}
+
+template <typename F, typename... As>
+auto async_broadcast(int b, int e, const F &func, As &&... args)
+    -> typename std::enable_if<
+          ((is_action<F>::value) &&
+           (std::is_void<typename cxx::invoke_of<F, As &&...>::type>::value)),
+          future<void> >::type {
+  promise<void> *p = nullptr;
+  auto evalptr =
+      std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
+  return async(remote::async, b, detail::async_broadcast_action(), b, e,
+               evalptr);
+}
+
+template <typename F, typename... As>
+auto async_broadcast(const F &func, As &&... args)
+    -> typename std::enable_if<
+          ((is_action<F>::value) &&
+           (std::is_void<typename cxx::invoke_of<F, As &&...>::type>::value)),
+          future<void> >::type {
+  return async_broadcast(0, rpc::server->size(), func,
+                         std::forward<As>(args)...);
 }
 
 #if 0

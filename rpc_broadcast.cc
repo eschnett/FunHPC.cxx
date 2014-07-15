@@ -38,3 +38,21 @@ std::vector<int> find_all_processes() {
 }
 
 RPC_IMPLEMENT_ACTION(rpc::find_all_threads_partial);
+
+namespace rpc {
+namespace detail {
+inline void async_broadcast(int b, int e,
+                            const std::shared_ptr<callable_base> &evalptr) {
+  int sz = e - b;
+  if (sz <= 0)
+    return;
+  if (sz == 1)
+    return evalptr->execute();
+  int m = b + sz / 2;
+  auto f = async(remote::async, m, async_broadcast_action(), m, e, evalptr);
+  async_broadcast(b, m, evalptr);
+  f.wait();
+}
+}
+}
+RPC_IMPLEMENT_ACTION(rpc::detail::async_broadcast);

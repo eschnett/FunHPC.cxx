@@ -122,6 +122,11 @@ private:
 // Base type for all actions
 template <typename F> struct action_base {};
 
+// // A base types for all actions with a particular signature
+// template <typename R, typename... As> struct action {
+//   R operator()(As... as) const = 0;
+// };
+
 template <typename T, T F> struct wrap {
   typedef T type;
   static constexpr T value = F;

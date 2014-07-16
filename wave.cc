@@ -231,6 +231,21 @@ ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 
 // Each grid lives on a process
 
+// TODO: use array<...,N>, and allow multiple ghost zones
+template <template <typename> class M, typename T, typename F>
+M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
+  size_t s = c.size();
+  assert(s >= 2); // TODO: This can be avoided
+  M<T> r;
+  r.reserve(s);
+  // TODO: add push_back equivalent to monad
+  r.push_back(cxx::invoke(f, bm, c[0], c[1]));
+  for (size_t i = 1; i < s - 1; ++i)
+    r.push_back(cxx::invoke(f, c[i - 1], c[i], c[i + 1]));
+  r.push_back(cxx::invoke(f, c[s - 2], c[s - 1], bp));
+  return r;
+}
+
 struct grid_t {
   double t;
   ptrdiff_t imin, imax; // spatial indices
@@ -320,35 +335,23 @@ public:
 
   // RHS
   struct rhs : empty {};
+  grid_t(rhs, const grid_t &g, const shared_future<cell_t> &bm,
+         const shared_future<cell_t> &bp)
+      : t(1.0), // dt/dt
+        imin(g.imin), imax(g.imax),
+        cells(stencil_fmap<vector_, cell_t>(
+            [](const cell_t &cm, const cell_t &c,
+               const cell_t &cp) { return cell_t(cell_t::rhs(), cm, c, cp); },
+            g.cells,
+            imin > 0 ? bm.get() : cell_t(cell_t::boundary(), g.t, defs->x(-1)),
+            imax < defs->ncells ? bp.get() : cell_t(cell_t::boundary(), g.t,
+                                                    defs->x(defs->ncells)))) {}
+  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, const grid_t &,
+                          const shared_future<cell_t> &,
+                          const shared_future<cell_t> &);
   grid_t(rhs, client<grid_t> g, shared_future<cell_t> bm,
          shared_future<cell_t> bp)
-      : grid_t(g) {
-    t = 1.0; // dt/dt
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      const cell_t &c = g->get(i);
-      // choose left neighbour
-      ptrdiff_t im = i - 1;
-      cell_t cm;
-      if (im >= imin) { // same grid (interior)
-        cm = g->get(im);
-      } else if (im >= 0) { // other grid (ghost)
-        cm = bm.get();
-      } else { // boundary
-        cm = cell_t(cell_t::boundary(), g->t, defs->x(im));
-      }
-      // choose right neighbour
-      ptrdiff_t ip = i + 1;
-      cell_t cp;
-      if (ip < imax) { // same grid (interior)
-        cp = g->get(ip);
-      } else if (ip < defs->ncells) { // other grid (ghost)
-        cp = bp.get();
-      } else { // boundary
-        cp = cell_t(cell_t::boundary(), g->t, defs->x(ip));
-      }
-      set(i, cell_t(cell_t::rhs(), c, cm, cp));
-    }
-  }
+      : grid_t(rhs(), *g, bm, bp) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>, shared_future<cell_t>,
                           shared_future<cell_t>);
 };

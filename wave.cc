@@ -499,10 +499,6 @@ public:
   domain_t(rhs, const client<domain_t> &s) : domain_t(s) {
     t = 1.0; // dt/dt
     // boundaries
-    auto bm = make_ready_future(cell_t(cell_t::boundary(), s->t, defs->x(-1)))
-                  .share();
-    auto bp = make_ready_future(
-        cell_t(cell_t::boundary(), s->t, defs->x(defs->ncells))).share();
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       const client<grid_t> &si = s->get(i);
       // left boundary

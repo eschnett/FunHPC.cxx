@@ -19,7 +19,7 @@ smts_per_thread=$6
 echo "   nodes=$nodes sockets/node=$sockets_per_node cores/socket=$cores_per_socket proc=$procs threads/proc=$threads_per_proc smts/thread=$smts_per_thread"
 
 # Automatically calculated quantities
-echo "Automatically calculated quantities"
+echo "Automatically calculated quantities:"
 sockets=$[$sockets_per_node*$nodes]
 cores=$[$cores_per_socket*$sockets]
 echo "   nodes=$nodes sockets=$sockets cores=$cores"

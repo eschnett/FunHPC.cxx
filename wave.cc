@@ -234,6 +234,7 @@ ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 struct grid_t {
   double t;
   ptrdiff_t imin, imax; // spatial indices
+  template <typename T> using vector_ = vector<T>;
   vector<cell_t> cells;
 
 private:
@@ -277,18 +278,17 @@ public:
 
   // Linear combination
   struct axpy : empty {};
-  grid_t(axpy, double a, client<grid_t> x, client<grid_t> y) : grid_t(y) {
-    // TODO: Call make_local on incoming clients
-    // TODO: Implement futurize: convert client args to shared_ptr, then create
-    // remote client
-    t = a * x->t + y->t;
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::axpy(), a, x->get(i), y->get(i)));
-    }
-    // set_cells([&](ptrdiff_t i) {
-    //   return cell_t(cell_t::axpy(), a, x->get(i), y->get(i));
-    // });
-  }
+  grid_t(axpy, double a, const grid_t &x, const grid_t &y)
+      : t(a * x.t + y.t), imin(y.imin), imax(y.imax),
+        cells(cxx::monad::fmap<vector_, cell_t>([](double a, const cell_t &x,
+                                                   const cell_t &y) {
+                                                  return cell_t(cell_t::axpy(),
+                                                                a, x, y);
+                                                },
+                                                a, x.cells, y.cells)) {}
+  RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, const grid_t &, const grid_t &);
+  grid_t(axpy, double a, client<grid_t> x, client<grid_t> y)
+      : grid_t(axpy(), a, *x, *y) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, client<grid_t>, client<grid_t>);
 
   // Norm

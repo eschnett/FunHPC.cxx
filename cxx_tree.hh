@@ -2,6 +2,7 @@
 #define CXX_TREE_HH
 
 #include "cxx_foldable.hh"
+#include "cxx_functor.hh"
 #include "cxx_either.hh"
 #include "cxx_invoke.hh"
 #include "cxx_monad.hh"
@@ -72,7 +73,7 @@ public:
                         T>::value,
            fmap>::type,
        F f, const As &... as)
-      : values(monad::fmap<C, T>(f, unwrap_leaf<As>()(as)...)) {}
+      : values(functor::fmap<C, T>(f, unwrap_leaf<As>()(as)...)) {}
 
   // foldl
   template <typename R, typename F>
@@ -148,7 +149,7 @@ public:
                        T>::value,
           fmap>::type,
       F f, const As &... as)
-      : trees(monad::fmap<C, tree<T, C, P> >(
+      : trees(functor::fmap<C, tree<T, C, P> >(
             [f](const typename unwrap_C<typename unwrap_branch<As>::type>::
                     type &... as) {
               return tree<T, C, P>(typename tree<T, C, P>::fmap(), f, as...);
@@ -159,7 +160,7 @@ public:
   struct join : std::tuple<> {};
   branch(join, const leaf<tree<T, C, P>, C, P> &l) : branch(l.values) {}
   branch(join, const branch<tree<T, C, P>, C, P> &b)
-      : branch(monad::fmap<C, tree<T, C, P> >(
+      : branch(functor::fmap<C, tree<T, C, P> >(
             [](const tree<tree<T, C, P>, C, P> &t) {
               return tree<T, C, P>(typename tree<T, C, P>::join(), t);
             },
@@ -262,7 +263,7 @@ public:
       : node(typename node_t::gmap(),
              [f](const typename unwrap_either<typename unwrap_tree<As>::type>::
                      left_type &... as) {
-               return monad::fmap<P, leaf<T, C, P> >(
+               return functor::fmap<P, leaf<T, C, P> >(
                    [f](const typename unwrap_P<typename unwrap_either<
                        typename unwrap_tree<As>::type>::left_type>::
                            type &... as) {
@@ -273,7 +274,7 @@ public:
              },
              [f](const typename unwrap_either<typename unwrap_tree<As>::type>::
                      right_type &... as) {
-               return monad::fmap<P, branch<T, C, P> >(
+               return functor::fmap<P, branch<T, C, P> >(
                    [f](const typename unwrap_P<typename unwrap_either<
                        typename unwrap_tree<As>::type>::right_type>::
                            type &... as) {
@@ -287,13 +288,13 @@ public:
   // join
   struct join : std::tuple<> {};
   tree(join, const tree<tree<T, C, P>, C, P> &t)
-      : node(t.node.is_left() ? monad::fmap<P, branch<T, C, P> >(
+      : node(t.node.is_left() ? functor::fmap<P, branch<T, C, P> >(
                                     [](const leaf<tree<T, C, P>, C, P> &l) {
                                       return branch<T, C, P>(
                                           typename branch<T, C, P>::join(), l);
                                     },
                                     t.node.left())
-                              : monad::fmap<P, branch<T, C, P> >(
+                              : functor::fmap<P, branch<T, C, P> >(
                                     [](const branch<tree<T, C, P>, C, P> &b) {
                                       return branch<T, C, P>(
                                           typename branch<T, C, P>::join(), b);
@@ -339,38 +340,13 @@ foldl(const F &f, const R &z, const tree<T, C, P> &x) {
 }
 }
 
-namespace monad {
+namespace functor {
 
 namespace detail {
 template <typename T> struct is_cxx_tree : std::false_type {};
 template <typename T, template <typename> class C, template <typename> class P>
 struct is_cxx_tree<tree<T, C, P> > : std::true_type {};
 }
-
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_cxx_tree<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return M<T>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type
-make(As &&... as) {
-  return M<T>(T(std::forward<As>(as)...));
-}
-
-#if 0
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_cxx_tree<M<T> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, R>::value)),
-    M<R> >::type
-fmap(const F &f, const M<T> &x) {
-  return M<R>(typename M<R>::fmap(), f, x);
-}
-#endif
 
 namespace detail {
 template <typename T> struct unwrap_cxx_tree {
@@ -390,6 +366,31 @@ typename std::enable_if<
     M<R> >::type
 fmap(const F &f, const As &... as) {
   return M<R>(typename M<R>::fmap(), f, as...);
+}
+}
+
+namespace monad {
+
+using cxx::functor::fmap;
+
+namespace detail {
+template <typename T> struct is_cxx_tree : std::false_type {};
+template <typename T, template <typename> class C, template <typename> class P>
+struct is_cxx_tree<tree<T, C, P> > : std::true_type {};
+}
+
+template <template <typename> class M, typename T>
+typename std::enable_if<
+    detail::is_cxx_tree<M<typename std::decay<T>::type> >::value,
+    M<typename std::decay<T>::type> >::type
+unit(T &&x) {
+  return M<T>(std::forward<T>(x));
+}
+
+template <template <typename> class M, typename T, typename... As>
+typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type
+make(As &&... as) {
+  return M<T>(T(std::forward<As>(as)...));
 }
 
 template <template <typename> class M, typename T>

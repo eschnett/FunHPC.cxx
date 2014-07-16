@@ -92,49 +92,12 @@ foldl(const F &f, const R &z, const maybe<T> &x) {
 }
 }
 
-namespace monad {
+namespace functor {
 
 namespace detail {
 template <typename T> struct is_cxx_maybe : std::false_type {};
 template <typename T> struct is_cxx_maybe<maybe<T> > : std::true_type {};
 }
-
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_cxx_maybe<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return M<typename std::decay<T>::type>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
-make(As &&... as) {
-  return maybe<T>(T(std::forward<As>(as)...));
-}
-
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    (detail::is_cxx_maybe<M<T> >::value &&
-         std::is_same<typename ::cxx::invoke_of<F, T>::type, M<R> >::value),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  if (x.is_nothing())
-    return maybe<R>();
-  return ::cxx::invoke(f, x.just());
-}
-
-#if 0
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<(detail::is_cxx_maybe<M<T> >::value &&std::is_same<
-                            typename ::cxx::invoke_of<F, T>::type, R>::value),
-                        M<R> >::type
-fmap(const F &f, const M<T> &x) {
-  if (x.is_nothing())
-    return maybe<R>();
-  return unit<M>(::cxx::invoke(f, x.just()));
-}
-#endif
 
 namespace detail {
 template <typename T> struct unwrap_cxx_maybe {
@@ -165,7 +128,42 @@ fmap(const F &f, const As &... as) {
   bool is_just = *std::min_element(is_justs.begin(), is_justs.end());
   if (!is_just)
     return maybe<R>();
-  return unit<M>(::cxx::invoke(f, detail::unwrap_cxx_maybe<As>()(as)...));
+  return M<R>(::cxx::invoke(f, detail::unwrap_cxx_maybe<As>()(as)...));
+}
+}
+
+namespace monad {
+
+using cxx::functor::fmap;
+
+namespace detail {
+template <typename T> struct is_cxx_maybe : std::false_type {};
+template <typename T> struct is_cxx_maybe<maybe<T> > : std::true_type {};
+}
+
+template <template <typename> class M, typename T>
+typename std::enable_if<
+    detail::is_cxx_maybe<M<typename std::decay<T>::type> >::value,
+    M<typename std::decay<T>::type> >::type
+unit(T &&x) {
+  return M<typename std::decay<T>::type>(std::forward<T>(x));
+}
+
+template <template <typename> class M, typename T, typename... As>
+typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
+make(As &&... as) {
+  return maybe<T>(T(std::forward<As>(as)...));
+}
+
+template <template <typename> class M, typename R, typename T, typename F>
+typename std::enable_if<
+    (detail::is_cxx_maybe<M<T> >::value &&
+         std::is_same<typename ::cxx::invoke_of<F, T>::type, M<R> >::value),
+    M<R> >::type
+bind(const M<T> &x, const F &f) {
+  if (x.is_nothing())
+    return maybe<R>();
+  return ::cxx::invoke(f, x.just());
 }
 
 template <template <typename> class M, typename T>

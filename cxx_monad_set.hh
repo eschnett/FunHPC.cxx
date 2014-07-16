@@ -1,6 +1,8 @@
 #ifndef CXX_MONAD_SET_HH
 #define CXX_MONAD_SET_HH
 
+#include "cxx_functor_set.hh"
+
 #include "cxx_invoke.hh"
 #include "cxx_utils.hh"
 
@@ -9,6 +11,8 @@
 
 namespace cxx {
 namespace monad {
+
+using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_std_set : std::false_type {};
@@ -43,18 +47,6 @@ bind(const M<T> &x, const F &f) {
     M<R> y = cxx::invoke(f, e);
     std::move(y.begin(), y.end(), std::inserter(r, r.end()));
   }
-  return r;
-}
-
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_std_set<M<R> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, R>::value)),
-    M<R> >::type
-fmap(const F &f, const M<T> &xs) {
-  M<R> r;
-  for (const auto &x : xs)
-    r.insert(cxx::invoke(f, x));
   return r;
 }
 

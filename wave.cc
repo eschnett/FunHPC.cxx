@@ -1,5 +1,6 @@
 #include "hwloc.hh"
 #include "cxx_foldable.hh"
+#include "cxx_functor.hh"
 #include "cxx_monad.hh"
 #include "cxx_tree.hh"
 #include "rpc.hh"
@@ -297,12 +298,10 @@ public:
   struct axpy : empty {};
   grid_t(axpy, double a, const grid_t &x, const grid_t &y)
       : imin(y.imin), imax(y.imax),
-        cells(cxx::monad::fmap<vector_, cell_t>([a](const cell_t &x,
-                                                    const cell_t &y) {
-                                                  return cell_t(cell_t::axpy(),
-                                                                a, x, y);
-                                                },
-                                                x.cells, y.cells)) {}
+        cells(cxx::functor::fmap<vector_, cell_t>(
+            [a](const cell_t &x,
+                const cell_t &y) { return cell_t(cell_t::axpy(), a, x, y); },
+            x.cells, y.cells)) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, const grid_t &, const grid_t &);
   grid_t(axpy, double a, client<grid_t> x, client<grid_t> y)
       : grid_t(axpy(), a, *x, *y) {}
@@ -320,7 +319,7 @@ public:
   struct initial : empty {};
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
       : imin(imin), imax(imax),
-        cells(cxx::monad::fmap<vector_, cell_t>(
+        cells(cxx::functor::fmap<vector_, cell_t>(
             [t](int i) { return cell_t(cell_t::initial(), t, x(i)); },
             [imin, imax]() {
               vector<ptrdiff_t> is(imax - imin);
@@ -333,11 +332,11 @@ public:
   struct error : empty {};
   grid_t(error, const grid_t &g, double t)
       : imin(g.imin), imax(g.imax),
-        cells(cxx::monad::fmap<vector_, cell_t>([t](const cell_t &c) {
-                                                  return cell_t(cell_t::error(),
-                                                                c, t);
-                                                },
-                                                g.cells)) {}
+        cells(cxx::functor::fmap<vector_, cell_t>([t](const cell_t &c) {
+                                                    return cell_t(
+                                                        cell_t::error(), c, t);
+                                                  },
+                                                  g.cells)) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &, double);
   grid_t(error, client<grid_t> g, double t) : grid_t(error(), *g, t) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>, double);
@@ -415,7 +414,7 @@ public:
 
   // Wait until all grids are ready
   void wait() const {
-    cxx::monad::fmap<vector_, tuple<> >(&client<grid_t>::wait, grids);
+    cxx::functor::fmap<vector_, tuple<> >(&client<grid_t>::wait, grids);
   }
 
   // Output

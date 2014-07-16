@@ -109,7 +109,43 @@ foldl(const F &f, const R &z, const rpc::client<T> &x) {
 }
 }
 
+namespace functor {
+
+namespace detail {
+template <typename T> struct is_rpc_client : std::false_type {};
+template <typename T> struct is_rpc_client<rpc::client<T> > : std::true_type {};
+}
+
+namespace detail {
+template <typename T> struct unwrap_rpc_client {
+  typedef T type;
+  const T &operator()(const T &x) const { return x; }
+};
+template <typename T> struct unwrap_rpc_client<rpc::client<T> > {
+  typedef T type;
+  const T &operator()(const rpc::client<T> &x) const { return *x; }
+};
+}
+template <template <typename> class M, typename R, typename... As, typename F>
+typename std::enable_if<
+    ((detail::is_rpc_client<M<R> >::value) &&
+     (std::is_same<typename invoke_of<F, typename detail::unwrap_rpc_client<
+                                             As>::type...>::type,
+                   R>::value)),
+    M<R> >::type
+fmap(const F &f, const As &... as) {
+  return rpc::client<R>(
+      rpc::async([f](const As &... as) {
+                   return rpc::make_client<R>(
+                       cxx::invoke(f, detail::unwrap_rpc_client<As>()(as)...));
+                 },
+                 as...));
+}
+}
+
 namespace monad {
+
+using cxx::functor::fmap;
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
 // cannot handle empty clients as monads.
@@ -141,32 +177,6 @@ typename std::enable_if<
     M<R> >::type
 bind(const M<T> &x, const F &f) {
   return rpc::client<R>(rpc::async([x, f]() { return cxx::invoke(f, *x); }));
-}
-
-namespace detail {
-template <typename T> struct unwrap_rpc_client {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T> struct unwrap_rpc_client<rpc::client<T> > {
-  typedef T type;
-  const T &operator()(const rpc::client<T> &x) const { return *x; }
-};
-}
-template <template <typename> class M, typename R, typename... As, typename F>
-typename std::enable_if<
-    ((detail::is_rpc_client<M<R> >::value) &&
-     (std::is_same<typename invoke_of<F, typename detail::unwrap_rpc_client<
-                                             As>::type...>::type,
-                   R>::value)),
-    M<R> >::type
-fmap(const F &f, const As &... as) {
-  return rpc::client<R>(
-      rpc::async([f](const As &... as) {
-                   return rpc::make_client<R>(
-                       cxx::invoke(f, detail::unwrap_rpc_client<As>()(as)...));
-                 },
-                 as...));
 }
 
 template <template <typename> class M, typename T>

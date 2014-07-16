@@ -21,7 +21,44 @@ foldl(const F &f, const R &z, const rpc::shared_future<T> &x) {
 }
 }
 
+namespace functor {
+
+namespace detail {
+template <typename T> struct is_rpc_shared_future : std::false_type {};
+template <typename T>
+struct is_rpc_shared_future<rpc::shared_future<T> > : std::true_type {};
+}
+
+namespace detail {
+template <typename T> struct unwrap_rpc_shared_future {
+  typedef T type;
+  const T &operator()(const T &x) const { return x; }
+};
+template <typename T> struct unwrap_rpc_shared_future<rpc::shared_future<T> > {
+  typedef T type;
+  const T &operator()(const rpc::shared_future<T> &x) const { return x.get(); }
+};
+}
+template <template <typename> class M, typename R, typename... As, typename F>
+typename std::enable_if<
+    ((detail::is_rpc_shared_future<M<R> >::value) &&
+     (std::is_same<
+         typename invoke_of<
+             F, typename detail::unwrap_rpc_shared_future<As>::type...>::type,
+         R>::value)),
+    M<R> >::type
+fmap(const F &f, const As &... as) {
+  return rpc::async([f](const As &... as) {
+                      return cxx::invoke(
+                          f, detail::unwrap_rpc_shared_future<As>()(as)...);
+                    },
+                    as...).share();
+}
+}
+
 namespace monad {
+
+using cxx::functor::fmap;
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
 // cannot handle invalid futures as monads.
@@ -54,32 +91,6 @@ typename std::enable_if<
 bind(const M<T> &x, const F &f) {
   return rpc::future_then(
       x, [f](const M<T> &x) { return cxx::invoke(f, x.get()).get(); });
-}
-
-namespace detail {
-template <typename T> struct unwrap_rpc_shared_future {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T> struct unwrap_rpc_shared_future<rpc::shared_future<T> > {
-  typedef T type;
-  const T &operator()(const rpc::shared_future<T> &x) const { return x.get(); }
-};
-}
-template <template <typename> class M, typename R, typename... As, typename F>
-typename std::enable_if<
-    ((detail::is_rpc_shared_future<M<R> >::value) &&
-     (std::is_same<
-         typename invoke_of<
-             F, typename detail::unwrap_rpc_shared_future<As>::type...>::type,
-         R>::value)),
-    M<R> >::type
-fmap(const F &f, const As &... as) {
-  return rpc::async([f](const As &... as) {
-                      return cxx::invoke(
-                          f, detail::unwrap_rpc_shared_future<As>()(as)...);
-                    },
-                    as...).share();
 }
 
 template <template <typename> class M, typename T>

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <numeric>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -38,6 +39,7 @@ using std::cout;
 using std::flush;
 using std::ofstream;
 using std::ios_base;
+using std::iota;
 using std::make_shared;
 using std::max;
 using std::min;
@@ -271,15 +273,6 @@ private:
 public:
   grid_t() {} // only for serialization
 
-private:
-  grid_t(ptrdiff_t imin, ptrdiff_t imax)
-      : imin(imin), imax(imax), cells(imax - imin) {}
-  void set(ptrdiff_t i, const cell_t &c) {
-    assert(i >= imin && i < imax);
-    cells[i - imin] = c;
-  }
-
-public:
   const cell_t &get(ptrdiff_t i) const {
     assert(i >= imin && i < imax);
     return cells[i - imin];
@@ -304,12 +297,12 @@ public:
   struct axpy : empty {};
   grid_t(axpy, double a, const grid_t &x, const grid_t &y)
       : imin(y.imin), imax(y.imax),
-        cells(cxx::monad::fmap<vector_, cell_t>([](double a, const cell_t &x,
-                                                   const cell_t &y) {
+        cells(cxx::monad::fmap<vector_, cell_t>([a](const cell_t &x,
+                                                    const cell_t &y) {
                                                   return cell_t(cell_t::axpy(),
                                                                 a, x, y);
                                                 },
-                                                a, x.cells, y.cells)) {}
+                                                x.cells, y.cells)) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, const grid_t &, const grid_t &);
   grid_t(axpy, double a, client<grid_t> x, client<grid_t> y)
       : grid_t(axpy(), a, *x, *y) {}
@@ -326,22 +319,25 @@ public:
   // Initial condition
   struct initial : empty {};
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
-      : grid_t(imin, imax) {
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::initial(), t, x(i)));
-    }
-  }
+      : imin(imin), imax(imax),
+        cells(cxx::monad::fmap<vector_, cell_t>(
+            [t](int i) { return cell_t(cell_t::initial(), t, x(i)); },
+            [imin, imax]() {
+              vector<ptrdiff_t> is(imax - imin);
+              iota(is.begin(), is.end(), imin);
+              return is;
+            }())) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
 
   // Error
-  // TODO: introduce coordinates; use these instead of indices; use
-  // these also to set up the initial condition
   struct error : empty {};
-  grid_t(error, const grid_t &g, double t) : grid_t(g.imin, g.imax) {
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::error(), g.get(i), t));
-    }
-  }
+  grid_t(error, const grid_t &g, double t)
+      : imin(g.imin), imax(g.imax),
+        cells(cxx::monad::fmap<vector_, cell_t>([t](const cell_t &c) {
+                                                  return cell_t(cell_t::error(),
+                                                                c, t);
+                                                },
+                                                g.cells)) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &, double);
   grid_t(error, client<grid_t> g, double t) : grid_t(error(), *g, t) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>, double);

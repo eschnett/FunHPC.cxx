@@ -29,3 +29,7 @@ cereal_bw_lat
 hpx_wave
 tree
 deferred
+*.pch
+*.s
+hpx_wave.1.txt
+hpx_wave.4.txt

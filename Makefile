@@ -2,9 +2,9 @@
 
 DEBUG =
 
-CC  := ${MPICC}
-CXX := ${MPICXX}
-FC  := ${MPIFC}
+CC  := ${CC}	# ${MPICC}
+CXX := ${CXX}   # ${MPICXX}
+FC  := ${FC}    # ${MPIFC}
 
 # -DRPC_DISABLE_CALL_SHORTCUT
 # -DRPC_HPX -DRPC_QTHREADS -DRPC_STL
@@ -12,12 +12,11 @@ CPPFLAGS :=					\
 	-DHPX_LIMIT=10				\
 	-DRPC_QTHREADS				\
 	-DBLAS
-CFLAGS   := -g -Wall ${CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
-CXXFLAGS := -g -Wall ${CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
-FFLAGS   := -g -Wall ${FFLAGS}                 -march=native
+CFLAGS   := -g -Wall ${CFLAGS}   ${MPI_CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
+CXXFLAGS := -g -Wall ${CXXFLAGS} ${MPI_CXXFLAGS} ${CXX11FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
+FFLAGS   := -g -Wall ${FFLAGS}   ${MPI_FFLAGS}                 -march=native
 
-TODO: treat 0 and spaces as "unset"
-ifneq (${DEBUG},)
+ifneq (${strip ${DEBUG}},)
   # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
   # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
   # Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
@@ -147,7 +146,7 @@ wave: ${WAVE_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.h.pch: %.h
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} -x c-header -o $@ $*.h
+	${CC} ${CPPFLAGS} ${CFLAGS} -x c-header -o $@ $*.h
 
 %.hh.pch: %.hh
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} -x c++-header -o $@ $*.hh
@@ -193,6 +192,7 @@ format:
 
 
 clean:
+	${RM} hpx_hpx.hh.pch rpc.hh.pch
 	${RM} ${DEPS} ${OBJS} ${EXES}
 	${RM} index.html
 	${RM} mpi-rpc.aux mpi-rpc.log mpi-rpc.out mpi-rpc.pdf mpi-rpc.tex

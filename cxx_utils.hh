@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <type_traits>
 
 #ifndef __has_feature
 #define __has_feature(x) 0
@@ -14,6 +15,14 @@
 #endif
 
 namespace cxx {
+
+// special_decay, decay with special handling of reference_wrapper
+template <typename T> struct special_decay {
+  using type = typename std::decay<T>::type;
+};
+template <typename T> struct special_decay<std::reference_wrapper<T> > {
+  using type = T &;
+};
 
 // decay_copy, taken from libc++ 3.4
 template <typename T> inline typename std::decay<T>::type decay_copy(T &&t) {

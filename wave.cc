@@ -1,4 +1,5 @@
 #include "hwloc.hh"
+#include "cxx_foldable.hh"
 #include "cxx_monad.hh"
 #include "rpc.hh"
 
@@ -292,11 +293,9 @@ public:
 
   // Norm
   norm_t norm() const {
-    norm_t n;
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      n = n + get(i).norm();
-    }
-    return n;
+    return cxx::foldable::foldl([](const norm_t &x,
+                                   const cell_t &y) { return x + y.norm(); },
+                                norm_t(), cells);
   }
   RPC_DECLARE_CONST_MEMBER_ACTION(grid_t, norm);
 

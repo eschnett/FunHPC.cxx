@@ -14,6 +14,18 @@ namespace cxx {
 // zero:            m a
 // some:            [a] -> m a
 // plus:            [m a] -> m a
+// TODO: append one entry (push_back)?
+
+// TODO: introduce cxx_functor?
+// TODO: is function<R(T)> a monad? a functor? where T is fixed?
+// TODO: introduce cxx_applicative?
+//       pure (unit)
+//       <*>
+//       also: sequenceA
+
+// TODO: introduce functions that take a reference to the output as
+// first argument, so that the return value does not need to be
+// copied? is this necessary? test this with some compilers first.
 
 namespace monad {
 

@@ -228,6 +228,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
       for (auto &send_item : my_queue) {
         send_reqs.push_back(cxx::make_unique<send_req_t<call_t> >(
             comm, send_item.dest, std::move(send_item.call)));
+        ++stats.messages_sent;
       }
     }
     // Receive as many items as possible

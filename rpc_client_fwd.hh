@@ -9,6 +9,7 @@
 #include <cereal/archives/binary.hpp>
 
 #include <cassert>
+#include <tuple>
 #include <utility>
 
 namespace rpc {
@@ -61,7 +62,10 @@ public:
   }
   bool operator!=(const client &other) const { return !(*this == other); }
 
-  void wait() const { data.wait(); }
+  std::tuple<> wait() const {
+    data.wait();
+    return {};
+  }
   const std::shared_ptr<T> &get() const { return data.get().get(); }
   T &operator*() const { return *get(); }
   auto operator -> () const -> decltype(this -> get()) { return get(); }

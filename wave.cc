@@ -5,6 +5,7 @@
 #include "cxx_tree.hh"
 #include "rpc.hh"
 
+#include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 
@@ -123,7 +124,9 @@ struct defs_t {
 
 private:
   friend class cereal::access;
-  template <class Archive> void serialize(Archive &ar) { ar(ncells, dx, dt); }
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(ncells, dx, dt);
+  }
 
 public:
   defs_t() {} // only for serialize
@@ -148,7 +151,9 @@ struct norm_t {
 
 private:
   friend class cereal::access;
-  template <class Archive> void serialize(Archive &ar) { ar(sum, sum2, count); }
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(sum, sum2, count);
+  }
 
 public:
   norm_t() : sum(0.0), sum2(0.0), count(0.0) {}
@@ -177,7 +182,7 @@ struct cell_t {
 
 private:
   friend class cereal::access;
-  template <class Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
+  template <typename Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
 
 public:
   // For safety
@@ -267,12 +272,24 @@ struct grid_t {
 
 private:
   friend class cereal::access;
-  template <class Archive> void serialize(Archive &ar) {
+  template <typename Archive> void serialize(Archive &ar) {
     ar(imin, imax, cells);
   }
+  // template <typename Archive>
+  // static void load_and_construct(Archive &ar,
+  //                                cereal::construct<grid_t> &construct) {
+  //   ptrdiff_t imin, imax;
+  //   vector<cell_t> cells;
+  //   ar(imin, imax, cells);
+  //   construct(imin, imax, std::move(cells));
+  // }
 
 public:
   grid_t() {} // only for serialization
+  // grid_t(ptrdiff_t imin, ptrdiff_t imax, const vector<cell_t> &cells)
+  //     : imin(imin), imax(imax), cells(cells) {}
+  // grid_t(ptrdiff_t imin, ptrdiff_t imax, vector<cell_t> &&cells)
+  //     : imin(imin), imax(imax), cells(std::move(cells)) {}
 
   const cell_t &get(ptrdiff_t i) const {
     assert(i >= imin && i < imax);

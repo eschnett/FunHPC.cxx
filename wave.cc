@@ -1,6 +1,7 @@
 #include "hwloc.hh"
 #include "cxx_foldable.hh"
 #include "cxx_monad.hh"
+#include "cxx_tree.hh"
 #include "rpc.hh"
 
 #include <cereal/types/memory.hpp>
@@ -282,6 +283,7 @@ public:
   RPC_DECLARE_CONST_MEMBER_ACTION(grid_t, get_boundary);
 
   // Output
+  // TODO: create output monad (based on tree)
   ostream &output(ostream &os) const {
     RPC_ASSERT(server->rank() == 0);
     os << "grid: t=" << t << "\n";
@@ -381,6 +383,8 @@ ostream &operator<<(ostream &os, const client<grid_t> &g) {
 // The domain is distributed over multiple processes
 
 template <typename T> using vector_ = std::vector<T>;
+template <typename T> using tree_ = cxx::tree<T, vector_, shared_ptr>;
+
 struct domain_t {
   // TODO: implement serialize routine
 

@@ -325,12 +325,17 @@ public:
   RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
 
   // Error
+  // TODO: introduce coordinates; use these instead of indices; use
+  // these also to set up the initial condition
   struct error : empty {};
-  grid_t(error, client<grid_t> g) : grid_t(g) {
+  grid_t(error, const grid_t &g)
+      : t(g.t), imin(g.imin), imax(g.imax), cells(imax - imin) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::error(), g->get(i), t, defs->x(i)));
+      set(i, cell_t(cell_t::error(), g.get(i), t, defs->x(i)));
     }
   }
+  RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &);
+  grid_t(error, client<grid_t> g) : grid_t(error(), *g) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>);
 
   // RHS

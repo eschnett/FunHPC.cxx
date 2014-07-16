@@ -20,8 +20,8 @@ template <typename T> class maybe {
 
 public:
   maybe() : is_nothing_(true) {}
-  maybe(const T &just_) : is_nothing_(false), just_(just_) {}
-  maybe(T &&just_) : is_nothing_(false), just_(std::move(just_)) {}
+  explicit maybe(const T &just_) : is_nothing_(false), just_(just_) {}
+  explicit maybe(T &&just_) : is_nothing_(false), just_(std::move(just_)) {}
   maybe(const maybe &maybe_) : is_nothing_(maybe_.is_nothing_) {
     if (!is_nothing_)
       new (&just_) T(maybe_.just_);

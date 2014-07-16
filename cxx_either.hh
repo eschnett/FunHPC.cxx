@@ -27,10 +27,10 @@ private:
 
 public:
   either() = delete;
-  either(const L &left_) : is_left_(true), left_(left_) {}
-  either(L &&left_) : is_left_(true), left_(std::move(left_)) {}
-  either(const R &right_) : is_left_(false), right_(right_) {}
-  either(R &&right_) : is_left_(false), right_(std::move(right_)) {}
+  explicit either(const L &left_) : is_left_(true), left_(left_) {}
+  explicit either(L &&left_) : is_left_(true), left_(std::move(left_)) {}
+  explicit either(const R &right_) : is_left_(false), right_(right_) {}
+  explicit either(R &&right_) : is_left_(false), right_(std::move(right_)) {}
   either(const either &either_) : is_left_(either_.is_left_) {
     if (is_left_)
       new (&left_) L(either_.left_);

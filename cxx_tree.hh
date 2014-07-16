@@ -41,8 +41,8 @@ class leaf {
 public:
   // leaf() {}
   leaf() { assert(0); } // forbid empty leaf
-  leaf(const C<T> &values) : values(values) {}
-  leaf(const T &value) : leaf(monad::make<C, T>(value)) {}
+  explicit leaf(const C<T> &values) : values(values) {}
+  explicit leaf(const T &value) : leaf(monad::make<C, T>(value)) {}
   leaf(const leaf &l) : values(l.values) {}
 
   // size
@@ -97,8 +97,9 @@ class branch {
 
 public:
   branch() {}
-  branch(const C<tree<T, C, P> > &trees) : trees(trees) {}
-  branch(const tree<T, C, P> &t) : branch(monad::make<C, tree<T, C, P> >(t)) {}
+  explicit branch(const C<tree<T, C, P> > &trees) : trees(trees) {}
+  explicit branch(const tree<T, C, P> &t)
+      : branch(monad::make<C, tree<T, C, P> >(t)) {}
   branch(const branch &b) : trees(b.trees) {}
 
   // size
@@ -199,10 +200,10 @@ private:
   node_t node;
 
 public:
-  tree() : node(monad::zero<P, branch<T, C, P> >()) {}
-  tree(const P<leaf<T, C, P> > &pl) : node(pl) {}
-  tree(const P<branch<T, C, P> > &pb) : node(pb) {}
-  tree(const T &value) : node(monad::make<P, leaf<T, C, P> >(value)) {}
+  explicit tree() : node(monad::zero<P, branch<T, C, P> >()) {}
+  explicit tree(const P<leaf<T, C, P> > &pl) : node(pl) {}
+  explicit tree(const P<branch<T, C, P> > &pb) : node(pb) {}
+  explicit tree(const T &value) : node(monad::make<P, leaf<T, C, P> >(value)) {}
   tree(const tree &t) : node(t.node) {}
 
   bool empty() const {

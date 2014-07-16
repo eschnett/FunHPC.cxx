@@ -98,7 +98,9 @@ struct defs_t {
   const double xmax = 1.0;
   const double cfl = 0.5;
   const double tmin = 0.0;
-  const ptrdiff_t nsteps = 10; // 2 * ncells;
+  const double tmax = 1.0;
+  const ptrdiff_t nsteps = 10;
+  // const ptrdiff_t nsteps = -1;
 
   ptrdiff_t ncells;
   double dx;
@@ -106,8 +108,8 @@ struct defs_t {
   double x(ptrdiff_t i) const { return xmin + (i + 0.5) * dx; }
 
   const ptrdiff_t wait_every = 0;
-  const ptrdiff_t info_every = nsteps / 10;
-  const ptrdiff_t file_every = 0; // nsteps;
+  const ptrdiff_t info_every = 0;  // nsteps / 10;
+  const ptrdiff_t file_every = -1; // nsteps;
   defs_t(int nprocs, int nthreads)
       : ncells(rho * ncells_per_grid * nprocs * nthreads),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}
@@ -564,8 +566,9 @@ ostream *do_info_output(const shared_future<ostream *> &fos,
 
 shared_future<ostream *> info_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs->info_every != 0 &&
-      (m->n == defs->nsteps || m->n % defs->info_every == 0)) {
+  if (defs->info_every >= 0 &&
+      ((m->n == 0 || m->n == defs->nsteps) ||
+       (defs->info_every > 0 && m->n % defs->info_every == 0))) {
     fos = async(do_info_output, fos, m);
   }
   return fos;
@@ -583,8 +586,9 @@ ostream *do_file_output(const shared_future<ostream *> fos,
 
 shared_future<ostream *> file_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs->file_every != 0 &&
-      (m->n == defs->nsteps || m->n % defs->file_every == 0)) {
+  if (defs->file_every >= 0 &&
+      ((m->n == 0 || m->n == defs->nsteps) ||
+       (defs->file_every > 0 && m->n % defs->file_every == 0))) {
     fos = async(do_file_output, fos, m);
   }
   return fos;
@@ -638,7 +642,8 @@ int rpc_main(int argc, char **argv) {
   fio = info_output(fio, m);
   ffo = file_output(ffo, m);
 
-  while (m->n < defs->nsteps) {
+  while ((defs->nsteps < 0 || m->n < defs->nsteps) &&
+         (defs->tmax < 0.0 || m->state->t < defs->tmax + 0.5 * defs->dt)) {
 
     if (defs->wait_every != 0 && m->n % defs->wait_every == 0) {
       // Rate limiter

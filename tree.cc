@@ -81,10 +81,6 @@ int rpc_main(int argc, char **argv) {
                                                        return double(x + y);
                                                      },
                                                      u, 1);
-    auto z __attribute__((__unused__)) =
-        cxx::monad::zero<rpc::shared_future, int>();
-    auto p __attribute__((__unused__)) =
-        cxx::monad::plus<rpc::shared_future>(z, u);
     auto s __attribute__((__unused__)) =
         cxx::foldable::foldl(std::plus<int>(), 0, u);
   }

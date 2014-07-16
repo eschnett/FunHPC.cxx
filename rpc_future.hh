@@ -23,6 +23,9 @@ foldl(const F &f, const R &z, const rpc::shared_future<T> &x) {
 
 namespace monad {
 
+// Note: We cannot unwrap a future where the inner future is invalid. Thus we
+// cannot handle invalid futures as monads.
+
 namespace detail {
 template <typename T> struct is_rpc_shared_future : std::false_type {};
 template <typename T>
@@ -49,8 +52,6 @@ typename std::enable_if<
      (std::is_same<typename invoke_of<F, T>::type, M<R> >::value)),
     M<R> >::type
 bind(const M<T> &x, const F &f) {
-  if (!x.valid())
-    return rpc::shared_future<R>();
   return rpc::future_then(
       x, [f](const M<T> &x) { return cxx::invoke(f, x.get()).get(); });
 }
@@ -58,12 +59,10 @@ bind(const M<T> &x, const F &f) {
 namespace detail {
 template <typename T> struct unwrap_rpc_shared_future {
   typedef T type;
-  bool valid(const T &x) const { return true; }
   const T &operator()(const T &x) const { return x; }
 };
 template <typename T> struct unwrap_rpc_shared_future<rpc::shared_future<T> > {
   typedef T type;
-  bool valid(const rpc::shared_future<T> &x) const { return x.valid(); }
   const T &operator()(const rpc::shared_future<T> &x) const { return x.get(); }
 };
 }
@@ -76,12 +75,6 @@ typename std::enable_if<
          R>::value)),
     M<R> >::type
 fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> valids{
-    { detail::unwrap_rpc_shared_future<As>().valid(as)... }
-  };
-  bool valid = *std::min_element(valids.begin(), valids.end());
-  if (!valid)
-    return rpc::shared_future<R>();
   return rpc::async([f](const As &... as) {
                       return cxx::invoke(
                           f, detail::unwrap_rpc_shared_future<As>()(as)...);
@@ -92,21 +85,7 @@ fmap(const F &f, const As &... as) {
 template <template <typename> class M, typename T>
 typename std::enable_if<detail::is_rpc_shared_future<M<T> >::value, M<T> >::type
 join(const M<M<T> > &x) {
-  if (!x.valid())
-    return rpc::shared_future<T>();
   return x.unwrap();
-}
-
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_rpc_shared_future<M<T> >::value, M<T> >::type
-zero() {
-  return rpc::shared_future<T>();
-}
-
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_rpc_shared_future<M<T> >::value, M<T> >::type
-plus(const M<T> &x, const M<T> &y) {
-  return x.valid() ? x : y;
 }
 }
 }

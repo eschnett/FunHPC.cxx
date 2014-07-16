@@ -240,13 +240,15 @@ template <template <typename> class M, typename T, typename F>
 M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
   size_t s = c.size();
   assert(s >= 2); // TODO: This can be avoided
-  M<T> r;
-  r.reserve(s);
+  M<T> r(s);
   // TODO: add push_back equivalent to monad
-  r.push_back(cxx::invoke(f, bm, c[0], c[1]));
+  // TODO: for efficiency: don't use push_back, use something else
+  // that requires preallocation, that doesn't reallocate, and which
+  // turns into an indexed loop when used for vectors
+  r[0] = cxx::invoke(f, bm, c[0], c[1]);
   for (size_t i = 1; i < s - 1; ++i)
-    r.push_back(cxx::invoke(f, c[i - 1], c[i], c[i + 1]));
-  r.push_back(cxx::invoke(f, c[s - 2], c[s - 1], bp));
+    r[i] = cxx::invoke(f, c[i - 1], c[i], c[i + 1]);
+  r[s - 1] = cxx::invoke(f, c[s - 2], c[s - 1], bp);
   return r;
 }
 

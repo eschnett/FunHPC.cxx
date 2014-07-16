@@ -65,6 +65,28 @@ int rpc_main(int argc, char **argv) {
 
   {
     auto u __attribute__((__unused__)) =
+        cxx::monad::unit<rpc::client>(1);
+    auto m __attribute__((__unused__)) =
+        cxx::monad::make<rpc::client, int>(1);
+    auto b __attribute__((__unused__)) =
+        cxx::monad::bind<rpc::client, double>(
+            u, [](int x) { return rpc::make_client<double>(x); });
+    auto f __attribute__((__unused__)) =
+        cxx::monad::fmap<rpc::client, double>([](int x) {
+                                                       return double(x);
+                                                     },
+                                                     u);
+    auto f2 __attribute__((__unused__)) =
+        cxx::monad::fmap<rpc::client, double>([](int x, int y) {
+                                                       return double(x + y);
+                                                     },
+                                                     u, 1);
+    auto s __attribute__((__unused__)) =
+        cxx::foldable::foldl(std::plus<int>(), 0, u);
+  }
+
+  {
+    auto u __attribute__((__unused__)) =
         cxx::monad::unit<rpc::shared_future>(1);
     auto m __attribute__((__unused__)) =
         cxx::monad::make<rpc::shared_future, int>(1);

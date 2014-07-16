@@ -27,7 +27,11 @@ void check_procs() {
   if (rpc_processes) {
     try {
       int rpc_nprocs = stoi(std::string(rpc_processes));
-      if (rpc_nprocs != nprocs) {
+      if (rpc_nprocs <= 0) {
+        std::cout << "[" << server->rank() << "] "
+                  << "WARNING: Number of MPI processes (" << nprocs
+                  << ") is invalid\n";
+      } else if (rpc_nprocs != nprocs) {
         std::cout << "[" << server->rank() << "] "
                   << "WARNING: Number of MPI processes (" << nprocs
                   << ") is inconsistent with the environment variable "
@@ -54,7 +58,11 @@ void check_threads() {
   if (rpc_threads) {
     try {
       int rpc_nthreads = stoi(std::string(rpc_threads));
-      if (rpc_nthreads != nthreads) {
+      if (rpc_nthreads <= 0) {
+        std::cout << "[" << server->rank() << "] "
+                  << "WARNING: Number of hardware threads (" << nthreads
+                  << ") is invalid\n";
+      } else if (rpc_nthreads != nthreads) {
         std::cout
             << "[" << server->rank() << "] "
             << "WARNING: Number of hardware threads (" << nthreads
@@ -106,7 +114,10 @@ void check_nodes() {
   if (rpc_nodes) {
     try {
       int rpc_nnodes = stoi(std::string(rpc_nodes));
-      if (rpc_nnodes != nnodes) {
+      if (rpc_nodes <= 0) {
+        std::cout << "[" << server->rank() << "] "
+                  << "WARNING: Number of nodes (" << nnodes << ") is invalid\n";
+      } else if (rpc_nnodes != nnodes) {
         std::cout << "[" << server->rank() << "] "
                   << "WARNING: Number of nodes (" << nnodes
                   << ") is inconsistent with the environment variable "
@@ -144,7 +155,10 @@ void check_cores() {
   if (rpc_cores) {
     try {
       int rpc_ncores = stoi(std::string(rpc_cores));
-      if (rpc_ncores != ncores) {
+      if (rpc_ncores <= 0) {
+        std::cout << "[" << server->rank() << "] "
+                  << "WARNING: Number of cores (" << ncores << ") is invalid\n";
+      } else if (rpc_ncores != ncores) {
         std::cout << "[" << server->rank() << "] "
                   << "WARNING: Number of cores (" << ncores
                   << ") is inconsistent with the environment variable "
@@ -162,11 +176,40 @@ void check_cores() {
   }
 }
 
+void check_layout() {
+  if (server->rank() == 0) {
+    char *rpc_processes = getenv("RPC_PROCESSES");
+    char *rpc_threads = getenv("RPC_THREADS");
+    char *rpc_nodes = getenv("RPC_NODES");
+    char *rpc_cores = getenv("RPC_CORES");
+    if (rpc_processes && rpc_threads && rpc_nodes && rpc_cores) {
+      try {
+        int rpc_nprocs = stoi(std::string(rpc_processes));
+        int rpc_nthreads = stoi(std::string(rpc_threads));
+        int rpc_nnodes = stoi(std::string(rpc_nodes));
+        int rpc_ncores = stoi(std::string(rpc_cores));
+        int hw_count = rpc_nprocs * rpc_nthreads;
+        int sw_count = rpc_nnodes * rpc_ncores;
+        if (hw_count != sw_count) {
+          std::cout << "[" << server->rank() << "] "
+                    << "WARNING: Total number of hardware cores (" << hw_count
+                    << ") differs from the total number of software threads ("
+                    << sw_count << ")\n";
+        }
+      }
+      catch (...) {
+        // do nothing
+      }
+    }
+  }
+}
+
 void check_procs_threads() {
   check_procs();
   check_threads();
   check_nodes();
   check_cores();
+  check_layout();
 }
 
 int real_main(int argc, char **argv) {

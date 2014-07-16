@@ -217,7 +217,7 @@ public:
 
   // RHS
   struct rhs : empty {};
-  cell_t(rhs, const cell_t &c, const cell_t &cm, const cell_t &cp) {
+  cell_t(rhs, const cell_t &cm, const cell_t &c, const cell_t &cp) {
     u = c.rho;
     rho = (cp.v - cm.v) / (2 * defs->dx);
     v = (cp.rho - cm.rho) / (2 * defs->dx);

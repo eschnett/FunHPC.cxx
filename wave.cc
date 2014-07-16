@@ -256,8 +256,6 @@ M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
 }
 
 struct grid_t {
-  // TODO: remove t
-  double t;
   ptrdiff_t imin, imax; // spatial indices
   static double x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
 
@@ -267,15 +265,15 @@ struct grid_t {
 private:
   friend class cereal::access;
   template <class Archive> void serialize(Archive &ar) {
-    ar(t, imin, imax, cells);
+    ar(imin, imax, cells);
   }
 
 public:
   grid_t() {} // only for serialization
 
 private:
-  grid_t(double t, ptrdiff_t imin, ptrdiff_t imax)
-      : t(t), imin(imin), imax(imax), cells(imax - imin) {}
+  grid_t(ptrdiff_t imin, ptrdiff_t imax)
+      : imin(imin), imax(imax), cells(imax - imin) {}
   void set(ptrdiff_t i, const cell_t &c) {
     assert(i >= imin && i < imax);
     cells[i - imin] = c;
@@ -296,7 +294,6 @@ public:
   // TODO: create output monad (based on tree)
   ostream &output(ostream &os) const {
     RPC_ASSERT(server->rank() == 0);
-    os << "grid: t=" << t << "\n";
     for (ptrdiff_t i = imin; i < imax; ++i) {
       os << "   i=" << i << " " << get(i) << "\n";
     }
@@ -306,7 +303,7 @@ public:
   // Linear combination
   struct axpy : empty {};
   grid_t(axpy, double a, const grid_t &x, const grid_t &y)
-      : t(a * x.t + y.t), imin(y.imin), imax(y.imax),
+      : imin(y.imin), imax(y.imax),
         cells(cxx::monad::fmap<vector_, cell_t>([](double a, const cell_t &x,
                                                    const cell_t &y) {
                                                   return cell_t(cell_t::axpy(),
@@ -329,7 +326,7 @@ public:
   // Initial condition
   struct initial : empty {};
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
-      : grid_t(t, imin, imax) {
+      : grid_t(imin, imax) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
       set(i, cell_t(cell_t::initial(), t, x(i)));
     }
@@ -340,21 +337,19 @@ public:
   // TODO: introduce coordinates; use these instead of indices; use
   // these also to set up the initial condition
   struct error : empty {};
-  grid_t(error, const grid_t &g)
-      : t(g.t), imin(g.imin), imax(g.imax), cells(imax - imin) {
+  grid_t(error, const grid_t &g, double t) : grid_t(g.imin, g.imax) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
       set(i, cell_t(cell_t::error(), g.get(i), t));
     }
   }
-  RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &);
-  grid_t(error, client<grid_t> g) : grid_t(error(), *g) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>);
+  RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &, double);
+  grid_t(error, client<grid_t> g, double t) : grid_t(error(), *g, t) {}
+  RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>, double);
 
   // RHS
   struct rhs : empty {};
   grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
-      : t(1.0), // dt/dt
-        imin(g.imin), imax(g.imax),
+      : imin(g.imin), imax(g.imax),
         cells(stencil_fmap<vector_, cell_t>(
             [](const cell_t &cm, const cell_t &c,
                const cell_t &cp) { return cell_t(cell_t::rhs(), cm, c, cp); },
@@ -374,7 +369,7 @@ RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::axpy, double, client<grid_t>,
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, norm);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
                           ptrdiff_t);
-RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>);
+RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>, double);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
                           shared_future<cell_t>, shared_future<cell_t>);
 
@@ -493,7 +488,7 @@ public:
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       const client<grid_t> &si = s->get(i);
       set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::error(),
-                                        si));
+                                        si, s->t));
     }
   }
 
@@ -506,30 +501,30 @@ public:
       const client<grid_t> &si = s->get(i);
       // left boundary
       ptrdiff_t im = i - 1;
-      shared_future<cell_t> cm;
+      shared_future<cell_t> bm;
       if (im >= 0) {
         const client<grid_t> &sim = s->get(im);
-        cm = async(remote::async, grid_t::get_boundary_action(), sim, true);
+        bm = async(remote::async, grid_t::get_boundary_action(), sim, true);
       } else {
         // TODO: this should be handled by a grid, asynchronously, in
         // a new function e.g. called get_outer_boundary
         // TODO: but this would not work for periodicity... introduce
         // a boundary object instead?
-        cm = make_ready_future(
+        bm = make_ready_future(
             cell_t(cell_t::boundary(), s->t, defs->xmin - 0.5 * defs->dx));
       }
       // right boundary
       ptrdiff_t ip = i + 1;
-      shared_future<cell_t> cp;
+      shared_future<cell_t> bp;
       if (ip < ngrids()) {
         const client<grid_t> &sip = s->get(ip);
-        cp = async(remote::async, grid_t::get_boundary_action(), sip, false);
+        bp = async(remote::async, grid_t::get_boundary_action(), sip, false);
       } else {
-        cp = make_ready_future(
+        bp = make_ready_future(
             cell_t(cell_t::boundary(), s->t, defs->xmax + 0.5 * defs->dx));
       }
       set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::rhs(), si,
-                                        cm, cp));
+                                        bm, bp));
     }
   }
 };

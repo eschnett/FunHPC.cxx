@@ -250,12 +250,6 @@ private:
     assert(i >= imin && i < imax);
     cells[i - imin] = c;
   }
-  // template <typename F> void set_cells(const F &f) {
-  //   void(sizeof cell_t(f(ptrdiff_t())));
-  //   for (ptrdiff_t i = imin; i < imax; ++i) {
-  //     set(i, f(i));
-  //   }
-  // }
 
 public:
   const cell_t &get(ptrdiff_t i) const {

@@ -373,6 +373,7 @@ ostream &operator<<(ostream &os, const client<grid_t> &g) {
 
 // The domain is distributed over multiple processes
 
+template <typename T> using vector_ = std::vector<T>;
 struct domain_t {
   // TODO: implement serialize routine
 
@@ -407,9 +408,7 @@ public:
 
   // Wait until all grids are ready
   void wait() const {
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      get(i).wait();
-    }
+    cxx::monad::fmap<vector_, tuple<> >(&client<grid_t>::wait, grids);
   }
 
   // Output

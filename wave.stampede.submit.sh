@@ -140,7 +140,7 @@ unset SLURM_TOPOLOGY_ADDR_PATTERN
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
     -x QTHREAD_STACK_SIZE=65536                                         \\
-    -x QTHREAD_INFO=1                                                   \\
+    -x QTHREAD_INFO=0                                                   \\
     ./wave                                                              \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\

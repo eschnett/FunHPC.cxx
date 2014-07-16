@@ -271,7 +271,6 @@ public:
 private:
   grid_t(double t, ptrdiff_t imin, ptrdiff_t imax)
       : t(t), imin(imin), imax(imax), cells(imax - imin) {}
-  grid_t(const client<grid_t> &g) : grid_t(g->t, g->imin, g->imax) {}
   void set(ptrdiff_t i, const cell_t &c) {
     assert(i >= imin && i < imax);
     cells[i - imin] = c;

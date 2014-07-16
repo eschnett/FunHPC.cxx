@@ -405,11 +405,6 @@ public:
     return grids[i];
   }
 
-  // // Iterator interface
-  // typedef decltype(grids)::value_type value_type;
-  // auto cbegin() const -> decltype(grids.cbegin()) { return grids.cbegin(); }
-  // auto cend() const -> decltype(grids.cend()) { return grids.cend(); }
-
   // Wait until all grids are ready
   void wait() const {
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {

@@ -130,6 +130,10 @@ void set_all_defs(const shared_ptr<defs_t> &defs) {
 
 // A norm
 
+// TODO: introduce cxx_monoid for this?
+// mempty, mappend, mconcat
+// also: sum, product, any, all
+
 struct norm_t {
   double sum, sum2, count;
 
@@ -140,7 +144,6 @@ private:
 public:
   norm_t() : sum(0.0), sum2(0.0), count(0.0) {}
   norm_t(double val) : sum(val), sum2(pow(val, 2)), count(1.0) {}
-  // norm_t(future<norm_t> &&x) : norm_t(move(x.get())) {}
   norm_t(const norm_t &x, const norm_t &y)
       : sum(x.sum + y.sum), sum2(x.sum2 + y.sum2), count(x.count + y.count) {}
   double avg() const { return sum / count; }

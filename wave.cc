@@ -342,23 +342,18 @@ public:
 
   // RHS
   struct rhs : empty {};
-  grid_t(rhs, const grid_t &g, const shared_future<cell_t> &bm,
-         const shared_future<cell_t> &bp)
+  grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
       : t(1.0), // dt/dt
         imin(g.imin), imax(g.imax),
         cells(stencil_fmap<vector_, cell_t>(
             [](const cell_t &cm, const cell_t &c,
                const cell_t &cp) { return cell_t(cell_t::rhs(), cm, c, cp); },
-            g.cells,
-            imin > 0 ? bm.get() : cell_t(cell_t::boundary(), g.t, defs->x(-1)),
-            imax < defs->ncells ? bp.get() : cell_t(cell_t::boundary(), g.t,
-                                                    defs->x(defs->ncells)))) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, const grid_t &,
-                          const shared_future<cell_t> &,
-                          const shared_future<cell_t> &);
+            g.cells, bm, bp)) {}
+  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, const grid_t &, const cell_t &,
+                          const cell_t &);
   grid_t(rhs, client<grid_t> g, shared_future<cell_t> bm,
          shared_future<cell_t> bp)
-      : grid_t(rhs(), *g, bm, bp) {}
+      : grid_t(rhs(), *g, bm.get(), bp.get()) {}
   RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>, shared_future<cell_t>,
                           shared_future<cell_t>);
 };
@@ -495,19 +490,22 @@ public:
   // RHS
   struct rhs : empty {};
   domain_t(rhs, const client<domain_t> &s) : domain_t(s) {
-    // TODO: handle outer boundary conditions as well
     t = 1.0; // dt/dt
-    const shared_future<cell_t> fake = make_ready_future(cell_t());
+    // boundaries
+    auto bm = make_ready_future(cell_t(cell_t::boundary(), s->t, defs->x(-1)))
+                  .share();
+    auto bp = make_ready_future(
+        cell_t(cell_t::boundary(), s->t, defs->x(defs->ncells))).share();
     for (ptrdiff_t i = 0; i < ngrids(); ++i) {
       const client<grid_t> &si = s->get(i);
-      // left buondary
+      // left boundary
       ptrdiff_t im = i - 1;
       shared_future<cell_t> cm;
       if (im >= 0) {
         const client<grid_t> &sim = s->get(im);
         cm = async(remote::async, grid_t::get_boundary_action(), sim, true);
       } else {
-        cm = fake;
+        cm = make_ready_future(cell_t(cell_t::boundary(), s->t, defs->x(-1)));
       }
       // right boundary
       ptrdiff_t ip = i + 1;
@@ -516,7 +514,8 @@ public:
         const client<grid_t> &sip = s->get(ip);
         cp = async(remote::async, grid_t::get_boundary_action(), sip, false);
       } else {
-        cp = fake;
+        cp = make_ready_future(
+            cell_t(cell_t::boundary(), s->t, defs->x(defs->ncells)));
       }
       set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::rhs(), si,
                                         cm, cp));

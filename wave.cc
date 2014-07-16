@@ -107,7 +107,6 @@ struct defs_t {
   ptrdiff_t ncells;
   double dx;
   double dt;
-  double x(ptrdiff_t i) const { return xmin + (i + 0.5) * dx; }
 
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;  // nsteps / 10;
@@ -165,27 +164,29 @@ inline norm_t operator+(const norm_t &x, const norm_t &y) {
 struct cell_t {
   static constexpr double nan = numeric_limits<double>::quiet_NaN();
 
+  double x;
   double u;
   double rho;
   double v;
 
 private:
   friend class cereal::access;
-  template <class Archive> void serialize(Archive &ar) { ar(u, rho, v); }
+  template <class Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
 
 public:
   // For safety
-  cell_t() : u(nan), rho(nan), v(nan) {}
+  cell_t() : x(nan), u(nan), rho(nan), v(nan) {}
 
   // Output
   ostream &output(ostream &os) const {
     RPC_ASSERT(server->rank() == 0);
-    return os << "cell: u=" << u << " rho=" << rho << " v=" << v;
+    return os << "cell: x=" << x << " u=" << u << " rho=" << rho << " v=" << v;
   }
 
   // Linear combination
   struct axpy : empty {};
   cell_t(axpy, double a, const cell_t &x, const cell_t &y) {
+    this->x = a * x.x + y.x;
     u = a * x.u + y.u;
     rho = a * x.rho + y.rho;
     v = a * x.v + y.v;
@@ -197,6 +198,7 @@ public:
   // Analytic solution
   struct analytic : empty {};
   cell_t(analytic, double t, double x) {
+    this->x = x;
     u = sin(2 * M_PI * t) * sin(2 * M_PI * x);
     rho = 2 * M_PI * cos(2 * M_PI * t) * sin(2 * M_PI * x);
     v = 2 * M_PI * sin(2 * M_PI * t) * cos(2 * M_PI * x);
@@ -212,12 +214,13 @@ public:
 
   // Error
   struct error : empty {};
-  cell_t(error, const cell_t &c, double t, double x)
-      : cell_t(axpy(), -1.0, cell_t(analytic(), t, x), c) {}
+  cell_t(error, const cell_t &c, double t)
+      : cell_t(axpy(), -1.0, cell_t(analytic(), t, c.x), c) {}
 
   // RHS
   struct rhs : empty {};
   cell_t(rhs, const cell_t &cm, const cell_t &c, const cell_t &cp) {
+    x = 0.0; // dx/dt
     u = c.rho;
     rho = (cp.v - cm.v) / (2 * defs->dx);
     v = (cp.rho - cm.rho) / (2 * defs->dx);
@@ -248,8 +251,11 @@ M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
 }
 
 struct grid_t {
+  // TODO: remove t
   double t;
   ptrdiff_t imin, imax; // spatial indices
+  static double x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
+
   template <typename T> using vector_ = vector<T>;
   vector<cell_t> cells;
 
@@ -288,7 +294,7 @@ public:
     RPC_ASSERT(server->rank() == 0);
     os << "grid: t=" << t << "\n";
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      os << "   i=" << i << " x=" << defs->x(i) << " " << get(i) << "\n";
+      os << "   i=" << i << " " << get(i) << "\n";
     }
     return os;
   }
@@ -321,7 +327,7 @@ public:
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
       : grid_t(t, imin, imax) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::initial(), t, defs->x(i)));
+      set(i, cell_t(cell_t::initial(), t, x(i)));
     }
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
@@ -333,7 +339,7 @@ public:
   grid_t(error, const grid_t &g)
       : t(g.t), imin(g.imin), imax(g.imax), cells(imax - imin) {
     for (ptrdiff_t i = imin; i < imax; ++i) {
-      set(i, cell_t(cell_t::error(), g.get(i), t, defs->x(i)));
+      set(i, cell_t(cell_t::error(), g.get(i), t));
     }
   }
   RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &);
@@ -505,7 +511,12 @@ public:
         const client<grid_t> &sim = s->get(im);
         cm = async(remote::async, grid_t::get_boundary_action(), sim, true);
       } else {
-        cm = make_ready_future(cell_t(cell_t::boundary(), s->t, defs->x(-1)));
+        // TODO: this should be handled by a grid, asynchronously, in
+        // a new function e.g. called get_outer_boundary
+        // TODO: but this would not work for periodicity... introduce
+        // a boundary object instead?
+        cm = make_ready_future(
+            cell_t(cell_t::boundary(), s->t, defs->xmin - 0.5 * defs->dx));
       }
       // right boundary
       ptrdiff_t ip = i + 1;
@@ -515,7 +526,7 @@ public:
         cp = async(remote::async, grid_t::get_boundary_action(), sip, false);
       } else {
         cp = make_ready_future(
-            cell_t(cell_t::boundary(), s->t, defs->x(defs->ncells)));
+            cell_t(cell_t::boundary(), s->t, defs->xmax + 0.5 * defs->dx));
       }
       set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::rhs(), si,
                                         cm, cp));

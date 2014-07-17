@@ -157,6 +157,9 @@ action_impl_t<F, W, R, As...> get_action_impl_t(R(As...));
 template <typename F, typename W>
 using action_impl = decltype(get_action_impl_t<F, W>(W::value));
 
+// TODO: Implement actions as function pointers (values) instead of types --
+// this seems to work
+
 // Example action definition for a given function "f":
 // struct f_action:
 //   public rpc::action_impl<f_action, rpc::wrap<decltype(&f), &f> >

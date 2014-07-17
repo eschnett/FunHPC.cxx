@@ -28,6 +28,9 @@ namespace cxx {
 // first argument, so that the return value does not need to be
 // copied? is this necessary? test this with some compilers first.
 
+// TODO: introduce rpc::action<> equivalent to std::function<>, and
+// make this a monad as well
+
 namespace monad {
 using cxx::functor::fmap;
 }

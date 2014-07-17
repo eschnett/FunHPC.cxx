@@ -157,7 +157,7 @@ public:
       // TODO: optimize this
       // TODO: create a packaged_task, return its future; store a
       // function that runs the packaged_task
-      return async([=](const shared_future &f) {
+      return async([func](const shared_future &f) {
                      f.wait();
                      return cxx::invoke(func, f);
                    },
@@ -311,12 +311,11 @@ public:
       return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
-      auto f0 = new future(std::move(*this));
-      return async([=]() {
-        std::unique_ptr<future> f(f0);
-        f->wait();
-        return cxx::invoke(func, std::move(*f));
-      });
+      return async([func](future &&f) {
+                     f.wait();
+                     return cxx::invoke(func, std::move(f));
+                   },
+                   std::move(*this));
     }
   }
   template <typename U = T>
@@ -326,7 +325,7 @@ public:
   unwrap() {
     RPC_ASSERT(valid());
     // TODO: optimize this
-    return then([](future &&f) { return f.get().get(); });
+    return then([](future &&f) { return std::move(f).get().get(); });
   }
   bool is_ready() const { return state->is_ready(); }
 };
@@ -367,12 +366,11 @@ public:
       return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
-      auto f0 = new future(std::move(*this));
-      return async([=]() {
-        std::unique_ptr<future> f(f0);
-        f->wait();
-        return cxx::invoke(func, std::move(*f));
-      });
+      return async([func](future &&f) {
+                     f.wait();
+                     return cxx::invoke(func, std::move(f));
+                   },
+                   std::move(*this));
     }
   }
   bool is_ready() const { return state->is_ready(); }
@@ -414,12 +412,11 @@ public:
       return make_ready_future(cxx::invoke(func, std::move(*this)));
     } else {
       // TODO: optimize this
-      auto f0 = new future(std::move(*this));
-      return async([=]() {
-        std::unique_ptr<future> f(f0);
-        f->wait();
-        return cxx::invoke(func, std::move(*f));
-      });
+      return async([func](future &&f) {
+                     f.wait();
+                     return cxx::invoke(func, std::move(f));
+                   },
+                   std::move(*this));
     }
   }
   bool is_ready() const { return state->is_ready(); }

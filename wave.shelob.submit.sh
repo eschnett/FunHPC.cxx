@@ -92,10 +92,10 @@ echo '[BEGIN MPIRUN]'
 \$MPIRUN                                                                \\
     -np $procs                                                          \\
     --map-by ppr:$ppr                                                   \\
-    -display-map                                                        \\
+    --display-map                                                       \\
     --mca btl self,sm,openib                                            \\
     --bind-to $bind_to                                                  \\
-    -report-bindings                                                    \\
+    --report-bindings                                                   \\
     -x RPC_NODES=$nodes                                                 \\
     -x RPC_CORES=$cores_per_node                                        \\
     -x RPC_PROCESSES=$procs                                             \\

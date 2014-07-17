@@ -181,7 +181,7 @@ public:
   }
   template <typename U>
   typename std::enable_if<
-      (std::is_same<U, T>::value &&detail::is_future<U>::value),
+      ((std::is_same<U, T>::value) && (detail::is_future<U>::value)),
       shared_future<typename U::value_type> >::type
   unwrap() const {
     RPC_ASSERT(valid());

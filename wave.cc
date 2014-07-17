@@ -330,7 +330,6 @@ public:
                                    const cell_t &y) { return x + y.norm(); },
                                 norm_t(), cells);
   }
-  RPC_DECLARE_CONST_MEMBER_ACTION(grid_t, norm);
 
   // Initial condition
   struct initial : empty {};
@@ -378,7 +377,6 @@ RPC_COMPONENT(grid_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::axpy, double, client<grid_t>,
                           client<grid_t>);
-RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, norm);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
                           ptrdiff_t);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>, double);
@@ -389,6 +387,9 @@ RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
 ostream &operator<<(ostream &os, const client<grid_t> &g) {
   return g->output(os);
 }
+
+norm_t norm_plus_grid(const norm_t &x, const grid_t &y) { return x + y.norm(); }
+RPC_ACTION(norm_plus_grid);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -459,27 +460,13 @@ public:
 
   // Norm
   norm_t norm() const {
-    // TODO: Use a proper reduction operation
-    vector<future<norm_t> > fns;
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      fns.push_back(async(remote::async, grid_t::norm_action(), get(i)));
-    }
-    norm_t n;
-    for (auto &fn : fns)
-      n = n + fn.get();
-    return n;
+    return cxx::foldable::foldl([](const norm_t &x, const client<grid_t> &y) {
+                                  return x + cxx::foldable::foldl(
+                                                 norm_plus_grid_action(),
+                                                 norm_t(), y);
+                                },
+                                norm_t(), grids);
   }
-  // static norm_t norm(const client<domain_t> &d) {
-  //   struct reduce {
-  //     norm_t operator()(const norm_t &a, const norm_t &b) const {
-  //       return norm_t(a, b);
-  //     }
-  //   };
-  //   struct zero {
-  //     norm_t operator()() const { return norm_t(); }
-  //   };
-  //   return map_reduce(grid_t::norm_action(), reduce(), zero(), d);
-  // }
 
   // Initial condition
   struct initial : empty {};

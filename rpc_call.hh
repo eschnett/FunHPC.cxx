@@ -33,6 +33,10 @@ struct callable_base {
   virtual void execute() = 0;
 };
 
+// TODO: combine evaluate and finish classes. instead of a promise
+// to fill, add a generic continuation to every action. drop the
+// _evaluate suffix.
+
 template <typename F, typename R> struct action_finish : public callable_base {
   global_ptr<promise<R> > p;
   R res;

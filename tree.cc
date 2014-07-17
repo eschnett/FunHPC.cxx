@@ -1,5 +1,6 @@
 #include "rpc.hh"
 
+#include "cxx_either.hh"
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
 #include "cxx_maybe.hh"

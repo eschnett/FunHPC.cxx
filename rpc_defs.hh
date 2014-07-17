@@ -5,6 +5,8 @@
 
 #include "rpc_future.hh"
 
+#include <type_traits>
+
 namespace rpc {
 
 // TODO: Implement "futurize"
@@ -16,6 +18,20 @@ auto with_lock(M &m, const F &f, As &&... args)
     -> typename cxx::invoke_of<F, As...>::type {
   lock_guard<decltype(m)> g(m);
   return cxx::invoke(f, std::forward<As>(args)...);
+}
+
+template <typename T, typename... As, typename F>
+typename cxx::invoke_of<F, T &>::type
+as_transaction(std::atomic<T> &var, const F &func, const As &... args) {
+  typedef typename cxx::invoke_of<F, T &, As...>::type R;
+  T current = var.load();
+  for (;;) {
+    T desired = current;
+    R result = cxx::invoke(func, desired, args...);
+    bool was_changed = var.compare_exchange_weak(current, desired);
+    if (was_changed)
+      return result;
+  }
 }
 
 char *strdup(const char *str);

@@ -88,15 +88,15 @@ public:
 // T& operator*() { return right(); }
 #if 0
   template <typename F, typename G, typename... As>
-  either<typename ::cxx::invoke_of<F, L, As&&...>::type,
-         typename ::cxx::invoke_of<G, R, As&&...>::type>
+  either<typename cxx::invoke_of<F, L, As&&...>::type,
+         typename cxx::invoke_of<G, R, As&&...>::type>
   gmap(F f, G g, As &&... as) const {
-    typedef typename ::cxx::invoke_of<F, L, As...>::type FL;
-    typedef typename ::cxx::invoke_of<G, R, As...>::type GR;
+    typedef typename cxx::invoke_of<F, L, As...>::type FL;
+    typedef typename cxx::invoke_of<G, R, As...>::type GR;
     return is_left() ? either<FL, GR>(
-                           ::cxx::invoke(f, left(), std::forward<As>(as)...))
+                           cxx::invoke(f, left(), std::forward<As>(as)...))
                      : either<FL, GR>(
-                           ::cxx::invoke(g, right(), std::forward<As>(as)...));
+                           cxx::invoke(g, right(), std::forward<As>(as)...));
   }
 #endif
 private:
@@ -122,13 +122,12 @@ public:
   template <typename F, typename G, typename... As>
   either(
       typename std::enable_if<
-          ((std::is_same<typename ::cxx::invoke_of<
+          ((std::is_same<typename cxx::invoke_of<
                              F, typename unwrap_either<As>::left_type...>::type,
                          L>::value) &&
-           (std::is_same<
-               typename ::cxx::invoke_of<
-                   G, typename unwrap_either<As>::right_type...>::type,
-               R>::value)),
+           (std::is_same<typename cxx::invoke_of<G, typename unwrap_either<As>::
+                                                        right_type...>::type,
+                         R>::value)),
           gmap>::type,
       F f, G g, const As &... as) {
     std::array<bool, sizeof...(As)> is_lefts{ { unwrap_either<As>().is_left(
@@ -151,12 +150,12 @@ public:
   }
   template <typename F, typename G, typename... As>
   typename std::enable_if<
-      std::is_same<typename ::cxx::invoke_of<F, L, As &&...>::type,
-                   typename ::cxx::invoke_of<G, R, As &&...>::type>::value,
-      typename ::cxx::invoke_of<G, R, As &&...>::type>::type
+      std::is_same<typename cxx::invoke_of<F, L, As &&...>::type,
+                   typename cxx::invoke_of<G, R, As &&...>::type>::value,
+      typename cxx::invoke_of<G, R, As &&...>::type>::type
   gfoldl(F f, G g, As &&... as) const {
-    return is_left() ? ::cxx::invoke(f, left(), std::forward<As>(as)...)
-                     : ::cxx::invoke(g, right(), std::forward<As>(as)...);
+    return is_left() ? cxx::invoke(f, left(), std::forward<As>(as)...)
+                     : cxx::invoke(g, right(), std::forward<As>(as)...);
   }
 };
 template <typename L, typename R> void swap(either<L, R> &a, either<L, R> &b) {
@@ -197,7 +196,7 @@ template <typename L, typename R> struct unwrap_cxx_either<either<L, R> > {
 template <template <typename> class M, typename R, typename... As, typename F>
 typename std::enable_if<
     (detail::is_cxx_either<M<R> >::value &&std::is_same<
-        typename ::cxx::invoke_of<
+        typename cxx::invoke_of<
             F, typename detail::unwrap_cxx_either<As>::type...>::type,
         R>::value),
     M<R> >::type
@@ -208,7 +207,7 @@ fmap(const F &f, const As &... as) {
   bool is_right = *std::min_element(is_rights.begin(), is_rights.end());
   if (!is_right)
     return M<R>(typename M<R>::left_type());
-  return M<R>(::cxx::invoke(f, detail::unwrap_cxx_either<As>()(as)...));
+  return M<R>(cxx::invoke(f, detail::unwrap_cxx_either<As>()(as)...));
 }
 }
 
@@ -243,7 +242,7 @@ typename std::enable_if<(detail::is_cxx_either<M<T> >::value &&std::is_same<
 bind(const M<T> &x, const F &f) {
   if (x.is_left())
     return M<R>(x.left());
-  return ::cxx::invoke(f, x.right());
+  return cxx::invoke(f, x.right());
 }
 
 template <template <typename> class M, typename T>

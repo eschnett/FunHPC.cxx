@@ -65,19 +65,19 @@ public:
   // T& operator*() { return just(); }
   template <typename R, typename F, typename... As>
   typename std::enable_if<
-      std::is_same<typename ::cxx::invoke_of<F, T, As &&...>::type, R>::value,
+      std::is_same<typename cxx::invoke_of<F, T, As &&...>::type, R>::value,
       maybe<R> >::type
   fmap(F f, As &&... as) const {
     return is_nothing()
                ? maybe<R>()
-               : maybe<R>(::cxx::invoke(f, just(), std::forward<As>(as)...));
+               : maybe<R>(cxx::invoke(f, just(), std::forward<As>(as)...));
   }
   template <typename R, typename F, typename... As>
   typename std::enable_if<
-      std::is_same<typename ::cxx::invoke_of<F, T, As &&...>::type, R>::value,
+      std::is_same<typename cxx::invoke_of<F, T, As &&...>::type, R>::value,
       R>::type
   fold(const R &z, F f, As &&... as) const {
-    return is_nothing() ? z : ::cxx::invoke(f, just(), std::forward<As>(as)...);
+    return is_nothing() ? z : cxx::invoke(f, just(), std::forward<As>(as)...);
   }
 };
 template <typename T> void swap(maybe<T> &a, maybe<T> &b) { a.swap(b); }
@@ -117,7 +117,7 @@ template <typename T> struct unwrap_cxx_maybe<maybe<T> > {
 template <template <typename> class M, typename R, typename... As, typename F>
 typename std::enable_if<
     (detail::is_cxx_maybe<M<R> >::value &&std::is_same<
-        typename ::cxx::invoke_of<
+        typename cxx::invoke_of<
             F, typename detail::unwrap_cxx_maybe<As>::type...>::type,
         R>::value),
     M<R> >::type
@@ -128,7 +128,7 @@ fmap(const F &f, const As &... as) {
   bool is_just = *std::min_element(is_justs.begin(), is_justs.end());
   if (!is_just)
     return maybe<R>();
-  return M<R>(::cxx::invoke(f, detail::unwrap_cxx_maybe<As>()(as)...));
+  return M<R>(cxx::invoke(f, detail::unwrap_cxx_maybe<As>()(as)...));
 }
 }
 
@@ -156,14 +156,13 @@ make(As &&... as) {
 }
 
 template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    (detail::is_cxx_maybe<M<T> >::value &&
-         std::is_same<typename ::cxx::invoke_of<F, T>::type, M<R> >::value),
-    M<R> >::type
+typename std::enable_if<(detail::is_cxx_maybe<M<T> >::value &&std::is_same<
+                            typename cxx::invoke_of<F, T>::type, M<R> >::value),
+                        M<R> >::type
 bind(const M<T> &x, const F &f) {
   if (x.is_nothing())
     return maybe<R>();
-  return ::cxx::invoke(f, x.just());
+  return cxx::invoke(f, x.just());
 }
 
 template <template <typename> class M, typename T>

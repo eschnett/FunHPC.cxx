@@ -12,6 +12,9 @@
 #include <string>
 #include <vector>
 
+// Define a function with only one template argument
+template <typename T> using function_ = std::function<T(int)>;
+
 // Define a set with only one template argument
 template <typename T> using set_ = std::set<T>;
 
@@ -25,6 +28,20 @@ template <typename T> using either_ = cxx::either<std::string, T>;
 template <typename T> using tree_ = cxx::tree<T, vector_, std::shared_ptr>;
 
 int rpc_main(int argc, char **argv) {
+
+  {
+    auto u __attribute__((__unused__)) = cxx::monad::unit<function_>(1);
+    auto m __attribute__((__unused__)) = cxx::monad::make<function_, int>(1);
+    auto b __attribute__((__unused__)) =
+        cxx::monad::bind<function_, double>(u, [](int x) {
+          return std::function<double(int)>([](int x) { return double(x); });
+        });
+    auto f __attribute__((__unused__)) =
+        cxx::functor::fmap<function_, double>([](int x) { return double(x); },
+                                              u);
+    auto j __attribute__((__unused__)) = cxx::monad::join<function_>(
+        cxx::monad::unit<function_>(cxx::monad::unit<function_>(1)));
+  }
 
   {
     auto u __attribute__((__unused__)) = cxx::monad::unit<std::shared_ptr>(1);

@@ -1,6 +1,7 @@
 #ifndef CXX_FUNCTOR_HH
 #define CXX_FUNCTOR_HH
 
+#include "cxx_functor_function.hh"
 #include "cxx_functor_set.hh"
 #include "cxx_functor_shared_ptr.hh"
 #include "cxx_functor_vector.hh"

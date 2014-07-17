@@ -1,6 +1,7 @@
 #ifndef CXX_MONAD_HH
 #define CXX_MONAD_HH
 
+#include "cxx_monad_function.hh"
 #include "cxx_monad_set.hh"
 #include "cxx_monad_shared_ptr.hh"
 #include "cxx_monad_vector.hh"
@@ -18,7 +19,6 @@ namespace cxx {
 // plus:            [m a] -> m a
 // TODO: append one entry (push_back)?
 
-// TODO: is function<R(T)> a monad? a functor? where T is fixed?
 // TODO: introduce cxx_applicative?
 //       pure (unit)
 //       <*>

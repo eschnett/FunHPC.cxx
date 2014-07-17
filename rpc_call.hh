@@ -163,7 +163,7 @@ using action_impl = decltype(get_action_impl_t<F, W>(W::value));
 
 // Call an action on a given destination
 
-// Whether a type is a (non-member) action
+// Whether a type is an action
 template <typename T> using is_action = std::is_base_of<action_base<T>, T>;
 
 template <typename F, typename... As>

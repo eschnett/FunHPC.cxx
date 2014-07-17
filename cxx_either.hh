@@ -13,6 +13,9 @@ namespace cxx {
 
 // An either-or class which can hold either of two different types
 
+// TODO: add constructors that choose explicitly between left and
+// right, so that left and right can hold the same type
+
 template <typename L, typename R> class either {
 public:
   typedef L left_type;

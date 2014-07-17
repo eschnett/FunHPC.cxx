@@ -55,7 +55,7 @@ typename std::enable_if<detail::is_std_set<M<T> >::value, M<T> >::type
 join(const M<M<T> > &x) {
   M<T> r;
   for (const auto &e : x) {
-    r.insert(r.end(), e.begin(), e.end());
+    r.insert(e.begin(), e.end());
   }
   return r;
 }

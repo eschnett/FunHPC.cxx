@@ -208,6 +208,11 @@ public:
   explicit tree(const T &value) : node(monad::make<P, leaf<T, C, P> >(value)) {}
   tree(const tree &t) : node(t.node) {}
 
+  bool invariant() const {
+    return node.gmap([](const P<leaf<T, C, P> > &pl) { return bool(pl); },
+                     [](const P<branch<T, C, P> > &pb) { return bool(pb); });
+  }
+
   bool empty() const {
     return node.gfoldl([](const P<leaf<T, C, P> > &pl) { return pl->empty(); },
                        [](const P<branch<T, C, P> > &pb) {

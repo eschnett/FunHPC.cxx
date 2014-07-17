@@ -186,8 +186,9 @@ mpi-rpc.pdf: index.rst
 
 
 
-format:
-	clang-format -i *.hh *.cc
+format: $(addprefix format-, $(wildcard *.hh *.cc))
+format-%:
+	@clang-format -i $*
 
 
 

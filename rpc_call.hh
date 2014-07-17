@@ -171,7 +171,7 @@ using action_impl = decltype(get_action_impl_t<F, W>(W::value));
 template <typename T> using is_action = std::is_base_of<action_base<T>, T>;
 
 template <typename F, typename... As>
-auto sync(remote policy, int dest, const F &, As &&... args)
+auto sync(remote policy, int dest, F, As &&... args)
     -> typename std::enable_if<is_action<F>::value,
                                typename cxx::invoke_of<F, As...>::type>::type {
   RPC_ASSERT(policy == remote::sync);
@@ -189,15 +189,14 @@ auto sync(remote policy, int dest, const F &, As &&... args)
 }
 
 template <typename F, typename... As>
-auto sync(remote policy, const shared_future<int> &dest, const F &,
-          As &&... args)
+auto sync(remote policy, const shared_future<int> &dest, F, As &&... args)
     -> typename std::enable_if<is_action<F>::value,
                                typename cxx::invoke_of<F, As...>::type>::type {
   return sync(policy, dest.get(), F(), std::forward<As>(args)...);
 }
 
 template <typename F, typename... As>
-auto detached(remote policy, int dest, const F &, As &&... args)
+auto detached(remote policy, int dest, F, As &&... args)
     -> typename std::enable_if<is_action<F>::value, void>::type {
   RPC_ASSERT(policy == remote::detached);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
@@ -213,8 +212,7 @@ auto detached(remote policy, int dest, const F &, As &&... args)
 }
 
 template <typename F, typename... As>
-auto detached(remote policy, const shared_future<int> &dest, const F &,
-              As &&... args)
+auto detached(remote policy, const shared_future<int> &dest, F, As &&... args)
     -> typename std::enable_if<is_action<F>::value, void>::type {
   RPC_ASSERT(policy == remote::detached);
   if (future_is_ready(dest)) {
@@ -236,14 +234,14 @@ auto detached(remote policy, const shared_future<int> &dest, const F &,
 
 namespace detail {
 template <typename F, typename... As>
-auto make_ready_future(const F &, As &&... args)
+auto make_ready_future(F, As &&... args)
     -> typename std::enable_if<
           !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
           future<typename cxx::invoke_of<F, As...>::type> >::type {
   return rpc::make_ready_future(F()(std::forward<As>(args)...));
 }
 template <typename F, typename... As>
-auto make_ready_future(const F &, As &&... args)
+auto make_ready_future(F, As &&... args)
     -> typename std::enable_if<
           std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
           future<typename cxx::invoke_of<F, As...>::type> >::type {
@@ -252,7 +250,7 @@ auto make_ready_future(const F &, As &&... args)
 }
 
 template <typename F, typename... As>
-auto async(remote policy, int dest, const F &, As &&... args)
+auto async(remote policy, int dest, F, As &&... args)
     -> typename std::enable_if<
           is_action<F>::value,
           future<typename cxx::invoke_of<F, As...>::type> >::type {
@@ -296,8 +294,7 @@ auto async(remote policy, int dest, const F &, As &&... args)
 }
 
 template <typename F, typename... As>
-auto async(remote policy, const shared_future<int> &dest, const F &,
-           As &&... args)
+auto async(remote policy, const shared_future<int> &dest, F, As &&... args)
     -> typename std::enable_if<
           is_action<F>::value,
           future<typename cxx::invoke_of<F, As...>::type> >::type {
@@ -382,7 +379,7 @@ struct is_global : is_global_helper<typename std::remove_cv<
                        typename std::remove_reference<T>::type>::type> {};
 
 template <typename F, typename G, typename... As>
-auto sync(remote policy, const F &, G &&global, As &&... args)
+auto sync(remote policy, F, G &&global, As &&... args)
     -> typename std::enable_if<
           (is_action<F>::value &&is_global<G>::value),
           typename cxx::invoke_of<F, G, As...>::type>::type {
@@ -391,7 +388,7 @@ auto sync(remote policy, const F &, G &&global, As &&... args)
 }
 
 template <typename F, typename G, typename... As>
-auto detached(remote policy, const F &, G &&global, As &&... args)
+auto detached(remote policy, F, G &&global, As &&... args)
     -> typename std::enable_if<(is_action<F>::value &&is_global<G>::value),
                                void>::type {
   return detached(policy, global.get_proc_future(), F(),
@@ -399,7 +396,7 @@ auto detached(remote policy, const F &, G &&global, As &&... args)
 }
 
 template <typename F, typename G, typename... As>
-auto async(remote policy, const F &, G &&global, As &&... args)
+auto async(remote policy, F, G &&global, As &&... args)
     -> typename std::enable_if<
           (is_action<F>::value &&is_global<G>::value),
           future<typename cxx::invoke_of<F, G, As...>::type> >::type {

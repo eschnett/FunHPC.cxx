@@ -28,6 +28,20 @@ template <typename T> using either_ = cxx::either<std::string, T>;
 // Define a tree with only one template argument
 template <typename T> using tree_ = cxx::tree<T, vector_, std::shared_ptr>;
 
+int add_int(int x, int y) { return x + y; }
+RPC_ACTION(add_int);
+
+double add_int_double(int x, int y) { return double(x + y); }
+RPC_ACTION(add_int_double);
+
+double make_double(int x) { return double(x); }
+RPC_ACTION(make_double);
+
+rpc::client<double> make_client_double(int x) {
+  return rpc::make_client<double>(x);
+}
+RPC_ACTION(make_client_double);
+
 int rpc_main(int argc, char **argv) {
 
   {
@@ -104,6 +118,21 @@ int rpc_main(int argc, char **argv) {
         cxx::monad::unit<rpc::client>(cxx::monad::unit<rpc::client>(1)));
     auto s __attribute__((__unused__)) =
         cxx::foldable::foldl(std::plus<int>(), 0, u);
+  }
+
+  {
+    auto u __attribute__((__unused__)) = cxx::monad::unit<rpc::client>(1);
+    auto m __attribute__((__unused__)) = cxx::monad::make<rpc::client, int>(1);
+    auto b __attribute__((__unused__)) =
+        cxx::monad::bind<rpc::client, double>(u, make_client_double_action());
+    auto f __attribute__((__unused__)) =
+        cxx::functor::fmap<rpc::client, double>(make_double_action(), u);
+    auto f2 __attribute__((__unused__)) =
+        cxx::functor::fmap<rpc::client, double>(add_int_double_action(), u, 1);
+    auto j __attribute__((__unused__)) = cxx::monad::join<rpc::client>(
+        cxx::monad::unit<rpc::client>(cxx::monad::unit<rpc::client>(1)));
+    auto s __attribute__((__unused__)) =
+        cxx::foldable::foldl(add_int_action(), 0, u);
   }
 
   {

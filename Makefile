@@ -40,8 +40,8 @@ EXES = bench boost_bw_lat cereal_bw_lat demo hpx_bw_lat hpx_wave hwloc_test matb
 QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = hpx.cc
 HWLOC_SRCS   = hwloc.cc
-RPC_SRCS     = rpc_broadcast.cc rpc_defs.cc rpc_global_shared_ptr.cc	\
-	rpc_main.cc rpc_server.cc rpc_server_mpi.cc			\
+RPC_SRCS     = rpc_broadcast.cc rpc_client.cc rpc_defs.cc		     \
+	rpc_global_shared_ptr.cc rpc_main.cc rpc_server.cc rpc_server_mpi.cc \
 	${QTHREAD_SRCS} ${HPX_SRCS} ${HWLOC_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 

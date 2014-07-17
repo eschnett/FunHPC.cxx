@@ -21,24 +21,9 @@ template <typename T>
 future<typename std::decay<T>::type> make_ready_future(T &&value);
 
 namespace detail {
-// TODO: remove these
-template <typename T> struct is_future;
-template <typename T> struct is_future<future<T> > {
-  static constexpr bool value = true;
-};
-template <typename T> struct is_future<shared_future<T> > {
-  static constexpr bool value = true;
-};
-
-template <typename T> struct future_traits;
-template <typename T> struct future_traits<future<T> > {
-  static constexpr bool value = true;
-  typedef T value_type;
-};
-template <typename T> struct future_traits<shared_future<T> > {
-  static constexpr bool value = true;
-  typedef T value_type;
-};
+template <typename T> struct is_future : std::false_type {};
+template <typename T> struct is_future<future<T> > : std::true_type {};
+template <typename T> struct is_future<shared_future<T> > : std::true_type {};
 }
 
 template <typename T> class future_state {
@@ -179,9 +164,9 @@ public:
                    *this);
     }
   }
-  template <typename U>
+  template <typename U = T>
   typename std::enable_if<
-      ((std::is_same<U, T>::value) && (detail::is_future<U>::value)),
+      ((std::is_same<U, T>::value) && (detail::is_future<T>::value)),
       shared_future<typename U::value_type> >::type
   unwrap() const {
     RPC_ASSERT(valid());
@@ -334,9 +319,9 @@ public:
       });
     }
   }
-  template <typename U>
+  template <typename U = T>
   typename std::enable_if<
-      (std::is_same<U, T>::value &&detail::is_future<U>::value),
+      ((std::is_same<U, T>::value) && (detail::is_future<T>::value)),
       future<typename U::value_type> >::type
   unwrap() {
     RPC_ASSERT(valid());

@@ -328,10 +328,6 @@ public:
             [a](const cell_t &x,
                 const cell_t &y) { return cell_t(cell_t::axpy(), a, x, y); },
             x.cells, y.cells)) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, const grid_t &, const grid_t &);
-  grid_t(axpy, double a, client<grid_t> x, client<grid_t> y)
-      : grid_t(axpy(), a, *x, *y) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, axpy, double, client<grid_t>, client<grid_t>);
 
   // Norm
   norm_t norm() const {
@@ -384,8 +380,6 @@ public:
 };
 RPC_COMPONENT(grid_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
-RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::axpy, double, client<grid_t>,
-                          client<grid_t>);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
                           ptrdiff_t);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>, double);
@@ -397,8 +391,29 @@ ostream &operator<<(ostream &os, const client<grid_t> &g) {
   return g->output(os);
 }
 
-norm_t norm_plus_grid(const norm_t &x, const grid_t &y) { return x + y.norm(); }
-RPC_ACTION(norm_plus_grid);
+grid_t grid_axpy(double a, const grid_t &x, const grid_t &y) {
+  return grid_t(grid_t::axpy(), a, x, y);
+}
+RPC_ACTION(grid_axpy);
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
+    rpc::client<grid_t> >::evaluate grid_axpy_action_evaluate;
+RPC_CLASS_EXPORT(grid_axpy_action_evaluate);
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
+    rpc::client<grid_t> >::finish grid_axpy_action_finish;
+RPC_CLASS_EXPORT(grid_axpy_action_finish);
+
+norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
+  return x + y.norm();
+}
+RPC_ACTION(grid_norm_foldl);
+typedef cxx::foldable::detail::foldl_action<
+    norm_t, grid_t, grid_norm_foldl_action>::evaluate grid_norm_foldl_evaluate;
+RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
+typedef cxx::foldable::detail::foldl_action<
+    norm_t, grid_t, grid_norm_foldl_action>::finish grid_norm_foldl_finish;
+RPC_CLASS_EXPORT(grid_norm_foldl_finish);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -457,21 +472,24 @@ public:
 
   // Linear combination
   struct axpy : empty {};
+  domain_t(axpy, double a, const domain_t &x, const domain_t &y)
+      : t(a * x.t + y.t),
+        grids(cxx::functor::fmap<vector_, client<grid_t> >(
+            [a](const client<grid_t> &x, const client<grid_t> &y) {
+              return cxx::functor::fmap<client, grid_t>(
+                  grid_axpy_action(),
+                  // TODO: grid_t::axpy_action(),
+                  a, x, y);
+            },
+            x.grids, y.grids)) {}
   domain_t(axpy, double a, const client<domain_t> &x, const client<domain_t> &y)
-      : domain_t(y) {
-    t = a * x->t + y->t;
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      set(i,
-          make_remote_client<grid_t>(y->get(i).get_proc_future(),
-                                     grid_t::axpy(), a, x->get(i), y->get(i)));
-    }
-  }
+      : domain_t(axpy(), a, *x, *y) {}
 
   // Norm
   norm_t norm() const {
     return cxx::foldable::foldl([](const norm_t &x, const client<grid_t> &y) {
                                   return x + cxx::foldable::foldl(
-                                                 norm_plus_grid_action(),
+                                                 grid_norm_foldl_action(),
                                                  norm_t(), y);
                                 },
                                 norm_t(), grids);

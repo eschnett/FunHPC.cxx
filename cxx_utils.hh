@@ -87,6 +87,15 @@ struct any : std::integral_constant<bool, !all<!xs...>::value> {};
 
 template <bool... xs>
 struct none : std::integral_constant<bool, all<!xs...>::value> {};
+
+// Find first set (true) element. Return sizeof... if all elements are false.
+template <bool...> struct ffs;
+template <> struct ffs<> : std::integral_constant<size_t, 0> {};
+template <bool... xs>
+struct ffs<true, xs...> : std::integral_constant<size_t, 0> {};
+template <bool... xs>
+struct ffs<false, xs...> : std::integral_constant<size_t,
+                                                  ffs<xs...>::value + 1> {};
 }
 
 #define CXX_UTILS_HH_DONE

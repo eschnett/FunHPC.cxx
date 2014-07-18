@@ -273,6 +273,8 @@ M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
 }
 
 struct grid_t {
+  // TODO: introduce irange for these two (e.g. irange_t =
+  // array<ptrdiff_t,2>)
   ptrdiff_t imin, imax; // spatial indices
   static double x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
 
@@ -347,7 +349,6 @@ public:
               iota(is.begin(), is.end(), imin);
               return is;
             }())) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, initial, double, ptrdiff_t, ptrdiff_t);
 
   // Error
   struct error : empty {};
@@ -380,8 +381,6 @@ public:
 };
 RPC_COMPONENT(grid_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
-RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::initial, double, ptrdiff_t,
-                          ptrdiff_t);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>, double);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
                           shared_future<cell_t>, shared_future<cell_t>);
@@ -398,10 +397,10 @@ RPC_ACTION(grid_axpy);
 typedef cxx::functor::detail::fmap_action<
     rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
     rpc::client<grid_t> >::evaluate grid_axpy_action_evaluate;
-RPC_CLASS_EXPORT(grid_axpy_action_evaluate);
 typedef cxx::functor::detail::fmap_action<
     rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
     rpc::client<grid_t> >::finish grid_axpy_action_finish;
+RPC_CLASS_EXPORT(grid_axpy_action_evaluate);
 RPC_CLASS_EXPORT(grid_axpy_action_finish);
 
 norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
@@ -410,10 +409,23 @@ norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
 RPC_ACTION(grid_norm_foldl);
 typedef cxx::foldable::detail::foldl_action<
     norm_t, grid_t, grid_norm_foldl_action>::evaluate grid_norm_foldl_evaluate;
-RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
 typedef cxx::foldable::detail::foldl_action<
     norm_t, grid_t, grid_norm_foldl_action>::finish grid_norm_foldl_finish;
+RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
 RPC_CLASS_EXPORT(grid_norm_foldl_finish);
+
+grid_t grid_initial(double t, ptrdiff_t imin, ptrdiff_t imax) {
+  return grid_t(grid_t::initial(), t, imin, imax);
+}
+RPC_ACTION(grid_initial);
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_initial_action, double, rpc::client<ptrdiff_t>,
+    rpc::client<ptrdiff_t> >::evaluate grid_initial_action_evaluate;
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_initial_action, double, rpc::client<ptrdiff_t>,
+    rpc::client<ptrdiff_t> >::finish grid_initial_action_finish;
+RPC_CLASS_EXPORT(grid_initial_action_evaluate);
+RPC_CLASS_EXPORT(grid_initial_action_finish);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -497,16 +509,29 @@ public:
 
   // Initial condition
   struct initial : empty {};
-  domain_t(initial, double t) : domain_t(t) {
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      // Choose a domain decomposition
-      int proc = mod_floor(rpc::server->rank() + int(i), rpc::server->size());
-      ptrdiff_t imin = i * defs->ncells_per_grid;
-      ptrdiff_t imax = min((i + 1) * defs->ncells_per_grid, defs->ncells);
-      set(i,
-          make_remote_client<grid_t>(proc, grid_t::initial(), t, imin, imax));
-    }
-  }
+  domain_t(initial, double t)
+      : t(t),
+        grids(cxx::functor::fmap<vector_, client<grid_t> >(
+            [t](const client<ptrdiff_t> &imin, const client<ptrdiff_t> &imax) {
+              return cxx::functor::fmap<client, grid_t>(grid_initial_action(),
+                                                        t, imin, imax);
+            },
+            []() {
+              // Choose a domain decomposition
+              vector<client<ptrdiff_t> > imins(ngrids());
+              for (ptrdiff_t i = 0; i < ngrids(); ++i)
+                imins[i] = cxx::monad::unit<client>(
+                    min(i * defs->ncells_per_grid, defs->ncells));
+              return imins;
+            }(),
+            []() {
+              // Choose a domain decomposition
+              vector<client<ptrdiff_t> > imaxs(ngrids());
+              for (ptrdiff_t i = 0; i < ngrids(); ++i)
+                imaxs[i] = cxx::monad::unit<client>(
+                    min((i + 1) * defs->ncells_per_grid, defs->ncells));
+              return imaxs;
+            }())) {}
 
   // Error
   struct error : empty {};

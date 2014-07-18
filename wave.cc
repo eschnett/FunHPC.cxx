@@ -359,9 +359,6 @@ public:
                                                         cell_t::error(), c, t);
                                                   },
                                                   g.cells)) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, error, const grid_t &, double);
-  grid_t(error, client<grid_t> g, double t) : grid_t(error(), *g, t) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, error, client<grid_t>, double);
 
   // RHS
   struct rhs : empty {};
@@ -381,7 +378,6 @@ public:
 };
 RPC_COMPONENT(grid_t);
 RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
-RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::error, client<grid_t>, double);
 RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
                           shared_future<cell_t>, shared_future<cell_t>);
 
@@ -426,6 +422,19 @@ typedef cxx::functor::detail::fmap_action<
     rpc::client<ptrdiff_t> >::finish grid_initial_action_finish;
 RPC_CLASS_EXPORT(grid_initial_action_evaluate);
 RPC_CLASS_EXPORT(grid_initial_action_finish);
+
+grid_t grid_error(const grid_t &s, double t) {
+  return grid_t(grid_t::error(), s, t);
+}
+RPC_ACTION(grid_error);
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_error_action, rpc::client<grid_t>,
+    double>::evaluate grid_error_action_evaluate;
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_error_action, rpc::client<grid_t>, double>::finish
+grid_error_action_finish;
+RPC_CLASS_EXPORT(grid_error_action_evaluate);
+RPC_CLASS_EXPORT(grid_error_action_finish);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -535,13 +544,14 @@ public:
 
   // Error
   struct error : empty {};
-  domain_t(error, const client<domain_t> &s) : domain_t(s) {
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      const client<grid_t> &si = s->get(i);
-      set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::error(),
-                                        si, s->t));
-    }
-  }
+  domain_t(error, const domain_t &s)
+      : t(s.t), grids(cxx::functor::fmap<vector_, client<grid_t> >(
+                    [this /*TODO: t*/](const client<grid_t> &s) {
+                      return cxx::functor::fmap<client, grid_t>(
+                          grid_error_action(), s, this->t);
+                    },
+                    s.grids)) {}
+  domain_t(error, const client<domain_t> &s) : domain_t(error(), *s) {}
 
   // RHS
   struct rhs : empty {};

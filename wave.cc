@@ -231,6 +231,7 @@ public:
   // Boundary condition
   struct boundary : empty {};
   cell_t(boundary, double t, double x) : cell_t(analytic(), t, x) {}
+  RPC_DECLARE_CONSTRUCTOR(cell_t, boundary, double, double);
 
   // Error
   struct error : empty {};
@@ -239,7 +240,7 @@ public:
 
   // RHS
   struct rhs : empty {};
-  cell_t(rhs, const cell_t &cm, const cell_t &c, const cell_t &cp) {
+  cell_t(rhs, const cell_t &c, const cell_t &cm, const cell_t &cp) {
     x = 0.0; // dx/dt
     u = c.rho;
     rho = (cp.v - cm.v) / (2 * defs->dx);
@@ -247,6 +248,7 @@ public:
   }
 };
 RPC_COMPONENT(cell_t);
+RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, double);
 
 // Output
 ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
@@ -257,18 +259,105 @@ ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 
 // TODO: use array<...,N>, and allow multiple ghost zones
 template <template <typename> class M, typename T, typename F>
-M<T> stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
+M<typename cxx::invoke_of<F, T, T, T>::type>
+stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
+  typedef typename cxx::invoke_of<F, T, T, T>::type R;
   size_t s = c.size();
   assert(s >= 2); // TODO: This can be avoided
-  M<T> r(s);
+  M<R> r(s);
   // TODO: add push_back equivalent to monad
   // TODO: for efficiency: don't use push_back, use something else
   // that requires preallocation, that doesn't reallocate, and which
   // turns into an indexed loop when used for vectors
-  r[0] = cxx::invoke(f, bm, c[0], c[1]);
+  r[0] = cxx::invoke(f, c[0], bm, c[1]);
   for (size_t i = 1; i < s - 1; ++i)
-    r[i] = cxx::invoke(f, c[i - 1], c[i], c[i + 1]);
-  r[s - 1] = cxx::invoke(f, c[s - 2], c[s - 1], bp);
+    r[i] = cxx::invoke(f, c[i], c[i - 1], c[i + 1]);
+  r[s - 1] = cxx::invoke(f, c[s - 1], c[s - 2], bp);
+  return r;
+}
+
+template <typename> struct kinds;
+template <typename T, typename Allocator> struct kinds<vector<T, Allocator> > {
+  typedef T type;
+  template <typename U> using constructor = vector<U, Allocator>;
+};
+
+template <typename CT, typename R, typename F,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+foldl(const F &f, const R &z, const CT &xs) {
+  return cxx::foldable::foldl(f, z, xs);
+}
+
+template <typename MT, typename F,
+          template <typename> class M = kinds<MT>::template constructor,
+          typename T = typename kinds<MT>::type,
+          typename R = typename cxx::invoke_of<F, T>::type>
+M<R> fmap(const F &f, const MT &xs) {
+  return cxx::functor::fmap<M, R>(f, xs);
+}
+
+template <typename CT,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+C<T> unit(const T &x) {
+  return cxx::monad::unit<C>(x);
+}
+template <typename CT,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+C<T> unit(T &&x) {
+  return cxx::monad::unit<C>(std::move(x));
+}
+
+template <typename CT, typename... As,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+C<T> make(As &&... as) {
+  return cxx::monad::make<C, T>(std::forward<As>(as)...);
+}
+
+template <typename CCT,
+          template <typename> class C = kinds<CCT>::template constructor,
+          typename CT = typename kinds<CCT>::type,
+          template <typename> class C2 = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
+join(const CCT &xss) {
+  return cxx::monad::join<C, T>(xss);
+}
+template <typename CCT,
+          template <typename> class C = kinds<CCT>::template constructor,
+          typename CT = typename kinds<CCT>::type,
+          template <typename> class C2 = kinds<CT>::template constructor,
+          typename T = typename kinds<CT>::type>
+typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
+join(CCT &&xss) {
+  return cxx::monad::join<C, T>(std::move(xss));
+}
+
+template <typename MT, typename B, typename F, typename G,
+          template <typename> class M = kinds<MT>::template constructor,
+          typename T = typename kinds<MT>::type,
+          typename R = typename cxx::invoke_of<F, T, B, B>::type>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value,
+    M<R> >::type
+stencil_fmap(const F &f, const G &g, const MT &c, const B &bm, const B &bp) {
+  size_t s = c.size();
+  assert(s >= 2); // TODO: This can be avoided
+  M<R> r(s);
+  // TODO: add push_back equivalent to constructor
+  // TODO: for efficiency: don't use push_back, use something else
+  // that requires preallocation, that doesn't reallocate, and which
+  // turns into an indexed loop when used for vectors
+  r[0] = cxx::invoke(f, c[0], bm, cxx::invoke(g, c[1], false));
+  for (size_t i = 1; i < s - 1; ++i)
+    r[i] = cxx::invoke(f, c[i], cxx::invoke(g, c[i - 1], true),
+                       cxx::invoke(g, c[i + 1], false));
+  r[s - 1] = cxx::invoke(f, c[s - 1], cxx::invoke(g, c[s - 2], true), bp);
   return r;
 }
 
@@ -310,10 +399,9 @@ public:
   cell_t get_boundary(bool face_upper) const {
     return get(face_upper ? imax - 1 : imin);
   }
-  RPC_DECLARE_CONST_MEMBER_ACTION(grid_t, get_boundary);
 
   // Output
-  // TODO: create output monad (based on tree)
+  // TODO: create output constructor (based on tree)
   ostream &output(ostream &os) const {
     RPC_ASSERT(server->rank() == 0);
     for (ptrdiff_t i = imin; i < imax; ++i) {
@@ -364,27 +452,31 @@ public:
   struct rhs : empty {};
   grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
       : imin(g.imin), imax(g.imax),
-        cells(stencil_fmap<vector_, cell_t>(
-            [](const cell_t &cm, const cell_t &c,
-               const cell_t &cp) { return cell_t(cell_t::rhs(), cm, c, cp); },
-            g.cells, bm, bp)) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, const grid_t &, const cell_t &,
-                          const cell_t &);
-  grid_t(rhs, client<grid_t> g, shared_future<cell_t> bm,
-         shared_future<cell_t> bp)
-      : grid_t(rhs(), *g, bm.get(), bp.get()) {}
-  RPC_DECLARE_CONSTRUCTOR(grid_t, rhs, client<grid_t>, shared_future<cell_t>,
-                          shared_future<cell_t>);
+        cells(stencil_fmap<vector_>([](const cell_t &c, const cell_t &cm,
+                                       const cell_t &cp) {
+                                      return cell_t(cell_t::rhs(), c, cm, cp);
+                                    },
+                                    g.cells, bm, bp)) {}
 };
 RPC_COMPONENT(grid_t);
-RPC_IMPLEMENT_CONST_MEMBER_ACTION(grid_t, get_boundary);
-RPC_IMPLEMENT_CONSTRUCTOR(grid_t, grid_t::rhs, client<grid_t>,
-                          shared_future<cell_t>, shared_future<cell_t>);
 
 // Output
 ostream &operator<<(ostream &os, const client<grid_t> &g) {
   return g->output(os);
 }
+
+cell_t grid_get_boundary(const grid_t &g, bool face_upper) {
+  return g.get_boundary(face_upper);
+}
+RPC_ACTION(grid_get_boundary);
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, cell_t, grid_get_boundary_action, rpc::client<grid_t>,
+    bool>::evaluate grid_get_boundary_action_evaluate;
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, cell_t, grid_get_boundary_action, rpc::client<grid_t>,
+    bool>::finish grid_get_boundary_action_finish;
+RPC_CLASS_EXPORT(grid_get_boundary_action_evaluate);
+RPC_CLASS_EXPORT(grid_get_boundary_action_finish);
 
 grid_t grid_axpy(double a, const grid_t &x, const grid_t &y) {
   return grid_t(grid_t::axpy(), a, x, y);
@@ -423,8 +515,8 @@ typedef cxx::functor::detail::fmap_action<
 RPC_CLASS_EXPORT(grid_initial_action_evaluate);
 RPC_CLASS_EXPORT(grid_initial_action_finish);
 
-grid_t grid_error(const grid_t &s, double t) {
-  return grid_t(grid_t::error(), s, t);
+grid_t grid_error(const grid_t &g, double t) {
+  return grid_t(grid_t::error(), g, t);
 }
 RPC_ACTION(grid_error);
 typedef cxx::functor::detail::fmap_action<
@@ -435,6 +527,20 @@ typedef cxx::functor::detail::fmap_action<
 grid_error_action_finish;
 RPC_CLASS_EXPORT(grid_error_action_evaluate);
 RPC_CLASS_EXPORT(grid_error_action_finish);
+
+grid_t grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
+  return grid_t(grid_t::rhs(), g, bm, bp);
+}
+RPC_ACTION(grid_rhs);
+typedef typename cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_rhs_action, rpc::client<grid_t>,
+    rpc::client<cell_t>,
+    rpc::client<cell_t> >::evaluate grid_rhs_action_evaluate;
+typedef cxx::functor::detail::fmap_action<
+    rpc::client, grid_t, grid_rhs_action, rpc::client<grid_t>,
+    rpc::client<cell_t>, rpc::client<cell_t> >::finish grid_rhs_action_finish;
+RPC_CLASS_EXPORT(grid_rhs_action_evaluate);
+RPC_CLASS_EXPORT(grid_rhs_action_finish);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -555,39 +661,23 @@ public:
 
   // RHS
   struct rhs : empty {};
-  domain_t(rhs, const client<domain_t> &s) : domain_t(s) {
-    t = 1.0; // dt/dt
-    // boundaries
-    for (ptrdiff_t i = 0; i < ngrids(); ++i) {
-      const client<grid_t> &si = s->get(i);
-      // left boundary
-      ptrdiff_t im = i - 1;
-      shared_future<cell_t> bm;
-      if (im >= 0) {
-        const client<grid_t> &sim = s->get(im);
-        bm = async(remote::async, grid_t::get_boundary_action(), sim, true);
-      } else {
-        // TODO: this should be handled by a grid, asynchronously, in
-        // a new function e.g. called get_outer_boundary
-        // TODO: but this would not work for periodicity... introduce
-        // a boundary object instead?
-        bm = make_ready_future(
-            cell_t(cell_t::boundary(), s->t, defs->xmin - 0.5 * defs->dx));
-      }
-      // right boundary
-      ptrdiff_t ip = i + 1;
-      shared_future<cell_t> bp;
-      if (ip < ngrids()) {
-        const client<grid_t> &sip = s->get(ip);
-        bp = async(remote::async, grid_t::get_boundary_action(), sip, false);
-      } else {
-        bp = make_ready_future(
-            cell_t(cell_t::boundary(), s->t, defs->xmax + 0.5 * defs->dx));
-      }
-      set(i, make_remote_client<grid_t>(si.get_proc_future(), grid_t::rhs(), si,
-                                        bm, bp));
-    }
-  }
+  domain_t(rhs, const domain_t &s)
+      : t(1.0), // dt/dt
+        grids(stencil_fmap(
+            [](const client<grid_t> &g, const client<cell_t> &bm,
+               const client<cell_t> &bp) {
+              return cxx::functor::fmap<client, grid_t>(grid_rhs_action(), g,
+                                                        bm, bp);
+            },
+            [](const client<grid_t> &g, bool face_upper) {
+              return cxx::functor::fmap<client, cell_t>(
+                  grid_get_boundary_action(), g, face_upper);
+            },
+            s.grids, cxx::monad::make<client, cell_t>(
+                         cell_t::boundary(), s.t, defs->xmin - 0.5 * defs->dx),
+            cxx::monad::make<client, cell_t>(cell_t::boundary(), s.t,
+                                             defs->xmax + 0.5 * defs->dx))) {}
+  domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
 
 // Output

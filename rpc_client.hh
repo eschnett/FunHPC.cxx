@@ -4,6 +4,7 @@
 #include "rpc_client_fwd.hh"
 
 #include "rpc_call.hh"
+#include "rpc_future.hh"
 #include "rpc_global_shared_ptr.hh"
 
 #include "cxx_invoke.hh"
@@ -14,60 +15,6 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-
-namespace rpc {
-
-template <typename T>
-T shared_future_get(const rpc::global_ptr<rpc::shared_future<T> > &ptr) {
-  T res = ptr->get();
-  delete ptr.get();
-  return res;
-}
-
-template <typename T>
-struct shared_future_get_action
-    : public rpc::action_impl<
-          shared_future_get_action<T>,
-          rpc::wrap<decltype(&shared_future_get<T>), &shared_future_get<T> > > {
-};
-}
-
-namespace cereal {
-
-template <typename Archive, typename T>
-inline void save(Archive &ar, const rpc::shared_future<T> &data) {
-  bool ready = rpc::future_is_ready(data);
-  ar(ready);
-  if (ready) {
-    // Send the data of the future
-    ar(data.get());
-  } else {
-    // Create a global pointer to the future, and send it
-    auto ptr = rpc::make_global<rpc::shared_future<T> >(data);
-    ar(ptr);
-  }
-}
-
-template <typename Archive, typename T>
-inline void load(Archive &ar, rpc::shared_future<T> &data) {
-  // RPC_ASSERT(!data.valid());
-  bool ready;
-  ar(ready);
-  if (ready) {
-    // Receive the data, and create a future from it
-    T data_;
-    ar(data_);
-    data = rpc::make_ready_future(std::move(data_));
-  } else {
-    // Create a future that is waiting for the data of the remote
-    // future
-    rpc::global_ptr<rpc::shared_future<T> > ptr;
-    ar(ptr);
-    data = async(rpc::remote::async, ptr.get_proc(),
-                 rpc::shared_future_get_action<T>(), ptr);
-  }
-}
-}
 
 namespace rpc {
 
@@ -183,11 +130,14 @@ typename std::enable_if<
          R>::value)),
     M<R> >::type
 fmap(F, const As &... as) {
-  return M<R>(rpc::async([](const As &... as) {
-                           return rpc::make_client<R>(cxx::invoke(
-                               F(), detail::unwrap_rpc_client<As>()(as)...));
-                         },
-                         as...));
+  return M<R>(
+      rpc::async([](const As &... as) {
+                   return rpc::make_client<R>(cxx::invoke(
+                       F(),
+                       detail::unwrap_rpc_client<As>()(
+                           detail::unwrap_rpc_client<As>().make_local(as))...));
+                 },
+                 as...));
 }
 template <template <typename> class M, typename R, typename F, typename... As>
 struct fmap_action

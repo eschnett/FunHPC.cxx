@@ -1,9 +1,9 @@
 #ifndef RPC_DEFS_HH
 #define RPC_DEFS_HH
 
-#include "cxx_invoke.hh"
+#include "rpc_mutex.hh"
 
-#include "rpc_future.hh"
+#include "cxx_invoke.hh"
 
 #include <type_traits>
 

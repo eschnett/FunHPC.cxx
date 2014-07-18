@@ -1,7 +1,7 @@
 #ifndef RPC_GLOBAL_PTR_FWD_HH
 #define RPC_GLOBAL_PTR_FWD_HH
 
-#include "rpc_future.hh"
+#include "rpc_future_fwd.hh"
 #include "rpc_server.hh"
 
 #include "cxx_utils.hh"

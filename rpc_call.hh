@@ -5,7 +5,7 @@
 
 #include "rpc_client_fwd.hh"
 #include "rpc_defs.hh"
-#include "rpc_future.hh"
+#include "rpc_future_fwd.hh"
 #include "rpc_global_ptr_fwd.hh"
 #include "rpc_global_shared_ptr_fwd.hh"
 #include "rpc_server.hh"

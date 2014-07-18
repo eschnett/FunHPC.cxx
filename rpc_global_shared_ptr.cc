@@ -1,5 +1,7 @@
 #include "rpc_global_shared_ptr.hh"
 
+#include "rpc_action.hh"
+
 namespace rpc {
 
 global_manager_base::global_manager_base(

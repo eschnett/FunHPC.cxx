@@ -31,6 +31,9 @@ namespace cxx {
 // TODO: introduce rpc::action<> equivalent to std::function<>, and
 // make this a monad as well
 
+// TODO: change template parameters so that they all can be inferred,
+// most importantly the return types
+
 namespace monad {
 using cxx::functor::fmap;
 }

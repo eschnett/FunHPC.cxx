@@ -103,7 +103,7 @@ client<T> make_remote_client(remote policy, const shared_future<int> &proc,
 namespace rpc {
 namespace detail {
 // Round-robin load distribution
-int get_next_dest();
+int choose_dest();
 }
 }
 
@@ -272,14 +272,14 @@ typename std::enable_if<
 unit(T &&x) {
   // return rpc::make_client<typename std::decay<T>::type>(std::forward<T>(x));
   return rpc::make_remote_client<typename std::decay<T>::type>(
-      rpc::detail::get_next_dest(), std::forward<T>(x));
+      rpc::detail::choose_dest(), std::forward<T>(x));
 }
 
 template <template <typename> class M, typename T, typename... As>
 typename std::enable_if<detail::is_rpc_client<M<T> >::value, M<T> >::type
 make(As &&... as) {
   // return rpc::make_client<T>(std::forward<As>(as)...);
-  return rpc::make_remote_client<T>(rpc::detail::get_next_dest(),
+  return rpc::make_remote_client<T>(rpc::detail::choose_dest(),
                                     std::forward<As>(as)...);
 }
 

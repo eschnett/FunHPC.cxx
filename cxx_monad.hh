@@ -18,6 +18,7 @@ namespace cxx {
 // some:            [a] -> m a
 // plus:            [m a] -> m a
 // TODO: append one entry (push_back)?
+// TODO: introduce iota function
 
 // TODO: introduce cxx_applicative?
 //       pure (unit)

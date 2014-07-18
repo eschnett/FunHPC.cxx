@@ -140,6 +140,15 @@ void set_all_defs(const shared_ptr<defs_t> &defs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Linear combinations
+
+// TODO: introduce the notion of a vector space for this?
+
+// inline double axpy(double a, double x, double y) { return a * x + y; }
+// RPC_ACTION(axpy);
+
+////////////////////////////////////////////////////////////////////////////////
+
 // A norm
 
 // TODO: introduce cxx_monoid for this?

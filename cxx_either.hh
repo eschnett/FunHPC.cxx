@@ -2,6 +2,7 @@
 #define CXX_EITHER_HH
 
 #include "cxx_invoke.hh"
+#include "cxx_kinds.hh"
 
 #include <algorithm>
 #include <array>
@@ -165,58 +166,45 @@ template <typename L, typename R> void swap(either<L, R> &a, either<L, R> &b) {
   a.swap(b);
 }
 
-namespace foldable {
+////////////////////////////////////////////////////////////////////////////////
 
-template <typename T, typename L, typename R, typename F>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, T, R>::type, T>::value, R>::type
-foldl(const F &f, const T &z, const either<L, R> &x) {
-  return x.is_left() ? z : cxx::invoke(f, z, x.right());
-}
-}
-
-namespace functor {
-
-namespace detail {
-template <typename T> struct is_cxx_either : std::false_type {};
-template <typename L, typename R>
-struct is_cxx_either<either<L, R> > : std::true_type {};
-}
-
-namespace detail {
-template <typename T> struct unwrap_cxx_either {
+// kinds
+template <typename T, typename L> struct kinds<either<L, T> > {
   typedef T type;
-  bool is_right(const T &x) const { return true; }
+  template <typename U> using constructor = either<L, U>;
+};
+
+// foldable
+template <typename R, typename T, typename L, typename F>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+foldl(const F &f, const R &z, const either<L, T> &xs) {
+  return xs.is_left() ? z : cxx::invoke(f, z, xs.right());
+}
+
+// functor
+namespace detail {
+template <typename T> struct unwrap_either {
+  typedef T type;
   const T &operator()(const T &x) const { return x; }
 };
-template <typename L, typename R> struct unwrap_cxx_either<either<L, R> > {
-  typedef R type;
-  bool is_right(const either<L, R> &x) const { return x.is_right(); }
-  const R &operator()(const either<L, R> &x) const { return x.right(); }
+template <typename T, typename L> struct unwrap_either<either<L, T> > {
+  typedef T type;
+  const T &operator()(const either<L, T> &x) const { return x.right(); }
 };
 }
-
-template <template <typename> class M, typename R, typename... As, typename F>
-typename std::enable_if<
-    (detail::is_cxx_either<M<R> >::value &&std::is_same<
-        typename cxx::invoke_of<
-            F, typename detail::unwrap_cxx_either<As>::type...>::type,
-        R>::value),
-    M<R> >::type
-fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> is_rights{
-    { detail::unwrap_cxx_either<As>().is_right(as)... }
-  };
-  bool is_right = *std::min_element(is_rights.begin(), is_rights.end());
-  if (!is_right)
-    return M<R>(typename M<R>::left_type());
-  return M<R>(cxx::invoke(f, detail::unwrap_cxx_either<As>()(as)...));
-}
+template <typename T, typename L, typename... As, typename F,
+          typename CT = cxx::either<L, T>,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<
+              F, T, typename detail::unwrap_either<As>::type...>::type>
+C<R> fmap(const F &f, const cxx::either<L, T> xs, const As &... as) {
+  if (!xs.is_right())
+    return C<R>(typename C<R>::left_type());
+  return C<R>(cxx::invoke(f, xs.right(), detail::unwrap_either<As>()(as)...));
 }
 
 namespace monad {
-
-using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_cxx_either : std::false_type {};

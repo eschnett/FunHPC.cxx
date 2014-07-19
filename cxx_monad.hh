@@ -36,10 +36,6 @@ namespace cxx {
 // most importantly the return types
 
 namespace monad {
-using cxx::functor::fmap;
-}
-
-namespace monad {
 
 #if 0
 

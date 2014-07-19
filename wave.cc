@@ -1,9 +1,12 @@
-#include "hwloc.hh"
+#include "rpc.hh"
+
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
+#include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 #include "cxx_tree.hh"
-#include "rpc.hh"
+
+#include "hwloc.hh"
 
 #include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
@@ -276,71 +279,48 @@ stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
   return r;
 }
 
-template <typename> struct kinds;
-template <typename T, typename Allocator> struct kinds<vector<T, Allocator> > {
-  typedef T type;
-  template <typename U> using constructor = vector<U, Allocator>;
-};
-
-template <typename CT, typename R, typename F,
-          template <typename> class C = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const CT &xs) {
-  return cxx::foldable::foldl(f, z, xs);
-}
-
-template <typename MT, typename F,
-          template <typename> class M = kinds<MT>::template constructor,
-          typename T = typename kinds<MT>::type,
-          typename R = typename cxx::invoke_of<F, T>::type>
-M<R> fmap(const F &f, const MT &xs) {
-  return cxx::functor::fmap<M, R>(f, xs);
-}
-
 template <typename CT,
-          template <typename> class C = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename T = typename cxx::kinds<CT>::type>
 C<T> unit(const T &x) {
   return cxx::monad::unit<C>(x);
 }
 template <typename CT,
-          template <typename> class C = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename T = typename cxx::kinds<CT>::type>
 C<T> unit(T &&x) {
   return cxx::monad::unit<C>(std::move(x));
 }
 
 template <typename CT, typename... As,
-          template <typename> class C = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename T = typename cxx::kinds<CT>::type>
 C<T> make(As &&... as) {
   return cxx::monad::make<C, T>(std::forward<As>(as)...);
 }
 
 template <typename CCT,
-          template <typename> class C = kinds<CCT>::template constructor,
-          typename CT = typename kinds<CCT>::type,
-          template <typename> class C2 = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor,
+          typename T = typename cxx::kinds<CT>::type>
 typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
 join(const CCT &xss) {
   return cxx::monad::join<C, T>(xss);
 }
 template <typename CCT,
-          template <typename> class C = kinds<CCT>::template constructor,
-          typename CT = typename kinds<CCT>::type,
-          template <typename> class C2 = kinds<CT>::template constructor,
-          typename T = typename kinds<CT>::type>
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor,
+          typename T = typename cxx::kinds<CT>::type>
 typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
 join(CCT &&xss) {
   return cxx::monad::join<C, T>(std::move(xss));
 }
 
 template <typename MT, typename B, typename F, typename G,
-          template <typename> class M = kinds<MT>::template constructor,
-          typename T = typename kinds<MT>::type,
+          template <typename> class M = cxx::kinds<MT>::template constructor,
+          typename T = typename cxx::kinds<MT>::type,
           typename R = typename cxx::invoke_of<F, T, B, B>::type>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value,
@@ -414,39 +394,38 @@ public:
   struct axpy : empty {};
   grid_t(axpy, double a, const grid_t &x, const grid_t &y)
       : imin(y.imin), imax(y.imax),
-        cells(cxx::functor::fmap<vector_, cell_t>(
-            [a](const cell_t &x,
-                const cell_t &y) { return cell_t(cell_t::axpy(), a, x, y); },
-            x.cells, y.cells)) {}
+        cells(cxx::fmap([a](const cell_t &x, const cell_t &y) {
+                          return cell_t(cell_t::axpy(), a, x, y);
+                        },
+                        x.cells, y.cells)) {}
 
   // Norm
   norm_t norm() const {
-    return cxx::foldable::foldl([](const norm_t &x,
-                                   const cell_t &y) { return x + y.norm(); },
-                                norm_t(), cells);
+    return cxx::foldl([](const norm_t &x,
+                         const cell_t &y) { return x + y.norm(); },
+                      norm_t(), cells);
   }
 
   // Initial condition
   struct initial : empty {};
   grid_t(initial, double t, ptrdiff_t imin, ptrdiff_t imax)
       : imin(imin), imax(imax),
-        cells(cxx::functor::fmap<vector_, cell_t>(
-            [t](int i) { return cell_t(cell_t::initial(), t, x(i)); },
-            [imin, imax]() {
-              vector<ptrdiff_t> is(imax - imin);
-              iota(is.begin(), is.end(), imin);
-              return is;
-            }())) {}
+        cells(
+            cxx::fmap([t](int i) { return cell_t(cell_t::initial(), t, x(i)); },
+                      [imin, imax]() {
+                        vector<ptrdiff_t> is(imax - imin);
+                        iota(is.begin(), is.end(), imin);
+                        return is;
+                      }())) {}
 
   // Error
   struct error : empty {};
   grid_t(error, const grid_t &g, double t)
       : imin(g.imin), imax(g.imax),
-        cells(cxx::functor::fmap<vector_, cell_t>([t](const cell_t &c) {
-                                                    return cell_t(
-                                                        cell_t::error(), c, t);
-                                                  },
-                                                  g.cells)) {}
+        cells(cxx::fmap([t](const cell_t &c) {
+                          return cell_t(cell_t::error(), c, t);
+                        },
+                        g.cells)) {}
 
   // RHS
   struct rhs : empty {};
@@ -469,25 +448,25 @@ cell_t grid_get_boundary(const grid_t &g, bool face_upper) {
   return g.get_boundary(face_upper);
 }
 RPC_ACTION(grid_get_boundary);
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, cell_t, grid_get_boundary_action, rpc::client<grid_t>,
-    bool>::evaluate grid_get_boundary_action_evaluate;
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, cell_t, grid_get_boundary_action, rpc::client<grid_t>,
-    bool>::finish grid_get_boundary_action_finish;
+typedef cxx::detail::fmap_action<grid_t, grid_get_boundary_action,
+                                 bool>::evaluate
+grid_get_boundary_action_evaluate;
+typedef cxx::detail::fmap_action<grid_t, grid_get_boundary_action, bool>::finish
+grid_get_boundary_action_finish;
 RPC_CLASS_EXPORT(grid_get_boundary_action_evaluate);
 RPC_CLASS_EXPORT(grid_get_boundary_action_finish);
 
-grid_t grid_axpy(double a, const grid_t &x, const grid_t &y) {
+// Note: Arguments re-ordered
+grid_t grid_axpy(const grid_t &y, double a, const grid_t &x) {
   return grid_t(grid_t::axpy(), a, x, y);
 }
 RPC_ACTION(grid_axpy);
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
-    rpc::client<grid_t> >::evaluate grid_axpy_action_evaluate;
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_axpy_action, double, rpc::client<grid_t>,
-    rpc::client<grid_t> >::finish grid_axpy_action_finish;
+typedef cxx::detail::fmap_action<grid_t, grid_axpy_action, double,
+                                 rpc::client<grid_t> >::evaluate
+grid_axpy_action_evaluate;
+typedef cxx::detail::fmap_action<grid_t, grid_axpy_action, double,
+                                 rpc::client<grid_t> >::finish
+grid_axpy_action_finish;
 RPC_CLASS_EXPORT(grid_axpy_action_evaluate);
 RPC_CLASS_EXPORT(grid_axpy_action_finish);
 
@@ -495,23 +474,24 @@ norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
   return x + y.norm();
 }
 RPC_ACTION(grid_norm_foldl);
-typedef cxx::foldable::detail::foldl_action<
+typedef cxx::client::foldl_action<
     norm_t, grid_t, grid_norm_foldl_action>::evaluate grid_norm_foldl_evaluate;
-typedef cxx::foldable::detail::foldl_action<
+typedef cxx::client::foldl_action<
     norm_t, grid_t, grid_norm_foldl_action>::finish grid_norm_foldl_finish;
 RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
 RPC_CLASS_EXPORT(grid_norm_foldl_finish);
 
-grid_t grid_initial(double t, ptrdiff_t imin, ptrdiff_t imax) {
+// Note: Arguments re-ordered
+grid_t grid_initial(ptrdiff_t imin, ptrdiff_t imax, double t) {
   return grid_t(grid_t::initial(), t, imin, imax);
 }
 RPC_ACTION(grid_initial);
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_initial_action, double, rpc::client<ptrdiff_t>,
-    rpc::client<ptrdiff_t> >::evaluate grid_initial_action_evaluate;
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_initial_action, double, rpc::client<ptrdiff_t>,
-    rpc::client<ptrdiff_t> >::finish grid_initial_action_finish;
+typedef cxx::detail::fmap_action<ptrdiff_t, grid_initial_action,
+                                 rpc::client<ptrdiff_t>,
+                                 double>::evaluate grid_initial_action_evaluate;
+typedef cxx::detail::fmap_action<ptrdiff_t, grid_initial_action,
+                                 rpc::client<ptrdiff_t>,
+                                 double>::finish grid_initial_action_finish;
 RPC_CLASS_EXPORT(grid_initial_action_evaluate);
 RPC_CLASS_EXPORT(grid_initial_action_finish);
 
@@ -519,11 +499,9 @@ grid_t grid_error(const grid_t &g, double t) {
   return grid_t(grid_t::error(), g, t);
 }
 RPC_ACTION(grid_error);
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_error_action, rpc::client<grid_t>,
-    double>::evaluate grid_error_action_evaluate;
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_error_action, rpc::client<grid_t>, double>::finish
+typedef cxx::detail::fmap_action<grid_t, grid_error_action, double>::evaluate
+grid_error_action_evaluate;
+typedef cxx::detail::fmap_action<grid_t, grid_error_action, double>::finish
 grid_error_action_finish;
 RPC_CLASS_EXPORT(grid_error_action_evaluate);
 RPC_CLASS_EXPORT(grid_error_action_finish);
@@ -532,13 +510,12 @@ grid_t grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
   return grid_t(grid_t::rhs(), g, bm, bp);
 }
 RPC_ACTION(grid_rhs);
-typedef typename cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_rhs_action, rpc::client<grid_t>,
-    rpc::client<cell_t>,
-    rpc::client<cell_t> >::evaluate grid_rhs_action_evaluate;
-typedef cxx::functor::detail::fmap_action<
-    rpc::client, grid_t, grid_rhs_action, rpc::client<grid_t>,
-    rpc::client<cell_t>, rpc::client<cell_t> >::finish grid_rhs_action_finish;
+typedef cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
+                                 rpc::client<cell_t> >::evaluate
+grid_rhs_action_evaluate;
+typedef cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
+                                 rpc::client<cell_t> >::finish
+grid_rhs_action_finish;
 RPC_CLASS_EXPORT(grid_rhs_action_evaluate);
 RPC_CLASS_EXPORT(grid_rhs_action_finish);
 
@@ -582,9 +559,7 @@ public:
   }
 
   // Wait until all grids are ready
-  void wait() const {
-    cxx::functor::fmap<vector_, tuple<> >(&client<grid_t>::wait, grids);
-  }
+  void wait() const { cxx::fmap(&client<grid_t>::wait, grids); }
 
   // Output
   ostream &output(ostream &os) const {
@@ -601,62 +576,58 @@ public:
   struct axpy : empty {};
   domain_t(axpy, double a, const domain_t &x, const domain_t &y)
       : t(a * x.t + y.t),
-        grids(cxx::functor::fmap<vector_, client<grid_t> >(
-            [a](const client<grid_t> &x, const client<grid_t> &y) {
-              return cxx::functor::fmap<client, grid_t>(
-                  grid_axpy_action(),
-                  // TODO: grid_t::axpy_action(),
-                  a, x, y);
-            },
-            x.grids, y.grids)) {}
+        grids(cxx::fmap([a](const client<grid_t> &x, const client<grid_t> &y) {
+                          return cxx::fmap(grid_axpy_action(),
+                                           // TODO: grid_t::axpy_action(),
+                                           y, a, x);
+                        },
+                        x.grids, y.grids)) {}
   domain_t(axpy, double a, const client<domain_t> &x, const client<domain_t> &y)
       : domain_t(axpy(), a, *x, *y) {}
 
   // Norm
   norm_t norm() const {
-    return cxx::foldable::foldl([](const norm_t &x, const client<grid_t> &y) {
-                                  return x + cxx::foldable::foldl(
-                                                 grid_norm_foldl_action(),
-                                                 norm_t(), y);
-                                },
-                                norm_t(), grids);
+    return cxx::foldl([](const norm_t &x, const client<grid_t> &y) {
+                        return x + cxx::foldl(grid_norm_foldl_action(),
+                                              norm_t(), y);
+                      },
+                      norm_t(), grids);
   }
 
   // Initial condition
   struct initial : empty {};
   domain_t(initial, double t)
       : t(t),
-        grids(cxx::functor::fmap<vector_, client<grid_t> >(
-            [t](const client<ptrdiff_t> &imin, const client<ptrdiff_t> &imax) {
-              return cxx::functor::fmap<client, grid_t>(grid_initial_action(),
-                                                        t, imin, imax);
-            },
-            []() {
-              // Choose a domain decomposition
-              vector<client<ptrdiff_t> > imins(ngrids());
-              for (ptrdiff_t i = 0; i < ngrids(); ++i)
-                imins[i] = cxx::monad::unit<client>(
-                    min(i * defs->ncells_per_grid, defs->ncells));
-              return imins;
-            }(),
-            []() {
-              // Choose a domain decomposition
-              vector<client<ptrdiff_t> > imaxs(ngrids());
-              for (ptrdiff_t i = 0; i < ngrids(); ++i)
-                imaxs[i] = cxx::monad::unit<client>(
-                    min((i + 1) * defs->ncells_per_grid, defs->ncells));
-              return imaxs;
-            }())) {}
+        grids(cxx::fmap([t](const client<ptrdiff_t> &imin,
+                            const client<ptrdiff_t> &imax) {
+                          return cxx::fmap(grid_initial_action(), imin, imax,
+                                           t);
+                        },
+                        []() {
+                          // Choose a domain decomposition
+                          vector<client<ptrdiff_t> > imins(ngrids());
+                          for (ptrdiff_t i = 0; i < ngrids(); ++i)
+                            imins[i] = cxx::monad::unit<client>(
+                                min(i * defs->ncells_per_grid, defs->ncells));
+                          return imins;
+                        }(),
+                        []() {
+                          // Choose a domain decomposition
+                          vector<client<ptrdiff_t> > imaxs(ngrids());
+                          for (ptrdiff_t i = 0; i < ngrids(); ++i)
+                            imaxs[i] = cxx::monad::unit<client>(min(
+                                (i + 1) * defs->ncells_per_grid, defs->ncells));
+                          return imaxs;
+                        }())) {}
 
   // Error
   struct error : empty {};
   domain_t(error, const domain_t &s)
-      : t(s.t), grids(cxx::functor::fmap<vector_, client<grid_t> >(
-                    [this /*TODO: t*/](const client<grid_t> &s) {
-                      return cxx::functor::fmap<client, grid_t>(
-                          grid_error_action(), s, this->t);
-                    },
-                    s.grids)) {}
+      : t(s.t),
+        grids(cxx::fmap([this /*TODO: t*/](const client<grid_t> &s) {
+                          return cxx::fmap(grid_error_action(), s, this->t);
+                        },
+                        s.grids)) {}
   domain_t(error, const client<domain_t> &s) : domain_t(error(), *s) {}
 
   // RHS
@@ -666,12 +637,10 @@ public:
         grids(stencil_fmap(
             [](const client<grid_t> &g, const client<cell_t> &bm,
                const client<cell_t> &bp) {
-              return cxx::functor::fmap<client, grid_t>(grid_rhs_action(), g,
-                                                        bm, bp);
+              return cxx::fmap(grid_rhs_action(), g, bm, bp);
             },
             [](const client<grid_t> &g, bool face_upper) {
-              return cxx::functor::fmap<client, cell_t>(
-                  grid_get_boundary_action(), g, face_upper);
+              return cxx::fmap(grid_get_boundary_action(), g, face_upper);
             },
             s.grids, cxx::monad::make<client, cell_t>(
                          cell_t::boundary(), s.t, defs->xmin - 0.5 * defs->dx),

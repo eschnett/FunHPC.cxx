@@ -5,6 +5,7 @@
 #include "cxx_functor.hh"
 #include "cxx_either.hh"
 #include "cxx_invoke.hh"
+#include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 
 #include <algorithm>
@@ -54,32 +55,28 @@ public:
   struct fmap : std::tuple<> {};
 
 private:
-  template <typename T1> struct unwrap_leaf {
-    typedef T1 final_type;
-    typedef T1 type;
-    const T1 &operator()(const T1 &x) const { return x; }
+  template <typename U> struct unwrap_leaf {
+    typedef U type;
+    const U &operator()(const U &x) const { return x; }
   };
-  template <typename T1> struct unwrap_leaf<leaf<T1, C, P> > {
-    typedef T1 final_type;
-    typedef C<T1> type;
-    const C<T1> &operator()(const leaf<T1, C, P> &x) const { return x.values; }
+  template <typename U> struct unwrap_leaf<leaf<U, C, P> > {
+    typedef U type;
+    const C<U> &operator()(const leaf<U, C, P> &x) const { return x.values; }
   };
 
 public:
-  template <typename... As, typename F>
-  leaf(typename std::enable_if<
-           std::is_same<typename cxx::invoke_of<
-                            F, typename unwrap_leaf<As>::final_type...>::type,
-                        T>::value,
-           fmap>::type,
-       F f, const As &... as)
-      : values(functor::fmap<C, T>(f, unwrap_leaf<As>()(as)...)) {}
+  template <typename U, typename... As, typename F,
+            typename R = typename cxx::invoke_of<
+                F, U, typename unwrap_leaf<As>::type...>::type>
+  leaf(typename std::enable_if<std::is_same<R, T>::value, fmap>::type,
+       const F &f, const leaf<U, C, P> &xs, const As &... as)
+      : values(cxx::fmap(f, xs.values, unwrap_leaf<As>()(as)...)) {}
 
   // foldl
   template <typename R, typename F>
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-  foldl(F f, const R &z) const {
+  foldl(const F &f, const R &z) const {
     R r(z);
     for (const auto &v : values)
       r = f(r, v);
@@ -120,51 +117,42 @@ public:
   struct fmap : std::tuple<> {};
 
 private:
-  template <typename T1> struct unwrap_branch {
-    typedef T1 final_type;
-    typedef T1 type;
-    const T1 &operator()(const T1 &x) const { return x; }
+  template <typename U> struct unwrap_branch {
+    typedef U type;
+    typedef U unwrapped_type;
+    const unwrapped_type &operator()(const U &x) const { return x; }
   };
-  template <typename T1> struct unwrap_branch<branch<T1, C, P> > {
-    typedef T1 final_type;
-    typedef C<tree<T1, C, P> > type;
-    const C<tree<T1, C, P> > &operator()(const branch<T1, C, P> &x) const {
+  template <typename U> struct unwrap_branch<branch<U, C, P> > {
+    typedef U type;
+    typedef tree<U, C, P> unwrapped_type;
+    const C<unwrapped_type> &operator()(const branch<U, C, P> &x) const {
       return x.trees;
     }
   };
 
-  template <typename T1> struct unwrap_C {
-    typedef T1 type;
-  };
-  template <typename T1> struct unwrap_C<C<T1> > {
-    typedef T1 type;
-  };
-
 public:
-  template <typename... As, typename F>
-  branch(
-      typename std::enable_if<
-          std::is_same<typename cxx::invoke_of<
-                           F, typename unwrap_branch<As>::final_type...>::type,
-                       T>::value,
-          fmap>::type,
-      F f, const As &... as)
-      : trees(functor::fmap<C, tree<T, C, P> >(
-            [f](const typename unwrap_C<typename unwrap_branch<As>::type>::
-                    type &... as) {
-              return tree<T, C, P>(typename tree<T, C, P>::fmap(), f, as...);
+  template <typename U, typename... As, typename F,
+            typename R = typename cxx::invoke_of<
+                F, U, typename unwrap_branch<As>::type...>::type>
+  branch(typename std::enable_if<std::is_same<R, T>::value, fmap>::type,
+         const F &f, const branch<U, C, P> &xs, const As &... as)
+      : trees(cxx::fmap(
+            [f](const tree<U, C, P> &xs,
+                const typename unwrap_branch<As>::unwrapped_type &... as) {
+              return tree<T, C, P>(typename tree<T, C, P>::fmap(), f, xs,
+                                   as...);
             },
-            unwrap_branch<As>()(as)...)) {}
+            xs.trees, unwrap_branch<As>()(as)...)) {}
 
   // join
   struct join : std::tuple<> {};
   branch(join, const leaf<tree<T, C, P>, C, P> &l) : branch(l.values) {}
   branch(join, const branch<tree<T, C, P>, C, P> &b)
-      : branch(functor::fmap<C, tree<T, C, P> >(
-            [](const tree<tree<T, C, P>, C, P> &t) {
-              return tree<T, C, P>(typename tree<T, C, P>::join(), t);
-            },
-            b.trees)) {}
+      : branch(cxx::fmap([](const tree<tree<T, C, P>, C, P> &t) {
+                           return tree<T, C, P>(typename tree<T, C, P>::join(),
+                                                t);
+                         },
+                         b.trees)) {}
 
   // plus
   struct plus : std::tuple<> {};
@@ -174,7 +162,7 @@ public:
   template <typename R, typename F>
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-  foldl(F f, const R &z) const {
+  foldl(const F &f, const R &z) const {
     R r(z);
     for (const auto &t : trees)
       r = cxx::invoke(f, r, t.foldl(f, z));
@@ -230,82 +218,66 @@ public:
   struct fmap : std::tuple<> {};
 
 private:
-  template <typename T1> struct unwrap_tree {
-    typedef T1 final_type;
-    typedef T1 type;
-    const T1 &operator()(const T1 &x) const { return x; }
+  template <typename U> struct unwrap_tree {
+    typedef U type;
+    typedef U unwrapped_type_leaf;
+    typedef U unwrapped_type_branch;
+    const U &operator()(const U &x) const { return x; }
   };
-  template <typename T1> struct unwrap_tree<tree<T1, C, P> > {
-    typedef T1 final_type;
-    typedef cxx::either<P<leaf<T1, C, P> >, P<branch<T1, C, P> > > type;
-    const type &operator()(const tree<T1, C, P> &x) const { return x.node; }
-  };
-
-  template <typename T1> struct unwrap_either {
-    typedef T1 final_type;
-    typedef T1 type;
-    const T1 &operator()(const T1 &x) const { return x; }
-  };
-  template <typename L, typename R> struct unwrap_either<cxx::either<L, R> > {
-    typedef L left_type;
-    typedef R right_type;
-  };
-
-  template <typename T1> struct unwrap_P {
-    typedef T1 type;
-  };
-  template <typename T1> struct unwrap_P<P<T1> > {
-    typedef T1 type;
+  template <typename U> struct unwrap_tree<tree<U, C, P> > {
+    typedef U type;
+    typedef leaf<U, C, P> unwrapped_type_leaf;
+    typedef branch<U, C, P> unwrapped_type_branch;
+    const cxx::either<unwrapped_type_leaf, unwrapped_type_branch> &
+    operator()(const tree<U, C, P> &x) const {
+      return x.node;
+    }
   };
 
 public:
-  template <typename... As, typename F>
-  tree(typename std::enable_if<
-           std::is_same<typename cxx::invoke_of<
-                            F, typename unwrap_tree<As>::final_type...>::type,
-                        T>::value,
-           fmap>::type,
-       F f, const As &... as)
-      : node(typename node_t::gmap(),
-             [f](const typename unwrap_either<typename unwrap_tree<As>::type>::
-                     left_type &... as) {
-               return functor::fmap<P, leaf<T, C, P> >(
-                   [f](const typename unwrap_P<typename unwrap_either<
-                       typename unwrap_tree<As>::type>::left_type>::
-                           type &... as) {
-                     return leaf<T, C, P>(typename leaf<T, C, P>::fmap(), f,
-                                          as...);
-                   },
-                   as...);
-             },
-             [f](const typename unwrap_either<typename unwrap_tree<As>::type>::
-                     right_type &... as) {
-               return functor::fmap<P, branch<T, C, P> >(
-                   [f](const typename unwrap_P<typename unwrap_either<
-                       typename unwrap_tree<As>::type>::right_type>::
-                           type &... as) {
-                     return branch<T, C, P>(typename branch<T, C, P>::fmap(), f,
-                                            as...);
-                   },
-                   as...);
-             },
-             unwrap_tree<As>()(as)...) {}
+  template <typename U, typename... As, typename F,
+            typename R = typename cxx::invoke_of<
+                F, U, typename unwrap_tree<As>::type...>::type>
+  tree(typename std::enable_if<std::is_same<R, T>::value, fmap>::type,
+       const F &f, const tree<U, C, P> &xs, const As &... as)
+      : node(
+            typename node_t::gmap(),
+            [f](const P<leaf<U, C, P> > &xs,
+                P<typename unwrap_tree<As>::unwrapped_type_leaf> &... as) {
+              return cxx::fmap(
+                  [f](const leaf<U, C, P> &xs,
+                      typename unwrap_tree<As>::unwrapped_type_leaf &... as) {
+                    return leaf<T, C, P>(typename leaf<T, C, P>::fmap(), f, xs,
+                                         as...);
+                  },
+                  xs, as...);
+            },
+            [f](const P<branch<U, C, P> > &xs,
+                P<typename unwrap_tree<As>::unwrapped_type_branch> &... as) {
+              return cxx::fmap(
+                  [f](const branch<U, C, P> &xs,
+                      typename unwrap_tree<As>::unwrapped_type_branch &... as) {
+                    return branch<T, C, P>(typename branch<T, C, P>::fmap(), f,
+                                           xs, as...);
+                  },
+                  xs, as...);
+            },
+            xs.node, unwrap_tree<As>()(as)...) {}
 
   // join
   struct join : std::tuple<> {};
   tree(join, const tree<tree<T, C, P>, C, P> &t)
-      : node(t.node.is_left() ? functor::fmap<P, branch<T, C, P> >(
-                                    [](const leaf<tree<T, C, P>, C, P> &l) {
-                                      return branch<T, C, P>(
-                                          typename branch<T, C, P>::join(), l);
-                                    },
-                                    t.node.left())
-                              : functor::fmap<P, branch<T, C, P> >(
-                                    [](const branch<tree<T, C, P>, C, P> &b) {
-                                      return branch<T, C, P>(
-                                          typename branch<T, C, P>::join(), b);
-                                    },
-                                    t.node.right())) {}
+      : node(t.node.is_left()
+                 ? cxx::fmap([](const leaf<tree<T, C, P>, C, P> &l) {
+                               return branch<T, C, P>(
+                                   typename branch<T, C, P>::join(), l);
+                             },
+                             t.node.left())
+                 : cxx::fmap([](const branch<tree<T, C, P>, C, P> &b) {
+                               return branch<T, C, P>(
+                                   typename branch<T, C, P>::join(), b);
+                             },
+                             t.node.right())) {}
 
   // plus
   struct plus : std::tuple<> {};
@@ -317,7 +289,7 @@ public:
   template <typename R, typename F>
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-  foldl(F f, const R &z) const {
+  foldl(const F &f, const R &z) const {
     return node.gfoldl([f, z](const P<leaf<T, C, P> > &pl) {
                          return pl->foldl(f, z);
                        },
@@ -335,8 +307,16 @@ public:
   }
 };
 
-namespace foldable {
+////////////////////////////////////////////////////////////////////////////////
 
+// kinds
+template <typename T, template <typename> class C, template <typename> class P>
+struct kinds<tree<T, C, P> > {
+  typedef T type;
+  template <typename U> using constructor = tree<U, C, P>;
+};
+
+// foldable
 template <typename R, typename T, template <typename> class C,
           template <typename> class P, typename F>
 typename std::enable_if<
@@ -344,40 +324,27 @@ typename std::enable_if<
 foldl(const F &f, const R &z, const tree<T, C, P> &x) {
   return x.foldl(f, z);
 }
-}
 
-namespace functor {
-
+// functor
 namespace detail {
-template <typename T> struct is_cxx_tree : std::false_type {};
-template <typename T, template <typename> class C, template <typename> class P>
-struct is_cxx_tree<tree<T, C, P> > : std::true_type {};
-}
-
-namespace detail {
-template <typename T> struct unwrap_cxx_tree {
+template <typename T> struct unwrap_tree {
   typedef T type;
 };
 template <typename T, template <typename> class C, template <typename> class P>
-struct unwrap_cxx_tree<tree<T, C, P> > {
+struct unwrap_tree<tree<T, C, P> > {
   typedef T type;
 };
 }
-template <template <typename> class M, typename R, typename... As, typename F>
-typename std::enable_if<
-    ((detail::is_cxx_tree<M<R> >::value) &&
-     (std::is_same<typename invoke_of<
-                       F, typename detail::unwrap_cxx_tree<As>::type...>::type,
-                   R>::value)),
-    M<R> >::type
-fmap(const F &f, const As &... as) {
-  return M<R>(typename M<R>::fmap(), f, as...);
-}
+template <typename T, template <typename> class C1, template <typename> class P,
+          typename... As, typename F, typename CT = cxx::tree<T, C1, P>,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<
+              F, T, typename detail::unwrap_tree<As>::type...>::type>
+C<R> fmap(const F &f, const cxx::tree<T, C1, P> &xs, const As &... as) {
+  return C<R>(typename C<R>::fmap(), f, xs, as...);
 }
 
 namespace monad {
-
-using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_cxx_tree : std::false_type {};
@@ -411,7 +378,7 @@ typename std::enable_if<
      (std::is_same<typename invoke_of<F, T>::type, M<R> >::value)),
     M<R> >::type
 bind(const M<T> &x, const F &f) {
-  return join<M>(fmap<M, M<R> >(f, x));
+  return join<M>(fmap(f, x));
 }
 
 template <template <typename> class M, typename T>

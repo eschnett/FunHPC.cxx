@@ -52,8 +52,7 @@ int rpc_main(int argc, char **argv) {
           return std::function<double(int)>([](int x) { return double(x); });
         });
     auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<function_, double>([](int x) { return double(x); },
-                                              u);
+        cxx::fmap([](int x) { return double(x); }, u);
     auto j __attribute__((__unused__)) = cxx::monad::join<function_>(
         cxx::monad::unit<function_>(cxx::monad::unit<function_>(1)));
   }
@@ -64,13 +63,12 @@ int rpc_main(int argc, char **argv) {
     auto b __attribute__((__unused__)) = cxx::monad::bind<set_, double>(
         u, [](int x) { return set_<double>{ double(x) }; });
     auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<set_, double>([](int x) { return double(x); }, u);
+        cxx::fmap([](int x) { return double(x); }, u);
     auto j __attribute__((__unused__)) = cxx::monad::join<set_>(
         cxx::monad::unit<set_>(cxx::monad::unit<set_>(1)));
     auto z __attribute__((__unused__)) = cxx::monad::zero<set_, int>();
     auto p __attribute__((__unused__)) = cxx::monad::plus<set_>(z, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -81,15 +79,9 @@ int rpc_main(int argc, char **argv) {
         cxx::monad::bind<std::shared_ptr, double>(
             u, [](int x) { return std::make_shared<double>(x); });
     auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<std::shared_ptr, double>([](int x) {
-                                                      return double(x);
-                                                    },
-                                                    u);
+        cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
-        cxx::functor::fmap<std::shared_ptr, double>([](int x, int y) {
-                                                      return double(x + y);
-                                                    },
-                                                    u, 1);
+        cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
     auto j __attribute__((__unused__)) =
         cxx::monad::join<std::shared_ptr>(cxx::monad::unit<std::shared_ptr>(
             cxx::monad::unit<std::shared_ptr>(1)));
@@ -97,8 +89,7 @@ int rpc_main(int argc, char **argv) {
         cxx::monad::zero<std::shared_ptr, int>();
     auto p __attribute__((__unused__)) =
         cxx::monad::plus<std::shared_ptr>(z, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -107,17 +98,12 @@ int rpc_main(int argc, char **argv) {
     auto b __attribute__((__unused__)) = cxx::monad::bind<rpc::client, double>(
         u, [](int x) { return rpc::make_client<double>(x); });
     auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::client, double>([](int x) { return double(x); },
-                                                u);
+        cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::client, double>([](int x, int y) {
-                                                  return double(x + y);
-                                                },
-                                                u, 1);
+        cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
     auto j __attribute__((__unused__)) = cxx::monad::join<rpc::client>(
         cxx::monad::unit<rpc::client>(cxx::monad::unit<rpc::client>(1)));
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -125,14 +111,12 @@ int rpc_main(int argc, char **argv) {
     auto m __attribute__((__unused__)) = cxx::monad::make<rpc::client, int>(1);
     auto b __attribute__((__unused__)) =
         cxx::monad::bind<rpc::client, double>(u, make_client_double_action());
-    auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::client, double>(make_double_action(), u);
+    auto f __attribute__((__unused__)) = cxx::fmap(make_double_action(), u);
     auto f2 __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::client, double>(add_int_double_action(), u, 1);
+        cxx::fmap(add_int_double_action(), u, 1);
     auto j __attribute__((__unused__)) = cxx::monad::join<rpc::client>(
         cxx::monad::unit<rpc::client>(cxx::monad::unit<rpc::client>(1)));
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(add_int_action(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(add_int_action(), 0, u);
   }
 
   {
@@ -144,22 +128,15 @@ int rpc_main(int argc, char **argv) {
         cxx::monad::bind<rpc::shared_future, double>(
             u, [](int x) { return rpc::make_ready_future<double>(x).share(); });
     auto f __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::shared_future, double>([](int x) {
-                                                         return double(x);
-                                                       },
-                                                       u);
+        cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
-        cxx::functor::fmap<rpc::shared_future, double>([](int x, int y) {
-                                                         return double(x + y);
-                                                       },
-                                                       u, 1);
+        cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
     auto j0 __attribute__((__unused__)) = cxx::monad::unit<rpc::shared_future>(
         cxx::monad::unit<rpc::shared_future>(1)).unwrap();
     auto j __attribute__((__unused__)) = cxx::monad::join<rpc::shared_future>(
         cxx::monad::unit<rpc::shared_future>(
             cxx::monad::unit<rpc::shared_future>(1)));
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -167,16 +144,12 @@ int rpc_main(int argc, char **argv) {
     auto m __attribute__((__unused__)) = cxx::monad::make<vector_, int>(1);
     auto b __attribute__((__unused__)) = cxx::monad::bind<vector_, double>(
         u, [](int x) { return vector_<double>(1, x); });
-    auto f =
-        cxx::functor::fmap<vector_, double>([](int x) { return double(x); }, u);
+    auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
-        cxx::functor::fmap<vector_, double>([](int x,
-                                               int y) { return double(x + y); },
-                                            u, 1);
+        cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
     auto z __attribute__((__unused__)) = cxx::monad::zero<vector_, int>();
     auto p __attribute__((__unused__)) = cxx::monad::plus<vector_>(z, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -184,12 +157,10 @@ int rpc_main(int argc, char **argv) {
     auto m __attribute__((__unused__)) = cxx::monad::make<either_, int>(1);
     auto b __attribute__((__unused__)) = cxx::monad::bind<either_, double>(
         u, [](int x) { return either_<double>(x); });
-    auto f =
-        cxx::functor::fmap<either_, double>([](int x) { return double(x); }, u);
+    auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto z __attribute__((__unused__)) = cxx::monad::zero<either_, int>();
     auto p __attribute__((__unused__)) = cxx::monad::plus<either_>(m, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -197,13 +168,10 @@ int rpc_main(int argc, char **argv) {
     auto m __attribute__((__unused__)) = cxx::monad::make<cxx::maybe, int>(1);
     auto b __attribute__((__unused__)) = cxx::monad::bind<cxx::maybe, double>(
         u, [](int x) { return cxx::maybe<double>(x); });
-    auto f =
-        cxx::functor::fmap<cxx::maybe, double>([](int x) { return double(x); },
-                                               u);
+    auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto z __attribute__((__unused__)) = cxx::monad::zero<cxx::maybe, int>();
     auto p __attribute__((__unused__)) = cxx::monad::plus<cxx::maybe>(z, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   {
@@ -227,14 +195,12 @@ int rpc_main(int argc, char **argv) {
     auto m __attribute__((__unused__)) = cxx::monad::make<tree_, int>(1);
     auto b __attribute__((__unused__)) = cxx::monad::bind<tree_, double>(
         u, [](int x) { return cxx::monad::unit<tree_>(double(x)); });
-    auto f =
-        cxx::functor::fmap<tree_, double>([](int x) { return double(x); }, u);
+    auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto j __attribute__((__unused__)) = cxx::monad::join<tree_>(
         cxx::monad::unit<tree_>(cxx::monad::unit<tree_>(1)));
     auto z __attribute__((__unused__)) = cxx::monad::zero<tree_, int>();
     auto p __attribute__((__unused__)) = cxx::monad::plus<tree_>(z, u);
-    auto s __attribute__((__unused__)) =
-        cxx::foldable::foldl(std::plus<int>(), 0, u);
+    auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
 
   return 0;

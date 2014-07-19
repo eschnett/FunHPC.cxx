@@ -1,7 +1,7 @@
 #ifndef CXX_MONAD_FUNCTION_HH
 #define CXX_MONAD_FUNCTION_HH
 
-#include "cxx_functor_function.hh"
+#include "cxx_functor.hh"
 
 #include "cxx_invoke.hh"
 
@@ -10,8 +10,6 @@
 
 namespace cxx {
 namespace monad {
-
-using cxx::functor::fmap;
 
 // function: (->) r = r -> *
 

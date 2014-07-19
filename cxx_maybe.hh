@@ -2,6 +2,7 @@
 #define CXX_MAYBE_HH
 
 #include "cxx_invoke.hh"
+#include "cxx_kinds.hh"
 
 #include <cassert>
 #include <type_traits>
@@ -82,59 +83,46 @@ public:
 };
 template <typename T> void swap(maybe<T> &a, maybe<T> &b) { a.swap(b); }
 
-namespace foldable {
+////////////////////////////////////////////////////////////////////////////////
 
+// kinds
+template <typename T> struct kinds<maybe<T> > {
+  typedef T type;
+  template <typename U> using constructor = maybe<U>;
+};
+
+// foldable
 template <typename R, typename T, typename F>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
 foldl(const F &f, const R &z, const maybe<T> &x) {
   return x.is_nothing() ? z : cxx::invoke(f, z, x.just());
 }
-}
 
-namespace functor {
-
+// functor
 namespace detail {
-template <typename T> struct is_cxx_maybe : std::false_type {};
-template <typename T> struct is_cxx_maybe<maybe<T> > : std::true_type {};
-}
-
-namespace detail {
-template <typename T> struct unwrap_cxx_maybe {
+template <typename T> struct unwrap_maybe {
   typedef T type;
-  bool is_just(const T &x) const { return true; }
   const T &operator()(const T &x) const { return x; }
 };
-template <typename T> struct unwrap_cxx_maybe<maybe<T> > {
+template <typename T> struct unwrap_maybe<maybe<T> > {
   typedef T type;
-  bool is_just(const maybe<T> &x) const { return x.is_just(); }
   const T &operator()(const maybe<T> &x) const {
     return x.just();
   };
 };
 }
-
-template <template <typename> class M, typename R, typename... As, typename F>
-typename std::enable_if<
-    (detail::is_cxx_maybe<M<R> >::value &&std::is_same<
-        typename cxx::invoke_of<
-            F, typename detail::unwrap_cxx_maybe<As>::type...>::type,
-        R>::value),
-    M<R> >::type
-fmap(const F &f, const As &... as) {
-  std::array<bool, sizeof...(As)> is_justs{
-    { detail::unwrap_cxx_maybe<As>().is_just(as)... }
-  };
-  bool is_just = *std::min_element(is_justs.begin(), is_justs.end());
-  if (!is_just)
-    return maybe<R>();
-  return M<R>(cxx::invoke(f, detail::unwrap_cxx_maybe<As>()(as)...));
-}
+template <typename T, typename... As, typename F, typename CT = cxx::maybe<T>,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<
+              F, T, typename detail::unwrap_maybe<As>::type...>::type>
+C<R> fmap(const F &f, const cxx::maybe<T> xs, const As &... as) {
+  if (!xs.is_just())
+    return C<R>();
+  return C<R>(cxx::invoke(f, xs.just(), detail::unwrap_maybe<As>()(as)...));
 }
 
 namespace monad {
-
-using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_cxx_maybe : std::false_type {};

@@ -1,7 +1,7 @@
 #ifndef CXX_MONAD_VECTOR_HH
 #define CXX_MONAD_VECTOR_HH
 
-#include "cxx_functor_vector.hh"
+#include "cxx_functor.hh"
 
 #include "cxx_utils.hh"
 
@@ -12,8 +12,6 @@
 
 namespace cxx {
 namespace monad {
-
-using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_std_vector : std::false_type {};

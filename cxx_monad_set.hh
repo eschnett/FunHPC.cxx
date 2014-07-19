@@ -1,7 +1,7 @@
 #ifndef CXX_MONAD_SET_HH
 #define CXX_MONAD_SET_HH
 
-#include "cxx_functor_set.hh"
+#include "cxx_functor.hh"
 
 #include "cxx_invoke.hh"
 #include "cxx_utils.hh"
@@ -11,8 +11,6 @@
 
 namespace cxx {
 namespace monad {
-
-using cxx::functor::fmap;
 
 namespace detail {
 template <typename T> struct is_std_set : std::false_type {};

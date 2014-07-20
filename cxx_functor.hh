@@ -17,7 +17,34 @@
 namespace cxx {
 
 // fmap: (a -> b) -> m a -> m b
-// TODO: allow additional arguments for all types?
+
+// TODO: allow additional arguments for all types
+
+// array
+namespace detail {
+template <typename T> struct unwrap_array {
+  typedef T type;
+  const T &operator()(const T &x, std::size_t i) const { return x; }
+};
+template <typename T, size_t N> struct unwrap_array<std::array<T, N> > {
+  typedef T type;
+  const T &operator()(const std::array<T, N> &x, std::size_t i) const {
+    return x[i];
+  }
+};
+}
+template <typename T, size_t N, typename... As, typename F,
+          typename CT = std::array<T, N>,
+          template <typename> class C = kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<
+              F, T, typename detail::unwrap_array<As>::type...>::type>
+C<R> fmap(const F &f, const std::array<T, N> &xs, const As &... as) {
+  std::size_t s = xs.size();
+  C<R> rs;
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], detail::unwrap_array<As>()(as, i)...);
+  return rs;
+}
 
 // function
 //    fmap: (a -> b) -> (r -> a) -> r -> b
@@ -37,10 +64,10 @@ template <typename T, typename Allocator, typename F,
           template <typename> class C = kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::list<T, Allocator> &xs) {
-  C<R> r;
+  C<R> rs;
   for (const auto &x : xs)
-    r.push_back(cxx::invoke(f, x));
-  return r;
+    rs.push_back(cxx::invoke(f, x));
+  return rs;
 }
 
 // set
@@ -49,10 +76,10 @@ template <typename T, typename Compare, typename Allocator, typename F,
           template <typename> class C = kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::set<T, Compare, Allocator> &xs) {
-  C<R> r;
+  C<R> rs;
   for (const auto &x : xs)
-    r.insert(cxx::invoke(f, x));
-  return r;
+    rs.insert(cxx::invoke(f, x));
+  return rs;
 }
 
 // shared_ptr
@@ -100,11 +127,11 @@ template <typename T, typename Allocator, typename... As, typename F,
               F, T, typename detail::unwrap_vector<As>::type...>::type>
 C<R> fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
   std::size_t s = xs.size();
-  C<R> r;
-  r.reserve(s);
+  C<R> rs;
+  rs.reserve(s);
   for (std::size_t i = 0; i < s; ++i)
-    r.push_back(cxx::invoke(f, xs[i], detail::unwrap_vector<As>()(as, i)...));
-  return r;
+    rs.push_back(cxx::invoke(f, xs[i], detail::unwrap_vector<As>()(as, i)...));
+  return rs;
 }
 }
 

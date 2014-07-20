@@ -44,7 +44,7 @@ public:
   // leaf() {}
   explicit leaf() { assert(0); } // forbid empty leaf
   explicit leaf(const C<T> &values) : values(values) {}
-  explicit leaf(const T &value) : leaf(monad::make<C, T>(value)) {}
+  explicit leaf(const T &value) : leaf(cxx::make<C, T>(value)) {}
   leaf(const leaf &l) : values(l.values) {}
 
   // size
@@ -97,7 +97,7 @@ public:
   explicit branch() {}
   explicit branch(const C<tree<T, C, P> > &trees) : trees(trees) {}
   explicit branch(const tree<T, C, P> &t)
-      : branch(monad::make<C, tree<T, C, P> >(t)) {}
+      : branch(cxx::make<C, tree<T, C, P> >(t)) {}
   branch(const branch &b) : trees(b.trees) {}
 
   // size
@@ -190,10 +190,10 @@ private:
 
 public:
   // explicit tree() : node(monad::zero<P, branch<T, C, P> >()) {}
-  explicit tree() : node(monad::make<P, branch<T, C, P> >()) {}
+  explicit tree() : node(cxx::make<P, branch<T, C, P> >()) {}
   explicit tree(const P<leaf<T, C, P> > &pl) : node(pl) {}
   explicit tree(const P<branch<T, C, P> > &pb) : node(pb) {}
-  explicit tree(const T &value) : node(monad::make<P, leaf<T, C, P> >(value)) {}
+  explicit tree(const T &value) : node(cxx::make<P, leaf<T, C, P> >(value)) {}
   tree(const tree &t) : node(t.node) {}
 
   bool invariant() const {
@@ -282,8 +282,7 @@ public:
   // plus
   struct plus : std::tuple<> {};
   tree(plus, const tree &x, const tree &y)
-      : node(monad::make<P, branch<T, C, P> >(typename branch<T, C, P>::plus(),
-                                              monad::some<C>(x, y))) {}
+      : node(cxx::make<P, branch<T, C, P> >(cxx::some<C, tree>(x, y))) {}
 
   // foldl
   template <typename R, typename F>
@@ -312,9 +311,12 @@ public:
 // kinds
 template <typename T, template <typename> class C, template <typename> class P>
 struct kinds<tree<T, C, P> > {
-  typedef T type;
+  typedef T element_type;
   template <typename U> using constructor = tree<U, C, P>;
 };
+template <typename T> struct is_tree : std::false_type {};
+template <typename T, template <typename> class C, template <typename> class P>
+struct is_tree<tree<T, C, P> > : std::true_type {};
 
 // foldable
 template <typename R, typename T, template <typename> class C,
@@ -344,53 +346,60 @@ C<R> fmap(const F &f, const cxx::tree<T, C1, P> &xs, const As &... as) {
   return C<R>(typename C<R>::fmap(), f, xs, as...);
 }
 
-namespace monad {
+// monad
 
-namespace detail {
-template <typename T> struct is_cxx_tree : std::false_type {};
-template <typename T, template <typename> class C, template <typename> class P>
-struct is_cxx_tree<tree<T, C, P> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type unit(T1 &&x) {
+  return C<T>(std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_cxx_tree<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return M<T>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type
 make(As &&... as) {
-  return M<T>(T(std::forward<As>(as)...));
+  return C<T>(T(std::forward<As>(as)...));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  return M<T>(typename M<T>::join(), x);
+template <typename T, template <typename> class C1, template <typename> class P,
+          typename CCT = cxx::tree<cxx::tree<T, C1, P>, C1, P>,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const cxx::tree<cxx::tree<T, C1, P>, C1, P> &xss) {
+  return C<T>(typename C<T>::join(), xss);
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_cxx_tree<M<T> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  return join<M>(fmap(f, x));
+// TODO: Implement this directly
+template <typename T, template <typename> class C1, template <typename> class P,
+          typename F, typename CT = cxx::tree<T, C1, P>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const cxx::tree<T, C1, P> &xs, const F &f) {
+  return join(fmap(f, xs));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type zero() {
-  return M<T>();
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type zero() {
+  return C<T>();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_tree<M<T> >::value, M<T> >::type
-plus(const M<T> &x, const M<T> &y) {
-  return M<T>(typename M<T>::plus(), x, y);
+template <typename T, template <typename> class C1, template <typename> class P,
+          typename... As, typename CT = cxx::tree<T, C1, P>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
+                        C<T> >::type
+plus(const cxx::tree<T, C1, P> &xs, const As &... as) {
+  return C<T>(typename C<T>::plus(), xs, as...);
 }
+
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<((cxx::is_tree<C<T> >::value) &&
+                         (cxx::all<std::is_same<As, T>::value...>::value)),
+                        C<T> >::type
+some(T &&x, As &&... as) {
+  // TODO: Implement directly
+  return plus(unit<C>(std::forward<T>(x)), unit<C>(std::forward<As>(as))...);
 }
 }
 

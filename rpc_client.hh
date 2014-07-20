@@ -13,7 +13,6 @@
 #include <cereal/archives/binary.hpp>
 
 #include <array>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -61,9 +60,11 @@ namespace cxx {
 
 // kinds
 template <typename T> struct kinds<rpc::client<T> > {
-  typedef T type;
+  typedef T element_type;
   template <typename U> using constructor = rpc::client<U>;
 };
+template <typename T> struct is_client : std::false_type {};
+template <typename T> struct is_client<rpc::client<T> > : std::true_type {};
 
 // foldable
 
@@ -83,10 +84,7 @@ foldl(const F &f, const R &z, const rpc::client<T> &xs) {
 }
 
 namespace client {
-template <typename R, typename T, typename F
-          // typename CT = rpc::client<T>,
-          // template <typename> class C = kinds<CT>::template constructor
-          >
+template <typename R, typename T, typename F>
 typename std::enable_if<
     ((rpc::is_action<F>::value) &&
      (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
@@ -129,12 +127,7 @@ template <typename T> struct unwrap_client<rpc::client<T> > {
   const T &operator()(const rpc::client<T> &x) const { return *x; }
 };
 
-template <typename T, typename F, typename... As
-          // typename CT = rpc::client<T>,
-          // template <typename> class C = kinds<CT>::template constructor,
-          // typename R = typename cxx::invoke_of<F, T, typename
-          // detail::unwrap_client<As>::type...>::type
-          >
+template <typename T, typename F, typename... As>
 typename std::enable_if<
     rpc::is_action<F>::value,
     rpc::client<typename cxx::invoke_of<
@@ -182,78 +175,70 @@ fmap(F, const rpc::client<T> &xs, const As &... as) {
                          detail::fmap_action<T, F, As...>(), F(), xs, as...));
 }
 
-namespace monad {
+// monad
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
 // cannot handle empty clients as monads.
 
-namespace detail {
-template <typename T> struct is_rpc_client : std::false_type {};
-template <typename T> struct is_rpc_client<rpc::client<T> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
+unit(T1 &&x) {
+  // return rpc::make_client<T>(std::forward<T1>(x));
+  return rpc::make_remote_client<T>(rpc::detail::choose_dest(),
+                                    std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_rpc_client<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  // return rpc::make_client<typename std::decay<T>::type>(std::forward<T>(x));
-  return rpc::make_remote_client<typename std::decay<T>::type>(
-      rpc::detail::choose_dest(), std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_rpc_client<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
 make(As &&... as) {
   // return rpc::make_client<T>(std::forward<As>(as)...);
   return rpc::make_remote_client<T>(rpc::detail::choose_dest(),
                                     std::forward<As>(as)...);
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((!rpc::is_action<F>::value) && (detail::is_rpc_client<M<T> >::value) &&
-     (std::is_same<typename cxx::invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  return M<R>(rpc::async([x, f]() { return cxx::invoke(f, *x); }));
+template <typename T, typename F, typename CT = rpc::client<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
+bind(const rpc::client<T> &xs, const F &f) {
+  return C<R>(rpc::async([xs, f]() { return cxx::invoke(f, *xs); }));
 }
 
 namespace detail {
-namespace client {
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((rpc::is_action<F>::value) && (detail::is_rpc_client<M<T> >::value) &&
-     (std::is_same<typename cxx::invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, F) {
-  return cxx::invoke(F(), *x);
+template <typename T, typename F>
+typename std::enable_if<rpc::is_action<F>::value,
+                        typename cxx::invoke_of<F, T>::type>::type
+bind(const rpc::client<T> &xs, F) {
+  return cxx::invoke(F(), *xs);
 }
-template <template <typename> class M, typename R, typename T, typename F>
+template <typename T, typename F>
 struct bind_action
-    : public rpc::action_impl<
-          bind_action<M, R, T, F>,
-          rpc::wrap<decltype(&bind<M, R, T, F>), &bind<M, R, T, F> > > {};
+    : public rpc::action_impl<bind_action<T, F>,
+                              rpc::wrap<decltype(&bind<T, F>), &bind<T, F> > > {
+};
 // TODO: automate implementing this action:
 // RPC_CLASS_EXPORT(bind_action<M, R, T, F>::evaluate);
 // RPC_CLASS_EXPORT(bind_action<M, R, T, F>::finish);
 }
-}
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((rpc::is_action<F>::value) && (detail::is_rpc_client<M<T> >::value) &&
-     (std::is_same<typename cxx::invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  return M<R>(rpc::async(rpc::remote::async, x.get_proc_future(),
-                         detail::client::bind_action<M, R, T, F>(), x, F()));
+template <typename T, typename F, typename CT = rpc::client<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+typename std::enable_if<rpc::is_action<F>::value, C<R> >::type
+bind(const rpc::client<T> &xs, F) {
+  return C<R>(rpc::async(rpc::remote::async, xs.get_proc_future(),
+                         detail::bind_action<T, F>(), xs, F()));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_rpc_client<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  return M<T>(rpc::async([x]() { return *x.make_local(); }));
-}
+// TODO: execute remotely
+template <typename T, typename CCT = rpc::client<rpc::shared_future<T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const rpc::client<rpc::client<T> > &xss) {
+  return C<T>(rpc::async([xss]() { return *xss.make_local(); }));
 }
 }
 

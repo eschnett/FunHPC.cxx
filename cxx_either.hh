@@ -4,7 +4,6 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <type_traits>
@@ -123,33 +122,26 @@ private:
 
 public:
   struct gmap : std::tuple<> {};
-  template <typename F, typename G, typename... As>
-  either(
-      typename std::enable_if<
-          ((std::is_same<typename cxx::invoke_of<
-                             F, typename unwrap_either<As>::left_type...>::type,
-                         L>::value) &&
-           (std::is_same<typename cxx::invoke_of<G, typename unwrap_either<As>::
-                                                        right_type...>::type,
-                         R>::value)),
-          gmap>::type,
-      F f, G g, const As &... as) {
-    std::array<bool, sizeof...(As)> is_lefts{ { unwrap_either<As>().is_left(
-        as)... } };
-    bool is_left = *std::min_element(is_lefts.begin(), is_lefts.end());
-    std::array<bool, sizeof...(As)> is_rights{ { unwrap_either<As>().is_right(
-        as)... } };
-    bool is_right = *std::min_element(is_rights.begin(), is_rights.end());
-    // If there are no eithers, treat it as left
-    if (is_left) {
+  template <typename F, typename G, typename L1, typename R1, typename... As>
+  either(typename std::enable_if<
+             ((std::is_same<
+                  typename cxx::invoke_of<
+                      F, L1, typename unwrap_either<As>::left_type...>::type,
+                  L>::value) &&
+              (std::is_same<
+                  typename cxx::invoke_of<
+                      G, R1, typename unwrap_either<As>::right_type...>::type,
+                  R>::value)),
+             gmap>::type,
+         F f, G g, const either<L1, R1> &x, As &&... as) {
+    if (x.is_left()) {
       is_left_ = true;
-      new (&left_) L(cxx::invoke(f, unwrap_either<As>().left(as)...));
-    } else if (is_right) {
-      is_left_ = false;
-      new (&right_) R(cxx::invoke(g, unwrap_either<As>().right(as)...));
+      new (&left_) L(cxx::invoke(
+          f, x.left(), unwrap_either<As>().left(std::forward<As>(as))...));
     } else {
-      is_left_ = true;
-      new (&left_) L();
+      is_left_ = false;
+      new (&right_) R(cxx::invoke(
+          g, x.right(), unwrap_either<As>().right(std::forward<As>(as))...));
     }
   }
   template <typename F, typename G, typename... As>
@@ -169,10 +161,13 @@ template <typename L, typename R> void swap(either<L, R> &a, either<L, R> &b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // kinds
-template <typename T, typename L> struct kinds<either<L, T> > {
-  typedef T type;
+template <typename L, typename R> struct kinds<either<L, R> > {
+  typedef R element_type;
   template <typename U> using constructor = either<L, U>;
 };
+template <typename T> struct is_either : std::false_type {};
+template <typename L, typename R>
+struct is_either<either<L, R> > : std::true_type {};
 
 // foldable
 template <typename R, typename T, typename L, typename F>
@@ -204,57 +199,63 @@ C<R> fmap(const F &f, const cxx::either<L, T> xs, const As &... as) {
   return C<R>(cxx::invoke(f, xs.right(), detail::unwrap_either<As>()(as)...));
 }
 
-namespace monad {
+// monad
 
-namespace detail {
-template <typename T> struct is_cxx_either : std::false_type {};
-template <typename L, typename R>
-struct is_cxx_either<either<L, R> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
+unit(T1 &&x) {
+  return C<T>(std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_cxx_either<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return M<typename std::decay<T>::type>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_cxx_either<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
 make(As &&... as) {
-  return M<T>(T(std::forward<As>(as)...));
+  return C<T>(T(std::forward<As>(as)...));
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<(detail::is_cxx_either<M<T> >::value &&std::is_same<
-                            typename invoke_of<F, T>::type, M<R> >::value),
-                        M<R> >::type
-bind(const M<T> &x, const F &f) {
-  if (x.is_left())
-    return M<R>(x.left());
-  return cxx::invoke(f, x.right());
+template <typename T, typename L, typename F, typename CT = cxx::either<L, T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const cxx::either<L, T> &xs, const F &f) {
+  if (xs.is_left())
+    return C<R>(xs.left());
+  return cxx::invoke(f, xs.right());
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_either<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  if (x.is_left())
-    return M<T>(x.left());
-  return x.right();
+template <typename T, typename L,
+          typename CCT = cxx::either<L, cxx::either<L, T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const cxx::either<L, cxx::either<L, T> > &xss) {
+  if (xss.is_left())
+    return C<T>(xss.left());
+  return xss.right();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_either<M<T> >::value, M<T> >::type
-zero() {
-  return M<T>(typename M<T>::left_type());
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type zero() {
+  return C<T>(typename C<T>::left_type());
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_either<M<T> >::value, M<T> >::type
-plus(const M<T> &x, const M<T> &y) {
-  return x.is_right() ? x : y;
+template <typename T, typename L, typename... As,
+          typename CT = cxx::either<L, T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
+                        C<T> >::type
+plus(const cxx::either<L, T> &xs, const As &... as) {
+  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
+  for (size_t i = 0; i < xss.size(); ++i)
+    if (xss[i]->is_right())
+      return *xss[i];
+  return zero<C, T>();
 }
+
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type some(T &&x) {
+  return unit<C>(std::forward<T>(x));
 }
 }
 

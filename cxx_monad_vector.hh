@@ -3,104 +3,83 @@
 
 #include "cxx_functor.hh"
 
-#include "cxx_utils.hh"
+#include "cxx_invoke.hh"
+#include "cxx_kinds.hh"
 
-#include <algorithm>
 #include <array>
 #include <vector>
 #include <type_traits>
 
 namespace cxx {
-namespace monad {
 
-namespace detail {
-template <typename T> struct is_std_vector : std::false_type {};
-template <typename T, typename Allocator>
-struct is_std_vector<std::vector<T, Allocator> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
+unit(T1 &&x) {
+  return C<T>{ std::forward<T1>(x) };
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_std_vector<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return { std::forward<T>(x) };
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
 make(As &&... as) {
-  M<T> r;
-  r.emplace_back(std::forward<As>(as)...);
-  return r;
+  C<T> rs;
+  rs.emplace_back(std::forward<As>(as)...);
+  return rs;
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_std_vector<M<T> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  M<R> r;
-  for (const auto &e : x) {
-    M<R> y = cxx::invoke(f, e);
-    std::move(y.begin(), y.end(), std::inserter(r, r.end()));
+template <typename T, typename F, typename CT = std::vector<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const std::vector<T> &xs, const F &f) {
+  C<R> rs;
+  for (const auto &x : xs) {
+    C<R> y = cxx::invoke(f, x);
+    std::move(y.begin(), y.end(), std::inserter(rs, rs.end()));
   }
-  return r;
+  return rs;
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  M<T> r;
-  for (const auto &e : x) {
-    r.insert(r.end(), e.begin(), e.end());
+template <typename T, typename CCT = std::vector<std::vector<T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const std::vector<std::vector<T> > &xss) {
+  C<T> rs;
+  for (const auto &xs : xss) {
+    rs.insert(rs.end(), xs.begin(), xs.end());
   }
-  return r;
+  return rs;
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
-zero() {
-  return M<T>();
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type zero() {
+  return C<T>();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
-some() {
-  return zero<M, T>();
-}
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<
-    ((detail::is_std_vector<M<typename std::decay<T>::type> >::value) &&
-     (cxx::all<std::is_same<typename std::decay<As>::type,
-                            typename std::decay<T>::type>::value...>::value)),
-    M<typename std::decay<T>::type> >::type
-some(T &&x, As &&... as) {
-  return { std::forward<T>(x), std::forward<As>(as)... };
+template <typename T, typename... As, typename CT = std::vector<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
+                        C<T> >::type
+plus(const std::vector<T> &xs, const As &... as) {
+  C<T> rs(xs);
+  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
+  for (size_t i = 0; i < xss.size(); ++i)
+    rs.insert(rs.end(), xss[i]->begin(), xss[i]->end());
+  return rs;
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
-plus() {
-  return zero<M, T>();
-}
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_vector<M<T> >::value, M<T> >::type
-plus(const M<T> &x) {
-  return x;
-}
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<((detail::is_std_vector<M<T> >::value) &&
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<((cxx::is_vector<C<T> >::value) &&
                          (cxx::all<std::is_same<As, T>::value...>::value)),
-                        M<T> >::type
-plus(const M<T> &x, const M<As> &... as) {
-  M<T> r(x);
-  std::array<const M<T> *, sizeof...(As)> xs{ { &as... } };
-  for (auto x : xs)
-    r.insert(r.end(), x->begin(), x->end());
-  return r;
-}
+                        C<T> >::type
+some(const T &x, const As &... as) {
+  C<T> rs;
+  rs.push_back(x);
+  std::array<const T *, sizeof...(As)> xs{ { &as... } };
+  for (size_t i = 0; i < xs.size(); ++i)
+    rs.push_back(*xs[i]);
+  return rs;
 }
 }
 

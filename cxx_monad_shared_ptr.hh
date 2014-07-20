@@ -3,66 +3,69 @@
 
 #include "cxx_functor.hh"
 
-#include "cxx_utils.hh"
+#include "cxx_invoke.hh"
+#include "cxx_kinds.hh"
 
-#include <algorithm>
 #include <array>
 #include <memory>
 #include <type_traits>
 
 namespace cxx {
-namespace monad {
 
-namespace detail {
-template <typename T> struct is_std_shared_ptr : std::false_type {};
-template <typename T>
-struct is_std_shared_ptr<std::shared_ptr<T> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
+unit(T1 &&x) {
+  return std::make_shared<T>(std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_std_shared_ptr<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return std::make_shared<typename std::decay<T>::type>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_std_shared_ptr<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
 make(As &&... as) {
   return std::make_shared<T>(std::forward<As>(as)...);
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_std_shared_ptr<M<T> >::value) &&
-     (std::is_same<typename invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
-  if (!x)
-    return std::shared_ptr<R>();
-  return cxx::invoke(f, *x);
+template <typename T, typename F, typename CT = std::shared_ptr<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const std::shared_ptr<T> &xs, const F &f) {
+  if (!xs)
+    return C<R>();
+  return cxx::invoke(f, *xs);
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_shared_ptr<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  if (!x)
-    return std::shared_ptr<T>();
-  return *x;
+template <typename T, typename CCT = std::shared_ptr<std::shared_ptr<T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const std::shared_ptr<std::shared_ptr<T> > &xss) {
+  if (!xss)
+    return C<T>();
+  return *xss;
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_shared_ptr<M<T> >::value, M<T> >::type
-zero() {
-  return std::shared_ptr<T>();
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type zero() {
+  return C<T>();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_std_shared_ptr<M<T> >::value, M<T> >::type
-plus(const M<T> &x, const M<T> &y) {
-  return x ? x : y;
+template <typename T, typename... As, typename CT = std::shared_ptr<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
+                        C<T> >::type
+plus(const std::shared_ptr<T> &xs, const As &... as) {
+  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
+  for (size_t i = 0; i < xss.size(); ++i)
+    if (*xss[i])
+      return *xss[i];
+  return zero<C, T>();
 }
+
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
+some(T &&x) {
+  return unit<C>(std::forward<T>(x));
 }
 }
 

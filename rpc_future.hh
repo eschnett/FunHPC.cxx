@@ -73,9 +73,12 @@ namespace cxx {
 
 // kinds
 template <typename T> struct kinds<rpc::shared_future<T> > {
-  typedef T type;
+  typedef T element_type;
   template <typename U> using constructor = rpc::shared_future<U>;
 };
+template <typename T> struct is_shared_future : std::false_type {};
+template <typename T>
+struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 
 // foldable
 template <typename R, typename T, typename F,
@@ -110,52 +113,45 @@ C<R> fmap(const F &f, const rpc::shared_future<T> xs, const As &... as) {
                       as...
                     ]() {
                        // TODO: move objects?
-                       return cxx::invoke(
-                           f, xs.get(),
-                           detail::unwrap_shared_future<As>()(as)...);
+                       return cxx::invoke(std::move(f), std::move(xs).get(),
+                                          detail::unwrap_shared_future<As>()(
+                                              std::move(as))...);
                      }).share();
 }
 
-namespace monad {
+// monad
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
 // cannot handle invalid futures as monads.
 
-namespace detail {
-template <typename T> struct is_rpc_shared_future : std::false_type {};
-template <typename T>
-struct is_rpc_shared_future<rpc::shared_future<T> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
+unit(T1 &&x) {
+  return rpc::make_ready_future(std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_rpc_shared_future<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return rpc::make_ready_future<T>(std::forward<T>(x)).share();
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_rpc_shared_future<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
 make(As &&... as) {
-  return rpc::make_ready_future<T>(T(std::forward<As>(as)...));
+  return rpc::make_ready_future(T(std::forward<As>(as)...));
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<
-    ((detail::is_rpc_shared_future<M<T> >::value) &&
-     (std::is_same<typename cxx::invoke_of<F, T>::type, M<R> >::value)),
-    M<R> >::type
-bind(const M<T> &x, const F &f) {
+template <typename T, typename F, typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const rpc::shared_future<T> &xs, const F &f) {
   return rpc::future_then(
-      x, [f](const M<T> &x) { return cxx::invoke(f, x.get()).get(); });
+      xs, [f](const C<T> &xs) { return cxx::invoke(f, xs.get()).get(); });
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_rpc_shared_future<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  return x.unwrap();
-}
+template <typename T, typename CCT = rpc::shared_future<rpc::shared_future<T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const rpc::shared_future<rpc::shared_future<T> > &xss) {
+  return xss.unwrap();
 }
 }
 

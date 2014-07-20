@@ -261,13 +261,13 @@ ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 // Each grid lives on a process
 
 // TODO: use array<...,N>, and allow multiple ghost zones
-template <template <typename> class M, typename T, typename F>
-M<typename cxx::invoke_of<F, T, T, T>::type>
-stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
+template <template <typename> class C, typename T, typename F>
+C<typename cxx::invoke_of<F, T, T, T>::type>
+stencil_fmap(const F &f, const C<T> &c, const T &bm, const T &bp) {
   typedef typename cxx::invoke_of<F, T, T, T>::type R;
   size_t s = c.size();
   assert(s >= 2); // TODO: This can be avoided
-  M<R> r(s);
+  C<R> r(s);
   // TODO: add push_back equivalent to monad
   // TODO: for efficiency: don't use push_back, use something else
   // that requires preallocation, that doesn't reallocate, and which
@@ -279,56 +279,17 @@ stencil_fmap(const F &f, const M<T> &c, const T &bm, const T &bp) {
   return r;
 }
 
-template <typename CT,
+template <typename CT, typename B, typename F, typename G,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename T = typename cxx::kinds<CT>::type>
-C<T> unit(const T &x) {
-  return cxx::monad::unit<C>(x);
-}
-template <typename CT,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename T = typename cxx::kinds<CT>::type>
-C<T> unit(T &&x) {
-  return cxx::monad::unit<C>(std::move(x));
-}
-
-template <typename CT, typename... As,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename T = typename cxx::kinds<CT>::type>
-C<T> make(As &&... as) {
-  return cxx::monad::make<C, T>(std::forward<As>(as)...);
-}
-
-template <typename CCT,
-          template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::type,
-          template <typename> class C2 = cxx::kinds<CT>::template constructor,
-          typename T = typename cxx::kinds<CT>::type>
-typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
-join(const CCT &xss) {
-  return cxx::monad::join<C, T>(xss);
-}
-template <typename CCT,
-          template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::type,
-          template <typename> class C2 = cxx::kinds<CT>::template constructor,
-          typename T = typename cxx::kinds<CT>::type>
-typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
-join(CCT &&xss) {
-  return cxx::monad::join<C, T>(std::move(xss));
-}
-
-template <typename MT, typename B, typename F, typename G,
-          template <typename> class M = cxx::kinds<MT>::template constructor,
-          typename T = typename cxx::kinds<MT>::type,
+          typename T = typename cxx::kinds<CT>::element_type,
           typename R = typename cxx::invoke_of<F, T, B, B>::type>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value,
-    M<R> >::type
-stencil_fmap(const F &f, const G &g, const MT &c, const B &bm, const B &bp) {
+    C<R> >::type
+stencil_fmap(const F &f, const G &g, const CT &c, const B &bm, const B &bp) {
   size_t s = c.size();
   assert(s >= 2); // TODO: This can be avoided
-  M<R> r(s);
+  C<R> r(s);
   // TODO: add push_back equivalent to constructor
   // TODO: for efficiency: don't use push_back, use something else
   // that requires preallocation, that doesn't reallocate, and which
@@ -607,7 +568,7 @@ public:
                           // Choose a domain decomposition
                           vector<client<ptrdiff_t> > imins(ngrids());
                           for (ptrdiff_t i = 0; i < ngrids(); ++i)
-                            imins[i] = cxx::monad::unit<client>(
+                            imins[i] = cxx::unit<client>(
                                 min(i * defs->ncells_per_grid, defs->ncells));
                           return imins;
                         }(),
@@ -615,7 +576,7 @@ public:
                           // Choose a domain decomposition
                           vector<client<ptrdiff_t> > imaxs(ngrids());
                           for (ptrdiff_t i = 0; i < ngrids(); ++i)
-                            imaxs[i] = cxx::monad::unit<client>(min(
+                            imaxs[i] = cxx::unit<client>(min(
                                 (i + 1) * defs->ncells_per_grid, defs->ncells));
                           return imaxs;
                         }())) {}
@@ -642,10 +603,10 @@ public:
             [](const client<grid_t> &g, bool face_upper) {
               return cxx::fmap(grid_get_boundary_action(), g, face_upper);
             },
-            s.grids, cxx::monad::make<client, cell_t>(
-                         cell_t::boundary(), s.t, defs->xmin - 0.5 * defs->dx),
-            cxx::monad::make<client, cell_t>(cell_t::boundary(), s.t,
-                                             defs->xmax + 0.5 * defs->dx))) {}
+            s.grids, cxx::make<client, cell_t>(cell_t::boundary(), s.t,
+                                               defs->xmin - 0.5 * defs->dx),
+            cxx::make<client, cell_t>(cell_t::boundary(), s.t,
+                                      defs->xmax + 0.5 * defs->dx))) {}
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
 

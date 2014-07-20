@@ -4,6 +4,7 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
+#include <array>
 #include <cassert>
 #include <type_traits>
 #include <utility>
@@ -87,9 +88,11 @@ template <typename T> void swap(maybe<T> &a, maybe<T> &b) { a.swap(b); }
 
 // kinds
 template <typename T> struct kinds<maybe<T> > {
-  typedef T type;
+  typedef T element_type;
   template <typename U> using constructor = maybe<U>;
 };
+template <typename T> struct is_maybe : std::false_type {};
+template <typename T> struct is_maybe<cxx::maybe<T> > : std::true_type {};
 
 // foldable
 template <typename R, typename T, typename F>
@@ -122,56 +125,60 @@ C<R> fmap(const F &f, const cxx::maybe<T> xs, const As &... as) {
   return C<R>(cxx::invoke(f, xs.just(), detail::unwrap_maybe<As>()(as)...));
 }
 
-namespace monad {
+// monad
 
-namespace detail {
-template <typename T> struct is_cxx_maybe : std::false_type {};
-template <typename T> struct is_cxx_maybe<maybe<T> > : std::true_type {};
+template <template <typename> class C, typename T1,
+          typename T = typename std::decay<T1>::type>
+typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type unit(T1 &&x) {
+  return C<T>(std::forward<T1>(x));
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<
-    detail::is_cxx_maybe<M<typename std::decay<T>::type> >::value,
-    M<typename std::decay<T>::type> >::type
-unit(T &&x) {
-  return M<typename std::decay<T>::type>(std::forward<T>(x));
-}
-
-template <template <typename> class M, typename T, typename... As>
-typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
+template <template <typename> class C, typename T, typename... As>
+typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type
 make(As &&... as) {
-  return maybe<T>(T(std::forward<As>(as)...));
+  return C<T>(T(std::forward<As>(as)...));
 }
 
-template <template <typename> class M, typename R, typename T, typename F>
-typename std::enable_if<(detail::is_cxx_maybe<M<T> >::value &&std::is_same<
-                            typename cxx::invoke_of<F, T>::type, M<R> >::value),
-                        M<R> >::type
-bind(const M<T> &x, const F &f) {
-  if (x.is_nothing())
-    return maybe<R>();
-  return cxx::invoke(f, x.just());
+template <typename T, typename F, typename CT = cxx::maybe<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename invoke_of<F, T>::type,
+          typename R = typename cxx::kinds<CR>::element_type>
+C<R> bind(const cxx::maybe<T> &xs, const F &f) {
+  if (xs.is_nothing())
+    return C<R>();
+  return cxx::invoke(f, xs.just());
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
-join(const M<M<T> > &x) {
-  if (x.is_nothing())
-    return maybe<T>();
-  return x.just();
+template <typename T, typename CCT = cxx::maybe<cxx::maybe<T> >,
+          template <typename> class C = cxx::kinds<CCT>::template constructor,
+          typename CT = typename cxx::kinds<CCT>::element_type,
+          template <typename> class C2 = cxx::kinds<CT>::template constructor>
+C<T> join(const cxx::maybe<cxx::maybe<T> > &xss) {
+  if (xss.is_nothing())
+    return C<T>();
+  return xss.just();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
-zero() {
-  return maybe<T>();
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type zero() {
+  return C<T>();
 }
 
-template <template <typename> class M, typename T>
-typename std::enable_if<detail::is_cxx_maybe<M<T> >::value, M<T> >::type
-plus(const M<T> &x, const M<T> &y) {
-  return x.is_just() ? x : y;
+template <typename T, typename... As, typename CT = cxx::maybe<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
+                        C<T> >::type
+plus(const cxx::maybe<T> &xs, const As &... as) {
+  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
+  for (size_t i = 0; i < xss.size(); ++i)
+    if (xss[i]->is_just())
+      return *xss[i];
+  return zero<C, T>();
 }
+
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type some(T &&x) {
+  return unit<T>(std::forward<T>(x));
 }
 }
 

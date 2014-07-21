@@ -5,6 +5,7 @@
 #include "cxx_functor.hh"
 #include "cxx_maybe.hh"
 #include "cxx_monad.hh"
+// #include "cxx_nested.hh"
 #include "cxx_tree.hh"
 
 #include <functional>
@@ -12,6 +13,9 @@
 #include <set>
 #include <string>
 #include <vector>
+
+// Define an either with only one template argument
+template <typename T> using either_ = cxx::either<std::string, T>;
 
 // Define a function with only one template argument
 template <typename T> using function_ = std::function<T(int)>;
@@ -22,8 +26,10 @@ template <typename T> using set_ = std::set<T>;
 // Define a vector with only one template argument
 template <typename T> using vector_ = std::vector<T>;
 
-// Define an either with only one template argument
-template <typename T> using either_ = cxx::either<std::string, T>;
+// Define nested containers with only one template argument
+// template <typename T> using nested_ = cxx::nested<T, vector_,
+// std::shared_ptr>;
+// template <typename T> using nestedI_ = std::shared_ptr<std::vector<T> >;
 
 // Define a tree with only one template argument
 template <typename T> using tree_ = cxx::tree<T, vector_, std::shared_ptr>;
@@ -60,7 +66,7 @@ int rpc_main(int argc, char **argv) {
     auto u __attribute__((__unused__)) = cxx::unit<set_>(1);
     auto m __attribute__((__unused__)) = cxx::make<set_, int>(1);
     auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return std::set<double>{ double(x) }; });
+        cxx::bind(u, [](int x) { return cxx::unit<set_>(double(x)); });
     auto f __attribute__((__unused__)) =
         cxx::fmap([](int x) { return double(x); }, u);
     auto j __attribute__((__unused__)) =
@@ -73,8 +79,8 @@ int rpc_main(int argc, char **argv) {
   {
     auto u __attribute__((__unused__)) = cxx::unit<std::shared_ptr>(1);
     auto m __attribute__((__unused__)) = cxx::make<std::shared_ptr, int>(1);
-    auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return std::make_shared<double>(x); });
+    auto b __attribute__((__unused__)) = cxx::bind(
+        u, [](int x) { return cxx::unit<std::shared_ptr>(double(x)); });
     auto f __attribute__((__unused__)) =
         cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
@@ -90,7 +96,7 @@ int rpc_main(int argc, char **argv) {
     auto u __attribute__((__unused__)) = cxx::unit<rpc::client>(1);
     auto m __attribute__((__unused__)) = cxx::make<rpc::client, int>(1);
     auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return rpc::make_client<double>(x); });
+        cxx::bind(u, [](int x) { return cxx::unit<rpc::client>(double(x)); });
     auto f __attribute__((__unused__)) =
         cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
@@ -133,7 +139,7 @@ int rpc_main(int argc, char **argv) {
     auto u __attribute__((__unused__)) = cxx::unit<vector_>(1);
     auto m __attribute__((__unused__)) = cxx::make<vector_, int>(1);
     auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return vector_<double>(1, x); });
+        cxx::bind(u, [](int x) { return cxx::unit<vector_>(double(x)); });
     auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
         cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
@@ -146,7 +152,7 @@ int rpc_main(int argc, char **argv) {
     auto u __attribute__((__unused__)) = cxx::unit<either_>(1);
     auto m __attribute__((__unused__)) = cxx::make<either_, int>(1);
     auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return either_<double>(x); });
+        cxx::bind(u, [](int x) { return cxx::unit<either_>(double(x)); });
     auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto z __attribute__((__unused__)) = cxx::zero<either_, int>();
     auto p __attribute__((__unused__)) = cxx::plus(m, u);
@@ -157,12 +163,23 @@ int rpc_main(int argc, char **argv) {
     auto u __attribute__((__unused__)) = cxx::unit<cxx::maybe>(1);
     auto m __attribute__((__unused__)) = cxx::make<cxx::maybe, int>(1);
     auto b __attribute__((__unused__)) =
-        cxx::bind(u, [](int x) { return cxx::maybe<double>(x); });
+        cxx::bind(u, [](int x) { return cxx::unit<cxx::maybe>(double(x)); });
     auto f = cxx::fmap([](int x) { return double(x); }, u);
     auto z __attribute__((__unused__)) = cxx::zero<cxx::maybe, int>();
     auto p __attribute__((__unused__)) = cxx::plus(z, u);
     auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
   }
+
+  // {
+  //   auto u __attribute__((__unused__)) = cxx::unit<nested_>(1);
+  //   auto m __attribute__((__unused__)) = cxx::make<nested_, int>(1);
+  //   auto b __attribute__((__unused__)) =
+  //       cxx::bind(u, [](int x) { return cxx::unit<nested_>(double(x)); });
+  //   auto f = cxx::fmap([](int x) { return double(x); }, u);
+  //   auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
+  // }
+
+  // { auto u __attribute__((__unused__)) = cxx::unit<nestedI_>(1); }
 
   {
     cxx::tree<double, vector_, std::shared_ptr> t;

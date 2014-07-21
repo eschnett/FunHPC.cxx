@@ -501,17 +501,6 @@ struct domain_t {
   }
   vector<client<grid_t> > grids;
 
-private:
-  // Note: The grids are not allocated in the constructor; this has to
-  // be done explicitly.
-  domain_t(double t) : t(t), grids(ngrids()) {}
-  domain_t(const client<domain_t> &d) : t(d->t), grids(ngrids()) {}
-  void set(ptrdiff_t i, const client<grid_t> &g) {
-    assert(i >= 0 && i < ngrids() && grids.size() == ngrids());
-    grids[i] = g;
-  }
-
-public:
   // Note: Be careful about this being a reference! This only works
   // because references decay in bind and async.
   const client<grid_t> &get(ptrdiff_t i) const {

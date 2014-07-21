@@ -144,6 +144,7 @@ public:
           g, x.right(), unwrap_either<As>().right(std::forward<As>(as))...));
     }
   }
+  // TODO: make gfoldl more uniform to foldl, with expecting a zero element
   template <typename F, typename G, typename... As>
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, L, As &&...>::type,

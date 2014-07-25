@@ -352,13 +352,17 @@ template <typename T, template <typename> class C, template <typename> class P>
 struct is_tree<tree<T, C, P> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, template <typename> class C,
-          template <typename> class P, typename F>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const tree<T, C, P> &x) {
-  return x.foldl(f, z);
-}
+template <typename T, template <typename> class C1, template <typename> class P>
+struct foldable<cxx::tree<T, C1, P> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<cxx::tree<T, C1, P> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const /*C<T>*/ cxx::tree<T, C1, P> &x) {
+    return x.foldl(f, z);
+  }
+};
 
 // functor
 namespace detail {

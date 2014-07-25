@@ -1,6 +1,7 @@
 #ifndef CXX_EITHER_HH
 #define CXX_EITHER_HH
 
+#include "cxx_foldable.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
@@ -171,12 +172,16 @@ template <typename L, typename R>
 struct is_either<either<L, R> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, typename L, typename F>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const either<L, T> &xs) {
-  return xs.is_left() ? z : cxx::invoke(f, z, xs.right());
-}
+template <typename L, typename T> struct foldable<cxx::either<L, T> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<cxx::either<L, T> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const /*C<T>*/ cxx::either<L, T> &xs) {
+    return xs.is_left() ? z : cxx::invoke(f, z, xs.right());
+  }
+};
 
 // functor
 namespace detail {

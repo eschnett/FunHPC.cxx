@@ -7,6 +7,7 @@
 #include "rpc_future.hh"
 #include "rpc_global_shared_ptr.hh"
 
+#include "cxx_foldable.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
@@ -67,50 +68,59 @@ template <typename T> struct is_client : std::false_type {};
 template <typename T> struct is_client<rpc::client<T> > : std::true_type {};
 
 // foldable
+template <typename T> struct foldable<rpc::client<T> > {
 
-// TODO: remove special case for functions; expect actions
-// everywhere. note this requires passing functions as values, not
-// only as types.
+  // TODO: remove special case for functions; expect actions
+  // everywhere. note this requires passing functions as values, not
+  // only as types.
 
-template <typename R, typename T, typename F, typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    ((!rpc::is_action<F>::value) &&
-     (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
-    R>::type
-foldl(const F &f, const R &z, const rpc::client<T> &xs) {
-  // Note: We could call make_local, but we don't
-  return !xs ? z : cxx::invoke(f, z, *xs);
-}
+  template <typename R, typename F
+            /*template <typename> class C = cxx::kinds<rpc::client<T>
+               >::template constructor*/
+            >
+  static typename std::enable_if<
+      (/*(!rpc::is_action<F>::value) &&*/
+       (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+      R>::type
+  foldl(const F &f, const R &z, const /*C<T>*/ rpc::client<T> &xs) {
+    // Note: We could call make_local, but we don't
+    // return !xs ? z : cxx::invoke(f, z, *xs);
+    return z;
+  }
 
-namespace client {
-template <typename R, typename T, typename F>
-typename std::enable_if<
-    ((rpc::is_action<F>::value) &&
-     (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
-    R>::type
-foldl(F, const R &z, const rpc::client<T> &xs) {
-  return cxx::invoke(F(), z, *xs);
-}
-template <typename R, typename T, typename F>
-struct foldl_action
-    : public rpc::action_impl<
-          foldl_action<R, T, F>,
-          rpc::wrap<decltype(&foldl<R, T, F>), &foldl<R, T, F> > > {};
-// TODO: automate implementing this action:
-// RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, T, F>::evaluate);
-// RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, T, F>::finish);
-}
-template <typename R, typename T, typename F, typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    ((rpc::is_action<F>::value) &&
-     (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
-    R>::type
-foldl(F, const R &z, const rpc::client<T> &xs) {
-  return !xs ? z : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                             client::foldl_action<R, T, F>(), F(), z, xs);
-}
+#warning "TODO"
+#if 0
+private:
+  template <typename R, typename F>
+  static typename std::enable_if<
+      ((rpc::is_action<F>::value) &&
+       (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+      R>::type
+  foldl1(F, const R &z, const rpc::client<T> &xs) {
+    return cxx::invoke(F(), z, *xs);
+  }
+  template <typename R, typename F>
+  struct foldl_action
+      : public rpc::action_impl<
+            foldl_action<R, F>,
+            rpc::wrap<decltype(&foldl1<R, F>), &foldl1<R, F> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, F>::evaluate);
+  // RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, F>::finish);
+
+public:
+  template <typename R, typename F, template <typename> class C = cxx::kinds<
+                                        rpc::client<T> >::template constructor>
+  static typename std::enable_if<
+      ((rpc::is_action<F>::value) &&
+       (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+      R>::type
+  foldl(F, const R &z, const C<T> &xs) {
+    return !xs ? z : rpc::sync(rpc::remote::sync, xs.get_proc(),
+                               foldl_action<R, F>(), F(), z, xs);
+  }
+#endif
+};
 
 // functor
 namespace detail {

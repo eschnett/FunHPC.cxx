@@ -5,6 +5,7 @@
 
 #include "rpc_global_ptr.hh"
 
+#include "cxx_foldable.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
@@ -81,14 +82,16 @@ template <typename T>
 struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, typename F,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const rpc::shared_future<T> &x) {
-  return !x.valid() ? z : cxx::invoke(f, z, x.get());
-}
+template <typename T> struct foldable<rpc::shared_future<T> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<rpc::shared_future<T> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const C<T> &x) {
+    return !x.valid() ? z : cxx::invoke(f, z, x.get());
+  }
+};
 
 // functor
 namespace detail {

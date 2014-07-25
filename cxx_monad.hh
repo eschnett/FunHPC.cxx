@@ -56,6 +56,9 @@ C<R> fmap(const F &f, const C<T> &... xs);
 
 template <template <typename> class C, typename T>
 C<T> join(const C<C<T> > &xss);
+  };
+
+  template <template <typename> class C> struct monad_plus:monad<C> {
 
 template <template <typename> class C, typename T> C<T> zero();
 

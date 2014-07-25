@@ -26,72 +26,36 @@ namespace cxx {
 // notElem:  a -> t a -> bool
 // find:     (a -> bool) -> t a -> a*
 
-// TODO: allow multiple arguments
+// Foldable API, to be implemented for all foldable type constructors
 
-// array
-template <typename R, typename T, std::size_t N, typename F,
-          typename CT = std::array<T, N>,
-          template <typename> class C = kinds<CT>::template constructor>
+// template <typename CT> struct foldable {
+//   template <typename R, typename F,
+//             template <typename> class C = cxx::kinds<CT>::template
+// constructor,
+//             typename T = typename cxx::kinds<CT>::element_type>
+//   static typename std::enable_if<
+//       std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value,
+// R>::type
+//   foldl(const F &f, const R &z, const CT &xs);
+// };
+template <typename CT> struct foldable;
+
+// Convenience functions
+
+template <
+    typename R, typename CT, typename F,
+    /*TODO template <typename> class C = cxx::kinds<CT>::template constructor,*/
+    typename T = typename cxx::kinds<CT>::element_type>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::array<T, N> &xs) {
-  R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
-  return r;
-}
-
-// list
-template <typename R, typename T, typename Allocator, typename F,
-          typename CT = std::list<T, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::list<T, Allocator> &xs) {
-  R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
-  return r;
-}
-
-// set
-template <typename R, typename T, typename Compare, typename Allocator,
-          typename F, typename CT = std::set<T, Compare, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::set<T, Compare, Allocator> &xs) {
-  R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
-  return r;
-}
-
-// shared_ptr
-template <typename R, typename T, typename F, typename CT = std::shared_ptr<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::shared_ptr<T> &xs) {
-  return !xs ? z : cxx::invoke(f, z, *xs);
-}
-
-// vector
-template <typename R, typename T, typename Allocator, typename F,
-          typename CT = std::vector<T, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs) {
-  R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
-  return r;
+foldl(const F &f, const R &z, const CT &xs) {
+  return foldable<CT>::foldl(f, z, xs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace foldable {
+// TODO: choose better namespace name
+namespace foldable1 {
 
 template <template <typename> class C> bool and_(const C<bool> &xs) {
   return foldl(std::logical_and<bool>(), true, xs);
@@ -148,6 +112,84 @@ find(const F &f, const C<T> &xs) {
                nullptr, xs);
 }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+// array
+template <typename T, std::size_t N> struct foldable<std::array<T, N> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<std::array<T, N> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const C<T> &xs) {
+    R r(z);
+    for (const auto &x : xs)
+      r = cxx::invoke(f, std::move(r), x);
+    return r;
+  }
+};
+
+// list
+template <typename T, typename Allocator>
+struct foldable<std::list<T, Allocator> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<std::list<T, Allocator> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const C<T> &xs) {
+    R r(z);
+    for (const auto &x : xs)
+      r = cxx::invoke(f, std::move(r), x);
+    return r;
+  }
+};
+
+// set
+template <typename T, typename Compare, typename Allocator>
+struct foldable<std::set<T, Compare, Allocator> > {
+  template <typename R, typename F,
+            template <typename> class C = cxx::kinds<
+                std::set<T, Compare, Allocator> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z,
+        const /*C<T>*/ std::set<T, Compare, Allocator> &xs) {
+    R r(z);
+    for (const auto &x : xs)
+      r = cxx::invoke(f, std::move(r), x);
+    return r;
+  }
+};
+
+// shared_ptr
+template <typename T> struct foldable<std::shared_ptr<T> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<std::shared_ptr<T> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const C<T> &xs) {
+    return !xs ? z : cxx::invoke(f, z, *xs);
+  }
+};
+
+// vector
+template <typename T, typename Allocator>
+struct foldable<std::vector<T, Allocator> > {
+  template <typename R, typename F,
+            template <typename> class C =
+                cxx::kinds<std::vector<T, Allocator> >::template constructor>
+  static typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+  foldl(const F &f, const R &z, const /*C<T>*/ std::vector<T, Allocator> &xs) {
+    R r(z);
+    for (const auto &x : xs)
+      r = cxx::invoke(f, std::move(r), x);
+    return r;
+  }
+};
 }
 
 #endif // #ifndef CXX_FOLDABLE_HH

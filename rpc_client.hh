@@ -49,7 +49,7 @@ client<T> make_remote_client(remote policy, const shared_future<int> &proc,
 
 namespace rpc {
 namespace detail {
-// Round-robin load distribution
+// Load distribution
 int choose_dest();
 }
 }

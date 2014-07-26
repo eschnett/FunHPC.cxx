@@ -14,6 +14,7 @@
 
 #include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
+#include <cereal/types/tuple.hpp>
 #include <cereal/types/vector.hpp>
 
 #include <algorithm>

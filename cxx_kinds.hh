@@ -36,7 +36,9 @@ struct is_function<std::function<T(A)> > : std::true_type {};
 template <typename T, typename Allocator>
 struct kinds<std::list<T, Allocator> > {
   typedef T element_type;
-  template <typename U> using constructor = std::list<U>;
+  template <typename U>
+  using constructor =
+      std::list<U /*TODO typename Allocator::template rebind<U>::other*/>;
 };
 template <typename T> struct is_list : std::false_type {};
 template <typename T, typename Allocator>
@@ -46,7 +48,9 @@ struct is_list<std::list<T, Allocator> > : std::true_type {};
 template <typename T, typename Compare, typename Allocator>
 struct kinds<std::set<T, Compare, Allocator> > {
   typedef T element_type;
-  template <typename U> using constructor = std::set<U>;
+  template <typename U>
+  using constructor = std::set<
+      U /*TODO std::less<U>, typename Allocator::template rebind<U>::other*/>;
 };
 template <typename T> struct is_set : std::false_type {};
 template <typename T, typename Compare, typename Allocator>
@@ -65,7 +69,9 @@ struct is_shared_ptr<std::shared_ptr<T> > : std::true_type {};
 template <typename T, typename Allocator>
 struct kinds<std::vector<T, Allocator> > {
   typedef T element_type;
-  template <typename U> using constructor = std::vector<U>;
+  template <typename U>
+  using constructor =
+      std::vector<U /*TODO typename Allocator::template rebind<U>::other*/>;
 };
 template <typename T> struct is_vector : std::false_type {};
 template <typename T, typename Allocator>

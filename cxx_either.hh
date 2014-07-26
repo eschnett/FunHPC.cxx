@@ -142,7 +142,7 @@ public:
                       G, R1, typename unwrap_either<As>::right_type...>::type,
                   R>::value)),
              gmap>::type,
-         F f, G g, const either<L1, R1> &x, As &&... as) {
+      const F &f, const G &g, const either<L1, R1> &x, As &&... as) {
     if (x.is_left()) {
       is_left_ = true;
       new (&left_) L(cxx::invoke(

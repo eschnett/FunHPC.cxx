@@ -373,7 +373,7 @@ C<T> join(const cxx::tree<cxx::tree<T, C1, P>, C1, P> &xss) {
 template <typename T, template <typename> class C1, template <typename> class P,
           typename F, typename CT = cxx::tree<T, C1, P>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const cxx::tree<T, C1, P> &xs, const F &f) {
   return join(fmap(f, xs));

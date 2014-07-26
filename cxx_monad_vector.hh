@@ -29,7 +29,7 @@ make(As &&... as) {
 
 template <typename T, typename F, typename CT = std::vector<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const std::vector<T> &xs, const F &f) {
   C<R> rs;

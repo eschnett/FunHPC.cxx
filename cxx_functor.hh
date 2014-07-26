@@ -35,7 +35,7 @@ template <typename T, size_t N> struct unwrap_array<std::array<T, N> > {
 }
 template <typename T, size_t N, typename... As, typename F,
           typename CT = std::array<T, N>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_array<As>::type...>::type>
 C<R> fmap(const F &f, const std::array<T, N> &xs, const As &... as) {
@@ -50,7 +50,7 @@ C<R> fmap(const F &f, const std::array<T, N> &xs, const As &... as) {
 //    fmap: (a -> b) -> (r -> a) -> r -> b
 //    fmap f g = \x -> f (g x)
 template <typename T, typename A, typename F, typename CT = std::function<T(A)>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::function<T(A)> &g) {
   return C<R>([f, g](const typename C<T>::argument_type &x) {
@@ -61,7 +61,7 @@ C<R> fmap(const F &f, const std::function<T(A)> &g) {
 // list
 template <typename T, typename Allocator, typename F,
           typename CT = std::list<T, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::list<T, Allocator> &xs) {
   C<R> rs;
@@ -73,7 +73,7 @@ C<R> fmap(const F &f, const std::list<T, Allocator> &xs) {
 // set
 template <typename T, typename Compare, typename Allocator, typename F,
           typename CT = std::set<T, Compare, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::set<T, Compare, Allocator> &xs) {
   C<R> rs;
@@ -97,7 +97,7 @@ template <typename T> struct unwrap_shared_ptr<std::shared_ptr<T> > {
 }
 template <typename T, typename... As, typename F,
           typename CT = std::shared_ptr<T>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_shared_ptr<As>::type...>::type>
 C<R> fmap(const F &f, const std::shared_ptr<T> &xs, const As &... as) {
@@ -122,7 +122,7 @@ template <typename T> struct unwrap_vector<std::vector<T> > {
 }
 template <typename T, typename Allocator, typename... As, typename F,
           typename CT = std::vector<T, Allocator>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_vector<As>::type...>::type>
 C<R> fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {

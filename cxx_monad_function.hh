@@ -31,7 +31,7 @@ make(A &&x) {
 // bind: f g = \x -> (g (f x)) x
 template <typename T, typename A, typename F, typename CT = std::function<T(A)>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const std::function<T(A)> &f, const F &g) {
   return C<R>([f, g](const T &x) {

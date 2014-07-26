@@ -103,7 +103,7 @@ template <typename T> struct unwrap_shared_future<rpc::shared_future<T> > {
 }
 template <typename T, typename... As, typename F,
           typename CT = rpc::shared_future<T>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_shared_future<As>::type...>::type>
 C<R> fmap(const F &f, const rpc::shared_future<T> xs, const As &... as) {
@@ -139,7 +139,7 @@ make(As &&... as) {
 
 template <typename T, typename F, typename CT = rpc::shared_future<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const rpc::shared_future<T> &xs, const F &f) {
   return rpc::future_then(

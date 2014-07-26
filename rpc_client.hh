@@ -150,7 +150,7 @@ struct fmap_action
 }
 
 template <typename T, typename... As, typename F, typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_client<As>::type...>::type>
 typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
@@ -166,7 +166,7 @@ fmap(const F &f, const rpc::client<T> &xs, const As &... as) {
 }
 
 template <typename T, typename... As, typename F, typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_client<As>::type...>::type>
 typename std::enable_if<rpc::is_action<F>::value, C<R> >::type
@@ -199,7 +199,7 @@ make(As &&... as) {
 
 template <typename T, typename F, typename CT = rpc::client<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
 bind(const rpc::client<T> &xs, const F &f) {
@@ -224,7 +224,7 @@ struct bind_action
 }
 template <typename T, typename F, typename CT = rpc::client<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 typename std::enable_if<rpc::is_action<F>::value, C<R> >::type
 bind(const rpc::client<T> &xs, F) {

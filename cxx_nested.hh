@@ -156,7 +156,7 @@ make(As &&... as) {
 template <typename T, template <typename> class Outer, template <typename>
           class Inner, typename F, typename CT = cxx::nested<T, Outer, Inner>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const cxx::nested<T, Outer, Inner> &xs, const F &f) {
   return C<R>{ cxx::bind(cxx::bind(xs.values, f), [f](const Inner<T> &ys) {

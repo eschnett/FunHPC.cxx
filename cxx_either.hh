@@ -203,7 +203,7 @@ template <typename T, typename L> struct unwrap_either<either<L, T> > {
 }
 template <typename T, typename L, typename... As, typename F,
           typename CT = cxx::either<L, T>,
-          template <typename> class C = kinds<CT>::template constructor,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<
               F, T, typename detail::unwrap_either<As>::type...>::type>
 C<R> fmap(const F &f, const cxx::either<L, T> xs, const As &... as) {
@@ -229,7 +229,7 @@ make(As &&... as) {
 
 template <typename T, typename L, typename F, typename CT = cxx::either<L, T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename invoke_of<F, T>::type,
+          typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::element_type>
 C<R> bind(const cxx::either<L, T> &xs, const F &f) {
   if (xs.is_left())

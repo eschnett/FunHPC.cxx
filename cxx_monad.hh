@@ -35,15 +35,12 @@ namespace cxx {
 // TODO: introduce rpc::action<> equivalent to std::function<>, and
 // make this a monad as well
 
-// TODO: change template parameters so that they all can be inferred,
-// most importantly the return types
+// Monad functions
 
 #if 0
+  template <template <typename> class C> struct monad {
 
-// Monadic overloads
-
-template <template <typename> class C, typename T> C<T> unit(const T &x);
-template <template <typename> class C, typename T> C<T> unit(T &&x);
+    template <typename T1, typename T = typename std::decay<T1>::type> C<T> unit(T1 &&x);
 
 template <template <typename> class C, typename T, typename... As>
 C<T> make(As &&... as);
@@ -64,6 +61,7 @@ C<T> plus(const C<T> &xs, const As &... as);
 
 template <template <typename> class C, typename T, typename... As>
 C<T> some(const C<T> &xs, const As &... as);
+  };
 
 #endif
 

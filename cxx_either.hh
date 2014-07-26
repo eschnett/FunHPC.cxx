@@ -132,25 +132,28 @@ private:
 public:
   struct gmap : std::tuple<> {};
   template <typename F, typename G, typename L1, typename R1, typename... As>
-  either(typename std::enable_if<
-             ((std::is_same<
-                  typename cxx::invoke_of<
-                      F, L1, typename unwrap_either<As>::left_type...>::type,
-                  L>::value) &&
-              (std::is_same<
-                  typename cxx::invoke_of<
-                      G, R1, typename unwrap_either<As>::right_type...>::type,
-                  R>::value)),
-             gmap>::type,
+  either(
+      typename std::enable_if<
+          ((std::is_same<typename cxx::invoke_of<
+                             F, L1, typename unwrap_either<typename std::decay<
+                                        As>::type>::left_type...>::type,
+                         L>::value) &&
+           (std::is_same<typename cxx::invoke_of<
+                             G, R1, typename unwrap_either<typename std::decay<
+                                        As>::type>::right_type...>::type,
+                         R>::value)),
+          gmap>::type,
       const F &f, const G &g, const either<L1, R1> &x, As &&... as) {
     if (x.is_left()) {
       is_left_ = true;
       new (&left_) L(cxx::invoke(
-          f, x.left(), unwrap_either<As>().left(std::forward<As>(as))...));
+          f, x.left(), unwrap_either<typename std::decay<As>::type>().left(
+                           std::forward<As>(as))...));
     } else {
       is_left_ = false;
       new (&right_) R(cxx::invoke(
-          g, x.right(), unwrap_either<As>().right(std::forward<As>(as))...));
+          g, x.right(), unwrap_either<typename std::decay<As>::type>().right(
+                            std::forward<As>(as))...));
     }
   }
   // TODO: make gfoldl more uniform to foldl, with expecting a zero element

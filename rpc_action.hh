@@ -63,6 +63,10 @@
   RPC_CLASS_EXPORT(rpc::global_shared_ptr_get_action<c>::finish);              \
   RPC_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);               \
   RPC_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);                 \
+  RPC_CLASS_EXPORT(                                                            \
+      BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::evaluate)));  \
+  RPC_CLASS_EXPORT(                                                            \
+      BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::finish)));    \
   RPC_CLASS_EXPORT(rpc::shared_future_get_action<c>::evaluate);                \
   RPC_CLASS_EXPORT(rpc::shared_future_get_action<c>::finish);                  \
   RPC_CLASS_EXPORT(                                                            \

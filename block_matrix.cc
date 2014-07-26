@@ -215,11 +215,6 @@ auto block_vector_t::fset(double alpha) const -> ptr {
   return x;
 }
 
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
-    (rpc::make_global_shared_action<vector_t, vector_t>::evaluate)));
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
-    (rpc::make_global_shared_action<vector_t, vector_t>::finish)));
-
 block_matrix_t::block_matrix_t(const structure_t::const_ptr &istr,
                                const structure_t::const_ptr &jstr)
     : strs({ { istr, jstr } }), has_block_(linear_blocks(), false),
@@ -521,8 +516,3 @@ auto block_matrix_t::fgemm(bool transa, bool transb, bool transc0, double alpha,
     f.wait(); // TODO: why wait?
   return c;
 }
-
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
-    (rpc::make_global_shared_action<matrix_t, matrix_t>::evaluate)));
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
-    (rpc::make_global_shared_action<matrix_t, matrix_t>::finish)));

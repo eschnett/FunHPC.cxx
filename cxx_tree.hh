@@ -55,7 +55,9 @@ class leaf {
 public:
   explicit leaf() {}
   explicit leaf(const C<P<T> > &vs) : values(vs) {}
+  explicit leaf(C<P<T> > &&vs) : values(std::move(vs)) {}
   explicit leaf(const P<T> &v) : leaf(cxx::unit<C>(v)) {}
+  explicit leaf(P<T> &&v) : leaf(cxx::unit<C>(std::move(v))) {}
   leaf(const leaf &l) : values(l.values) {}
   leaf(leaf &&l) : values(std::move(l.values)) {}
 
@@ -191,7 +193,9 @@ class branch {
 public:
   explicit branch() {}
   explicit branch(const C<P<tree<T, C, P> > > &ts) : trees(ts) {}
+  explicit branch(C<P<tree<T, C, P> > > &&ts) : trees(std::move(ts)) {}
   explicit branch(const P<tree<T, C, P> > &t) : branch(cxx::unit<C>(t)) {}
+  explicit branch(P<tree<T, C, P> > &&t) : branch(cxx::unit<C>(std::move(t))) {}
   branch(const branch &b) : trees(b.trees) {}
   branch(branch &&b) : trees(std::move(b.trees)) {}
 
@@ -387,9 +391,13 @@ private:
 public:
   explicit tree() : node(leaf<T, C, P>()) {}
   explicit tree(const leaf<T, C, P> &l) : node(l) {}
+  explicit tree(leaf<T, C, P> &&l) : node(std::move(l)) {}
   explicit tree(const branch<T, C, P> &b) : node(b) {}
+  explicit tree(branch<T, C, P> &&b) : node(std::move(b)) {}
   explicit tree(const P<T> &pv) : tree(leaf<T, C, P>(pv)) {}
+  explicit tree(P<T> &&pv) : tree(leaf<T, C, P>(std::move(pv))) {}
   explicit tree(const T &v) : tree(cxx::unit<P>(v)) {}
+  explicit tree(T &&v) : tree(cxx::unit<P>(std::move(v))) {}
   tree(const tree &t) : node(t.node) {}
   tree(tree &&t) : node(std::move(t.node)) {}
   tree &operator=(const tree &t) {

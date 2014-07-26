@@ -5,6 +5,9 @@
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 
+#include <cereal/access.hpp>
+#include <cereal/types/string.hpp>
+
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -18,6 +21,19 @@ namespace cxx {
 class ostreamer {
   typedef std::function<std::ostream &(std::ostream &)> fun_t;
   std::shared_ptr<fun_t> fun;
+
+  friend class cereal::access;
+  template <typename Archive> void save(Archive &ar) const {
+    std::ostringstream os;
+    (*fun)(os);
+    ar(os.str());
+  }
+  template <typename Archive> void load(Archive &ar) {
+    std::string s;
+    ar(s);
+    *this =
+        ostreamer([s](std::ostream & os)->std::ostream & { return os << s; });
+  }
 
 public:
   ostreamer(const fun_t &fun) : fun(std::make_shared<fun_t>(fun)) {}
@@ -67,7 +83,11 @@ public: // TODO
   ostreaming(const ostreamer &ostr, T &&value)
       : ostr(ostr), value(std::move(value)) {}
 
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(ostr, value); }
+
 public:
+  ostreaming() {} // only for serialize
   ostreaming(const T &value) : ostr(), value(value) {}
   ostreaming(T &&value) : ostr(), value(std::move(value)) {}
   const T &get(std::ostream &os) const {

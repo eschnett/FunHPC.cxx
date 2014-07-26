@@ -4,6 +4,8 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
+#include <cereal/access.hpp>
+
 #include <array>
 #include <cassert>
 #include <type_traits>
@@ -19,6 +21,13 @@ template <typename T> class maybe {
   union {
     T just_;
   };
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(is_nothing_);
+    if (!is_nothing_)
+      ar(just_);
+  }
 
 public:
   maybe() : is_nothing_(true) {}

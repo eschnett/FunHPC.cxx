@@ -8,6 +8,8 @@
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 
+#include <cereal/access.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -45,6 +47,9 @@ class leaf {
   friend class tree;
 
   C<P<T> > values;
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(values); }
 
 public:
   explicit leaf() {}
@@ -123,6 +128,9 @@ class branch {
   typedef T element_type;
 
   C<P<tree<T, C, P> > > trees;
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(trees); }
 
 public:
   explicit branch() {}
@@ -245,6 +253,9 @@ public:
 private:
   typedef cxx::either<leaf<T, C, P>, branch<T, C, P> > node_t;
   node_t node;
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(node); }
 
 public:
   explicit tree() : node(leaf<T, C, P>()) {}

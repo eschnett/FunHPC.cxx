@@ -4,6 +4,8 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
+#include <cereal/access.hpp>
+
 #include <array>
 #include <cassert>
 #include <type_traits>
@@ -27,6 +29,15 @@ private:
     L left_;
     R right_;
   };
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(is_left_);
+    if (is_left_)
+      ar(left_);
+    else
+      ar(right_);
+  }
 
 public:
   either() = delete;

@@ -103,6 +103,43 @@ public:
             },
             xs.values, unwrap_leaf<As>()(as)...)) {}
 
+  struct stencil_fmap : std::tuple<> {};
+  template <typename U, typename B, typename F, typename G>
+  leaf(
+      typename std::enable_if<
+          ((std::is_same<typename cxx::invoke_of<F, U, B, B>::type,
+                         T>::value) &&
+           (std::is_same<typename cxx::invoke_of<G, U, bool>::type, B>::value)),
+          stencil_fmap>::type,
+      const F &f, const G &g, const cxx::leaf<U, C, P> &l, const B &bm,
+      const B &bp) {
+    const C<P<U> > &xs = l.values;
+    size_t s = xs.size();
+    assert(s >= 2); // TODO: This can be avoided
+    C<P<T> > rs(s);
+    // TODO: use array<...,N>, and allow multiple ghost zones
+    // TODO: add push_back equivalent to constructor
+    // TODO: for efficiency: don't use push_back, use something else
+    // that requires preallocation, that doesn't reallocate, and which
+    // turns into an indexed loop when used for vectors
+    rs[0] = cxx::fmap(f, xs[0], bm, cxx::fmap(g, xs[1], false));
+    for (size_t i = 1; i < s - 1; ++i)
+      rs[i] = cxx::fmap(f, xs[i], cxx::fmap(g, xs[i - 1], true),
+                        cxx::fmap(g, xs[i + 1], false));
+    rs[s - 1] = cxx::fmap(f, xs[s - 1], cxx::fmap(g, xs[s - 2], true), bp);
+    values = std::move(rs);
+  }
+
+  template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
+  B get_boundary(const G &g, bool face_upper) const {
+    assert(!values.empty());
+    // TODO: use foldl1
+    return cxx::foldl([g, face_upper](const B &, const T &x) {
+                        return cxx::invoke(g, x, face_upper);
+                      },
+                      B(), !face_upper ? values.front() : values.back());
+  }
+
   // monad: join
   template <typename U = T, typename R = typename cxx::kinds<U>::element_type>
   typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
@@ -231,6 +268,50 @@ public:
                   pt, as...);
             },
             xs.trees, unwrap_branch<As>()(as)...)) {}
+
+  struct stencil_fmap : std::tuple<> {};
+  template <typename U, typename B, typename F, typename G>
+  branch(
+      typename std::enable_if<
+          ((std::is_same<typename cxx::invoke_of<F, U, B, B>::type,
+                         T>::value) &&
+           (std::is_same<typename cxx::invoke_of<G, U, bool>::type, B>::value)),
+          stencil_fmap>::type,
+      const F &f, const G &g, const cxx::branch<U, C, P> &b, const B &bm,
+      const B &bp) {
+    const C<P<tree<U, C, P> > > &xs = b.trees;
+    size_t s = xs.size();
+    assert(s >= 2);
+    C<P<tree<T, C, P> > > rs(s);
+    auto recurse = [f, g](const tree<U, C, P> &t, const B &bm, const B &bp) {
+      return tree<T, C, P>(typename tree<T, C, P>::stencil_fmap(), f, g, t, bm,
+                           bp);
+    };
+    rs[0] = cxx::fmap(
+        recurse, xs[0], bm,
+        cxx::fmap(&tree<T, C, P>::template get_boundary<G>, xs[1], g, false));
+    for (size_t i = 1; i < s - 1; ++i)
+      rs[i] = cxx::fmap(recurse, xs[i],
+                        cxx::fmap(&tree<T, C, P>::template get_boundary<G>,
+                                  xs[i - 1], g, true),
+                        cxx::fmap(&tree<T, C, P>::template get_boundary<G>,
+                                  xs[i + 1], g, false));
+    rs[s - 1] = cxx::fmap(
+        recurse, xs[s - 1],
+        cxx::fmap(&tree<T, C, P>::template get_boundary<G>, xs[s - 2], g, true),
+        bp);
+    trees = std::move(rs);
+  }
+
+  template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
+  B get_boundary(const G &g, bool face_upper) const {
+    assert(!trees.empty());
+    // TODO: use foldl1
+    return cxx::foldl([g, face_upper](const B &, const tree<T, C, P> &t) {
+                        return t.get_boundary(g, face_upper);
+                      },
+                      B(), !face_upper ? trees.front() : trees.back());
+  }
 
   // monad: join
   template <typename U = T, typename R = typename cxx::kinds<U>::element_type>
@@ -366,18 +447,46 @@ public:
                 F, U, typename unwrap_tree<As>::type...>::type>
   tree(typename std::enable_if<std::is_same<R, T>::value, fmap>::type,
        const F &f, const tree<U, C, P> &xs, const As &... as)
+      : node(
+            typename node_t::gmap(),
+            [f](const leaf<U, C, P> &l,
+                const typename unwrap_tree<As>::unwrapped_type_leaf &... as) {
+              return leaf<T, C, P>(typename leaf<T, C, P>::fmap(), f, l, as...);
+            },
+            [f](const branch<U, C, P> &b,
+                const typename unwrap_tree<As>::unwrapped_type_branch &... as) {
+              return branch<T, C, P>(typename branch<T, C, P>::fmap(), f, b,
+                                     as...);
+            },
+            xs.node, unwrap_tree<As>()(as)...) {}
+
+  struct stencil_fmap : std::tuple<> {};
+  template <typename U, typename B, typename F, typename G,
+            typename R = typename cxx::invoke_of<F, U, B, B>::type>
+  tree(typename std::enable_if<
+           ((std::is_same<typename cxx::invoke_of<G, U, bool>::type,
+                          B>::value) &&
+            (std::is_same<R, T>::value)),
+           stencil_fmap>::type,
+       const F &f, const G &g, const cxx::tree<U, C, P> &xs, const B &bm,
+       const B &bp)
       : node(typename node_t::gmap(),
-             [f](const leaf<U, C, P> &l,
-                 typename unwrap_tree<As>::unwrapped_type_leaf &... as) {
-               return leaf<T, C, P>(typename leaf<T, C, P>::fmap(), f, l,
-                                    as...);
+             [f, g](const leaf<U, C, P> &l, const B &bm, const B &bp) {
+               return leaf<T, C, P>(typename leaf<T, C, P>::stencil_fmap(), f,
+                                    g, l, bm, bp);
              },
-             [f](const branch<U, C, P> &b,
-                 typename unwrap_tree<As>::unwrapped_type_branch &... as) {
-               return branch<T, C, P>(typename branch<T, C, P>::fmap(), f, b,
-                                      as...);
+             [f, g](const branch<U, C, P> &b, const B &bm, const B &bp) {
+               return branch<T, C, P>(typename branch<T, C, P>::stencil_fmap(),
+                                      f, g, b, bm, bp);
              },
-             xs.node, unwrap_tree<As>()(as)...) {}
+             xs.node, bm, bp) {}
+
+  template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
+  B get_boundary(const G &g, bool face_upper) const {
+    return node.gfoldl(&leaf<T, C, P>::template get_boundary<G>,
+                       &branch<T, C, P>::template get_boundary<G>, g,
+                       face_upper);
+  }
 
   // monad: join
   template <typename U = T, typename R = typename cxx::kinds<U>::element_type>
@@ -459,6 +568,18 @@ template <typename T, template <typename> class C1, template <typename> class P,
               F, T, typename detail::unwrap_tree<As>::type...>::type>
 C<R> fmap(const F &f, const cxx::tree<T, C1, P> &xs, const As &... as) {
   return C<R>(typename C<R>::fmap(), f, xs, as...);
+}
+
+template <typename T, template <typename> class C1, template <typename> class P,
+          typename B, typename F, typename G, typename CT = cxx::tree<T, C1, P>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, B, B>::type>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value,
+    C<R> >::type
+stencil_fmap(const F &f, const G &g, const cxx::tree<T, C1, P> &xs, const B &bm,
+             const B &bp) {
+  return C<R>(typename C<R>::stencil_fmap(), f, g, xs, bm, bp);
 }
 
 // monad

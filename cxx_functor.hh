@@ -133,6 +133,28 @@ C<R> fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
     rs.push_back(cxx::invoke(f, xs[i], detail::unwrap_vector<As>()(as, i)...));
   return rs;
 }
+
+template <typename T, typename Allocator, typename B, typename F, typename G,
+          typename CT = std::vector<T, Allocator>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, B, B>::type>
+typename std::enable_if<
+    std::is_same<
+        typename std::decay<typename cxx::invoke_of<G, T, bool>::type>::type,
+        B>::value,
+    C<R> >::type
+stencil_fmap(const F &f, const G &g, const std::vector<T, Allocator> &xs,
+             const B &bm, const B &bp) {
+  size_t s = xs.size();
+  assert(s >= 2);
+  C<R> rs(s);
+  rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], false));
+  for (size_t i = 1; i < s - 1; ++i)
+    rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], true),
+                        cxx::invoke(g, xs[i + 1], false));
+  rs[s - 1] = cxx::invoke(f, xs[s - 1], cxx::invoke(g, xs[s - 2], true), bp);
+  return rs;
+}
 }
 
 #endif // #ifndef CXX_FUNCTOR_HH

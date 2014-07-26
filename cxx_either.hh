@@ -119,16 +119,12 @@ private:
   template <typename T> struct unwrap_either {
     typedef T left_type;
     typedef T right_type;
-    bool is_left(const T &x) const { return true; }
-    bool is_right(const T &x) const { return true; }
     const T &left(const T &x) const { return x; }
     const T &right(const T &x) const { return x; }
   };
   template <typename L1, typename R1> struct unwrap_either<either<L1, R1> > {
     typedef L1 left_type;
     typedef R1 right_type;
-    bool is_left(const either<L1, R1> &x) const { return x.is_left(); }
-    bool is_right(const either<L1, R1> &x) const { return x.is_right(); }
     const L1 &left(const either<L1, R1> &x) const { return x.left(); }
     const R1 &right(const either<L1, R1> &x) const { return x.right(); }
   };

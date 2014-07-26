@@ -16,6 +16,54 @@
 
 namespace cxx {
 
+// Integer division, rounding down
+template <typename T> T div_floor(T x, T y) {
+  assert(y > 0);
+  T r = (x >= 0 ? x : x - y + 1) / y;
+  assert(r * y <= x && (r + 1) * y > x);
+  return r;
+}
+
+// Integer modulo, rounding down
+template <typename T> T mod_floor(T x, T y) {
+  T r = x - div_floor(x, y) * y;
+  assert(r >= 0 && r < y);
+  return r;
+}
+
+// Integer align, rounding down
+template <typename T> T align_floor(T x, T y) {
+  assert(y > 0);
+  T r = div_floor(x, y) * y;
+  assert(r <= x && x - r < y && mod_floor(r, y) == 0);
+  return r;
+}
+
+// Integer division, rounding up
+template <typename T> T div_ceil(T x, T y) {
+  assert(y > 0);
+  T r = (x > 0 ? x + y - 1 : x) / y;
+  assert(r * y >= x && (r - 1) * y < x);
+  return r;
+}
+
+// Integer modulo, rounding up
+template <typename T> T mod_ceil(T x, T y) {
+  T r = x - div_ceil(x, y) * y;
+  assert(r >= 0 && r < y);
+  return r;
+}
+
+// Integer align, rounding up
+template <typename T> T align_ceil(T x, T y) {
+  assert(y > 0);
+  T r = div_ceil(x, y) * y;
+  assert(r >= x && r - x < y && mod_ceil(r, y) == 0);
+  return r;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // special_decay, decay with special handling of reference_wrapper
 template <typename T> struct special_decay {
   using type = typename std::decay<T>::type;

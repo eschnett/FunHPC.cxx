@@ -24,6 +24,8 @@
 #include <tuple>
 #include <vector>
 
+using cxx::div_ceil;
+using cxx::div_floor;
 using rpc::async;
 using rpc::broadcast;
 using rpc::client;
@@ -57,43 +59,6 @@ using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::vector;
-
-////////////////////////////////////////////////////////////////////////////////
-
-// Integer division, rounding down
-template <typename T> T div_floor(T x, T y) {
-  assert(y > 0);
-  T r = (x >= 0 ? x : x - y + 1) / y;
-  assert(r * y <= x && (r + 1) * y > x);
-  return r;
-}
-
-// Integer modulo, rounding down
-template <typename T> T mod_floor(T x, T y) {
-  T r = x - div_floor(x, y) * y;
-  assert(r >= 0 && r < y);
-  return r;
-}
-
-// Integer division, rounding up
-template <typename T> T div_ceil(T x, T y) {
-  assert(y > 0);
-  T r = (x > 0 ? x + y - 1 : x) / y;
-  assert(r * y >= x && (r - 1) * y < x);
-  return r;
-}
-
-// Integer modulo, rounding up
-template <typename T> T mod_ceil(T x, T y) {
-  T r = x - div_ceil(x, y) * y;
-  assert(r >= 0 && r < y);
-  return r;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-// An empty serializable type as mix-in
-using empty = tuple<>;
 
 ////////////////////////////////////////////////////////////////////////////////
 

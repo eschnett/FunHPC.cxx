@@ -533,7 +533,7 @@ public:
 
   // size
   bool empty_slow() const {
-    return foldl([](bool x, const T &v) { return false; }, true);
+    return foldl([](bool, const T &v) { return false; }, true);
   }
   std::size_t size_slow() const {
     return foldl([](std::size_t s, const T &v) { return s + 1; },

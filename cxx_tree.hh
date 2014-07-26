@@ -5,6 +5,7 @@
 #include "cxx_functor.hh"
 #include "cxx_either.hh"
 #include "cxx_invoke.hh"
+#include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 
@@ -109,6 +110,23 @@ public:
   join() const {
     return branch<R, C, P>(values);
   }
+
+  // iota
+  struct iota : std::tuple<> {};
+  static constexpr std::ptrdiff_t default_size() {
+    return tree<T, C, P>::default_size();
+  }
+  template <typename... As, typename F, typename U = T>
+  leaf(typename std::enable_if<
+           std::is_same<U, typename cxx::invoke_of<F, std::ptrdiff_t,
+                                                   As...>::type>::value,
+           iota>::type,
+       const F &f, std::ptrdiff_t imin, std::ptrdiff_t imax,
+       std::ptrdiff_t istep, const As &... as)
+      : values(cxx::iota<C>([f](std::ptrdiff_t i, const As &... as) {
+                              return cxx::unit<P>(cxx::invoke(f, i, as...));
+                            },
+                            imin, imax, istep, as...)) {}
 };
 
 // Branch
@@ -228,6 +246,32 @@ public:
                   },
                   trees));
   }
+
+  // iota
+  struct iota : std::tuple<> {};
+  static constexpr std::ptrdiff_t default_size() {
+    return tree<T, C, P>::default_size();
+  }
+  static constexpr std::ptrdiff_t
+  branch_istep(std::ptrdiff_t imin, std::ptrdiff_t imax, std::ptrdiff_t istep) {
+    return cxx::align_ceil(cxx::div_ceil(imax - imin, default_size()), istep);
+  }
+  template <typename... As, typename F, typename U = T>
+  branch(typename std::enable_if<
+             std::is_same<U, typename cxx::invoke_of<F, std::ptrdiff_t,
+                                                     As...>::type>::value,
+             iota>::type,
+         const F &f, std::ptrdiff_t imin, std::ptrdiff_t imax,
+         std::ptrdiff_t istep, const As &... as)
+      : trees(cxx::iota<C>([f, imin, imax, istep](std::ptrdiff_t i,
+                                                  const As &... as) {
+                             auto istep1 = branch_istep(imin, imax, istep);
+                             return cxx::unit<P>(tree<T, C, P>(
+                                 typename tree<T, C, P>::iota(), f, i,
+                                 std::min(i + istep1, imax), istep, as...));
+                           },
+                           imin, imax, branch_istep(imin, imax, istep),
+                           as...)) {}
 };
 
 // Tree
@@ -351,6 +395,22 @@ public:
   tree(plus, const tree &x, const tree &y)
       : tree(plus(), cxx::unit<P>(x), cxx::unit<P>(y)) {}
 
+  // iota
+  struct iota : std::tuple<> {};
+  static constexpr std::ptrdiff_t default_size() { return 10; }
+  template <typename... As, typename F, typename U = T>
+  tree(typename std::enable_if<
+           std::is_same<U, typename cxx::invoke_of<F, std::ptrdiff_t,
+                                                   As...>::type>::value,
+           iota>::type,
+       const F &f, std::ptrdiff_t imin, std::ptrdiff_t imax,
+       std::ptrdiff_t istep, const As &... as)
+      : node(div_ceil(imax - imin, istep) <= default_size()
+                 ? node_t(leaf<T, C, P>(typename leaf<T, C, P>::iota(), f, imin,
+                                        imax, istep, as...))
+                 : node_t(branch<T, C, P>(typename branch<T, C, P>::iota(), f,
+                                          imin, imax, istep, as...))) {}
+
   // size
   bool empty_slow() const {
     return foldl([](bool x, const T &v) { return false; }, true);
@@ -455,6 +515,16 @@ typename std::enable_if<((cxx::is_tree<C<T> >::value) &&
 some(T &&x, As &&... as) {
   // TODO: Implement directly
   return plus(unit<C>(std::forward<T>(x)), unit<C>(std::forward<As>(as))...);
+}
+
+// iota
+
+template <template <typename> class C, typename... As, typename F,
+          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type
+iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
+     const As &... as) {
+  return C<T>(typename C<T>::iota(), f, imin, imax, istep, as...);
 }
 }
 

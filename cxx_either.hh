@@ -270,6 +270,16 @@ template <template <typename> class C, typename T>
 typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type some(T &&x) {
   return unit<C>(std::forward<T>(x));
 }
+
+// iota
+
+template <template <typename> class C, typename... As, typename F,
+          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
+iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
+     const As &... as) {
+  return unit<C>(cxx::invoke(f, imin, as...));
+}
 }
 
 #endif // #ifndef CXX_EITHER_HH

@@ -155,14 +155,11 @@ template <typename T, typename... As, typename F, typename CT = rpc::client<T>,
               F, T, typename detail::unwrap_client<As>::type...>::type>
 typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
 fmap(const F &f, const rpc::client<T> &xs, const As &... as) {
-  return C<R>(rpc::async([
-    f,
-    xs,
-    as...
-  ]() {
-     return rpc::make_client<R>(
-         cxx::invoke(f, *xs, detail::unwrap_client<As>()(as)...));
-   }));
+  return C<R>(rpc::async([f](const rpc::client<T> &xs, const As &... as) {
+                           return rpc::make_client<R>(cxx::invoke(
+                               f, *xs, detail::unwrap_client<As>()(as)...));
+                         },
+                         xs, as...));
 }
 
 template <typename T, typename... As, typename F, typename CT = rpc::client<T>,

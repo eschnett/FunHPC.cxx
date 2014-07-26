@@ -8,6 +8,7 @@
 #include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
+#include "cxx_utils.hh"
 
 #include <cereal/access.hpp>
 
@@ -243,11 +244,13 @@ public:
 private:
   template <typename U> struct unwrap_branch {
     typedef U type;
+    typedef U tree_type;
     typedef U pointer_type;
     const U &operator()(const U &x) const { return x; }
   };
   template <typename U> struct unwrap_branch<branch<U, C, P> > {
     typedef U type;
+    typedef tree<U, C, P> tree_type;
     typedef P<tree<U, C, P> > pointer_type;
     const C<P<tree<U, C, P> > > &operator()(const branch<U, C, P> &x) const {
       return x.trees;
@@ -265,7 +268,7 @@ public:
                 const typename unwrap_branch<As>::pointer_type &... as) {
               return cxx::fmap(
                   [f](const tree<U, C, P> &t,
-                      const typename unwrap_branch<As>::type &... as) {
+                      const typename unwrap_branch<As>::tree_type &... as) {
                     return tree<T, C, P>(typename tree<T, C, P>::fmap(), f, t,
                                          as...);
                   },

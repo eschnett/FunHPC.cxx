@@ -56,6 +56,7 @@ public:
   explicit leaf(const C<P<T> > &vs) : values(vs) {}
   explicit leaf(const P<T> &v) : leaf(cxx::unit<C>(v)) {}
   leaf(const leaf &l) : values(l.values) {}
+  leaf(leaf &&l) : values(std::move(l.values)) {}
 
   // size
   bool empty() const { return values.empty(); }
@@ -137,6 +138,7 @@ public:
   explicit branch(const C<P<tree<T, C, P> > > &ts) : trees(ts) {}
   explicit branch(const P<tree<T, C, P> > &t) : branch(cxx::unit<C>(t)) {}
   branch(const branch &b) : trees(b.trees) {}
+  branch(branch &&b) : trees(std::move(b.trees)) {}
 
   // size
   bool empty() const {
@@ -264,6 +266,15 @@ public:
   explicit tree(const P<T> &pv) : tree(leaf<T, C, P>(pv)) {}
   explicit tree(const T &v) : tree(cxx::unit<P>(v)) {}
   tree(const tree &t) : node(t.node) {}
+  tree(tree &&t) : node(std::move(t.node)) {}
+  tree &operator=(const tree &t) {
+    node = t.node;
+    return *this;
+  }
+  tree &operator=(tree &&t) {
+    node = std::move(t.node);
+    return *this;
+  }
 
   bool empty() const {
     return node.gfoldl([](const leaf<T, C, P> &l) { return l.empty(); },

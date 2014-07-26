@@ -50,11 +50,13 @@ public:
       return;
     this->~maybe();
     new (this) maybe(maybe_);
+    return *this;
   }
   maybe &operator=(maybe &&maybe_) {
     assert(this != &maybe_);
     this->~maybe();
     new (this) maybe(std::move(maybe_));
+    return *this;
   }
   void swap(maybe &maybe_) {
     maybe tmp(std::move(maybe_));

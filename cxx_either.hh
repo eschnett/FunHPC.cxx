@@ -68,11 +68,13 @@ public:
       return *this;
     this->~either();
     new (this) either(either_);
+    return *this;
   }
   either &operator=(either &&either_) {
-    assert(this != either_);
+    assert(this != &either_);
     this->~either();
     new (this) either(std::move(either_));
+    return *this;
   }
   void swap(either &either_) {
     either tmp(std::move(either_));

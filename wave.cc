@@ -24,7 +24,6 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <numeric>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -61,7 +60,6 @@ using std::cout;
 using std::flush;
 using std::ofstream;
 using std::ios_base;
-using std::iota;
 using std::make_shared;
 using std::max;
 using std::min;

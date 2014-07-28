@@ -6,8 +6,8 @@
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 #include "cxx_ostreaming.hh"
-#include "cxx_tree.hh"
 
+#include "cxx_tree.hh"
 #include "cxx_monad_operators.hh"
 
 #include "hwloc.hh"

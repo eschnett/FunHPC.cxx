@@ -344,13 +344,10 @@ cell_t grid_get_boundary(const grid_t &g, bool face_upper) {
   return g.get_boundary(face_upper);
 }
 RPC_ACTION(grid_get_boundary);
-typedef cxx::detail::fmap_action<grid_t, grid_get_boundary_action,
-                                 bool>::evaluate
-grid_get_boundary_action_evaluate;
-typedef cxx::detail::fmap_action<grid_t, grid_get_boundary_action, bool>::finish
-grid_get_boundary_action_finish;
-RPC_CLASS_EXPORT(grid_get_boundary_action_evaluate);
-RPC_CLASS_EXPORT(grid_get_boundary_action_finish);
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    grid_t, grid_get_boundary_action, bool>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((
+    cxx::detail::fmap_action<grid_t, grid_get_boundary_action, bool>::finish)));
 
 ostreaming<tuple<> > grid_output_foldl(const ostreaming<tuple<> > &ostr,
                                        const grid_t &g) {
@@ -363,84 +360,67 @@ grid_t grid_axpy(const grid_t &y, double a, const grid_t &x) {
   return grid_t(grid_t::axpy(), a, x, y);
 }
 RPC_ACTION(grid_axpy);
-typedef cxx::detail::fmap_action<grid_t, grid_axpy_action, double,
-                                 rpc::client<grid_t> >::evaluate
-grid_axpy_action_evaluate;
-typedef cxx::detail::fmap_action<grid_t, grid_axpy_action, double,
-                                 rpc::client<grid_t> >::finish
-grid_axpy_action_finish;
-RPC_CLASS_EXPORT(grid_axpy_action_evaluate);
-RPC_CLASS_EXPORT(grid_axpy_action_finish);
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    grid_t, grid_axpy_action, double, rpc::client<grid_t> >::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    grid_t, grid_axpy_action, double, rpc::client<grid_t> >::finish)));
 
 norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
   return x + y.norm();
 }
 RPC_ACTION(grid_norm_foldl);
-typedef cxx::client::foldl_action<
-    norm_t, grid_t, grid_norm_foldl_action>::evaluate grid_norm_foldl_evaluate;
-typedef cxx::client::foldl_action<
-    norm_t, grid_t, grid_norm_foldl_action>::finish grid_norm_foldl_finish;
-RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
-RPC_CLASS_EXPORT(grid_norm_foldl_finish);
-typedef cxx::client::foldl_action<
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
+    norm_t, grid_t, grid_norm_foldl_action>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
+    norm_t, grid_t, grid_norm_foldl_action>::finish)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
     norm_t, cxx::tree<grid_t, vector_, rpc::client>,
     cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
-        norm_t, grid_norm_foldl_action> >::evaluate
-tree_grid_norm_foldl_evaluate;
-typedef cxx::client::foldl_action<
+        norm_t, grid_norm_foldl_action> >::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
     norm_t, cxx::tree<grid_t, vector_, rpc::client>,
     cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
-        norm_t, grid_norm_foldl_action> >::finish tree_grid_norm_foldl_finish;
-RPC_CLASS_EXPORT(tree_grid_norm_foldl_evaluate);
-RPC_CLASS_EXPORT(tree_grid_norm_foldl_finish);
+        norm_t, grid_norm_foldl_action> >::finish)));
 
 // Note: Arguments re-ordered
 grid_t grid_initial(ptrdiff_t imin, double t) {
   return grid_t(grid_t::initial(), t, imin);
 }
 RPC_ACTION(grid_initial);
-typedef cxx::detail::fmap_action<ptrdiff_t, grid_initial_action,
-                                 double>::evaluate grid_initial_action_evaluate;
-typedef cxx::detail::fmap_action<ptrdiff_t, grid_initial_action, double>::finish
-grid_initial_action_finish;
-RPC_CLASS_EXPORT(grid_initial_action_evaluate);
-RPC_CLASS_EXPORT(grid_initial_action_finish);
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    ptrdiff_t, grid_initial_action, double>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((
+    cxx::detail::fmap_action<ptrdiff_t, grid_initial_action, double>::finish)));
 
 grid_t grid_error(const grid_t &g, double t) {
   return grid_t(grid_t::error(), g, t);
 }
 RPC_ACTION(grid_error);
-typedef cxx::detail::fmap_action<grid_t, grid_error_action, double>::evaluate
-grid_error_action_evaluate;
-typedef cxx::detail::fmap_action<grid_t, grid_error_action, double>::finish
-grid_error_action_finish;
-RPC_CLASS_EXPORT(grid_error_action_evaluate);
-RPC_CLASS_EXPORT(grid_error_action_finish);
-typedef cxx::detail::fmap_action<
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::detail::fmap_action<grid_t, grid_error_action, double>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::detail::fmap_action<grid_t, grid_error_action, double>::finish)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
     cxx::tree<grid_t, vector_, rpc::client>,
     cxx::branch<grid_t, vector_, rpc::client>::fmap_pointer_action<
         grid_t, grid_error_action, double>,
-    double>::evaluate tree_grid_error_action_evaluate;
-typedef cxx::detail::fmap_action<
+    double>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
     cxx::tree<grid_t, vector_, rpc::client>,
     cxx::branch<grid_t, vector_, rpc::client>::fmap_pointer_action<
         grid_t, grid_error_action, double>,
-    double>::finish tree_grid_error_action_finish;
-RPC_CLASS_EXPORT(tree_grid_error_action_evaluate);
-RPC_CLASS_EXPORT(tree_grid_error_action_finish);
+    double>::finish)));
 
 grid_t grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
   return grid_t(grid_t::rhs(), g, bm, bp);
 }
 RPC_ACTION(grid_rhs);
-typedef cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
-                                 rpc::client<cell_t> >::evaluate
-grid_rhs_action_evaluate;
-typedef cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
-                                 rpc::client<cell_t> >::finish
-grid_rhs_action_finish;
-RPC_CLASS_EXPORT(grid_rhs_action_evaluate);
-RPC_CLASS_EXPORT(grid_rhs_action_finish);
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
+                              rpc::client<cell_t> >::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
+                              rpc::client<cell_t> >::finish)));
 
 ////////////////////////////////////////////////////////////////////////////////
 

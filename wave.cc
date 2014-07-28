@@ -237,13 +237,14 @@ ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
 
 // Each grid lives on a process
 
+template <typename T> using vector_ = vector<T>;
+
 struct grid_t {
   // TODO: introduce irange for these two (e.g. irange_t =
   // array<ptrdiff_t,2>)
   ptrdiff_t imin, imax; // spatial indices
   static double x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
 
-  template <typename T> using vector_ = vector<T>;
   vector<cell_t> cells;
 
 private:
@@ -416,7 +417,6 @@ RPC_CLASS_EXPORT(grid_rhs_action_finish);
 
 // The domain is distributed over multiple processes
 
-template <typename T> using vector_ = std::vector<T>;
 template <typename T> using tree_ = cxx::tree<T, vector_, client>;
 RPC_COMPONENT(tree_<grid_t>);
 

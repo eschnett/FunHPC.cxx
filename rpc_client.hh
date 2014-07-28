@@ -72,17 +72,6 @@ template <typename T> struct is_client<rpc::client<T> > : std::true_type {};
 // everywhere. note this requires passing functions as values, not
 // only as types.
 
-template <typename R, typename T, typename F, typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    ((!rpc::is_action<F>::value) &&
-     (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
-    R>::type
-foldl(const F &f, const R &z, const rpc::client<T> &xs) {
-  // Note: We could call make_local, but we don't
-  return !xs ? z : cxx::invoke(f, z, *xs);
-}
-
 namespace client {
 template <typename R, typename T, typename F>
 typename std::enable_if<
@@ -101,6 +90,19 @@ struct foldl_action
 // RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, T, F>::evaluate);
 // RPC_CLASS_EXPORT(cxx::rpc_client::foldl_action<R, T, F>::finish);
 }
+
+template <typename R, typename T, typename F, typename CT = rpc::client<T>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    ((!rpc::is_action<F>::value) &&
+     (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+    R>::type
+foldl(const F &f, const R &z, const rpc::client<T> &xs) {
+  // Note: We could call make_local, but we don't
+  // Note: operator bool waits for the client to be ready
+  return !xs ? z : cxx::invoke(f, z, *xs);
+}
+
 template <typename R, typename T, typename F, typename CT = rpc::client<T>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
@@ -108,6 +110,7 @@ typename std::enable_if<
      (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
     R>::type
 foldl(F, const R &z, const rpc::client<T> &xs) {
+  // Note: operator bool waits for the client to be ready
   return !xs ? z : rpc::sync(rpc::remote::sync, xs.get_proc(),
                              client::foldl_action<R, T, F>(), F(), z, xs);
 }

@@ -223,9 +223,28 @@ public:
   }
 
   // foldable
+private:
+  template <typename R, typename F>
+  static R foldl_pointer(const R &z, const tree<T, C, P> &t) {
+    // return cxx::foldl(F(), z, t);
+    return t.foldl(F(), z);
+  }
+
+public:
+  template <typename R, typename F>
+  struct foldl_pointer_action
+      : public rpc::action_impl<
+            foldl_pointer_action<R, F>,
+            rpc::wrap<decltype(&foldl_pointer<R, F>), &foldl_pointer<R, F> > > {
+  };
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(foldl_pointer_action<R, F>::evaluate);
+  // RPC_CLASS_EXPORT(foldl_pointer_action<R, F>::finish);
   template <typename R, typename F>
   typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
+      ((!rpc::is_action<F>::value) &&
+       (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+      R>::type
   foldl(const F &f, const R &z) const {
     return cxx::foldl([f](const R &z, const P<tree<T, C, P> > &pt) {
                         return cxx::foldl([f](const R &z,
@@ -234,6 +253,17 @@ public:
                                             return t.foldl(f, z);
                                           },
                                           z, pt);
+                      },
+                      z, trees);
+  }
+  template <typename R, typename F>
+  typename std::enable_if<
+      ((rpc::is_action<F>::value) &&
+       (std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value)),
+      R>::type
+  foldl(F, const R &z) const {
+    return cxx::foldl([](const R &z, const P<tree<T, C, P> > &pt) {
+                        return cxx::foldl(foldl_pointer_action<R, F>(), z, pt);
                       },
                       z, trees);
   }
@@ -257,11 +287,28 @@ private:
     }
   };
 
+  template <typename U, typename F, typename... As>
+  static tree<T, C, P>
+  fmap_pointer(const tree<U, C, P> &t,
+               const typename unwrap_branch<As>::tree_type &... as) {
+    return tree<T, C, P>(typename tree<T, C, P>::fmap(), F(), t, as...);
+  }
+
 public:
+  template <typename U, typename F, typename... As>
+  struct fmap_pointer_action
+      : public rpc::action_impl<fmap_pointer_action<U, F, As...>,
+                                rpc::wrap<decltype(&fmap_pointer<U, F, As...>),
+                                          &fmap_pointer<U, F, As...> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(fmap_pointer_action<U, F, As...>::evaluate);
+  // RPC_CLASS_EXPORT(fmap_pointer_action<U, F, As...>::finish);
   template <typename U, typename... As, typename F,
             typename R = typename cxx::invoke_of<
                 F, U, typename unwrap_branch<As>::type...>::type>
-  branch(typename std::enable_if<std::is_same<R, T>::value, fmap>::type,
+  branch(typename std::enable_if<
+             ((!rpc::is_action<F>::value) && (std::is_same<R, T>::value)),
+             fmap>::type,
          const F &f, const branch<U, C, P> &xs, const As &... as)
       : branch(cxx::fmap(
             [f](const P<tree<U, C, P> > &pt,
@@ -273,6 +320,19 @@ public:
                                          as...);
                   },
                   pt, as...);
+            },
+            xs.trees, unwrap_branch<As>()(as)...)) {}
+  template <typename U, typename... As, typename F,
+            typename R = typename cxx::invoke_of<
+                F, U, typename unwrap_branch<As>::type...>::type>
+  branch(typename std::enable_if<
+             ((rpc::is_action<F>::value) && (std::is_same<R, T>::value)),
+             fmap>::type,
+         F, const branch<U, C, P> &xs, const As &... as)
+      : branch(cxx::fmap(
+            [](const P<tree<U, C, P> > &pt,
+               const typename unwrap_branch<As>::pointer_type &... as) {
+              return cxx::fmap(fmap_pointer_action<U, F, As...>(), pt, as...);
             },
             xs.trees, unwrap_branch<As>()(as)...)) {}
 

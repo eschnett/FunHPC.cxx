@@ -376,6 +376,17 @@ typedef cxx::client::foldl_action<
     norm_t, grid_t, grid_norm_foldl_action>::finish grid_norm_foldl_finish;
 RPC_CLASS_EXPORT(grid_norm_foldl_evaluate);
 RPC_CLASS_EXPORT(grid_norm_foldl_finish);
+typedef cxx::client::foldl_action<
+    norm_t, cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
+        norm_t, grid_norm_foldl_action> >::evaluate
+tree_grid_norm_foldl_evaluate;
+typedef cxx::client::foldl_action<
+    norm_t, cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
+        norm_t, grid_norm_foldl_action> >::finish tree_grid_norm_foldl_finish;
+RPC_CLASS_EXPORT(tree_grid_norm_foldl_evaluate);
+RPC_CLASS_EXPORT(tree_grid_norm_foldl_finish);
 
 // Note: Arguments re-ordered
 grid_t grid_initial(ptrdiff_t imin, double t) {
@@ -399,6 +410,18 @@ typedef cxx::detail::fmap_action<grid_t, grid_error_action, double>::finish
 grid_error_action_finish;
 RPC_CLASS_EXPORT(grid_error_action_evaluate);
 RPC_CLASS_EXPORT(grid_error_action_finish);
+typedef cxx::detail::fmap_action<
+    cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::fmap_pointer_action<
+        grid_t, grid_error_action, double>,
+    double>::evaluate tree_grid_error_action_evaluate;
+typedef cxx::detail::fmap_action<
+    cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::fmap_pointer_action<
+        grid_t, grid_error_action, double>,
+    double>::finish tree_grid_error_action_finish;
+RPC_CLASS_EXPORT(tree_grid_error_action_evaluate);
+RPC_CLASS_EXPORT(tree_grid_error_action_finish);
 
 grid_t grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
   return grid_t(grid_t::rhs(), g, bm, bp);

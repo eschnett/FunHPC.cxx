@@ -354,6 +354,21 @@ ostreaming<tuple<> > grid_output_foldl(const ostreaming<tuple<> > &ostr,
   return ostr >> g.output();
 }
 RPC_ACTION(grid_output_foldl);
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::client::foldl_action<cxx::ostreaming<std::tuple<> >, grid_t,
+                               grid_output_foldl_action>::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+    (cxx::client::foldl_action<cxx::ostreaming<std::tuple<> >, grid_t,
+                               grid_output_foldl_action>::finish)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
+    cxx::ostreaming<std::tuple<> >, cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
+        cxx::ostreaming<std::tuple<> >,
+        grid_output_foldl_action> >::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::client::foldl_action<
+    cxx::ostreaming<std::tuple<> >, cxx::tree<grid_t, vector_, rpc::client>,
+    cxx::branch<grid_t, vector_, rpc::client>::foldl_pointer_action<
+        cxx::ostreaming<std::tuple<> >, grid_output_foldl_action> >::finish)));
 
 // Note: Arguments re-ordered
 grid_t grid_axpy(const grid_t &y, double a, const grid_t &x) {
@@ -421,6 +436,10 @@ RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
 RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
     (cxx::detail::fmap_action<grid_t, grid_rhs_action, rpc::client<cell_t>,
                               rpc::client<cell_t> >::finish)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    grid_t, grid_rhs_action, cell_t, rpc::client<cell_t> >::evaluate)));
+RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((cxx::detail::fmap_action<
+    grid_t, grid_rhs_action, cell_t, rpc::client<cell_t> >::finish)));
 
 ////////////////////////////////////////////////////////////////////////////////
 

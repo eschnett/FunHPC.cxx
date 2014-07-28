@@ -352,6 +352,12 @@ grid_get_boundary_action_finish;
 RPC_CLASS_EXPORT(grid_get_boundary_action_evaluate);
 RPC_CLASS_EXPORT(grid_get_boundary_action_finish);
 
+ostreaming<tuple<> > grid_output_foldl(const ostreaming<tuple<> > &ostr,
+                                       const grid_t &g) {
+  return ostr >> g.output();
+}
+RPC_ACTION(grid_output_foldl);
+
 // Note: Arguments re-ordered
 grid_t grid_axpy(const grid_t &y, double a, const grid_t &x) {
   return grid_t(grid_t::axpy(), a, x, y);
@@ -467,9 +473,8 @@ struct domain_t {
   // Output
   ostreaming<tuple<> > output() const {
     return put(ostreamer() << "domain: t=" << t << "\n") >>
-           foldl([](const ostreaming<tuple<> > &ostr,
-                    const grid_t &g) { return ostr >> g.output(); },
-                 make<ostreaming, tuple<> >(), grids);
+           foldl(grid_output_foldl_action(), make<ostreaming, tuple<> >(),
+                 grids);
   }
 
   // Linear combination

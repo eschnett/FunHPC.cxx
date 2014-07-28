@@ -618,8 +618,8 @@ template <typename R, typename T, template <typename> class C,
           template <typename> class P, typename F>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const tree<T, C, P> &x) {
-  return x.foldl(f, z);
+foldl(const F &f, const R &z, const tree<T, C, P> &xs) {
+  return xs.foldl(f, z);
 }
 
 // functor

@@ -137,14 +137,42 @@ public:
     values = std::move(rs);
   }
 
+private:
+  template <typename B, typename G, bool face_upper>
+  static B get_boundary_foldl(const B &, const T &x) {
+    return cxx::invoke(G(), x, face_upper);
+  }
+
+public:
+  template <typename B, typename G, bool face_upper>
+  struct get_boundary_foldl_action
+      : public rpc::action_impl<
+            get_boundary_foldl_action<B, G, face_upper>,
+            rpc::wrap<decltype(&get_boundary_foldl<B, G, face_upper>),
+                      &get_boundary_foldl<B, G, face_upper> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(get_boundary_foldl<B, G, bool>::evaluate);
+  // RPC_CLASS_EXPORT(get_boundary_foldl<B, G, bool>::finish);
+
   template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
-  B get_boundary(const G &g, bool face_upper) const {
+  typename std::enable_if<!rpc::is_action<G>::value, B>::type
+  get_boundary(const G &g, bool face_upper) const {
     assert(!values.empty());
     // TODO: use foldl1
     return cxx::foldl([g, face_upper](const B &, const T &x) {
                         return cxx::invoke(g, x, face_upper);
                       },
                       B(), !face_upper ? values.front() : values.back());
+  }
+  template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
+  typename std::enable_if<rpc::is_action<G>::value, B>::type
+  get_boundary(G, bool face_upper) const {
+    assert(!values.empty());
+    // TODO: use foldl1
+    return !face_upper ? cxx::foldl(get_boundary_foldl_action<B, G, false>(),
+                                    B(), values.front())
+                       : cxx::foldl(get_boundary_foldl_action<B, G, true>(),
+                                    B(), values.back());
   }
 
   // monad: join
@@ -341,10 +369,30 @@ public:
             xs.trees, unwrap_branch<As>()(as)...)) {}
 
   struct stencil_fmap : std::tuple<> {};
+
+private:
+  template <typename U, typename B, typename F, typename G>
+  static tree<T, C, P> stencil_fmap_pointer(const tree<U, C, P> &t, const B &bm,
+                                            const B &bp) {
+    return tree<T, C, P>(typename tree<T, C, P>::stencil_fmap(), F(), G(), t,
+                         bm, bp);
+  };
+
+public:
+  template <typename U, typename B, typename F, typename G>
+  struct stencil_fmap_pointer_action
+      : public rpc::action_impl<
+            stencil_fmap_pointer_action<U, B, F, G>,
+            rpc::wrap<decltype(&stencil_fmap_pointer<U, B, F, G>),
+                      &stencil_fmap_pointer<U, B, F, G> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(stencil_fmap_pointer_action<U,B,F,G>::evaluate);
+  // RPC_CLASS_EXPORT(stencil_fmap_pointer_action<U,B,F,G>::finish);
   template <typename U, typename B, typename F, typename G>
   branch(
       typename std::enable_if<
-          ((std::is_same<typename cxx::invoke_of<F, U, B, B>::type,
+          ((!rpc::is_action<F>::value) && (!rpc::is_action<G>::value) &&
+           (std::is_same<typename cxx::invoke_of<F, U, B, B>::type,
                          T>::value) &&
            (std::is_same<typename cxx::invoke_of<G, U, bool>::type, B>::value)),
           stencil_fmap>::type,
@@ -358,30 +406,75 @@ public:
       return tree<T, C, P>(typename tree<T, C, P>::stencil_fmap(), f, g, t, bm,
                            bp);
     };
-    rs[0] = cxx::fmap(
-        recurse, xs[0], bm,
-        cxx::fmap(&tree<T, C, P>::template get_boundary<G>, xs[1], g, false));
+    auto getbnd = &tree<T, C, P>::template get_boundary<G>;
+    rs[0] = cxx::fmap(recurse, xs[0], bm, cxx::fmap(getbnd, xs[1], g, false));
     for (size_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::fmap(recurse, xs[i],
-                        cxx::fmap(&tree<T, C, P>::template get_boundary<G>,
-                                  xs[i - 1], g, true),
-                        cxx::fmap(&tree<T, C, P>::template get_boundary<G>,
-                                  xs[i + 1], g, false));
-    rs[s - 1] = cxx::fmap(
-        recurse, xs[s - 1],
-        cxx::fmap(&tree<T, C, P>::template get_boundary<G>, xs[s - 2], g, true),
-        bp);
+      rs[i] = cxx::fmap(recurse, xs[i], cxx::fmap(getbnd, xs[i - 1], g, true),
+                        cxx::fmap(getbnd, xs[i + 1], g, false));
+    rs[s - 1] = cxx::fmap(recurse, xs[s - 1],
+                          cxx::fmap(getbnd, xs[s - 2], g, true), bp);
+    trees = std::move(rs);
+  }
+  template <typename U, typename B, typename F, typename G>
+  branch(
+      typename std::enable_if<
+          ((rpc::is_action<F>::value) && (rpc::is_action<G>::value) &&
+           (std::is_same<typename cxx::invoke_of<F, U, B, B>::type,
+                         T>::value) &&
+           (std::is_same<typename cxx::invoke_of<G, U, bool>::type, B>::value)),
+          stencil_fmap>::type,
+      F, G, const cxx::branch<U, C, P> &b, const B &bm, const B &bp) {
+    const C<P<tree<U, C, P> > > &xs = b.trees;
+    size_t s = xs.size();
+    assert(s >= 2);
+    C<P<tree<T, C, P> > > rs(s);
+    auto recurse = stencil_fmap_pointer_action<U, B, F, G>();
+    auto getbnd = typename tree<T, C, P>::template get_boundary_action<B, G>();
+    rs[0] = cxx::fmap(recurse, xs[0], bm, cxx::fmap(getbnd, xs[1], G(), false));
+    for (size_t i = 1; i < s - 1; ++i)
+      rs[i] = cxx::fmap(recurse, xs[i], cxx::fmap(getbnd, xs[i - 1], G(), true),
+                        cxx::fmap(getbnd, xs[i + 1], G(), false));
+    rs[s - 1] = cxx::fmap(recurse, xs[s - 1],
+                          cxx::fmap(getbnd, xs[s - 2], G(), true), bp);
     trees = std::move(rs);
   }
 
+private:
+  template <typename B, typename G, bool face_upper>
+  static B get_boundary_foldl(const B &, const tree<T, C, P> &t) {
+    return t.get_boundary(G(), face_upper);
+  }
+
+public:
+  template <typename B, typename G, bool face_upper>
+  struct get_boundary_foldl_action
+      : public rpc::action_impl<
+            get_boundary_foldl_action<B, G, face_upper>,
+            rpc::wrap<decltype(&get_boundary_foldl<B, G, face_upper>),
+                      &get_boundary_foldl<B, G, face_upper> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(get_boundary_foldl<B, G, bool>::evaluate);
+  // RPC_CLASS_EXPORT(get_boundary_foldl<B, G, bool>::finish);
+
   template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
-  B get_boundary(const G &g, bool face_upper) const {
+  typename std::enable_if<!rpc::is_action<G>::value, B>::type
+  get_boundary(const G &g, bool face_upper) const {
     assert(!trees.empty());
     // TODO: use foldl1
     return cxx::foldl([g, face_upper](const B &, const tree<T, C, P> &t) {
                         return t.get_boundary(g, face_upper);
                       },
                       B(), !face_upper ? trees.front() : trees.back());
+  }
+  template <typename G, typename B = typename cxx::invoke_of<G, T, bool>::type>
+  typename std::enable_if<rpc::is_action<G>::value, B>::type
+  get_boundary(G, bool face_upper) const {
+    assert(!trees.empty());
+    // TODO: use foldl1
+    return !face_upper ? cxx::foldl(get_boundary_foldl_action<B, G, false>(),
+                                    B(), trees.front())
+                       : cxx::foldl(get_boundary_foldl_action<B, G, true>(),
+                                    B(), trees.back());
   }
 
   // monad: join
@@ -562,6 +655,28 @@ public:
                        &branch<T, C, P>::template get_boundary<G>, g,
                        face_upper);
   }
+  // TODO: Why does this not work?
+  // template <typename B, typename G>
+  // struct get_boundary_action
+  //     : public rpc::const_member_action_impl<
+  //           get_boundary_action<B, G>,
+  //           rpc::wrap<decltype(&tree::get_boundary<G, B>),
+  //                     &tree::get_boundary<G, B> > > {};
+private:
+  template <typename G, typename B>
+  static B get_boundary_tree(const tree &t, const G &g, bool face_upper) {
+    return t.get_boundary(g, face_upper);
+  }
+
+public:
+  template <typename B, typename G>
+  struct get_boundary_action
+      : public rpc::action_impl<get_boundary_action<B, G>,
+                                rpc::wrap<decltype(&get_boundary_tree<G, B>),
+                                          &get_boundary_tree<G, B> > > {};
+  // TODO: automate implementing this action:
+  // RPC_CLASS_EXPORT(get_boundary_action<B, G>::evaluate);
+  // RPC_CLASS_EXPORT(get_boundary_action<B, G>::finish);
 
   // monad: join
   template <typename U = T, typename R = typename cxx::kinds<U>::element_type>

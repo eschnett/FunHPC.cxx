@@ -4,8 +4,6 @@
 #include "block_matrix.hh"
 #include "matrix.hh"
 
-#include <boost/utility/identity_type.hpp>
-
 #include <cstdlib>
 #include <iostream>
 

@@ -84,9 +84,9 @@ void block_vector_t::make_block(std::ptrdiff_t b) {
   blocks_[b] = rpc::make_remote_client<vector_t>(proc, block_size(b));
 }
 // TODO: avoid this
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(
     (rpc::make_global_shared_action<vector_t, std::ptrdiff_t>::evaluate)));
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(
+RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(
     (rpc::make_global_shared_action<vector_t, std::ptrdiff_t>::finish)));
 
 void block_vector_t::remove_block(std::ptrdiff_t b) {
@@ -248,9 +248,9 @@ void block_matrix_t::make_block(std::ptrdiff_t ib, std::ptrdiff_t jb) {
   blocks_[b] = rpc::make_remote_client<matrix_t>(proc, block_size(0, ib),
                                                  block_size(1, jb));
 }
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<
+RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE((rpc::make_global_shared_action<
     matrix_t, std::ptrdiff_t, std::ptrdiff_t>::evaluate)));
-RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<
+RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE((rpc::make_global_shared_action<
     matrix_t, std::ptrdiff_t, std::ptrdiff_t>::finish)));
 
 void block_matrix_t::remove_block(std::ptrdiff_t ib, std::ptrdiff_t jb) {

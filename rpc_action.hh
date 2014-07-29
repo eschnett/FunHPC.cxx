@@ -10,9 +10,11 @@
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/polymorphic.hpp>
 
-#include <boost/utility/identity_type.hpp>
-
+#include <functional>
 #include <typeinfo>
+
+// Note: T needs to be passed surrounded by parentheses
+#define RPC_IDENTITY_TYPE(T) typename std::function<void T>::argument_type
 
 #define RPC_VA_ARG0(arg0, ...) arg0
 #define RPC_VA_ARGS1(arg0, ...) __VA_ARGS__
@@ -35,9 +37,9 @@
 #define RPC_DECLARE_CONSTRUCTOR(...) /* do nothing */
 
 #define RPC_IMPLEMENT_CONSTRUCTOR(...)                                         \
-  RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(                                        \
+  RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(                                          \
       (rpc::make_global_shared_action<__VA_ARGS__>::evaluate)));               \
-  RPC_CLASS_EXPORT(BOOST_IDENTITY_TYPE(                                        \
+  RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(                                          \
       (rpc::make_global_shared_action<__VA_ARGS__>::finish)));
 
 #define RPC_DECLARE_MEMBER_ACTION(c, f)                                        \
@@ -64,9 +66,9 @@
   RPC_CLASS_EXPORT(rpc::make_global_shared_action<c>::evaluate);               \
   RPC_CLASS_EXPORT(rpc::make_global_shared_action<c>::finish);                 \
   RPC_CLASS_EXPORT(                                                            \
-      BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::evaluate)));  \
+      RPC_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::evaluate)));    \
   RPC_CLASS_EXPORT(                                                            \
-      BOOST_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::finish)));    \
+      RPC_IDENTITY_TYPE((rpc::make_global_shared_action<c, c>::finish)));      \
   RPC_CLASS_EXPORT(rpc::shared_future_get_action<c>::evaluate);                \
   RPC_CLASS_EXPORT(rpc::shared_future_get_action<c>::finish);                  \
   RPC_CLASS_EXPORT(                                                            \

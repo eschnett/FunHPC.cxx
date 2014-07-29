@@ -118,18 +118,22 @@ public:
       const B &bp) {
     const C<P<U> > &xs = l.values;
     size_t s = xs.size();
-    assert(s >= 2); // TODO: This can be avoided
+    assert(s > 0);
     C<P<T> > rs(s);
-    // TODO: use array<...,N>, and allow multiple ghost zones
-    // TODO: add push_back equivalent to constructor
-    // TODO: for efficiency: don't use push_back, use something else
-    // that requires preallocation, that doesn't reallocate, and which
-    // turns into an indexed loop when used for vectors
-    rs[0] = cxx::fmap(f, xs[0], bm, cxx::fmap(g, xs[1], false));
-    for (size_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::fmap(f, xs[i], cxx::fmap(g, xs[i - 1], true),
-                        cxx::fmap(g, xs[i + 1], false));
-    rs[s - 1] = cxx::fmap(f, xs[s - 1], cxx::fmap(g, xs[s - 2], true), bp);
+    if (s == 1) {
+      rs[0] = cxx::fmap(f, xs[0], bm, bp);
+    } else {
+      // TODO: use array<...,N>, and allow multiple ghost zones
+      // TODO: add push_back equivalent to constructor
+      // TODO: for efficiency: don't use push_back, use something else
+      // that requires preallocation, that doesn't reallocate, and which
+      // turns into an indexed loop when used for vectors
+      rs[0] = cxx::fmap(f, xs[0], bm, cxx::fmap(g, xs[1], false));
+      for (size_t i = 1; i < s - 1; ++i)
+        rs[i] = cxx::fmap(f, xs[i], cxx::fmap(g, xs[i - 1], true),
+                          cxx::fmap(g, xs[i + 1], false));
+      rs[s - 1] = cxx::fmap(f, xs[s - 1], cxx::fmap(g, xs[s - 2], true), bp);
+    }
     values = std::move(rs);
   }
 

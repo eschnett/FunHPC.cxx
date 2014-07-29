@@ -353,6 +353,8 @@ struct member_action_impl_t : public action_base<F> {
 
 // Get the member action implementation (with its template
 // arguments) for a member function wrapper
+// TOOD: Use invoke_of, and remove the need for get_member_action and
+// get_const_member_action
 template <typename F, typename W, typename R, typename T, typename... As>
 member_action_impl_t<F, W, R, T, As...>
 get_member_action_impl_t(R (T::*)(As...));

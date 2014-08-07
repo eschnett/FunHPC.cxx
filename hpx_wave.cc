@@ -605,12 +605,12 @@ struct memoized_t {
   client<domain_t> error;
   shared_future<norm_t> error_norm;
   memoized_t(ptrdiff_t n, const client<domain_t> &state) : n(n), state(state) {
-    rhs = async(launch::deferred, [state]() {
+    rhs = client<domain_t>(async(launch::deferred, [state]() {
       return make_client<domain_t>(domain_t::rhs(), state);
-    });
-    error = async(launch::deferred, [state]() {
+    }));
+    error = client<domain_t>(async(launch::deferred, [state]() {
       return make_client<domain_t>(domain_t::error(), state);
-    });
+    }));
     error_norm = async(launch::deferred, domain_norm, error);
   }
 };

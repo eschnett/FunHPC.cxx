@@ -52,9 +52,6 @@ using std::true_type;
 using std::tuple;
 using std::vector;
 
-#warning "TODO: deferred does not yet work"
-#define deferred async
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // Integer division, rounding down

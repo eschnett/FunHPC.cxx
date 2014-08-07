@@ -54,16 +54,16 @@ fi
 cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #! /bin/bash
 
-#SBATCH --verbose
-#SBATCH --account=TG-ASC120003
-#SBATCH --partition=normal
-#SBATCH --time=0:10:00
-#SBATCH --nodes=$nodes --ntasks=$procs
-#SBATCH --job-name=wave.$id
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=schnetter@gmail.com
-#SBATCH --output=$HOME/src/mpi-rpc/wave.$id.out
-#SBATCH --error=$HOME/src/mpi-rpc/wave.$id.err
+#PBS -A TG-MCA02N014
+#PBS -q normal
+#PBS -r n
+#PBS -l walltime=1:00:00
+#PBS -l nodes=$nodes:ppn=$cores_per_node
+#PBS -V
+#PBS -N wave.$id
+#PBS -m abe
+#PBS -o $HOME/src/mpi-rpc/wave.$id.out
+#PBS -e $HOME/src/mpi-rpc/wave.$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -77,30 +77,33 @@ set -e
 set -u
 set -x
 cd $HOME/src/mpi-rpc
-source $HOME/SIMFACTORY/all-all/env.sh
+source $HOME/trestles/SIMFACTORY/all-all/env.sh
 
 echo '[BEGIN ENV]'
 env | sort
 echo '[END ENV]'
 
 echo '[BEGIN NODES]'
-echo \$SLURM_NODELIST
-hostfile=/tmp/hostfile.\$SLURM_JOB_ID
-scontrol show hostnames \$SLURM_NODELIST | tee \$hostfile
+cat \$PBS_NODEFILE
 echo '[END NODES]'
 
 date
 echo '[BEGIN MPIRUN]'
-export OMP_NUM_THREADS=$threads_per_proc
-export RPC_NODES=$nodes
-export RPC_CORES=$cores_per_node
-export RPC_PROCESSES=$procs
-export RPC_THREADS=$threads_per_proc
-export QTHREAD_NUM_SHEPHERDS=$proc_sockets
-export QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket
-export QTHREAD_STACK_SIZE=65536
-#export QTHREAD_INFO=0
-ibrun tacc_affinity                                                     \\
+\$MPIRUN                                                                \\
+    -np $procs                                                          \\
+    --map-by ppr:$ppr                                                   \\
+    --display-map                                                       \\
+    --mca btl self,sm,openib                                            \\
+    --bind-to $bind_to                                                  \\
+    --report-bindings                                                   \\
+    -x RPC_NODES=$nodes                                                 \\
+    -x RPC_CORES=$cores_per_node                                        \\
+    -x RPC_PROCESSES=$procs                                             \\
+    -x RPC_THREADS=$threads_per_proc                                    \\
+    -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
+    -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
+    -x QTHREAD_STACK_SIZE=65536                                         \\
+    -x QTHREAD_INFO=0                                                   \\
     ./wave                                                              \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
@@ -108,11 +111,9 @@ ibrun tacc_affinity                                                     \\
     >wave.$id.log 2>&1
 echo '[END MPIRUN]'
 date
-
-rm -f \$hostfile
 EOF
 
 : >$HOME/src/mpi-rpc/wave.$id.out
 : >$HOME/src/mpi-rpc/wave.$id.err
 : >$HOME/src/mpi-rpc/wave.$id.log
-sbatch $HOME/src/mpi-rpc/wave.$id.sub
+qsub $HOME/src/mpi-rpc/wave.$id.sub

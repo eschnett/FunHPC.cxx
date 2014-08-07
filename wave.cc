@@ -122,6 +122,18 @@ void set_all_defs(const shared_ptr<defs_t> &defs) {
   async_broadcast(set_defs_action(), defs).get();
 }
 
+bool do_this_time(ptrdiff_t iteration, ptrdiff_t do_every) {
+  if (do_every < 0)
+    return false;
+  if (iteration == 0)
+    return true;
+  if (iteration == defs->nsteps)
+    return true;
+  if (do_every > 0 && iteration % do_every == 0)
+    return true;
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Linear combinations
@@ -509,31 +521,29 @@ ostream *do_info_output(const shared_future<ostream *> &fos,
 
 shared_future<ostream *> info_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs->info_every >= 0 &&
-      ((m->n == 0 || m->n == defs->nsteps) ||
-       (defs->info_every > 0 && m->n % defs->info_every == 0))) {
+  if (do_this_time(m->n, defs->info_every))
     fos = async(do_info_output, fos, m);
-  }
   return fos;
 }
 
 ostream *do_file_output(const shared_future<ostream *> fos,
                         const shared_ptr<memoized_t> &m) {
   RPC_ASSERT(server->rank() == 0);
+  const norm_t &en = m->error_norm.get();
+  auto cell_size = cell_t().norm().count;
+  auto ncells = en.count / cell_size;
   ostream *os = fos.get();
-  *os << "State: " << m->state << "RHS: " << m->rhs
-      << "L2-norm[error]: " << m->error_norm.get().norm2() << "\n"
+  *os << "State: " << m->state << "RHS: " << m->rhs << "ncells: " << ncells
+      << "\n"
+      << "L2-norm[error]: " << en.norm2() << "\n"
       << "\n" << flush;
   return os;
 }
 
 shared_future<ostream *> file_output(shared_future<ostream *> fos,
                                      const shared_ptr<memoized_t> &m) {
-  if (defs->file_every >= 0 &&
-      ((m->n == 0 || m->n == defs->nsteps) ||
-       (defs->file_every > 0 && m->n % defs->file_every == 0))) {
+  if (do_this_time(m->n, defs->file_every))
     fos = async(do_file_output, fos, m);
-  }
   return fos;
 }
 
@@ -563,11 +573,51 @@ string get_server_stats() {
 }
 RPC_ACTION(get_server_stats);
 
+struct stats_t {
+  struct snapshot_t {
+    rpc::server_base::stats_t server_stats;
+    rpc::thread_stats_t thread_stats;
+    decltype(std::chrono::high_resolution_clock::now()) time;
+  };
+  snapshot_t start_, stop_;
+  static void snapshot(snapshot_t &dest) {
+    dest.server_stats = rpc::server->get_stats();
+    dest.thread_stats = rpc::get_thread_stats();
+    dest.time = std::chrono::high_resolution_clock::now();
+  }
+  stats_t() { start(); }
+  void start() { snapshot(start_); }
+  void stop() { snapshot(stop_); }
+  ostream &output(ostream &os) const {
+    auto messages_sent =
+        stop_.server_stats.messages_sent - start_.server_stats.messages_sent;
+    auto messages_received = stop_.server_stats.messages_received -
+                             start_.server_stats.messages_received;
+    auto threads_started = stop_.thread_stats.threads_started -
+                           start_.thread_stats.threads_started;
+    auto threads_stopped = stop_.thread_stats.threads_stopped -
+                           start_.thread_stats.threads_stopped;
+    auto time_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            stop_.time - start_.time).count() /
+                        1.0e+9;
+    return os << "   Messages: sent: " << messages_sent
+              << ", received: " << messages_received << "\n"
+              << "   Threads: started: " << threads_started
+              << ", stopped: " << threads_stopped << "\n"
+              << "   Time: " << time_elapsed << " sec\n";
+  }
+};
+ostream &operator<<(ostream &os, const stats_t &stats) {
+  return stats.output(os);
+}
+
 int rpc_main(int argc, char **argv) {
   // cout << "Determining CPU bindings via hwloc:\n";
-  // hwloc_bindings(false);
+  // hwloc_bindings(false, true);
   // cout << "Setting CPU bindings via hwloc:\n";
-  // hwloc_bindings(true);
+  // hwloc_bindings(true, true);
+  cout << "Setting CPU bindings via hwloc:\n";
+  hwloc_bindings(true, false);
 
   set_all_defs(
       make_shared<defs_t>(server->size(), thread::hardware_concurrency()));
@@ -578,44 +628,61 @@ int rpc_main(int argc, char **argv) {
   ofstream file(filename.str(), ios_base::trunc);
   shared_future<ostream *> ffo = make_ready_future<ostream *>(&file);
 
-  auto t0 = std::chrono::high_resolution_clock::now();
+  stats_t istats;
 
   auto s = make_client<domain_t>(domain_t::initial(), defs->tmin);
   auto m = make_shared<memoized_t>(0, s);
   fio = info_output(fio, m);
   ffo = file_output(ffo, m);
 
+  if (do_this_time(m->n, defs->wait_every)) {
+    // Rate limiter
+    s.wait();
+    fio.wait();
+    ffo.wait();
+  }
+
+  istats.stop();
+  cout << "[" << rpc::server->rank() << "] Initialization:\n" << istats;
+  stats_t estats;
+
   while ((defs->nsteps < 0 || m->n < defs->nsteps) &&
          (defs->tmax < 0.0 || m->state->t < defs->tmax + 0.5 * defs->dt)) {
-
-    if (defs->wait_every != 0 && m->n % defs->wait_every == 0) {
-      // Rate limiter
-      s.wait();
-      fio.wait();
-      ffo.wait();
-    }
 
     s = rk2(m);
     m = make_shared<memoized_t>(m->n + 1, s);
     fio = info_output(fio, m);
     ffo = file_output(ffo, m);
+
+    if (do_this_time(m->n, defs->wait_every)) {
+      // Rate limiter
+      s.wait();
+      fio.wait();
+      ffo.wait();
+    }
   }
 
   fio.wait();
   ffo.wait();
 
-  auto t1 = std::chrono::high_resolution_clock::now();
-  double elapsed =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
-      1.0e+9;
+  estats.stop();
+  cout << "[" << rpc::server->rank() << "] Evolution:\n" << estats;
 
-  cout << "Elapsed time: " << elapsed << " sec\n";
-  for (int p = 0; p < rpc::server->size(); ++p) {
-    cout << sync(remote::sync, p, get_thread_stats_action());
-  }
-  for (int p = 0; p < rpc::server->size(); ++p) {
-    cout << sync(remote::sync, p, get_server_stats_action());
-  }
+  // double elapsed_init =
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
+  //     1.0e+9;
+  // double elapsed_calc =
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() /
+  //     1.0e+9;
+  // cout << "Elapsed time (init): " << elapsed_init << " sec\n";
+  // cout << "Elapsed time (calc): " << elapsed_calc << " sec\n";
+
+  // for (int p = 0; p < rpc::server->size(); ++p) {
+  //   cout << sync(remote::sync, p, get_thread_stats_action());
+  // }
+  // for (int p = 0; p < rpc::server->size(); ++p) {
+  //   cout << sync(remote::sync, p, get_server_stats_action());
+  // }
 
   file.close();
 

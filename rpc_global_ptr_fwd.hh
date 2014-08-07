@@ -27,6 +27,7 @@ template <typename T> class global_ptr {
 
 public:
   typedef T element_type;
+  typedef T value_type;
 
   bool invariant() const { return (proc == -1) == !uiptr; }
 

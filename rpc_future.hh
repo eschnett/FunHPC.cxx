@@ -6,6 +6,7 @@
 #include "rpc_global_ptr.hh"
 
 #include "cxx_invoke.hh"
+#include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 
 #include <cereal/archives/binary.hpp>
@@ -73,7 +74,7 @@ namespace cxx {
 
 // kinds
 template <typename T> struct kinds<rpc::shared_future<T> > {
-  typedef T element_type;
+  typedef T value_type;
   template <typename U> using constructor = rpc::shared_future<U>;
 };
 template <typename T> struct is_shared_future : std::false_type {};
@@ -81,42 +82,65 @@ template <typename T>
 struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, typename F,
+template <typename F, typename R, typename T, typename... As,
           typename CT = rpc::shared_future<T>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const rpc::shared_future<T> &x) {
-  return !x.valid() ? z : cxx::invoke(f, z, x.get());
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const rpc::shared_future<T> &xs,
+      const As &... as) {
+  bool s = xs.valid();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.get(), as...);
+}
+
+template <typename F, typename R, typename T, typename T2, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const rpc::shared_future<T> &xs,
+       const rpc::shared_future<T2> &ys, const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.get(), ys.get(), as...);
 }
 
 // functor
-namespace detail {
-template <typename T> struct unwrap_shared_future {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T> struct unwrap_shared_future<rpc::shared_future<T> > {
-  typedef T type;
-  const T &operator()(const rpc::shared_future<T> &x) const { return x.get(); }
-};
-}
-template <typename T, typename... As, typename F,
+template <typename F, typename T, typename... As,
           typename CT = rpc::shared_future<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_shared_future<As>::type...>::type>
-C<R> fmap(const F &f, const rpc::shared_future<T> xs, const As &... as) {
-  return rpc::async([
-                      f,
-                      xs,
-                      as...
-                    ]() {
-                       // TODO: move objects?
-                       return cxx::invoke(std::move(f), std::move(xs).get(),
-                                          detail::unwrap_shared_future<As>()(
-                                              std::move(as))...);
-                     }).share();
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
+C<R> fmap(const F &f, const rpc::shared_future<T> &xs, const As &... as) {
+  bool s = xs.valid();
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async([f](const rpc::shared_future<T> & xs, const As & ... as)
+                        ->R { return cxx::invoke(f, xs.get(), as...); },
+                    xs, as...).share();
+}
+
+template <typename F, typename T, typename T2, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
+           const rpc::shared_future<T2> &ys, const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async([f](const rpc::shared_future<T> xs,
+                        const rpc::shared_future<T2> ys, const As & ... as)
+                        ->R {
+                      return cxx::invoke(f, xs.get(), ys.get(), as...);
+                    },
+                    xs, ys, as...).share();
 }
 
 // monad
@@ -137,18 +161,21 @@ make(As &&... as) {
   return rpc::make_ready_future(T(std::forward<As>(as)...));
 }
 
-template <typename T, typename F, typename CT = rpc::shared_future<T>,
+template <typename T, typename F, typename... As,
+          typename CT = rpc::shared_future<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const rpc::shared_future<T> &xs, const F &f) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const rpc::shared_future<T> &xs, const F &f, const As &... as) {
   return rpc::future_then(
-      xs, [f](const C<T> &xs) { return cxx::invoke(f, xs.get()).get(); });
+      xs, [f](const rpc::shared_future<T> &xs, const As &... as) {
+        return cxx::invoke(f, xs.get(), as...).get();
+      });
 }
 
 template <typename T, typename CCT = rpc::shared_future<rpc::shared_future<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const rpc::shared_future<rpc::shared_future<T> > &xss) {
   return xss.unwrap();
@@ -156,12 +183,11 @@ C<T> join(const rpc::shared_future<rpc::shared_future<T> > &xss) {
 
 // iota
 
-template <template <typename> class C, typename... As, typename F,
+template <template <typename> class C, typename F, typename... As,
           typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
 typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
-     const As &... as) {
-  return unit<C>(cxx::invoke(f, imin, as...));
+iota(const F &f, const iota_range_t &range, const As &... as) {
+  return unit<C>(cxx::invoke(f, range.local.imin, as...));
 }
 }
 

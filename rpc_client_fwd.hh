@@ -20,6 +20,7 @@ template <typename T> class client {
 
 public:
   typedef T element_type;
+  typedef T value_type;
 
   // TODO: define then, unwrap for future<client> etc.?
 

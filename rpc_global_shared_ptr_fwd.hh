@@ -119,6 +119,7 @@ template <typename T> class global_shared_ptr {
 
 public:
   typedef T element_type;
+  typedef T value_type;
 
   operator bool() const { return bool(mgr); }
 

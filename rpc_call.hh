@@ -23,6 +23,7 @@
 #include <functional>
 #include <sstream>
 #include <type_traits>
+#include <typeinfo>
 #include <utility>
 
 namespace rpc {
@@ -407,6 +408,25 @@ auto async(remote policy, F, G &&global, As &&... args)
           future<typename cxx::invoke_of<F, G, As...>::type> >::type {
   return async(policy, global.get_proc_future(), F(), std::forward<G>(global),
                std::forward<As>(args)...);
+}
+}
+
+namespace cereal {
+namespace detail {
+
+template <typename F, typename R, typename... As>
+struct binding_name<rpc::action_evaluate<F, R, As...> > {
+  static constexpr const char *name() {
+    return typeid(rpc::action_evaluate<F, R, As...>).name();
+  }
+};
+
+template <typename F, typename R>
+struct binding_name<rpc::action_finish<F, R> > {
+  static constexpr const char *name() {
+    return typeid(rpc::action_finish<F, R>).name();
+  }
+};
 }
 }
 

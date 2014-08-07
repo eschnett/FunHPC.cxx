@@ -5,7 +5,7 @@
 #include "cxx_functor.hh"
 #include "cxx_maybe.hh"
 #include "cxx_monad.hh"
-// #include "cxx_nested.hh"
+
 #include "cxx_tree.hh"
 
 #include <functional>
@@ -25,11 +25,6 @@ template <typename T> using set_ = std::set<T>;
 
 // Define a vector with only one template argument
 template <typename T> using vector_ = std::vector<T>;
-
-// Define nested containers with only one template argument
-// template <typename T> using nested_ = cxx::nested<T, vector_,
-// std::shared_ptr>;
-// template <typename T> using nestedI_ = std::shared_ptr<std::vector<T> >;
 
 // Define a tree with only one template argument
 template <typename T> using tree_ = cxx::tree<T, vector_, std::shared_ptr>;
@@ -168,33 +163,6 @@ int rpc_main(int argc, char **argv) {
     auto z __attribute__((__unused__)) = cxx::zero<cxx::maybe, int>();
     auto p __attribute__((__unused__)) = cxx::plus(z, u);
     auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
-  }
-
-  // {
-  //   auto u __attribute__((__unused__)) = cxx::unit<nested_>(1);
-  //   auto m __attribute__((__unused__)) = cxx::make<nested_, int>(1);
-  //   auto b __attribute__((__unused__)) =
-  //       cxx::bind(u, [](int x) { return cxx::unit<nested_>(double(x)); });
-  //   auto f = cxx::fmap([](int x) { return double(x); }, u);
-  //   auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);
-  // }
-
-  // { auto u __attribute__((__unused__)) = cxx::unit<nestedI_>(1); }
-
-  {
-    cxx::tree<double, vector_, std::shared_ptr> t;
-    bool e __attribute__((__unused__)) = t.empty();
-    size_t s __attribute__((__unused__)) = t.size();
-    bool es __attribute__((__unused__)) = t.empty_slow();
-    size_t ss __attribute__((__unused__)) = t.size_slow();
-
-    auto r __attribute__((__unused__)) =
-        t.foldl([](double s, double v) { return s + v; }, 0.0);
-
-    auto ti __attribute__((__unused__)) =
-        cxx::tree<int, vector_, std::shared_ptr>(
-            cxx::tree<int, vector_, std::shared_ptr>::fmap(),
-            [](double x) { return int(lrint(x)); }, t);
   }
 
   {

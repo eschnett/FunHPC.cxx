@@ -76,20 +76,18 @@ public:
   // operator bool() const { return is_just(); }
   // const T& operator*() const { return just(); }
   // T& operator*() { return just(); }
-  template <typename R, typename F, typename... As>
-  typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<F, T, As &&...>::type, R>::value,
-      maybe<R> >::type
-  fmap(F f, As &&... as) const {
+  template <typename F, typename... As,
+            typename R = typename cxx::invoke_of<F, T, As &&...>::type>
+  maybe<R> fmap(const F &f, As &&... as) const {
     return is_nothing()
                ? maybe<R>()
                : maybe<R>(cxx::invoke(f, just(), std::forward<As>(as)...));
   }
-  template <typename R, typename F, typename... As>
+  template <typename F, typename R, typename... As>
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, T, As &&...>::type, R>::value,
       R>::type
-  fold(const R &z, F f, As &&... as) const {
+  fold(const F &f, const R &z, As &&... as) const {
     return is_nothing() ? z : cxx::invoke(f, just(), std::forward<As>(as)...);
   }
 };
@@ -99,41 +97,59 @@ template <typename T> void swap(maybe<T> &a, maybe<T> &b) { a.swap(b); }
 
 // kinds
 template <typename T> struct kinds<maybe<T> > {
-  typedef T element_type;
+  typedef T value_type;
   template <typename U> using constructor = maybe<U>;
 };
 template <typename T> struct is_maybe : std::false_type {};
 template <typename T> struct is_maybe<cxx::maybe<T> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, typename F>
+template <typename F, typename R, typename T, typename... As>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const maybe<T> &x) {
-  return x.is_nothing() ? z : cxx::invoke(f, z, x.just());
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const maybe<T> &xs, const As &... as) {
+  bool s = xs.is_just();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.just(), as...);
+}
+
+template <typename F, typename R, typename T, typename T2, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
+       const As &... as) {
+  bool s = xs.is_just();
+  assert(ys.is_just() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.just(), ys.just(), as...);
 }
 
 // functor
-namespace detail {
-template <typename T> struct unwrap_maybe {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T> struct unwrap_maybe<maybe<T> > {
-  typedef T type;
-  const T &operator()(const maybe<T> &x) const {
-    return x.just();
-  };
-};
-}
-template <typename T, typename... As, typename F, typename CT = cxx::maybe<T>,
+template <typename F, typename T, typename... As, typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_maybe<As>::type...>::type>
-C<R> fmap(const F &f, const cxx::maybe<T> xs, const As &... as) {
-  if (!xs.is_just())
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
+C<R> fmap(const F &f, const cxx::maybe<T> &xs, const As &... as) {
+  bool s = xs.is_just();
+  if (s == false)
     return C<R>();
-  return C<R>(cxx::invoke(f, xs.just(), detail::unwrap_maybe<As>()(as)...));
+  return C<R>(cxx::invoke(f, xs.just(), as...));
+}
+
+template <typename F, typename T, typename T2, typename... As,
+          typename CT = cxx::maybe<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const cxx::maybe<T> &xs, const cxx::maybe<T2> &ys,
+           const As &... as) {
+  bool s = xs.is_just();
+  assert(ys.is_just() == s);
+  if (s == false)
+    return C<R>();
+  return C<R>(cxx::invoke(f, xs.just(), ys.just(), as...));
 }
 
 // monad
@@ -150,19 +166,19 @@ make(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
-template <typename T, typename F, typename CT = cxx::maybe<T>,
+template <typename T, typename F, typename... As, typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const cxx::maybe<T> &xs, const F &f) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const cxx::maybe<T> &xs, const F &f, As &&... as) {
   if (xs.is_nothing())
     return C<R>();
-  return cxx::invoke(f, xs.just());
+  return cxx::invoke(f, xs.just(), std::forward<As>(as)...);
 }
 
 template <typename T, typename CCT = cxx::maybe<cxx::maybe<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const cxx::maybe<cxx::maybe<T> > &xss) {
   if (xss.is_nothing())
@@ -194,7 +210,7 @@ typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type some(T &&x) {
 
 // iota
 
-template <template <typename> class C, typename... As, typename F,
+template <template <typename> class C, typename F, typename... As,
           typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
 typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type
 iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,

@@ -26,66 +26,130 @@ namespace cxx {
 // notElem:  a -> t a -> bool
 // find:     (a -> bool) -> t a -> a*
 
-// TODO: allow multiple arguments
+// TODO: allow additional arguments for all types
 
 // array
-template <typename R, typename T, std::size_t N, typename F,
+template <typename F, typename R, typename T, std::size_t N, typename... As,
           typename CT = std::array<T, N>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::array<T, N> &xs) {
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const std::array<T, N> &xs, const As &... as) {
+  std::size_t s = xs.size();
   R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(f, std::move(r), xs[i], as...);
+  return r;
+}
+
+template <typename F, typename R, typename T, std::size_t N, typename T2,
+          typename... As, typename CT = std::array<T, N>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const std::array<T, N> &xs,
+       const std::array<T2, N> &ys, const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(f, std::move(r), xs[i], ys[i], as...);
+  return r;
+}
+
+template <typename F, typename R, typename T, std::size_t N, typename T2,
+          typename T3, typename... As, typename CT = std::array<T, N>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, T2, T3, As...>::type,
+                 R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const std::array<T, N> &xs,
+       const std::array<T2, N> &ys, const std::array<T3, N> &zs,
+       const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  assert(zs.size() == s);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(f, std::move(r), xs[i], ys[i], zs[i], as...);
   return r;
 }
 
 // list
-template <typename R, typename T, typename Allocator, typename F,
-          typename CT = std::list<T, Allocator>,
+template <typename F, typename R, typename T, typename Allocator,
+          typename... As, typename CT = std::list<T, Allocator>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::list<T, Allocator> &xs) {
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const std::list<T, Allocator> &xs,
+      const As &... as) {
   R r(z);
   for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
+    r = cxx::invoke(f, std::move(r), x, as...);
   return r;
 }
 
 // set
-template <typename R, typename T, typename Compare, typename Allocator,
-          typename F, typename CT = std::set<T, Compare, Allocator>,
+template <typename F, typename R, typename T, typename Compare,
+          typename Allocator, typename... As,
+          typename CT = std::set<T, Compare, Allocator>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::set<T, Compare, Allocator> &xs) {
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const std::set<T, Compare, Allocator> &xs,
+      const As &... as) {
   R r(z);
   for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
+    r = cxx::invoke(f, std::move(r), x, as...);
   return r;
 }
 
 // shared_ptr
-template <typename R, typename T, typename F, typename CT = std::shared_ptr<T>,
+template <typename F, typename R, typename T, typename... As,
+          typename CT = std::shared_ptr<T>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::shared_ptr<T> &xs) {
-  return !xs ? z : cxx::invoke(f, z, *xs);
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const std::shared_ptr<T> &xs, const As &... as) {
+  return !xs ? z : cxx::invoke(f, z, *xs, as...);
 }
 
 // vector
-template <typename R, typename T, typename Allocator, typename F,
+template <typename F, typename R, typename T, typename Allocator,
+          typename... As, typename CT = std::vector<T, Allocator>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs,
+      const As &... as) {
+  std::size_t s = xs.size();
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(f, std::move(r), xs[i], as...);
+  return r;
+}
+
+template <typename F, typename R, typename T, typename Allocator, typename T2,
+          typename Allocator2, typename... As,
           typename CT = std::vector<T, Allocator>,
           template <typename> class C = kinds<CT>::template constructor>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs) {
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const std::vector<T, Allocator> &xs,
+       const std::vector<T2, Allocator2> &ys, const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
   R r(z);
-  for (const auto &x : xs)
-    r = cxx::invoke(f, std::move(r), x);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(f, std::move(r), xs[i], ys[i], as...);
   return r;
 }
 
@@ -101,7 +165,7 @@ template <template <typename> class C> bool or_(const C<bool> &xs) {
   return foldl(std::logical_or<bool>(), false, xs);
 }
 
-template <template <typename> class C, typename T, typename F>
+template <template <typename> class C, typename F, typename T>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
 any(const F &f, const C<T> &xs) {
@@ -109,7 +173,7 @@ any(const F &f, const C<T> &xs) {
                false, xs);
 }
 
-template <template <typename> class C, typename T, typename F>
+template <template <typename> class C, typename F, typename T>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
 all(const F &f, const C<T> &xs) {

@@ -19,7 +19,7 @@ namespace cxx {
 template <typename T, template <typename> class Outer,
           template <typename> class Inner>
 struct nested {
-  typedef T element_type;
+  typedef T value_type;
   template <typename U> using outer_constructor = Outer<T>;
   template <typename U> using inner_constructor = Inner<T>;
   template <typename U> static Outer<U> outer_unit(U &&x) {
@@ -43,7 +43,7 @@ struct nested {
 template <typename T, template <typename> class Outer,
           template <typename> class Inner>
 struct kinds<cxx::nested<T, Outer, Inner> > {
-  typedef T element_type;
+  typedef T value_type;
   template <typename U> using constructor = cxx::nested<U, Outer, Inner>;
 };
 template <typename T> struct is_nested : std::false_type {};
@@ -157,7 +157,7 @@ template <typename T, template <typename> class Outer, template <typename>
           class Inner, typename F, typename CT = cxx::nested<T, Outer, Inner>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
+          typename R = typename cxx::kinds<CR>::value_type>
 C<R> bind(const cxx::nested<T, Outer, Inner> &xs, const F &f) {
   return C<R>{ cxx::bind(cxx::bind(xs.values, f), [f](const Inner<T> &ys) {
     return cxx::fmap(f, ys);

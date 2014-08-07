@@ -45,18 +45,19 @@ namespace cxx {
 template <template <typename> class C, typename T, typename... As>
 C<T> make(As &&... as);
 
-template <template <typename> class C, typename R, typename T, typename F>
-C<R> bind(const C<T> &xs, const F &f);
+template <template <typename> class C, typename R, typename T, typename... As,
+          typename F>
+C<R> bind(const C<T> &xs, const F &f, const As &... as);
 
-template <template <typename> class C, typename R, typename T, typename F>
-C<R> fmap(const F &f, const C<T> &... xs);
+    template <template <typename> class C, typename R, typename T, typename... As, typename F>
+C<R> fmap(const F &f, const C<T> &xs, const As&... as);
 
 template <template <typename> class C, typename T>
 C<T> join(const C<C<T> > &xss);
 
 template <template <typename> class C, typename T> C<T> zero();
 
-template <template <typename> class C, typename T>
+    template <template <typename> class C, typename T, typename...As>
 C<T> plus(const C<T> &xs, const As &... as);
 
 template <template <typename> class C, typename T, typename... As>
@@ -71,17 +72,17 @@ C<T> some(const C<T> &xs, const As &... as);
 
 // bind :: C a -> (a -> C b) -> C b
 // bind xs f = join (fmap f xs)
-template <template <typename> class C, typename R, typename T, typename F>
-C<R> bind(const C<T> &xs, const F &f) {
-  return join(fmap(f, xs));
+  template <template <typename> class C, typename R, typename T, typename...As,typename F>
+  C<R> bind(const C<T> &xs, const F &f, As&&...as) {
+    return join(fmap(f, xs, std::forward<As>(as)...));
 }
 
 // fmap :: (a -> b) -> C a -> C b
 // fmap f xs = bind xs (unit . f)
 // fmap f xs = bind xs (\x -> unit (f x))
-template <template <typename> class C, typename R, typename T, typename F>
-C<R> fmap(const F &f, const C<T> &xs) {
-  return bind(xs, [f](const T &y) { return unit<C>(std::invoke(f, y)); });
+  template <template <typename> class C, typename R, typename T, typename...As,typename F>
+C<R> fmap(const F &f, const C<T> &xs,  As&&...as) {
+    return bind(xs, [f](const T &y) { return unit<C>(std::invoke(f, y)); },std::forward<As>(as)...);
 }
 
 // join :: C (C a) -> C a

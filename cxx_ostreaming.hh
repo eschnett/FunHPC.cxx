@@ -113,7 +113,7 @@ template <typename Elem> cxx::ostreaming<std::tuple<> > put(const Elem &elem) {
 // kinds
 
 template <typename T> struct kinds<cxx::ostreaming<T> > {
-  typedef T element_type;
+  typedef T value_type;
   template <typename U> using constructor = cxx::ostreaming<U>;
 };
 template <typename T> struct is_ostreaming : std::false_type {};
@@ -122,7 +122,7 @@ struct is_ostreaming<cxx::ostreaming<T> > : std::true_type {};
 
 // functor: fmap
 // Turn a regular function into a function that acts on an ostreaming
-template <typename T, typename F, typename... As,
+template <typename F, typename T, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
@@ -130,7 +130,7 @@ C<R> fmap(const F &f, const cxx::ostreaming<T> &ostr, As &&... as) {
   auto result = cxx::invoke(f, ostr.value, std::forward<As>(as)...);
   return { ostr.ostr, std::move(result) };
 }
-template <typename T, typename F, typename... As,
+template <typename F, typename T, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
@@ -156,14 +156,15 @@ make(As &&... as) {
 
 // monad: bind
 // Bind a function to an ostreaming
-template <typename T, typename F, typename CT = cxx::ostreaming<T>,
+template <typename T, typename F, typename... As,
+          typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = /*TODO: why? */ typename std::decay<
-              typename cxx::invoke_of<F, T>::type>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const cxx::ostreaming<T> &xs, const F &f) {
+              typename cxx::invoke_of<F, T, As...>::type>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
   const T &value = xs.value;
-  ostreaming<R> result = cxx::invoke(f, value);
+  ostreaming<R> result = cxx::invoke(f, value, as...);
   const ostreamer &left = xs.ostr;
   ostreamer &right = result.ostr;
   ostreamer combined = left << std::move(right);
@@ -172,7 +173,7 @@ C<R> bind(const cxx::ostreaming<T> &xs, const F &f) {
 // template <typename T, typename F, typename CT = cxx::ostreaming<T>,
 //           template <typename> class C = cxx::kinds<CT>::template constructor,
 //           typename CR = typename cxx::invoke_of<F, T &&>::type,
-//           typename R = typename cxx::kinds<CR>::element_type>
+//           typename R = typename cxx::kinds<CR>::value_type>
 // C<R> bind(cxx::ostreaming<T> &&xs, const F &f) {
 //   T &value = xs.value;
 //   ostreaming<R> result = cxx::invoke(f, std::move(value));
@@ -186,7 +187,7 @@ C<R> bind(const cxx::ostreaming<T> &xs, const F &f) {
 // Combine two ostreamings
 template <typename T, typename CCT = ostreaming<ostreaming<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const ostreaming<ostreaming<T> > &xss) {
   const ostreamer &outer = xss.ostr;
@@ -198,7 +199,7 @@ C<T> join(const ostreaming<ostreaming<T> > &xss) {
 // template <typename T, typename CCT = ostreaming<ostreaming<T> >,
 //           template <typename> class C = cxx::kinds<CCT>::template
 // constructor,
-//           typename CT = typename cxx::kinds<CCT>::element_type,
+//           typename CT = typename cxx::kinds<CCT>::value_type,
 //           template <typename> class C2 = cxx::kinds<CT>::template
 // constructor>
 // C<T> join(ostreaming<ostreaming<T> > &&xss) {

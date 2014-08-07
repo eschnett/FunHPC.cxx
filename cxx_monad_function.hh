@@ -32,7 +32,7 @@ make(A &&x) {
 template <typename T, typename A, typename F, typename CT = std::function<T(A)>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
+          typename R = typename cxx::kinds<CR>::value_type>
 C<R> bind(const std::function<T(A)> &f, const F &g) {
   return C<R>([f, g](const T &x) {
     return cxx::invoke(cxx::invoke(g, cxx::invoke(f, x)), x);
@@ -45,7 +45,7 @@ C<R> bind(const std::function<T(A)> &f, const F &g) {
 template <typename T, typename A,
           typename CCT = std::function<std::function<T(A)>(A)>,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 typename std::enable_if<std::is_same<C2<T>, C<T> >::value, C<T> >::type
 join(const std::function<std::function<T(A)>(A)> &f) {

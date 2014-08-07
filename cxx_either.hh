@@ -99,83 +99,116 @@ public:
     assert(is_right());
     return right_;
   }
-// operator bool() const { return is_right(); }
-// const T& operator*() const { return right(); }
-// T& operator*() { return right(); }
-#if 0
-  template <typename F, typename G, typename... As>
-  either<typename cxx::invoke_of<F, L, As&&...>::type,
-         typename cxx::invoke_of<G, R, As&&...>::type>
-  gmap(F f, G g, As &&... as) const {
-    typedef typename cxx::invoke_of<F, L, As...>::type FL;
-    typedef typename cxx::invoke_of<G, R, As...>::type GR;
-    return is_left() ? either<FL, GR>(
-                           cxx::invoke(f, left(), std::forward<As>(as)...))
-                     : either<FL, GR>(
-                           cxx::invoke(g, right(), std::forward<As>(as)...));
-  }
-#endif
-private:
-  template <typename T> struct unwrap_either {
-    typedef T left_type;
-    typedef T right_type;
-    const T &left(const T &x) const { return x; }
-    const T &right(const T &x) const { return x; }
-  };
-  template <typename L1, typename R1> struct unwrap_either<either<L1, R1> > {
-    typedef L1 left_type;
-    typedef R1 right_type;
-    const L1 &left(const either<L1, R1> &x) const { return x.left(); }
-    const R1 &right(const either<L1, R1> &x) const { return x.right(); }
-  };
-
-public:
+  // operator bool() const { return is_right(); }
+  // const T& operator*() const { return right(); }
+  // T& operator*() { return right(); }
   struct gmap : std::tuple<> {};
   template <typename F, typename G, typename L1, typename R1, typename... As>
-  either(
-      typename std::enable_if<
-          ((std::is_same<typename cxx::invoke_of<
-                             F, L1, typename unwrap_either<typename std::decay<
-                                        As>::type>::left_type...>::type,
-                         L>::value) &&
-           (std::is_same<typename cxx::invoke_of<
-                             G, R1, typename unwrap_either<typename std::decay<
-                                        As>::type>::right_type...>::type,
-                         R>::value)),
-          gmap>::type,
-      const F &f, const G &g, const either<L1, R1> &x, As &&... as) {
+  either(typename std::enable_if<
+             ((std::is_same<typename cxx::invoke_of<F, L1, As...>::type,
+                            L>::value) &&
+              (std::is_same<typename cxx::invoke_of<G, R1, As...>::type,
+                            R>::value)),
+             gmap>::type,
+         const F &f, const G &g, const either<L1, R1> &x, As &&... as) {
     if (x.is_left()) {
       is_left_ = true;
-      new (&left_) L(cxx::invoke(
-          f, x.left(), unwrap_either<typename std::decay<As>::type>().left(
-                           std::forward<As>(as))...));
+      new (&left_) L(cxx::invoke(f, x.left(), std::forward<As>(as)...));
     } else {
       is_left_ = false;
-      new (&right_) R(cxx::invoke(
-          g, x.right(), unwrap_either<typename std::decay<As>::type>().right(
-                            std::forward<As>(as))...));
+      new (&right_) R(cxx::invoke(g, x.right(), std::forward<As>(as)...));
+    }
+  }
+  struct gmap2 : std::tuple<> {};
+  template <typename F, typename G, typename L1, typename R1, typename L2,
+            typename R2, typename... As>
+  either(typename std::enable_if<
+             ((std::is_same<typename cxx::invoke_of<F, L1, L2, As...>::type,
+                            L>::value) &&
+              (std::is_same<typename cxx::invoke_of<G, R1, R2, As...>::type,
+                            R>::value)),
+             gmap2>::type,
+         const F &f, const G &g, const either<L1, R1> &x,
+         const either<L2, R2> &y, As &&... as) {
+    assert(y.is_left() == x.is_left());
+    if (x.is_left()) {
+      is_left_ = true;
+      new (&left_)
+          L(cxx::invoke(f, x.left(), y.left(), std::forward<As>(as)...));
+    } else {
+      is_left_ = false;
+      new (&right_)
+          R(cxx::invoke(g, x.right(), y.right(), std::forward<As>(as)...));
     }
   }
   // TODO: make gfoldl more uniform to foldl, with expecting a zero element
-  template <typename F, typename G, typename... As>
+  template <typename F, typename G, typename... As,
+            typename R1 = typename cxx::invoke_of<F, L, As...>::type>
   typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<F, L, As &&...>::type,
-                   typename cxx::invoke_of<G, R, As &&...>::type>::value,
-      typename cxx::invoke_of<G, R, As &&...>::type>::type
-  gfoldl(F f, G g, As &&... as) const {
+      std::is_same<typename cxx::invoke_of<G, R, As...>::type, R1>::value,
+      R1>::type
+  gfoldl(const F &f, const G &g, As &&... as) const {
     return is_left() ? cxx::invoke(f, left(), std::forward<As>(as)...)
                      : cxx::invoke(g, right(), std::forward<As>(as)...);
+  }
+  template <typename F, typename G, typename L1, typename R1, typename... As,
+            typename R2 = typename cxx::invoke_of<F, L, L1, As...>::type>
+  typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<G, R, R1, As...>::type, R2>::value,
+      R2>::type
+  gfoldl2(const F &f, const G &g, const either<L1, R2> &ys, As &&... as) const {
+    assert(ys.is_left() == is_left());
+    return is_left()
+               ? cxx::invoke(f, left(), ys.left(), std::forward<As>(as)...)
+               : cxx::invoke(g, right(), ys.right(), std::forward<As>(as)...);
   }
 };
 template <typename L, typename R> void swap(either<L, R> &a, either<L, R> &b) {
   a.swap(b);
 }
 
+template <typename F, typename G, typename L1, typename R1, typename... As,
+          typename R = typename cxx::invoke_of<F, L1, As...>::type>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<G, R1, As...>::type, R>::value,
+    R>::type
+gfoldl(const F &f, const G &g, const either<L1, R1> &xs, As &&... as) {
+  return xs.gfoldl(f, g, std::forward<As>(as)...);
+}
+template <typename F, typename G, typename L1, typename R1, typename L2,
+          typename R2, typename... As,
+          typename R = typename cxx::invoke_of<F, L1, L2, As...>::type>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<G, R1, R2, As...>::type, R>::value,
+    R>::type
+gfoldl2(const F &f, const G &g, const either<L1, R1> &xs,
+        const either<L2, R2> &ys, As &&... as) {
+  return xs.gfoldl(f, g, ys, std::forward<As>(as)...);
+}
+
+template <typename F, typename G, typename L1, typename R1, typename... As,
+          typename L = typename cxx::invoke_of<F, L1, As...>::type,
+          typename R = typename cxx::invoke_of<G, R1, As...>::type>
+either<L, R> gmap(const F &f, const G &g, const either<L1, R1> &xs,
+                  As &&... as) {
+  return either<L, R>(typename either<L, R>::gmap(), f, g, xs,
+                      std::forward<As>(as)...);
+}
+template <typename F, typename G, typename L1, typename R1, typename L2,
+          typename R2, typename... As,
+          typename L = typename cxx::invoke_of<F, L1, L2, As...>::type,
+          typename R = typename cxx::invoke_of<G, R1, R2, As...>::type>
+either<L, R> gmap2(const F &f, const G &g, const either<L1, R1> &xs,
+                   const either<L2, R2> &ys, As &&... as) {
+  return either<L, R>(typename either<L, R>::gmap2(), f, g, xs, ys,
+                      std::forward<As>(as)...);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // kinds
 template <typename L, typename R> struct kinds<either<L, R> > {
-  typedef R element_type;
+  typedef R value_type;
   template <typename U> using constructor = either<L, U>;
 };
 template <typename T> struct is_either : std::false_type {};
@@ -183,11 +216,29 @@ template <typename L, typename R>
 struct is_either<either<L, R> > : std::true_type {};
 
 // foldable
-template <typename R, typename T, typename L, typename F>
+template <typename F, typename R, typename T, typename L, typename... As>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
-foldl(const F &f, const R &z, const either<L, T> &xs) {
-  return xs.is_left() ? z : cxx::invoke(f, z, xs.right());
+    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    R>::type
+foldl(const F &f, const R &z, const either<L, T> &xs, const As &... as) {
+  bool s = xs.is_right();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.right(), as...);
+}
+
+template <typename F, typename R, typename T, typename L, typename T2,
+          typename L2, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+    R>::type
+foldl2(const F &f, const R &z, const either<L, T> &xs, const either<L2, T2> &ys,
+       const As &... as) {
+  bool s = xs.is_right();
+  assert(ys.is_right() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, z, xs.right(), ys.right(), as...);
 }
 
 // functor
@@ -201,15 +252,28 @@ template <typename T, typename L> struct unwrap_either<either<L, T> > {
   const T &operator()(const either<L, T> &x) const { return x.right(); }
 };
 }
-template <typename T, typename L, typename... As, typename F,
+template <typename F, typename T, typename L, typename... As,
           typename CT = cxx::either<L, T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_either<As>::type...>::type>
-C<R> fmap(const F &f, const cxx::either<L, T> xs, const As &... as) {
-  if (!xs.is_right())
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
+C<R> fmap(const F &f, const cxx::either<L, T> &xs, const As &... as) {
+  bool s = xs.is_right();
+  if (s == false)
     return C<R>(typename C<R>::left_type());
-  return C<R>(cxx::invoke(f, xs.right(), detail::unwrap_either<As>()(as)...));
+  return C<R>(cxx::invoke(f, xs.right(), as...));
+}
+
+template <typename F, typename T, typename L, typename T2, typename... As,
+          typename CT = cxx::either<L, T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const cxx::either<L, T> &xs,
+           const cxx::either<L, T2> &ys, const As &... as) {
+  bool s = xs.is_right();
+  assert(ys.is_right() == s);
+  if (s == false)
+    return C<R>(typename C<R>::left_type());
+  return C<R>(cxx::invoke(f, xs.right(), ys.right(), as...));
 }
 
 // monad
@@ -227,20 +291,21 @@ make(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
-template <typename T, typename L, typename F, typename CT = cxx::either<L, T>,
+template <typename T, typename L, typename F, typename... As,
+          typename CT = cxx::either<L, T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const cxx::either<L, T> &xs, const F &f) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const cxx::either<L, T> &xs, const F &f, As &&... as) {
   if (xs.is_left())
-    return C<R>(xs.left());
-  return cxx::invoke(f, xs.right());
+    return C<R>(xs.left(), std::forward<As>(as)...);
+  return cxx::invoke(f, xs.right(), std::forward<As>(as)...);
 }
 
 template <typename T, typename L,
           typename CCT = cxx::either<L, cxx::either<L, T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const cxx::either<L, cxx::either<L, T> > &xss) {
   if (xss.is_left())
@@ -273,7 +338,7 @@ typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type some(T &&x) {
 
 // iota
 
-template <template <typename> class C, typename... As, typename F,
+template <template <typename> class C, typename F, typename... As,
           typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
 typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
 iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,

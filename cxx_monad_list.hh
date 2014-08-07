@@ -26,20 +26,20 @@ make(As &&... as) {
   return rs;
 }
 
-template <typename T, typename F, typename CT = std::list<T>,
+template <typename T, typename F, typename... As, typename CT = std::list<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const std::list<T> &xs, const F &f) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const std::list<T> &xs, const F &f, const As &... as) {
   C<R> rs;
   for (const auto &x : xs)
-    rs.splice(rs.end(), cxx::invoke(f, x));
+    rs.splice(rs.end(), cxx::invoke(f, x, as...));
   return rs;
 }
 
 template <typename T, typename CCT = std::list<std::list<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const std::list<std::list<T> > &xss) {
   C<T> rs;

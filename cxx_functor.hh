@@ -21,35 +21,54 @@ namespace cxx {
 // TODO: allow additional arguments for all types
 
 // array
-namespace detail {
-template <typename T> struct unwrap_array {
-  typedef T type;
-  const T &operator()(const T &x, std::size_t i) const { return x; }
-};
-template <typename T, size_t N> struct unwrap_array<std::array<T, N> > {
-  typedef T type;
-  const T &operator()(const std::array<T, N> &x, std::size_t i) const {
-    return x[i];
-  }
-};
-}
-template <typename T, size_t N, typename... As, typename F,
+
+template <typename F, typename T, size_t N, typename... As,
           typename CT = std::array<T, N>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_array<As>::type...>::type>
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
 C<R> fmap(const F &f, const std::array<T, N> &xs, const As &... as) {
   std::size_t s = xs.size();
   C<R> rs;
   for (std::size_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(f, xs[i], detail::unwrap_array<As>()(as, i)...);
+    rs[i] = cxx::invoke(f, xs[i], as...);
+  return rs;
+}
+
+template <typename F, typename T, size_t N, typename T2, typename... As,
+          typename CT = std::array<T, N>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
+           const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  C<R> rs;
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], ys[i], as...);
+  return rs;
+}
+
+template <typename F, typename T, size_t N, typename T2, typename T3,
+          typename... As, typename CT = std::array<T, N>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, T3, As...>::type>
+C<R> fmap3(const F &f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
+           const std::array<T3, N> &zs, const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  assert(zs.size() == s);
+  C<R> rs;
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], ys[i], zs[i], as...);
   return rs;
 }
 
 // function
+
 //    fmap: (a -> b) -> (r -> a) -> r -> b
 //    fmap f g = \x -> f (g x)
-template <typename T, typename A, typename F, typename CT = std::function<T(A)>,
+
+template <typename F, typename T, typename A, typename CT = std::function<T(A)>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
 C<R> fmap(const F &f, const std::function<T(A)> &g) {
@@ -59,7 +78,8 @@ C<R> fmap(const F &f, const std::function<T(A)> &g) {
 }
 
 // list
-template <typename T, typename Allocator, typename F,
+
+template <typename F, typename T, typename Allocator,
           typename CT = std::list<T, Allocator>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
@@ -71,7 +91,8 @@ C<R> fmap(const F &f, const std::list<T, Allocator> &xs) {
 }
 
 // set
-template <typename T, typename Compare, typename Allocator, typename F,
+
+template <typename F, typename T, typename Compare, typename Allocator,
           typename CT = std::set<T, Compare, Allocator>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T>::type>
@@ -83,31 +104,33 @@ C<R> fmap(const F &f, const std::set<T, Compare, Allocator> &xs) {
 }
 
 // shared_ptr
-namespace detail {
-template <typename T> struct unwrap_shared_ptr {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T> struct unwrap_shared_ptr<std::shared_ptr<T> > {
-  typedef T type;
-  const T &operator()(const std::shared_ptr<T> &x, std::size_t i) const {
-    return *x;
-  }
-};
-}
-template <typename T, typename... As, typename F,
+
+template <typename F, typename T, typename... As,
           typename CT = std::shared_ptr<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_shared_ptr<As>::type...>::type>
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
 C<R> fmap(const F &f, const std::shared_ptr<T> &xs, const As &... as) {
-  if (!xs)
+  bool s = bool(xs);
+  if (s == false)
     return std::make_shared<R>();
-  return std::make_shared<R>(
-      cxx::invoke(f, *xs, detail::unwrap_shared_ptr<As>()(as)...));
+  return std::make_shared<R>(cxx::invoke(f, *xs, as...));
+}
+
+template <typename F, typename T, typename T2, typename... As,
+          typename CT = std::shared_ptr<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const std::shared_ptr<T> &xs,
+           const std::shared_ptr<T2> &ys, const As &... as) {
+  bool s = bool(xs);
+  assert(bool(ys) == s);
+  if (s == false)
+    return std::make_shared<R>();
+  return std::make_shared<R>(cxx::invoke(f, *xs, &ys, as...));
 }
 
 // vector
+
 namespace detail {
 template <typename T> struct unwrap_vector {
   typedef T type;
@@ -120,21 +143,51 @@ template <typename T> struct unwrap_vector<std::vector<T> > {
   }
 };
 }
-template <typename T, typename Allocator, typename... As, typename F,
+template <typename F, typename T, typename Allocator, typename... As,
           typename CT = std::vector<T, Allocator>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<
-              F, T, typename detail::unwrap_vector<As>::type...>::type>
+          typename R = typename cxx::invoke_of<F, T, As...>::type>
 C<R> fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
   std::size_t s = xs.size();
-  C<R> rs;
-  rs.reserve(s);
+  C<R> rs(s);
   for (std::size_t i = 0; i < s; ++i)
-    rs.push_back(cxx::invoke(f, xs[i], detail::unwrap_vector<As>()(as, i)...));
+    rs[i] = cxx::invoke(f, xs[i], as...);
   return rs;
 }
 
-template <typename T, typename Allocator, typename B, typename F, typename G,
+template <typename F, typename T, typename Allocator, typename T2,
+          typename Allocator2, typename... As,
+          typename CT = std::vector<T, Allocator>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap2(const F &f, const std::vector<T, Allocator> &xs,
+           const std::vector<T2, Allocator2> &ys, const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  C<R> rs(s);
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], ys[i], as...);
+  return rs;
+}
+
+template <typename F, typename T, typename Allocator, typename T2,
+          typename Allocator2, typename T3, typename Allocator3, typename... As,
+          typename CT = std::vector<T, Allocator>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+C<R> fmap3(const F &f, const std::vector<T, Allocator> &xs,
+           const std::vector<T2, Allocator2> &ys,
+           const std::vector<T3, Allocator3> &zs, const As &... as) {
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  assert(zs.size() == s);
+  C<R> rs(s);
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], ys[i], zs[i], as...);
+  return rs;
+}
+
+template <typename F, typename G, typename T, typename Allocator, typename B,
           typename CT = std::vector<T, Allocator>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename R = typename cxx::invoke_of<F, T, B, B>::type>

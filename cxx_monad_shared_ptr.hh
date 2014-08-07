@@ -25,19 +25,20 @@ make(As &&... as) {
   return std::make_shared<T>(std::forward<As>(as)...);
 }
 
-template <typename T, typename F, typename CT = std::shared_ptr<T>,
+template <typename F, typename T, typename... As,
+          typename CT = std::shared_ptr<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T>::type,
-          typename R = typename cxx::kinds<CR>::element_type>
-C<R> bind(const std::shared_ptr<T> &xs, const F &f) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+C<R> bind(const std::shared_ptr<T> &xs, const F &f, As &&... as) {
   if (!xs)
     return C<R>();
-  return cxx::invoke(f, *xs);
+  return cxx::invoke(f, *xs, std::forward<As>(as)...);
 }
 
 template <typename T, typename CCT = std::shared_ptr<std::shared_ptr<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::element_type,
+          typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const std::shared_ptr<std::shared_ptr<T> > &xss) {
   if (!xss)

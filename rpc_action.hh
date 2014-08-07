@@ -23,15 +23,15 @@
 
 #define RPC_DECLARE_ACTION(f)                                                  \
   struct f##_action                                                            \
-      : public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f> > {};
+      : public rpc::action_impl<f##_action, rpc::wrap<decltype(&f), &f> > {}
 
 #define RPC_IMPLEMENT_ACTION(f)                                                \
   RPC_CLASS_EXPORT(f##_action::evaluate);                                      \
-  RPC_CLASS_EXPORT(f##_action::finish);
+  RPC_CLASS_EXPORT(f##_action::finish)
 
 #define RPC_ACTION(f)                                                          \
   RPC_DECLARE_ACTION(f);                                                       \
-  RPC_IMPLEMENT_ACTION(f);
+  RPC_IMPLEMENT_ACTION(f)
 
 // Macro arguments: (c, ts...)
 #define RPC_DECLARE_CONSTRUCTOR(...) /* do nothing */
@@ -40,23 +40,23 @@
   RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(                                          \
       (rpc::make_global_shared_action<__VA_ARGS__>::evaluate)));               \
   RPC_CLASS_EXPORT(RPC_IDENTITY_TYPE(                                          \
-      (rpc::make_global_shared_action<__VA_ARGS__>::finish)));
+      (rpc::make_global_shared_action<__VA_ARGS__>::finish)))
 
 #define RPC_DECLARE_MEMBER_ACTION(c, f)                                        \
   struct f##_action : public rpc::member_action_impl<                          \
-                          f##_action, rpc::wrap<decltype(&c::f), &c::f> > {};
+                          f##_action, rpc::wrap<decltype(&c::f), &c::f> > {}
 
 #define RPC_IMPLEMENT_MEMBER_ACTION(c, f)                                      \
   RPC_CLASS_EXPORT(c::f##_action::evaluate);                                   \
-  RPC_CLASS_EXPORT(c::f##_action::finish);
+  RPC_CLASS_EXPORT(c::f##_action::finish)
 
 #define RPC_DECLARE_CONST_MEMBER_ACTION(c, f)                                  \
   struct f##_action : public rpc::const_member_action_impl<                    \
-                          f##_action, rpc::wrap<decltype(&c::f), &c::f> > {};
+                          f##_action, rpc::wrap<decltype(&c::f), &c::f> > {}
 
 #define RPC_IMPLEMENT_CONST_MEMBER_ACTION(c, f)                                \
   RPC_CLASS_EXPORT(c::f##_action::evaluate);                                   \
-  RPC_CLASS_EXPORT(c::f##_action::finish);
+  RPC_CLASS_EXPORT(c::f##_action::finish)
 
 #define RPC_DECLARE_COMPONENT(c) /* do nothing */
 
@@ -74,11 +74,11 @@
   RPC_CLASS_EXPORT(                                                            \
       rpc::shared_future_get_action<rpc::global_shared_ptr<c> >::evaluate);    \
   RPC_CLASS_EXPORT(                                                            \
-      rpc::shared_future_get_action<rpc::global_shared_ptr<c> >::finish);
+      rpc::shared_future_get_action<rpc::global_shared_ptr<c> >::finish)
 
 #define RPC_COMPONENT(c)                                                       \
   RPC_DECLARE_COMPONENT(c);                                                    \
-  RPC_IMPLEMENT_COMPONENT(c);
+  RPC_IMPLEMENT_COMPONENT(c)
 
 #define RPC_ACTION_HH_DONE
 #else

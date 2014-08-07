@@ -11,13 +11,12 @@
 #include <cereal/types/polymorphic.hpp>
 
 #include <functional>
-#include <typeinfo>
-
-// Note: T needs to be passed surrounded by parentheses
-#define RPC_IDENTITY_TYPE(T) typename std::function<void T>::argument_type
 
 #define RPC_VA_ARG0(arg0, ...) arg0
 #define RPC_VA_ARGS1(arg0, ...) __VA_ARGS__
+
+// Note: T needs to be passed surrounded by parentheses
+#define RPC_IDENTITY_TYPE(T) typename std::function<void T>::argument_type
 
 #define RPC_CLASS_EXPORT(T) CEREAL_REGISTER_TYPE(T)
 
@@ -57,6 +56,26 @@
 #define RPC_IMPLEMENT_CONST_MEMBER_ACTION(c, f)                                \
   RPC_CLASS_EXPORT(c::f##_action::evaluate);                                   \
   RPC_CLASS_EXPORT(c::f##_action::finish)
+
+#define RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(f)                           \
+  RPC_DECLARE_ACTION(f);                                                       \
+  typedef cereal::detail::bind_to_archives<                                    \
+      typename f##_action::evaluate> const &f##_evaluate_export_t;             \
+  static f##_evaluate_export_t f##_evaluate_export_init() {                    \
+    return cereal::detail::StaticObject<cereal::detail::bind_to_archives<      \
+        typename f##_action::evaluate> >::getInstance().bind();                \
+  }                                                                            \
+  static f##_evaluate_export_t f##_evaluate_export;                            \
+  typedef cereal::detail::bind_to_archives<                                    \
+      typename f##_action::finish> const &f##_finish_export_t;                 \
+  static f##_finish_export_t f##_finish_export_init() {                        \
+    return cereal::detail::StaticObject<cereal::detail::bind_to_archives<      \
+        typename f##_action::finish> >::getInstance().bind();                  \
+  }                                                                            \
+  static f##_finish_export_t f##_finish_export
+
+#define RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(f)                       \
+  ((void)f##_evaluate_export, (void)f##_finish_export)
 
 #define RPC_DECLARE_COMPONENT(c) /* do nothing */
 

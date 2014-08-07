@@ -1,7 +1,7 @@
 #ifndef HWLOC_HH
 #define HWLOC_HH
 
-void hwloc_bindings(bool do_set);
+void hwloc_bindings(bool do_set, bool do_output);
 
 #define HWLOC_HH_DONE
 #else

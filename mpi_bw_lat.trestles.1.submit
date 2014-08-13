@@ -17,7 +17,7 @@ set -e
 set -x
 set -u
 cd /home/ux452368/src/mpi-rpc
-source /home/ux452368/SIMFACTORY/all-all/env.sh
+source /home/ux452368/trestles/SIMFACTORY/all-all/env.sh
 
 echo '[BEGIN ENV]'
 env | sort

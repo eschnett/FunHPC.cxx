@@ -57,7 +57,7 @@ cat >$HOME/gordon/src/mpi-rpc/wave.$id.sub <<EOF
 #PBS -A TG-PHY060027N
 #PBS -q normal
 #PBS -r n
-#PBS -l walltime=1:00:00
+#PBS -l walltime=0:10:00
 #PBS -l nodes=$nodes:ppn=$cores_per_node
 #PBS -V
 #PBS -N wave.$id

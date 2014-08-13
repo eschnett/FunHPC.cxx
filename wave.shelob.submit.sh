@@ -57,7 +57,7 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #PBS -A hpc_numrel05
 #PBS -q checkpt
 #PBS -r n
-#PBS -l walltime=1:00:00
+#PBS -l walltime=0:10:00
 #PBS -l nodes=$nodes:ppn=$cores_per_node
 #PBS -V
 #PBS -N wave.$id

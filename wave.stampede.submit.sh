@@ -51,12 +51,19 @@ elif (($procs_per_node)); then
     bind_to='none'
 fi
 
+# Specific to Stampede
+if (($nodes <= 256)); then
+    partition='normal'
+else
+    partition='large'
+fi
+
 cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #! /bin/bash
 
 #SBATCH --verbose
 #SBATCH --account=TG-ASC120003
-#SBATCH --partition=normal
+#SBATCH --partition=$partition
 #SBATCH --time=0:10:00
 #SBATCH --nodes=$nodes --ntasks=$procs
 #SBATCH --job-name=wave.$id

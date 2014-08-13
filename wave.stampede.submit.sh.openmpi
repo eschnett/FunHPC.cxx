@@ -57,7 +57,7 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #SBATCH --verbose
 #SBATCH --account=TG-ASC120003
 #SBATCH --partition=normal
-#SBATCH --time=1:00:00
+#SBATCH --time=0:10:00
 #SBATCH --nodes=$nodes --ntasks=$procs
 #SBATCH --job-name=wave.$id
 #SBATCH --mail-type=ALL

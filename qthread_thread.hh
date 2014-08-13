@@ -103,7 +103,10 @@ public:
 
 namespace this_thread {
 
-inline void yield() { qthread_yield(); }
+inline void yield() {
+  qthread_yield();
+  // qthread_yield_near();
+}
 
 inline thread::id get_id() { return qthread_id(); }
 

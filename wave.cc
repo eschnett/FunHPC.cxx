@@ -610,6 +610,8 @@ ostream &operator<<(ostream &os, const stats_t &stats) {
 }
 
 int rpc_main(int argc, char **argv) {
+  // Setup
+  stats_t sstats;
 
   set_all_defs(
       make_shared<defs_t>(server->size(), thread::hardware_concurrency()));
@@ -620,6 +622,10 @@ int rpc_main(int argc, char **argv) {
   ofstream file(filename.str(), ios_base::trunc);
   shared_future<ostream *> ffo = make_ready_future<ostream *>(&file);
 
+  sstats.stop();
+  cout << "Setup:\n" << sstats;
+
+  // Initialization
   stats_t istats;
 
   auto s = make_client<domain_t>(domain_t::initial(), defs->tmin);

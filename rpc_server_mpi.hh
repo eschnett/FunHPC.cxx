@@ -47,6 +47,8 @@ public:
   server_mpi(int &argc, char **&argv);
   virtual ~server_mpi();
 
+  virtual void barrier() { comm.barrier(); }
+
   virtual stats_t get_stats() const { return stats; }
 
 private:

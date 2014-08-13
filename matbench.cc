@@ -378,11 +378,6 @@ void bench_fblock_global() {
 }
 
 int rpc_main(int argc, char **argv) {
-#if !defined RPC_HPX
-  cout << "Setting CPU bindings via hwloc:\n";
-  hwloc_bindings(true);
-#endif
-
   // best: nsize=2000, bsize=100
   // note: per-socket sheperds seem important
   niters = 3;

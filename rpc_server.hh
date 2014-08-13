@@ -20,6 +20,8 @@ public:
   int rank() const { return rank_; }
   int size() const { return size_; }
 
+  virtual void barrier() = 0;
+
   struct stats_t {
     std::ptrdiff_t messages_sent;
     std::ptrdiff_t messages_received;
@@ -27,7 +29,6 @@ public:
   virtual stats_t get_stats() const = 0;
 
   typedef std::function<int(int argc, char **argv)> user_main_t;
-
   virtual int event_loop(const user_main_t &user_main) = 0;
 
   virtual void call(int dest, const std::shared_ptr<callable_base> &func) = 0;

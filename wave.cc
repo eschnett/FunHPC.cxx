@@ -10,8 +10,6 @@
 #include "cxx_tree.hh"
 #include "cxx_monad_operators.hh"
 
-#include "hwloc.hh"
-
 #include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/tuple.hpp>
@@ -612,12 +610,6 @@ ostream &operator<<(ostream &os, const stats_t &stats) {
 }
 
 int rpc_main(int argc, char **argv) {
-  // cout << "Determining CPU bindings via hwloc:\n";
-  // hwloc_bindings(false, true);
-  // cout << "Setting CPU bindings via hwloc:\n";
-  // hwloc_bindings(true, true);
-  cout << "Setting CPU bindings via hwloc:\n";
-  hwloc_bindings(true, false);
 
   set_all_defs(
       make_shared<defs_t>(server->size(), thread::hardware_concurrency()));
@@ -643,7 +635,9 @@ int rpc_main(int argc, char **argv) {
   }
 
   istats.stop();
-  cout << "[" << rpc::server->rank() << "] Initialization:\n" << istats;
+  cout << "Initialization:\n" << istats;
+
+  // Evolution
   stats_t estats;
 
   while ((defs->nsteps < 0 || m->n < defs->nsteps) &&
@@ -666,7 +660,7 @@ int rpc_main(int argc, char **argv) {
   ffo.wait();
 
   estats.stop();
-  cout << "[" << rpc::server->rank() << "] Evolution:\n" << estats;
+  cout << "Evolution:\n" << estats;
 
   // double elapsed_init =
   //     std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /

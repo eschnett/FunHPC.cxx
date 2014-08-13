@@ -165,6 +165,7 @@ void hwloc_run(bool do_set, bool do_output, int nthreads,
   bool error_output = false;
   if (!worker_done[thread]) {
     worker_done[thread] = true;
+    // TODO: This leaks topologies???
     hwloc_topology_t topology;
     hwloc_topology_init(&topology);
     hwloc_topology_load(topology);

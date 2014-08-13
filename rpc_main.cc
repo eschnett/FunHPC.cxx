@@ -1,3 +1,4 @@
+#include "rpc_hwloc.hh"
 #include "rpc_thread.hh"
 #include "rpc_server.hh"
 #include "rpc_server_mpi.hh"
@@ -217,6 +218,7 @@ int real_main(int argc, char **argv) {
   rpc::server = new rpc::server_mpi(argc, argv);
   rpc::thread_initialize();
   rpc::check_procs_threads();
+  rpc::set_cpu_bindings();
   if (rpc::server->rank() == 0) {
     std::cout << "Running...\n";
   }

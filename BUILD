@@ -6,7 +6,7 @@ mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@shel
 
 mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@stampede.tacc.utexas.edu
 
-mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server ux452368@trestles.sdsc.edu
+mosh --server=\$HOME/trestles/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server ux452368@trestles.sdsc.edu
 
 
 
@@ -47,10 +47,10 @@ GOOD:
 - nvidia
 - redshift
 - shelob
+- stampede (with mvapich2)
 - titan
 - trestles
 
 PROBLEM:
 - lonestar (c99)
-- stampede (openmpi segfault)
 - zwicky (c99)

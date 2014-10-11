@@ -4,7 +4,7 @@ mosh --server=\$HOME/work/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server schnette
 
 mosh eschnetter@nvidia
 
-mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@shelob.hpc.lsu.edu
+NOmosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@shelob.hpc.lsu.edu
 
 mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@stampede.tacc.utexas.edu
 

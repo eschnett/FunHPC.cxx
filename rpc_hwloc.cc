@@ -3,6 +3,8 @@
 
 #include <hwloc.h>
 
+// #include <mpi.h>
+
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
@@ -33,26 +35,38 @@ int stoi1(const char *str, int dflt) {
 
 // Process/node mapping
 struct proc_map_t {
+  // current node
+  int node, nodes;
   // global MPI rank/size
   int rank, size;
-  // current node
-  int node;
   // MPI rank/size for the current node
   int local_rank, local_size;
 
+  // TODO: determine nodes and local rank from hwloc, probably best via
+  // MPI_Comm_split
   proc_map_t() {
-    rank = stoi1(getenv("OMPI_COMM_WORLD_RANK"),
-                 stoi1(getenv("MV2_COMM_WORLD_RANK"), server->rank()));
-    size = stoi1(getenv("OMPI_COMM_WORLD_SIZE"),
-                 stoi1(getenv("MV2_COMM_WORLD_SIZE"), server->size()));
-    local_rank = stoi1(getenv("OMPI_COMM_WORLD_LOCAL_RANK"),
-                       stoi1(getenv("MV2_COMM_WORLD_LOCAL_RANK"), 0));
-    local_size = stoi1(getenv("OMPI_COMM_WORLD_LOCAL_SIZE"),
-                       stoi1(getenv("MV2_COMM_WORLD_LOCAL_SIZE"), 1));
-    node = rank / local_size; // this assumes a regular layout
+    // rank = stoi1(getenv("OMPI_COMM_WORLD_RANK"),
+    //              stoi1(getenv("MV2_COMM_WORLD_RANK"), 0));
+    // size = stoi1(getenv("OMPI_COMM_WORLD_SIZE"),
+    //              stoi1(getenv("MV2_COMM_WORLD_SIZE"), server->size()));
+    // local_rank = stoi1(getenv("OMPI_COMM_WORLD_LOCAL_RANK"),
+    //                    stoi1(getenv("MV2_COMM_WORLD_LOCAL_RANK"), 0));
+    // local_size = stoi1(getenv("OMPI_COMM_WORLD_LOCAL_SIZE"),
+    //                    stoi1(getenv("MV2_COMM_WORLD_LOCAL_SIZE"), 1));
+    // node = rank / local_size; // this assumes a regular layout
+    // nodes = size / local_size;
+    size = server->size();
+    RPC_ASSERT(size > 0);
+    nodes = stoi1(getenv("RPC_NODES"), -1);
+    RPC_ASSERT(nodes > 0 && size % nodes == 0);
+    local_size = size / nodes;
+    RPC_ASSERT(local_size > 0 && size % local_size == 0);
+    rank = server->rank();
     RPC_ASSERT(rank >= 0 && rank < size);
+    node = rank / local_size;
+    RPC_ASSERT(node >= 0 && node < nodes);
+    local_rank = rank % local_size;
     RPC_ASSERT(local_rank >= 0 && local_rank < local_size);
-    RPC_ASSERT(rank >= local_rank && local_size <= size);
   }
 };
 
@@ -61,7 +75,7 @@ bool output_affinity(std::ostream &os, const hwloc_topology_t &topology,
   os << "   "
      << "N" << proc_map.node << " "
      << "L" << proc_map.local_rank << " "
-     << "P" << server->rank() << " "
+     << "P" << proc_map.rank << " "
      << "T" << this_thread::get_worker_id() << " ";
 #ifdef QTHREAD_VERSION
   os << "(S" << qthread_shep() << ") ";
@@ -162,9 +176,9 @@ bool run(bool do_set, bool do_output, const proc_map_t *proc_map_,
     infos[thread] = os.str();
   }
 
-  bool all_done = false;
+  bool all_done = true;
   for (int t = 0; t < nthreads; ++t)
-    all_done |= worker_done[t];
+    all_done &= worker_done[t];
   if (!all_done) {
     // block for some time to keep the current core busy
     double x = 0.1;
@@ -218,7 +232,39 @@ void set_cpu_bindings() {
   const bool do_set = true;
   const bool do_output = proc_map.node == 0;
 
+  // for (int proc = 0; proc < proc_map.size; ++proc) {
+  //   char name[MPI_MAX_PROCESSOR_NAME + 1];
+  //   int namelen;
+  //   MPI_Get_processor_name(name, &namelen);
+  //   name[namelen] = '\0';
+  //   std::cout << "P" << proc << ": " << name << "\n";
+  // }
+
+  // for (int proc = 0; proc < proc_map.size; ++proc) {
+  //   const int machine_depth =
+  //       hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_MACHINE);
+  //   RPC_ASSERT(machine_depth >= 0);
+  //   const int num_machines = hwloc_get_nbobjs_by_depth(topology,
+  // machine_depth);
+  //   RPC_ASSERT(num_machines > 0);
+  //   const hwloc_obj_t machine_obj =
+  //       hwloc_get_obj_by_depth(topology, machine_depth, 0);
+  //   RPC_ASSERT(machine_obj);
+  //   const char *hostname = hwloc_obj_get_info_by_name(machine_obj,
+  // "HostName");
+  //   std::cout << "P" << proc << ": " << hostname << "\n";
+  // }
+
+  if (proc_map.rank == 0) {
+    std::cout << "Process map: "
+              << "N" << proc_map.node << "/" << proc_map.nodes << " "
+              << "L" << proc_map.local_rank << "/" << proc_map.local_size << " "
+              << "P" << proc_map.rank << "/" << proc_map.size << "\n";
+  }
+  server->barrier();
+
   std::string message = run_on_threads(do_set, do_output, proc_map, topology);
+  // TODO: Do not block unrelated processes
   // for (int proc = 0; proc < proc_map.local_size; ++proc) {
   //   if (proc_map.local_rank == proc)
   //     std::cout << message;

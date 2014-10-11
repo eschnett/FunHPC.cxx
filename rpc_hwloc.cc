@@ -138,12 +138,10 @@ bool set_affinity(std::ostream &os, const hwloc_topology_t &topology,
 }
 
 bool run(bool do_set, bool do_output, const proc_map_t *proc_map_,
-         const hwloc_topology_t *topology_,
-         std::vector<std::atomic<bool> > *worker_done_,
+         const hwloc_topology_t *topology_, std::atomic<bool> *worker_done,
          std::vector<std::string> *infos_) {
   const hwloc_topology_t &topology = *topology_;
   const proc_map_t &proc_map = *proc_map_;
-  std::vector<std::atomic<bool> > &worker_done = *worker_done_;
   std::vector<std::string> &infos = *infos_;
 
   const int thread = this_thread::get_worker_id();
@@ -186,14 +184,14 @@ std::string run_on_threads(bool do_set, bool do_output,
   int nsubmit = 100 * nthreads;
   int nattempts = 10;
   for (int attempt = 0; attempt < nattempts; ++attempt) {
-    std::vector<std::atomic<bool> > worker_done(nthreads);
-    for (auto &wd : worker_done)
-      wd = false;
+    std::atomic<bool> worker_done[nthreads];
+    for (int thread = 0; thread < nthreads; ++thread)
+      worker_done[thread] = false;
     std::vector<std::string> infos(nthreads);
     std::vector<future<bool> > fs;
     for (int submit = 0; submit < nsubmit; ++submit)
       fs.push_back(async(run, do_set, do_output, &proc_map, &topology,
-                         &worker_done, &infos));
+                         &worker_done[0], &infos));
     // Prod the scheduler, as per advice from Dylan Stark
     // <dstark@sandia.gov> 2014-08-07
     this_thread::yield();

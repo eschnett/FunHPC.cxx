@@ -153,9 +153,7 @@ private:
 };
 
 void hwloc_run(bool do_set, bool do_output, int nthreads,
-               vector<atomic<bool> > *worker_done_,
-               vector<hwloc_result_t> *infos_) {
-  vector<atomic<bool> > &worker_done = *worker_done_;
+               atomic<bool> *worker_done, vector<hwloc_result_t> *infos_) {
   vector<hwloc_result_t> &infos = *infos_;
   ostringstream os;
   const int thread = rpc::this_thread::get_worker_id();
@@ -194,13 +192,13 @@ string hwloc_run_on_threads(bool do_set, bool do_output) {
   for (int attempt = 1; attempt <= nattempts; ++attempt) {
     // os << "Attempt #" << attempt << "\n";
     vector<rpc::future<void> > fs;
-    vector<atomic<bool> > worker_done(nthreads);
+    atomic<bool> worker_done[nthreads];
     for (int thread = 0; thread < nthreads; ++thread)
       worker_done[thread] = false;
     vector<hwloc_result_t> infos(nthreads);
     for (int submit = 0; submit < nsubmit; ++submit)
       fs.push_back(rpc::async(hwloc_run, do_set, do_output, nthreads,
-                              &worker_done, &infos));
+                              &worker_done[0], &infos));
     for (auto &f : fs)
       f.wait();
     bool have_all_infos = true;

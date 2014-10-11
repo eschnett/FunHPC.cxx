@@ -5,12 +5,7 @@ namespace rpc {
 
 // Remote call policies
 
-enum class remote : int {
-  async = 1,
-  deferred = 2,
-  sync = 4,
-  detached = 8
-};
+enum class remote : int { async = 1, deferred = 2, sync = 4, detached = 8 };
 
 inline constexpr remote operator~(remote a) {
   return static_cast<remote>(~static_cast<int>(a));
@@ -26,7 +21,10 @@ inline constexpr remote operator^(remote a, remote b) {
   return static_cast<remote>(static_cast<int>(a) ^ static_cast<int>(b));
 }
 
-inline remote &operator&=(remote &a, remote b) { return a = a & b; }
+inline remote &
+operator&=(remote &a, remote b) {
+  return a = a & b;
+}
 inline remote &operator|=(remote &a, remote b) { return a = a | b; }
 inline remote &operator^=(remote &a, remote b) { return a = a ^ b; }
 }

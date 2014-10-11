@@ -19,10 +19,7 @@ namespace rpc {
 // Note: The small message optimisation is currently disabled, as it may not
 // yield any benefit
 const int max_small_size = 0;
-enum tags {
-  tag_small = 1,
-  tag_large = 2
-};
+enum tags { tag_small = 1, tag_large = 2 };
 
 template <typename T> class send_req_t {
   std::string buf;

@@ -66,9 +66,8 @@ public:
     auto argsptr =
         std::make_shared<std::tuple<typename std::decay<As>::type...> >(
             std::forward<As>(args)...);
-    std::function<void()> funcbnd = [funcptr, argsptr]() {
-      cxx::tuple_apply(*funcptr, *argsptr);
-    };
+    std::function<void()> funcbnd =
+        [funcptr, argsptr]() { cxx::tuple_apply(*funcptr, *argsptr); };
     handle = start_thread(funcbnd);
   }
 
@@ -135,7 +134,7 @@ auto async(launch policy, const F &func, As &&... args)
           std::forward<As>(args)...);
   typedef typename cxx::invoke_of<F, As...>::type R;
   if (is_deferred) {
-    auto funcbnd = [ funcptr, argsptr ]()->R {
+    auto funcbnd = [funcptr, argsptr]() -> R {
       return cxx::tuple_apply(*funcptr, *argsptr);
     };
     auto d = deferred<R>(funcbnd);
@@ -167,9 +166,8 @@ auto async(launch policy, const F &func, As &&... args)
       std::make_shared<std::tuple<typename std::decay<As>::type...> >(
           std::forward<As>(args)...);
   if (is_deferred) {
-    auto funcbnd = [funcptr, argsptr]() {
-      cxx::tuple_apply(*funcptr, *argsptr);
-    };
+    auto funcbnd =
+        [funcptr, argsptr]() { cxx::tuple_apply(*funcptr, *argsptr); };
     auto d = deferred<void>(funcbnd);
     auto f = d.get_future();
     return f;

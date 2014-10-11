@@ -34,15 +34,15 @@ public:
 
   client(const rpc::shared_future<std::shared_ptr<T> > &ptr)
       : client(future_then(
-            ptr, [](const rpc::shared_future<std::shared_ptr<T> > & ptr)
-                     ->global_shared_ptr<T> { return ptr.get(); })) {}
+            ptr, [](const rpc::shared_future<std::shared_ptr<T> > &ptr)
+                     -> global_shared_ptr<T> { return ptr.get(); })) {}
   client(future<std::shared_ptr<T> > &&ptr) : client(ptr.share()) {}
 
   client(const rpc::shared_future<client<T> > &ptr)
-      : client(future_then(
-            ptr, [](const rpc::shared_future<client<T> > & ptr)
-                     ->global_shared_ptr<T> { return ptr.get().data.get(); })) {
-  }
+      : client(future_then(ptr, [](const rpc::shared_future<client<T> > &ptr)
+                                    -> global_shared_ptr<T> {
+          return ptr.get().data.get();
+        })) {}
   client(future<client<T> > &&ptr) : client(ptr.share()) {}
 
   global_shared_ptr<T> get_global_shared() const { return data.get(); }
@@ -74,8 +74,8 @@ public:
   client make_local() const {
     return future_then(
         data,
-        [](const rpc::shared_future<global_shared_ptr<T> > & data)
-            ->global_shared_ptr<T> { return data.get().make_local().get(); });
+        [](const rpc::shared_future<global_shared_ptr<T> > &data)
+            -> global_shared_ptr<T> { return data.get().make_local().get(); });
   }
 
   std::ostream &output(std::ostream &os) const { return os << data.get(); }

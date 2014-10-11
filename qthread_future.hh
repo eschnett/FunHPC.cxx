@@ -141,14 +141,12 @@ public:
     swap(other);
     return *this;
   }
-  const value_type &get() const {
-    return state->get_value();
-  };
+  const value_type &get() const { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(const F &func)
-      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+  auto then(const F &func) const
+      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     // TODO: move func instead of copying it
     if (is_ready()) {
@@ -201,14 +199,12 @@ public:
     swap(other);
     return *this;
   }
-  const value_type get() const {
-    return state->get_value();
-  };
+  const value_type get() const { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(const F &func)
-      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+  auto then(const F &func) const
+      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, *this));
@@ -249,14 +245,12 @@ public:
     swap(other);
     return *this;
   }
-  value_type get() const {
-    return state->get_value();
-  };
+  value_type get() const { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(const F &func)
-      const -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+  auto then(const F &func) const
+      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, *this));
@@ -353,9 +347,7 @@ public:
   shared_future<value_type> share() {
     return shared_future<T>(std::move(*this));
   }
-  value_type get() {
-    return state->get_value();
-  };
+  value_type get() { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
@@ -400,9 +392,7 @@ public:
   shared_future<value_type> share() {
     return shared_future<value_type>(std::move(*this));
   }
-  value_type get() {
-    return state->get_value();
-  };
+  value_type get() { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>

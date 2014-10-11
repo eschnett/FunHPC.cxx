@@ -387,7 +387,7 @@ struct is_global : is_global_helper<typename std::remove_cv<
 template <typename F, typename G, typename... As>
 auto sync(remote policy, F, G &&global, As &&... args)
     -> typename std::enable_if<
-          (is_action<F>::value &&is_global<G>::value),
+          (is_action<F>::value && is_global<G>::value),
           typename cxx::invoke_of<F, G, As...>::type>::type {
   return sync(policy, global.get_proc_future(), F(), std::forward<G>(global),
               std::forward<As>(args)...);
@@ -395,7 +395,7 @@ auto sync(remote policy, F, G &&global, As &&... args)
 
 template <typename F, typename G, typename... As>
 auto detached(remote policy, F, G &&global, As &&... args)
-    -> typename std::enable_if<(is_action<F>::value &&is_global<G>::value),
+    -> typename std::enable_if<(is_action<F>::value && is_global<G>::value),
                                void>::type {
   return detached(policy, global.get_proc_future(), F(),
                   std::forward<G>(global), std::forward<As>(args)...);
@@ -404,7 +404,7 @@ auto detached(remote policy, F, G &&global, As &&... args)
 template <typename F, typename G, typename... As>
 auto async(remote policy, F, G &&global, As &&... args)
     -> typename std::enable_if<
-          (is_action<F>::value &&is_global<G>::value),
+          (is_action<F>::value && is_global<G>::value),
           future<typename cxx::invoke_of<F, G, As...>::type> >::type {
   return async(policy, global.get_proc_future(), F(), std::forward<G>(global),
                std::forward<As>(args)...);

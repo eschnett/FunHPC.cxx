@@ -150,8 +150,8 @@ inline const_mem_fun_ref_t<_Sp, _Tp> mem_fun_ref(_Sp (_Tp::*__f)() const) {
 }
 
 template <class _Sp, class _Tp, class _Ap>
-inline const_mem_fun1_ref_t<_Sp, _Tp, _Ap>
-mem_fun_ref(_Sp (_Tp::*__f)(_Ap) const) {
+inline const_mem_fun1_ref_t<_Sp, _Tp, _Ap> mem_fun_ref(_Sp (_Tp::*__f)(_Ap)
+                                                       const) {
   return const_mem_fun1_ref_t<_Sp, _Tp, _Ap>(__f);
 }
 
@@ -191,15 +191,15 @@ template <class _Rp, class... _ArgTypes>
 struct __maybe_derive_from_unary_function {};
 
 template <class _Rp, class _A1>
-struct __maybe_derive_from_unary_function<_Rp(_A1)> : public unary_function<
-                                                          _A1, _Rp> {};
+struct __maybe_derive_from_unary_function<_Rp(_A1)>
+    : public unary_function<_A1, _Rp> {};
 
 template <class _Rp, class... _ArgTypes>
 struct __maybe_derive_from_binary_function {};
 
 template <class _Rp, class _A1, class _A2>
-struct __maybe_derive_from_binary_function<
-    _Rp(_A1, _A2)> : public binary_function<_A1, _A2, _Rp> {};
+struct __maybe_derive_from_binary_function<_Rp(_A1, _A2)>
+    : public binary_function<_A1, _A2, _Rp> {};
 
 template <class _Fp> class __base;
 
@@ -222,8 +222,8 @@ public:
 template <class _FD, class _Alloc, class _FB> class __func;
 
 template <class _Fp, class _Alloc, class _Rp, class... _ArgTypes>
-class __func<_Fp, _Alloc,
-             _Rp(_ArgTypes...)> : public __base<_Rp(_ArgTypes...)> {
+class __func<_Fp, _Alloc, _Rp(_ArgTypes...)>
+    : public __base<_Rp(_ArgTypes...)> {
   __compressed_pair<_Fp, _Alloc> __f_;
 
 public:
@@ -287,9 +287,8 @@ _Rp __func<_Fp, _Alloc, _Rp(_ArgTypes...)>::operator()(_ArgTypes &&... __arg) {
 }
 
 template <class _Fp, class _Alloc, class _Rp, class... _ArgTypes>
-const void *
-__func<_Fp, _Alloc, _Rp(_ArgTypes...)>::target(const type_info &__ti) const
-    _NOEXCEPT {
+const void *__func<_Fp, _Alloc, _Rp(_ArgTypes...)>::target(
+    const type_info &__ti) const _NOEXCEPT {
   if (__ti == typeid(_Fp))
     return &__f_.first();
   return (const void *)0;
@@ -304,11 +303,10 @@ __func<_Fp, _Alloc, _Rp(_ArgTypes...)>::target_type() const _NOEXCEPT {
 } // __function
 
 template <class _Rp, class... _ArgTypes>
-class function<_Rp(
-    _ArgTypes...)> : public __function::
-                         __maybe_derive_from_unary_function<_Rp(_ArgTypes...)>,
-                     public __function::__maybe_derive_from_binary_function<
-                         _Rp(_ArgTypes...)> {
+class function<_Rp(_ArgTypes...)>
+    : public __function::__maybe_derive_from_unary_function<_Rp(_ArgTypes...)>,
+      public __function::__maybe_derive_from_binary_function<
+          _Rp(_ArgTypes...)> {
   typedef __function::__base<_Rp(_ArgTypes...)> __base;
   typename aligned_storage<3 * sizeof(void *)>::type __buf_;
   __base *__f_;
@@ -558,8 +556,8 @@ typename enable_if<function<_Rp(_ArgTypes...)>::template __callable<
                        !is_same<typename remove_reference<_Fp>::type,
                                 function<_Rp(_ArgTypes...)> >::value,
                    function<_Rp(_ArgTypes...)> &>::type
-function<_Rp(_ArgTypes...)>::
-operator=(_Fp &&__f) {
+    function<_Rp(_ArgTypes...)>::
+    operator=(_Fp &&__f) {
   function(std::forward<_Fp>(__f)).swap(*this);
   return *this;
 }
@@ -609,8 +607,8 @@ _Rp function<_Rp(_ArgTypes...)>::operator()(_ArgTypes... __arg) const {
 }
 
 template <class _Rp, class... _ArgTypes>
-const std::type_info &function<_Rp(_ArgTypes...)>::target_type() const
-    _NOEXCEPT {
+const std::type_info &
+function<_Rp(_ArgTypes...)>::target_type() const _NOEXCEPT {
   if (__f_ == 0)
     return typeid(void);
   return __f_->target_type();
@@ -691,8 +689,8 @@ _LIBCPP_FUNC_VIS extern __ph<10> _10;
 } // placeholders
 
 template <int _Np>
-struct __is_placeholder<placeholders::__ph<_Np> > : public integral_constant<
-                                                        int, _Np> {};
+struct __is_placeholder<placeholders::__ph<_Np> >
+    : public integral_constant<int, _Np> {};
 
 template <class _Tp, class _Uj>
 inline _Tp &__mu(reference_wrapper<_Tp> __t, _Uj &) {
@@ -717,7 +715,7 @@ template <bool IsPh, class _Ti, class _Uj> struct __mu_return2 {};
 
 template <class _Ti, class _Uj> struct __mu_return2<true, _Ti, _Uj> {
   typedef typename tuple_element<is_placeholder<_Ti>::value - 1, _Uj>::type
-  type;
+      type;
 };
 
 template <class _Ti, class _Uj>
@@ -755,11 +753,9 @@ struct ____mu_return_invokable<true, _Ti, _Uj...> {
 };
 
 template <class _Ti, class... _Uj>
-struct ____mu_return<
-    _Ti, false, true, false,
-    tuple<_Uj...> > : public ____mu_return_invokable<invokable<_Ti &,
-                                                               _Uj...>::value,
-                                                     _Ti, _Uj...> {};
+struct ____mu_return<_Ti, false, true, false, tuple<_Uj...> >
+    : public ____mu_return_invokable<invokable<_Ti &, _Uj...>::value, _Ti,
+                                     _Uj...> {};
 
 template <class _Ti, class _TupleUj>
 struct ____mu_return<_Ti, false, false, true, _TupleUj> {
@@ -781,8 +777,9 @@ template <class _Ti, class _TupleUj>
 struct __mu_return
     : public ____mu_return<_Ti, __is_reference_wrapper<_Ti>::value,
                            is_unique_bind_expression<_Ti>::value,
-                           0 < is_placeholder<_Ti>::value &&is_placeholder<
-                                   _Ti>::value <= tuple_size<_TupleUj>::value,
+                           0 < is_placeholder<_Ti>::value &&
+                               is_placeholder<_Ti>::value <=
+                                   tuple_size<_TupleUj>::value,
                            _TupleUj> {};
 
 template <class _Fp, class _BoundArgs, class _TupleUj>
@@ -816,7 +813,7 @@ template <class _Fp, class... _BoundArgs, class _TupleUj>
 struct __unique_bind_return<_Fp, const tuple<_BoundArgs...>, _TupleUj, true> {
   typedef typename invoke_of<
       _Fp &, typename __mu_return<const _BoundArgs, _TupleUj>::type...>::type
-  type;
+      type;
 };
 
 template <class _Fp, class _BoundArgs, size_t... _Indx, class _Args>
@@ -866,8 +863,8 @@ public:
 };
 
 template <class _Fp, class... _BoundArgs>
-struct __is_unique_bind_expression<
-    __unique_bind<_Fp, _BoundArgs...> > : public true_type {};
+struct __is_unique_bind_expression<__unique_bind<_Fp, _BoundArgs...> >
+    : public true_type {};
 
 template <class _Rp, class _Fp, class... _BoundArgs>
 class __unique_bind_r : public __unique_bind<_Fp, _BoundArgs...> {
@@ -907,8 +904,8 @@ public:
 };
 
 template <class _Rp, class _Fp, class... _BoundArgs>
-struct __is_unique_bind_expression<
-    __unique_bind_r<_Rp, _Fp, _BoundArgs...> > : public true_type {};
+struct __is_unique_bind_expression<__unique_bind_r<_Rp, _Fp, _BoundArgs...> >
+    : public true_type {};
 
 template <class _Fp, class... _BoundArgs>
 inline __unique_bind<_Fp, _BoundArgs...>

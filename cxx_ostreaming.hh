@@ -32,14 +32,14 @@ class ostreamer {
     std::string s;
     ar(s);
     *this =
-        ostreamer([s](std::ostream & os)->std::ostream & { return os << s; });
+        ostreamer([s](std::ostream & os) -> std::ostream & { return os << s; });
   }
 
 public:
   ostreamer(const fun_t &fun) : fun(std::make_shared<fun_t>(fun)) {}
   ostreamer(fun_t &&fun) : fun(std::make_shared<fun_t>(std::move(fun))) {}
   ostreamer()
-      : ostreamer([](std::ostream & os)->std::ostream & { return os; }) {}
+      : ostreamer([](std::ostream & os) -> std::ostream & { return os; }) {}
   std::ostream &operator()(std::ostream &os) const { return (*fun)(os); }
 };
 
@@ -47,20 +47,22 @@ public:
 
 // Create an ostreamer from something that can be output
 template <typename Elem> ostreamer make_ostreamer(const Elem &e) {
-  return ostreamer([e](std::ostream & os)->std::ostream & { return os << e; });
+  return ostreamer([e](std::ostream & os) -> std::ostream &
+                   { return os << e; });
 }
 template <typename Elem> ostreamer make_ostreamer_str(const Elem &e) {
   std::ostringstream oss;
   oss << e;
   std::string s = oss.str();
-  return ostreamer([s](std::ostream & os)->std::ostream & { return os << s; });
+  return ostreamer([s](std::ostream & os) -> std::ostream &
+                   { return os << s; });
 }
 
 // Combine two ostreamers
 // (This is just function composition)
 ostreamer operator<<(const ostreamer &left, const ostreamer &right) {
-  return ostreamer([ left, right ](std::ostream & os)->std::ostream &
-  { return right(left(os)); });
+  return ostreamer([ left, right ](std::ostream & os) -> std::ostream &
+                   { return right(left(os)); });
 }
 
 // Convenience wrapper

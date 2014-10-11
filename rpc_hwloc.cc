@@ -24,8 +24,7 @@ int stoi1(const char *str, int dflt) {
       int res = std::stoi(str1, &pos);
       if (pos == str1.length())
         return res;
-    }
-    catch (...) {
+    } catch (...) {
       // do nothing
     }
   }

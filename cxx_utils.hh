@@ -142,8 +142,8 @@ template <> struct ffs<> : std::integral_constant<size_t, 0> {};
 template <bool... xs>
 struct ffs<true, xs...> : std::integral_constant<size_t, 0> {};
 template <bool... xs>
-struct ffs<false, xs...> : std::integral_constant<size_t,
-                                                  ffs<xs...>::value + 1> {};
+struct ffs<false, xs...>
+    : std::integral_constant<size_t, ffs<xs...>::value + 1> {};
 }
 
 #define CXX_UTILS_HH_DONE

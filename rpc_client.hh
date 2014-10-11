@@ -129,8 +129,7 @@ struct client_foldable<F, true, R, T, As...> {
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
 
-  static R foldl(const F &f, const R &z, const rpc::client<T> &xs,
-                 const As &... as) {
+  static R foldl(F, const R &z, const rpc::client<T> &xs, const As &... as) {
     // Note: operator bool waits for the client to be ready
     bool s = bool(xs);
     return s == false ? foldl_null(z, xs, as...)
@@ -141,12 +140,12 @@ struct client_foldable<F, true, R, T, As...> {
 // Define action exports
 template <typename F, typename R, typename T, typename... As>
 typename client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export_t
-client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export =
-    foldl_client_evaluate_export_init();
+    client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export =
+        foldl_client_evaluate_export_init();
 template <typename F, typename R, typename T, typename... As>
 typename client_foldable<F, true, R, T, As...>::foldl_client_finish_export_t
-client_foldable<F, true, R, T, As...>::foldl_client_finish_export =
-    foldl_client_finish_export_init();
+    client_foldable<F, true, R, T, As...>::foldl_client_finish_export =
+        foldl_client_finish_export_init();
 
 template <typename F, bool is_action, typename R, typename T, typename T2,
           typename... As>
@@ -225,13 +224,13 @@ struct client_foldable2<F, true, R, T, T2, As...> {
 template <typename F, typename R, typename T, typename T2, typename... As>
 typename client_foldable2<F, true, R, T, T2,
                           As...>::foldl2_client_evaluate_export_t
-client_foldable2<F, true, R, T, T2, As...>::foldl2_client_evaluate_export =
-    foldl2_client_evaluate_export_init();
+    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_evaluate_export =
+        foldl2_client_evaluate_export_init();
 template <typename F, typename R, typename T, typename T2, typename... As>
 typename client_foldable2<F, true, R, T, T2,
                           As...>::foldl2_client_finish_export_t
-client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
-    foldl2_client_finish_export_init();
+    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
+        foldl2_client_finish_export_init();
 
 // functor
 

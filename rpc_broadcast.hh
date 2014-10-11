@@ -205,9 +205,7 @@ auto map_reduce1(const F &f, const R &r, const client<C> &c, const I &b,
     -> typename cxx::invoke_of<F, typename C::value_type>::type {
   typedef typename C::value_type A;
   typedef typename cxx::invoke_of<F, A>::type B;
-  auto z = []()->B {
-    std::terminate();
-  };
+  auto z = []() -> B { std::terminate(); };
   typedef typename std::decay<decltype(z)>::type Z;
   return map_reduce_impl<A, B, F, R, Z, C, I>(f, r, z, c).map_reduce1(b, e);
 }
@@ -281,9 +279,7 @@ auto reduce1(const R &r, const client<C> &c, const I &b, const I &e)
     -> typename C::value_type {
   typedef typename C::value_type A;
   typedef A B;
-  auto z = []()->B {
-    std::terminate();
-  };
+  auto z = []() -> B { std::terminate(); };
   typedef typename std::decay<decltype(z)>::type Z;
   return reduce_impl<A, B, R, Z, C, I>(r, z, c).reduce1(b, e);
 }

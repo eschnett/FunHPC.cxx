@@ -23,8 +23,8 @@ struct unique_function_impl_base<R(Args...)> {
 
 template <typename, typename> struct unique_function_impl;
 template <typename F, typename R, typename... Args>
-struct unique_function_impl<F, R(Args...)> : public unique_function_impl_base<
-                                                 R(Args...)> {
+struct unique_function_impl<F, R(Args...)>
+    : public unique_function_impl_base<R(Args...)> {
   F f;
   unique_function_impl(F &&f) : f(std::move(f)) {}
   virtual ~unique_function_impl() {}
@@ -48,7 +48,7 @@ public:
   unique_function(unique_function &&other) : impl(std::move(other.impl)) {}
   template <typename F>
   unique_function(F &&f)
-      : impl(rpc::make_unique<detail::unique_function_impl<F, R(Args...)> >(
+      : impl(std::make_unique<detail::unique_function_impl<F, R(Args...)> >(
             std::forward<F>(f))) {}
   unique_function &operator=(unique_function &&other) {
     impl = other.impl;

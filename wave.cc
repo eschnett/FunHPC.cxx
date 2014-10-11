@@ -106,7 +106,7 @@ struct defs_t {
 
 private:
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) {
+  template <typename Archive> auto serialize(Archive &ar) {
     ar(ncells, dx, dt);
   }
 
@@ -114,13 +114,13 @@ public:
   defs_t() {} // only for serialize
 };
 shared_ptr<defs_t> defs;
-void set_defs(shared_ptr<defs_t> defs) { ::defs = defs; }
+auto set_defs(shared_ptr<defs_t> defs) { ::defs = defs; }
 RPC_ACTION(set_defs);
-void set_all_defs(const shared_ptr<defs_t> &defs) {
+auto set_all_defs(const shared_ptr<defs_t> &defs) {
   async_broadcast(set_defs_action(), defs).get();
 }
 
-bool do_this_time(ptrdiff_t iteration, ptrdiff_t do_every) {
+auto do_this_time(ptrdiff_t iteration, ptrdiff_t do_every) {
   if (do_every < 0)
     return false;
   if (iteration == 0)
@@ -154,7 +154,7 @@ struct norm_t {
 
 private:
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) {
+  template <typename Archive> auto serialize(Archive &ar) {
     ar(sum, sum2, count);
   }
 
@@ -163,20 +163,18 @@ public:
   norm_t(double val) : sum(val), sum2(pow(val, 2)), count(1.0) {}
   norm_t(const norm_t &x, const norm_t &y)
       : sum(x.sum + y.sum), sum2(x.sum2 + y.sum2), count(x.count + y.count) {}
-  double avg() const { return sum / count; }
-  double norm2() const { return sqrt(sum2 / count); }
+  auto avg() const { return sum / count; }
+  auto norm2() const { return sqrt(sum2 / count); }
 };
 RPC_COMPONENT(norm_t);
-inline norm_t operator+(const norm_t &x, const norm_t &y) {
-  return norm_t(x, y);
-}
+inline auto operator+(const norm_t &x, const norm_t &y) { return norm_t(x, y); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // A cell -- a container holding data, no intelligence here
 
 struct cell_t {
-  static constexpr double nan = numeric_limits<double>::quiet_NaN();
+  static constexpr auto nan = numeric_limits<double>::quiet_NaN();
 
   double x;
   double u;
@@ -185,14 +183,14 @@ struct cell_t {
 
 private:
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
+  template <typename Archive> auto serialize(Archive &ar) { ar(x, u, rho, v); }
 
 public:
   // For safety
   cell_t() : x(nan), u(nan), rho(nan), v(nan) {}
 
   // Output
-  ostream &output(ostream &os) const {
+  auto output(ostream &os) const -> ostream & {
     return os << "cell: x=" << x << " u=" << u << " rho=" << rho << " v=" << v;
   }
 
@@ -206,7 +204,7 @@ public:
   }
 
   // Norm
-  norm_t norm() const { return norm_t(u) + norm_t(rho) + norm_t(v); }
+  auto norm() const { return norm_t(u) + norm_t(rho) + norm_t(v); }
 
   // Analytic solution
   struct analytic : tuple<> {};
@@ -244,7 +242,9 @@ RPC_COMPONENT(cell_t);
 RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, double);
 
 // Output
-ostream &operator<<(ostream &os, const cell_t &c) { return c.output(os); }
+auto operator<<(ostream &os, const cell_t &c) -> ostream & {
+  return c.output(os);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,13 +256,13 @@ struct grid_t {
   // TODO: introduce irange for these two (e.g. irange_t =
   // array<ptrdiff_t,2>)
   ptrdiff_t imin, imax; // spatial indices
-  static double x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
+  static auto x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
 
   vector<cell_t> cells;
 
 private:
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) {
+  template <typename Archive> auto serialize(Archive &ar) {
     ar(imin, imax, cells);
   }
   // template <typename Archive>
@@ -281,20 +281,20 @@ public:
   // grid_t(ptrdiff_t imin, ptrdiff_t imax, vector<cell_t> &&cells)
   //     : imin(imin), imax(imax), cells(std::move(cells)) {}
 
-  const cell_t &get(ptrdiff_t i) const {
+  auto get(ptrdiff_t i) const -> const cell_t & {
     assert(i >= imin && i < imax);
     return cells[i - imin];
   }
 
-  cell_t get_boundary(bool face_upper) const {
+  auto get_boundary(bool face_upper) const {
     return get(face_upper ? imax - 1 : imin);
   }
 
   // Wait until the grid is ready
-  tuple<> wait() const { return tuple<>(); }
+  auto wait() const { return tuple<>(); }
 
   // Output
-  ostreaming<tuple<> > output() const {
+  auto output() const -> ostreaming<tuple<> > {
     ostringstream os;
     for (ptrdiff_t i = imin; i < imax; ++i) {
       os << "   i=" << i << " " << get(i) << "\n";
@@ -312,7 +312,7 @@ public:
                     x.cells, y.cells)) {}
 
   // Norm
-  norm_t norm() const {
+  auto norm() const {
     return foldl([](const norm_t &x, const cell_t &y) { return x + y.norm(); },
                  norm_t(), cells);
   }
@@ -321,10 +321,9 @@ public:
   struct initial : tuple<> {};
   grid_t(initial, double t, ptrdiff_t imin)
       : imin(imin), imax(min(imin + defs->ncells_per_grid, defs->ncells)),
-        cells(iota<vector_>([t](ptrdiff_t i) {
-                              return cell_t(cell_t::initial(), t, x(i));
-                            },
-                            iota_range_t(imin, imax))) {}
+        cells(iota<vector_>(
+            [t](ptrdiff_t i) { return cell_t(cell_t::initial(), t, x(i)); },
+            iota_range_t(imin, imax))) {}
 
   // Error
   struct error : tuple<> {};
@@ -338,55 +337,51 @@ public:
   struct rhs : tuple<> {};
   grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
       : imin(g.imin), imax(g.imax),
-        cells(cxx::stencil_fmap([](const cell_t &c, const cell_t &cm,
-                                   const cell_t &cp) {
-                                  return cell_t(cell_t::rhs(), c, cm, cp);
-                                },
-                                [](const cell_t &c, bool) { return c; },
-                                g.cells, bm, bp)) {}
+        cells(cxx::stencil_fmap(
+            [](const cell_t &c, const cell_t &cm,
+               const cell_t &cp) { return cell_t(cell_t::rhs(), c, cm, cp); },
+            [](const cell_t &c, bool) { return c; }, g.cells, bm, bp)) {}
 };
 RPC_COMPONENT(grid_t);
 
 // Output
-ostream &operator<<(ostream &os, const client<grid_t> &g) {
+auto operator<<(ostream &os, const client<grid_t> &g) -> ostream & {
   g->output().get(os);
   return os;
 }
 
-cell_t grid_get_boundary(const grid_t &g, bool face_upper) {
+auto grid_get_boundary(const grid_t &g, bool face_upper) {
   return g.get_boundary(face_upper);
 }
 RPC_ACTION(grid_get_boundary);
 
-ostreaming<tuple<> > grid_output_foldl(const ostreaming<tuple<> > &ostr,
-                                       const grid_t &g) {
+auto grid_output_foldl(const ostreaming<tuple<> > &ostr, const grid_t &g)
+    -> ostreaming<tuple<> > {
   return ostr >> g.output();
 }
 RPC_ACTION(grid_output_foldl);
 
 // Note: Arguments re-ordered
-grid_t grid_axpy(const grid_t &y, const grid_t &x, double a) {
+auto grid_axpy(const grid_t &y, const grid_t &x, double a) {
   return grid_t(grid_t::axpy(), a, x, y);
 }
 RPC_ACTION(grid_axpy);
 
-norm_t grid_norm_foldl(const norm_t &x, const grid_t &y) {
-  return x + y.norm();
-}
+auto grid_norm_foldl(const norm_t &x, const grid_t &y) { return x + y.norm(); }
 RPC_ACTION(grid_norm_foldl);
 
 // Note: Arguments re-ordered
-grid_t grid_initial(ptrdiff_t imin, double t) {
+auto grid_initial(ptrdiff_t imin, double t) {
   return grid_t(grid_t::initial(), t, imin);
 }
 RPC_ACTION(grid_initial);
 
-grid_t grid_error(const grid_t &g, double t) {
+auto grid_error(const grid_t &g, double t) {
   return grid_t(grid_t::error(), g, t);
 }
 RPC_ACTION(grid_error);
 
-grid_t grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
+auto grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
   return grid_t(grid_t::rhs(), g, bm, bp);
 }
 RPC_ACTION(grid_rhs);
@@ -403,10 +398,10 @@ struct domain_t {
 
   double t;
 
-  static ptrdiff_t ngrids() {
+  static auto ngrids() -> ptrdiff_t {
     return div_ceil(defs->ncells, defs->ncells_per_grid);
   }
-  static ptrdiff_t cell2grid(ptrdiff_t icell) {
+  static auto cell2grid(ptrdiff_t icell) -> ptrdiff_t {
     assert(icell >= 0 && icell < defs->ncells);
     return div_floor(icell, defs->ncells_per_grid);
   }
@@ -414,13 +409,13 @@ struct domain_t {
   tree_<grid_t> grids;
 
   // Wait until all grids are ready
-  tuple<> wait() const {
+  auto wait() const -> tuple<> {
     return foldl([](tuple<>, const grid_t &g) { return tuple<>(); }, tuple<>(),
                  grids);
   }
 
   // Output
-  ostreaming<tuple<> > output() const {
+  auto output() const -> ostreaming<tuple<> > {
     return put(ostreamer() << "domain: t=" << t << "\n") >>
            foldl(grid_output_foldl_action(), make<ostreaming, tuple<> >(),
                  grids);
@@ -436,9 +431,7 @@ struct domain_t {
       : domain_t(axpy(), a, *x, *y) {}
 
   // Norm
-  norm_t norm() const {
-    return foldl(grid_norm_foldl_action(), norm_t(), grids);
-  }
+  auto norm() const { return foldl(grid_norm_foldl_action(), norm_t(), grids); }
 
   // Initial condition
   // (Also choose a domain decomposition)
@@ -469,7 +462,7 @@ struct domain_t {
 };
 
 // Output
-ostream &operator<<(ostream &os, const client<domain_t> &d) {
+auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
   d->output().get(os);
   return os;
 }
@@ -492,7 +485,7 @@ struct memoized_t {
 };
 
 // RK2
-client<domain_t> rk2(const shared_ptr<memoized_t> &m) {
+auto rk2(const shared_ptr<memoized_t> &m) -> client<domain_t> {
   const client<domain_t> &s0 = m->state;
   const client<domain_t> &r0 = m->rhs;
   // Step 1
@@ -503,8 +496,8 @@ client<domain_t> rk2(const shared_ptr<memoized_t> &m) {
 }
 
 // Output
-ostream *do_info_output(const shared_future<ostream *> &fos,
-                        const shared_ptr<memoized_t> &m) {
+auto do_info_output(const shared_future<ostream *> &fos,
+                    const shared_ptr<memoized_t> &m) -> ostream * {
   RPC_ASSERT(server->rank() == 0);
   const shared_ptr<domain_t> &s = m->state.get();
   const norm_t &en = m->error_norm.get();
@@ -517,15 +510,15 @@ ostream *do_info_output(const shared_future<ostream *> &fos,
   return os;
 }
 
-shared_future<ostream *> info_output(shared_future<ostream *> fos,
-                                     const shared_ptr<memoized_t> &m) {
+auto info_output(shared_future<ostream *> fos, const shared_ptr<memoized_t> &m)
+    -> shared_future<ostream *> {
   if (do_this_time(m->n, defs->info_every))
     fos = async(do_info_output, fos, m);
   return fos;
 }
 
-ostream *do_file_output(const shared_future<ostream *> fos,
-                        const shared_ptr<memoized_t> &m) {
+auto do_file_output(const shared_future<ostream *> fos,
+                    const shared_ptr<memoized_t> &m) -> ostream * {
   RPC_ASSERT(server->rank() == 0);
   const norm_t &en = m->error_norm.get();
   auto cell_size = cell_t().norm().count;
@@ -538,8 +531,8 @@ ostream *do_file_output(const shared_future<ostream *> fos,
   return os;
 }
 
-shared_future<ostream *> file_output(shared_future<ostream *> fos,
-                                     const shared_ptr<memoized_t> &m) {
+auto file_output(shared_future<ostream *> fos, const shared_ptr<memoized_t> &m)
+    -> shared_future<ostream *> {
   if (do_this_time(m->n, defs->file_every))
     fos = async(do_file_output, fos, m);
   return fos;
@@ -549,7 +542,7 @@ shared_future<ostream *> file_output(shared_future<ostream *> fos,
 
 // Driver
 
-string get_thread_stats() {
+auto get_thread_stats() -> string {
   ostringstream os;
   rpc::thread_stats_t thread_stats = rpc::get_thread_stats();
   os << "[" << rpc::server->rank() << "] Thread statistics:\n"
@@ -561,7 +554,7 @@ string get_thread_stats() {
 }
 RPC_ACTION(get_thread_stats);
 
-string get_server_stats() {
+auto get_server_stats() -> string {
   ostringstream os;
   rpc::server_base::stats_t server_stats = rpc::server->get_stats();
   os << "[" << rpc::server->rank() << "] Server statistics:\n"
@@ -578,15 +571,15 @@ struct stats_t {
     decltype(std::chrono::high_resolution_clock::now()) time;
   };
   snapshot_t start_, stop_;
-  static void snapshot(snapshot_t &dest) {
+  static auto snapshot(snapshot_t &dest) {
     dest.server_stats = rpc::server->get_stats();
     dest.thread_stats = rpc::get_thread_stats();
     dest.time = std::chrono::high_resolution_clock::now();
   }
+  auto start() { snapshot(start_); }
+  auto stop() { snapshot(stop_); }
   stats_t() { start(); }
-  void start() { snapshot(start_); }
-  void stop() { snapshot(stop_); }
-  ostream &output(ostream &os) const {
+  auto output(ostream &os) const -> ostream & {
     auto messages_sent =
         stop_.server_stats.messages_sent - start_.server_stats.messages_sent;
     auto messages_received = stop_.server_stats.messages_received -
@@ -605,11 +598,11 @@ struct stats_t {
               << "   Time: " << time_elapsed << " sec\n";
   }
 };
-ostream &operator<<(ostream &os, const stats_t &stats) {
+auto operator<<(ostream &os, const stats_t &stats) -> ostream & {
   return stats.output(os);
 }
 
-int rpc_main(int argc, char **argv) {
+auto rpc_main(int argc, char **argv) -> int {
   // Setup
   stats_t sstats;
 

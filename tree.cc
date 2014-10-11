@@ -123,8 +123,9 @@ int rpc_main(int argc, char **argv) {
         cxx::fmap([](int x) { return double(x); }, u);
     auto f2 __attribute__((__unused__)) =
         cxx::fmap([](int x, int y) { return double(x + y); }, u, 1);
-    auto j0 __attribute__((__unused__)) = cxx::unit<rpc::shared_future>(
-        cxx::unit<rpc::shared_future>(1)).unwrap();
+    auto j0 __attribute__((__unused__)) =
+        cxx::unit<rpc::shared_future>(cxx::unit<rpc::shared_future>(1))
+            .unwrap();
     auto j __attribute__((__unused__)) = cxx::join(
         cxx::unit<rpc::shared_future>(cxx::unit<rpc::shared_future>(1)));
     auto s __attribute__((__unused__)) = cxx::foldl(std::plus<int>(), 0, u);

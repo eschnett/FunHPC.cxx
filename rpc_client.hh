@@ -210,7 +210,7 @@ struct client_foldable2<F, true, R, T, T2, As...> {
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_client);
 
-  static R foldl2(const F &f, const R &z, const rpc::client<T> &xs,
+  static R foldl2(F, const R &z, const rpc::client<T> &xs,
                   const rpc::client<T2> &ys, const As &... as) {
     bool s = bool(xs);
     assert(bool(ys) == s);
@@ -270,30 +270,35 @@ struct client_functor<F, true, T, As...> {
 
   typedef typename cxx::invoke_of<F, T, As...>::type R;
 
+  // TODO: Use make_remote_client instead
+  static rpc::client<R> fmap_client_remote(const rpc::client<T> &xs,
+                                           const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client_remote);
+    return rpc::make_client<R>(cxx::invoke(F(), *xs, as...));
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client_remote);
+
   static rpc::client<R> fmap_client(const rpc::client<T> &xs,
                                     const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client);
     bool s = bool(xs);
     return s == false ? rpc::client<R>()
-                      : rpc::make_client<R>(cxx::invoke(F(), *xs, as...));
+                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
+                                  fmap_client_remote_action(), xs, as...);
   }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client);
 
-  static rpc::client<R> fmap(const F &f, const rpc::client<T> &xs,
-                             const As &... as) {
-    return rpc::client<R>(rpc::async(rpc::remote::async, xs.get_proc_future(),
-                                     fmap_client_action(), xs, as...));
+  static rpc::client<R> fmap(F, const rpc::client<T> &xs, const As &... as) {
+    return rpc::client<R>(rpc::async(fmap_client, xs, as...));
   }
 };
 // Define action exports
 template <typename F, typename T, typename... As>
-typename client_functor<F, true, T, As...>::fmap_client_evaluate_export_t
-client_functor<F, true, T, As...>::fmap_client_evaluate_export =
-    fmap_client_evaluate_export_init();
+typename client_functor<F, true, T, As...>::fmap_client_remote_evaluate_export_t
+    client_functor<F, true, T, As...>::fmap_client_remote_evaluate_export =
+        fmap_client_remote_evaluate_export_init();
 template <typename F, typename T, typename... As>
-typename client_functor<F, true, T, As...>::fmap_client_finish_export_t
-client_functor<F, true, T, As...>::fmap_client_finish_export =
-    fmap_client_finish_export_init();
+typename client_functor<F, true, T, As...>::fmap_client_remote_finish_export_t
+    client_functor<F, true, T, As...>::fmap_client_remote_finish_export =
+        fmap_client_remote_finish_export_init();
 
 template <typename F, bool is_action, typename T, typename T2, typename... As>
 struct client_functor2;
@@ -334,33 +339,42 @@ struct client_functor2<F, true, T, T2, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
 
+  // TODO: Use make_remote_client instead
+  static rpc::client<R> fmap2_client_remote(const rpc::client<T> &xs,
+                                            const rpc::client<T2> &ys,
+                                            const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
+    return rpc::make_client<R>(cxx::invoke(F(), *xs, *ys.make_local(), as...));
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
+
   static rpc::client<R> fmap2_client(const rpc::client<T> &xs,
                                      const rpc::client<T2> &ys,
                                      const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client);
     bool s = bool(xs);
     assert(bool(ys) == s);
     return s == false ? rpc::client<R>()
-                      : rpc::make_client<R>(
-                            cxx::invoke(F(), *xs, *ys.make_local(), as...));
+                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
+                                  fmap2_client_remote_action(), xs, ys, as...);
   }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client);
 
-  static rpc::client<R> fmap2(const F &f, const rpc::client<T> &xs,
+  static rpc::client<R> fmap2(F, const rpc::client<T> &xs,
                               const rpc::client<T2> &ys, const As &... as) {
-    return rpc::client<R>(rpc::async(rpc::remote::async, xs.get_proc_future(),
-                                     fmap2_client_action(), xs, ys, as...));
+    return rpc::client<R>(rpc::async(fmap2_client, xs, ys, as...));
   }
 };
 // Define action exports
 template <typename F, typename T, typename T2, typename... As>
-typename client_functor2<F, true, T, T2, As...>::fmap2_client_evaluate_export_t
-client_functor2<F, true, T, T2, As...>::fmap2_client_evaluate_export =
-    fmap2_client_evaluate_export_init();
+typename client_functor2<F, true, T, T2,
+                         As...>::fmap2_client_remote_evaluate_export_t
+    client_functor2<F, true, T, T2,
+                    As...>::fmap2_client_remote_evaluate_export =
+        fmap2_client_remote_evaluate_export_init();
 template <typename F, typename T, typename T2, typename... As>
-typename client_functor2<F, true, T, T2, As...>::fmap2_client_finish_export_t
-client_functor2<F, true, T, T2, As...>::fmap2_client_finish_export =
-    fmap2_client_finish_export_init();
+typename client_functor2<F, true, T, T2,
+                         As...>::fmap2_client_remote_finish_export_t
+    client_functor2<F, true, T, T2, As...>::fmap2_client_remote_finish_export =
+        fmap2_client_remote_finish_export_init();
 
 template <typename F, bool is_action, typename T, typename T2, typename T3,
           typename... As>
@@ -407,39 +421,49 @@ struct client_functor3<F, true, T, T2, T3, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, T3, As...>::type R;
 
+  // TODO: Use make_remote_client instead
+  static rpc::client<R> fmap3_client_remote(const rpc::client<T> &xs,
+                                            const rpc::client<T2> &ys,
+                                            const rpc::client<T3> &zs,
+                                            const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
+    return rpc::make_client<R>(
+        cxx::invoke(F(), *xs, *ys.make_local(), *zs.make_local(), as...));
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
+
   static rpc::client<R> fmap3_client(const rpc::client<T> &xs,
                                      const rpc::client<T2> &ys,
                                      const rpc::client<T3> &zs,
                                      const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client);
     bool s = bool(xs);
     assert(bool(ys) == s);
     assert(bool(zs) == s);
     return s == false
                ? rpc::client<R>()
-               : rpc::make_client<R>(cxx::invoke(F(), *xs, *ys.make_local(),
-                                                 *zs.make_local(), as...));
+               : rpc::sync(rpc::remote::sync, xs.get_proc(),
+                           fmap3_client_remote_action(), xs, ys, zs, as...);
   }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client);
 
-  static rpc::client<R> fmap3(const F &f, const rpc::client<T> &xs,
+  static rpc::client<R> fmap3(F, const rpc::client<T> &xs,
                               const rpc::client<T2> &ys,
                               const rpc::client<T3> &zs, const As &... as) {
-    return rpc::client<R>(rpc::async(rpc::remote::async, xs.get_proc_future(),
-                                     fmap3_client_action(), xs, ys, zs, as...));
+    return rpc::client<R>(rpc::async(fmap3_client, xs, ys, zs, as...));
   }
 };
 // Define action exports
 template <typename F, typename T, typename T2, typename T3, typename... As>
 typename client_functor3<F, true, T, T2, T3,
-                         As...>::fmap3_client_evaluate_export_t
-client_functor3<F, true, T, T2, T3, As...>::fmap3_client_evaluate_export =
-    fmap3_client_evaluate_export_init();
+                         As...>::fmap3_client_remote_evaluate_export_t
+    client_functor3<F, true, T, T2, T3,
+                    As...>::fmap3_client_remote_evaluate_export =
+        fmap3_client_remote_evaluate_export_init();
 template <typename F, typename T, typename T2, typename T3, typename... As>
 typename client_functor3<F, true, T, T2, T3,
-                         As...>::fmap3_client_finish_export_t
-client_functor3<F, true, T, T2, T3, As...>::fmap3_client_finish_export =
-    fmap3_client_finish_export_init();
+                         As...>::fmap3_client_remote_finish_export_t
+    client_functor3<F, true, T, T2, T3,
+                    As...>::fmap3_client_remote_finish_export =
+        fmap3_client_remote_finish_export_init();
 
 // monad
 

@@ -1,5 +1,7 @@
 mosh --server=\$HOME/gordon/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server ux452368@gordon.sdsc.edu
 
+mosh --server=\$HOME/work/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server schnette@hopper.nersc.gov
+
 mosh eschnetter@nvidia
 
 mosh --server=\$HOME/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server eschnett@shelob.hpc.lsu.edu
@@ -11,6 +13,8 @@ mosh --server=\$HOME/trestles/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server ux45
 
 
 rsync -Paz BUILD README Makefile *.cc *.hh *.rst *.sh *.submit ux452368@gordon.sdsc.edu:gordon/src/mpi-rpc/
+
+rsync -Paz BUILD README Makefile *.cc *.hh *.rst *.sh *.submit schnette@hopper.nersc.gov:src/mpi-rpc/
 
 rsync -Paz BUILD README Makefile *.cc *.hh *.rst *.sh *.submit eschnetter@nvidia.pi.local:/xfs1/eschnetter/compute/src/mpi-rpc/
 
@@ -40,6 +44,9 @@ done
 for f in wave.n*.s*.c*.p*.t*.m*.log; do grep -H 'Time:' $f | tail -n +2; done 
 
 
+
+RUNNING:
+- hopper
 
 GOOD:
 - bethe

@@ -19,6 +19,7 @@ namespace cxx {
 // fmap: (a -> b) -> m a -> m b
 
 // TODO: allow additional arguments for all types
+// TODO: introduce functor2
 
 // array
 

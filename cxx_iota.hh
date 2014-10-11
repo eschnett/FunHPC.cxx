@@ -25,6 +25,9 @@ namespace cxx {
 
 // iota: (Int -> a) ->  Int ->m a
 
+// TODO: introduce iota2 (for combining containers)
+// TODO: introduce multi-dimensional iotas
+
 template <typename T> struct range_t {
   T imin, imax, istep;
   bool invariant() const {

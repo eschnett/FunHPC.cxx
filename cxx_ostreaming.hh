@@ -73,6 +73,9 @@ ostreamer operator<<(const ostreamer &os, const Elem &e) {
 
 // Abstractions for ostreamers
 
+// TODO: make "ostreamer" a template parameter as well?
+// TODO: rename to "writer"? or "writing"?
+
 // A container that holds an element of type Elem, while remembering
 // what should have been output while calculating it
 template <typename T> class ostreaming {
@@ -102,6 +105,7 @@ public:
   }
 };
 
+// TODO: Rename this to "output"?
 cxx::ostreaming<std::tuple<> > put(const cxx::ostreamer &os) {
   return { os, std::tuple<>() };
 }

@@ -5,8 +5,8 @@ set -u
 #set -x
 
 # User choices
-if (($#!=6)); then
-    echo "Synopsis: $0 <nodes> <sockets/node> <cores/socket> <procs> <threads/proc> <smts/thread>" >&2
+if (($#!=7)); then
+    echo "Synopsis: $0 <nodes> <sockets/node> <cores/socket> <procs> <threads/proc> <smts/thread> <run_id>" >&2
     exit 1
 fi
 echo "User choices:"
@@ -16,6 +16,7 @@ cores_per_socket=$3
 procs=$4
 threads_per_proc=$5
 smts_per_thread=$6
+run=$7
 echo "   nodes=$nodes sockets/node=$sockets_per_node cores/socket=$cores_per_socket proc=$procs threads/proc=$threads_per_proc smts/thread=$smts_per_thread"
 
 # Automatically calculated quantities
@@ -27,7 +28,7 @@ threads=$[$threads_per_proc*$procs]
 smts=$[$smts_per_thread*$threads]
 echo "   procs=$procs threads=$threads smts=$smts"
 
-id="n$nodes.s$sockets_per_node.c$cores_per_socket.p$procs.t$threads_per_proc.m$smts_per_thread"
+id="n$nodes.s$sockets_per_node.c$cores_per_socket.p$procs.t$threads_per_proc.m$smts_per_thread.r$run"
 
 # Settings specific to the submit script
 cores_per_node=$[$cores_per_socket*$sockets_per_node]
@@ -107,7 +108,7 @@ export QTHREAD_NUM_SHEPHERDS=$proc_sockets
 export QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket
 export QTHREAD_STACK_SIZE=65536
 #export QTHREAD_INFO=0
-ibrun tacc_affinity                                                     \\
+time ibrun tacc_affinity                                                \\
     ./wave                                                              \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\

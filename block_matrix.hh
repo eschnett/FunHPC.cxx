@@ -110,13 +110,13 @@ public:
     static const double zero = 0.0;
     if (!has_block(b))
       return zero;
-    return rpc::sync(rpc::remote::sync, vector_t::get_elt_action(), block(b),
+    return rpc::sync(rpc::rlaunch::sync, vector_t::get_elt_action(), block(b),
                      i - str->block_begin(b));
   }
   void set_elt(std::ptrdiff_t i, double x) {
     auto b = str->find_block(i);
     RPC_ASSERT(has_block(b));
-    rpc::sync(rpc::remote::sync, vector_t::set_elt_action(), block(b),
+    rpc::sync(rpc::rlaunch::sync, vector_t::set_elt_action(), block(b),
               i - str->block_begin(b), x);
   }
   std::ostream &output(std::ostream &os) const;
@@ -215,7 +215,7 @@ public:
     static const double zero = 0.0;
     if (!has_block(ib, jb))
       return zero;
-    return rpc::sync(rpc::remote::sync, matrix_t::get_elt_action(),
+    return rpc::sync(rpc::rlaunch::sync, matrix_t::get_elt_action(),
                      block(ib, jb), i - block_begin(0, ib),
                      j - block_begin(1, jb));
   }
@@ -223,7 +223,7 @@ public:
     auto ib = strs[0]->find_block(i);
     auto jb = strs[1]->find_block(j);
     RPC_ASSERT(has_block(ib, jb));
-    rpc::sync(rpc::remote::sync, matrix_t::set_elt_action(), block(ib, jb),
+    rpc::sync(rpc::rlaunch::sync, matrix_t::set_elt_action(), block(ib, jb),
               i - block_begin(0, ib), j - block_begin(1, jb), x);
   }
   std::ostream &output(std::ostream &os) const;

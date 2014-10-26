@@ -8,6 +8,7 @@
 #include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
+#include "cxx_ostreaming.hh"
 #include "cxx_utils.hh"
 
 #include <cereal/access.hpp>
@@ -15,8 +16,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <string>
 #include <tuple>
 #include <type_traits>
+#include <typeinfo>
 #include <utility>
 
 namespace cxx {
@@ -43,6 +46,16 @@ struct kinds<tree<T, C, P> > {
 template <typename T> struct is_tree : std::false_type {};
 template <typename T, template <typename> class C, template <typename> class P>
 struct is_tree<tree<T, C, P> > : std::true_type {};
+
+// ostreaming
+
+template <typename T, template <typename> class C, template <typename> class P>
+struct tree_output;
+
+template <typename T, template <typename> class C, template <typename> class P>
+auto output(const tree<T, C, P> &xs) -> cxx::ostreaming<std::tuple<> > {
+  return tree_output<T, C, P>::output(xs);
+}
 
 // foldable
 
@@ -149,6 +162,10 @@ class leaf {
             template <typename> class P1>
   friend class tree;
 
+  template <typename T1, template <typename> class C1,
+            template <typename> class P1>
+  friend struct tree_output;
+
   template <typename F, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename... As>
@@ -219,6 +236,10 @@ class branch {
   template <typename T1, template <typename> class C1,
             template <typename> class P1>
   friend class tree;
+
+  template <typename T1, template <typename> class C1,
+            template <typename> class P1>
+  friend struct tree_output;
 
   template <typename F, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
@@ -312,6 +333,10 @@ class tree {
   template <typename T1, template <typename> class C1,
             template <typename> class P1>
   friend class tree;
+
+  template <typename T1, template <typename> class C1,
+            template <typename> class P1>
+  friend struct tree_output;
 
   template <typename F, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
@@ -415,6 +440,71 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// output
+
+template <typename T, template <typename> class C, template <typename> class P>
+struct tree_output {
+
+  typedef leaf<T, C, P> leaf;
+  typedef branch<T, C, P> branch;
+  typedef tree<T, C, P> tree;
+
+  // TODO: add indentation to ostreaming?
+  // static auto indent(int level) -> cxx::ostreaming<std::tuple<> > {
+  //   return cxx::put(ostreamer() << std::string(2 * level, ' '));
+  // }
+  static auto indent(int level) -> std::string {
+    return std::string(2 * level, ' ');
+  }
+
+  static auto output_pvalue(const P<T> &pv, int level)
+      -> cxx::ostreaming<std::tuple<> > {
+    return cxx::put(ostreamer() << indent(level) << "value\n");
+  }
+
+  static auto output_leaf(const leaf &l, int level)
+      -> cxx::ostreaming<std::tuple<> > {
+    return cxx::put(cxx::ostreamer() << indent(level) << "leaf(nvalues="
+                                     << l.values.size() << ")\n") >>
+           cxx::mapM_(output_pvalue, l.values, level + 1);
+  }
+
+  static auto output_ptree(const P<tree> &pt, int level)
+      -> cxx::ostreaming<std::tuple<> > {
+    return cxx::mapM_(output_tree_action(), pt, level);
+  }
+
+  static auto output_branch(const branch &b, int level)
+      -> cxx::ostreaming<std::tuple<> > {
+    return cxx::put(cxx::ostreamer() << indent(level) << "branch(ntrees="
+                                     << b.trees.size() << ")\n") >>
+           cxx::mapM_(output_ptree, b.trees, level + 1);
+  }
+
+  static auto output_tree(const tree &t, int level)
+      -> cxx::ostreaming<std::tuple<> > {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(output_tree);
+    return cxx::gfoldl(output_leaf, output_branch, t.node, level);
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(output_tree);
+
+  static auto output(const tree &xs) -> cxx::ostreaming<std::tuple<> > {
+    // TODO: output without structure?
+    return bind0(
+        cxx::put(cxx::ostreamer() << "tree[" << typeid(xs).name() << "]\n"),
+        output_tree(xs, 0));
+  }
+};
+// Define action exports
+template <typename T, template <typename> class C, template <typename> class P>
+typename tree_output<T, C, P>::output_tree_evaluate_export_t
+    tree_output<T, C, P>::output_tree_evaluate_export =
+        output_tree_evaluate_export_init();
+template <typename T, template <typename> class C, template <typename> class P>
+typename tree_output<T, C, P>::output_tree_finish_export_t
+    tree_output<T, C, P>::output_tree_finish_export =
+        output_tree_finish_export_init();
+
 // foldable
 
 template <typename F, typename R, typename T, template <typename> class C,
@@ -425,6 +515,7 @@ struct tree_foldable<F, false, R, T, C, P, As...> {
       std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
       "");
 
+  // TODO: These don't need to be templates
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
   template <typename U> using tree = tree<U, C, P>;
@@ -455,7 +546,11 @@ struct tree_foldable<F, false, R, T, C, P, As...> {
   }
 
   static R foldl(const F &f, const R &z, const tree<T> &t, const As &... as) {
-    return foldl_tree(z, t, f, as...);
+    std::cout << "tree/f::foldl.0\n";
+    // return foldl_tree(z, t, f, as...);
+    auto r = foldl_tree(z, t, f, as...);
+    std::cout << "tree/f::foldl.9\n";
+    return r;
   }
 };
 
@@ -472,29 +567,53 @@ struct tree_foldable<F, true, R, T, C, P, As...> {
   template <typename U> using tree = tree<U, C, P>;
 
   static R foldl_pvalue(const R &z, const P<T> &pv, const As &... as) {
-    return cxx::foldl(F(), z, pv, as...);
+    std::cout << "foldl_pvalue.0\n";
+    // return cxx::foldl(F(), z, pv, as...);
+    auto r = cxx::foldl(F(), z, pv, as...);
+    std::cout << "foldl_pvalue.9\n";
+    return r;
   }
 
   static R foldl_leaf(const leaf<T> &l, const R &z, const As &... as) {
-    return cxx::foldl(foldl_pvalue, z, l.values, as...);
+    std::cout << "foldl_leaf.0\n";
+    // return cxx::foldl(foldl_pvalue, z, l.values, as...);
+    auto r = cxx::foldl(foldl_pvalue, z, l.values, as...);
+    std::cout << "foldl_leaf.9\n";
+    return r;
   }
 
   static R foldl_ptree(const R &z, const P<tree<T> > &pt, const As &... as) {
-    return cxx::foldl(foldl_tree_action(), z, pt, as...);
+    std::cout << "foldl_ptree.0\n";
+    // return cxx::foldl(foldl_tree_action(), z, pt, as...);
+    auto r = cxx::foldl(foldl_tree_action(), z, pt, as...);
+    std::cout << "foldl_ptree.9\n";
+    return r;
   }
 
   static R foldl_branch(const branch<T> &b, const R &z, const As &... as) {
-    return cxx::foldl(foldl_ptree, z, b.trees, as...);
+    std::cout << "foldl_branch.0\n";
+    // return cxx::foldl(foldl_ptree, z, b.trees, as...);
+    auto r = cxx::foldl(foldl_ptree, z, b.trees, as...);
+    std::cout << "foldl_branch.9\n";
+    return r;
   }
 
   static R foldl_tree(const R &z, const tree<T> &t, const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
-    return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
+    std::cout << "foldl_tree.0\n";
+    // return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
+    auto r = cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
+    std::cout << "foldl_tree.9\n";
+    return r;
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
 
   static R foldl(F, const R &z, const tree<T> &t, const As &... as) {
-    return foldl_tree(z, t, as...);
+    std::cout << "tree/a::foldl.0\n";
+    // return foldl_tree(z, t, as...);
+    auto r = foldl_tree(z, t, as...);
+    std::cout << "tree::foldl.9\n";
+    return r;
   }
 };
 // Define action exports

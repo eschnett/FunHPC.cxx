@@ -4,4 +4,5 @@
 
 #include <cstdlib>
 
+RPC_COMPONENT(int);
 RPC_COMPONENT(std::ptrdiff_t);

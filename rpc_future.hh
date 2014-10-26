@@ -62,7 +62,7 @@ inline void load(Archive &ar, rpc::shared_future<T> &data) {
     // future
     rpc::global_ptr<rpc::shared_future<T> > ptr;
     ar(ptr);
-    data = async(rpc::remote::async, ptr.get_proc(),
+    data = async(rpc::rlaunch::async, ptr.get_proc(),
                  rpc::shared_future_get_action<T>(), ptr);
   }
 }

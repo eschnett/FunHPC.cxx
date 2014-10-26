@@ -147,7 +147,7 @@ void server_mpi::terminate_stage_1() {
   termination_stage = 1;
   stage_1_counter = 0;
   for (int proc = child_min(); proc < child_max(); ++proc) {
-    detached(remote::detached, proc, terminate_stage_1_action());
+    detached(rlaunch::detached, proc, terminate_stage_1_action());
   }
   terminate_stage_2();
 }
@@ -158,11 +158,11 @@ void server_mpi::terminate_stage_2() {
   if (value == child_count() + 1) {
     const int proc = parent();
     if (proc >= 0) {
-      detached(remote::detached, proc, terminate_stage_2_action());
+      detached(rlaunch::detached, proc, terminate_stage_2_action());
     }
     termination_stage = 2;
     if (proc < 0) {
-      detached(remote::detached, 0, terminate_stage_3_action());
+      detached(rlaunch::detached, 0, terminate_stage_3_action());
     }
   }
 }
@@ -172,7 +172,7 @@ void server_mpi::terminate_stage_3() {
   termination_stage = 3;
   stage_3_counter = 0;
   for (int proc = child_min(); proc < child_max(); ++proc) {
-    detached(remote::detached, proc, terminate_stage_3_action());
+    detached(rlaunch::detached, proc, terminate_stage_3_action());
   }
   terminate_stage_4();
 }
@@ -183,7 +183,7 @@ void server_mpi::terminate_stage_4() {
   if (value == child_count() + 1) {
     const int proc = parent();
     if (proc >= 0) {
-      detached(remote::detached, proc, terminate_stage_4_action());
+      detached(rlaunch::detached, proc, terminate_stage_4_action());
     }
     termination_stage = 4;
   }

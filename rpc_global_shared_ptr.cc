@@ -27,7 +27,7 @@ global_manager_base::global_manager_base(
   //     there
   if (other != owner) {
     refcount = 2;
-    detached(remote::detached, owner.get_proc(),
+    detached(rlaunch::detached, owner.get_proc(),
              global_shared::register_then_unregister_action(), owner, other,
              this);
   }
@@ -38,7 +38,7 @@ global_manager_base::~global_manager_base() {
   RPC_ASSERT(invariant());
   RPC_ASSERT(refcount == 0);
   if (!owner.is_local()) {
-    detached(remote::detached, owner.get_proc(),
+    detached(rlaunch::detached, owner.get_proc(),
              global_shared::unregister_action(), owner);
   } else {
     RPC_ASSERT(owner.get() == this);
@@ -50,8 +50,8 @@ void register_then_unregister(const global_ptr<global_manager_base> &owner,
                               const global_ptr<global_manager_base> &other,
                               const global_ptr<global_manager_base> &self) {
   owner->incref();
-  detached(remote::detached, other.get_proc(), unregister_action(), other);
-  detached(remote::detached, self.get_proc(), unregister_action(), self);
+  detached(rlaunch::detached, other.get_proc(), unregister_action(), other);
+  detached(rlaunch::detached, self.get_proc(), unregister_action(), self);
 }
 
 void unregister(const global_ptr<global_manager_base> &other) {

@@ -9,7 +9,7 @@
 
 using rpc::async;
 using rpc::launch;
-using rpc::remote;
+using rpc::rlaunch;
 
 using std::cout;
 using std::flush;
@@ -85,7 +85,7 @@ void ping_remote() {
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
       unsigned char payload = r;
-      r = async(remote::async, 1, ping_action(), payload).get();
+      r = async(rlaunch::async, 1, ping_action(), payload).get();
     }
     auto t1 = std::chrono::high_resolution_clock::now();
     elapsed =
@@ -165,7 +165,7 @@ void xfer_remote(ptrdiff_t sz) {
     unsigned char r = 'a';
     auto t0 = std::chrono::high_resolution_clock::now();
     for (ptrdiff_t i = 0; i < n; ++i) {
-      r += async(remote::async, 1, xfer_action(), payload).get()[0];
+      r += async(rlaunch::async, 1, xfer_action(), payload).get()[0];
     }
     auto t1 = std::chrono::high_resolution_clock::now();
     volatile unsigned char use_r __attribute__((unused)) = r;

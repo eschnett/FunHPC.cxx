@@ -56,13 +56,13 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #! /bin/bash
 
 #PBS -V
-#PBS -A hpc_numrel05
-#PBS -q checkpt
-#PBS -r n
-#PBS -l walltime=0:10:00
-#PBS -l nodes=$nodes:ppn=$cores_per_node
+#PBS -A m152
+#PBS -q regular
+#PBS -l walltime=0:20:00
+#PBS -l mppwidth=$cores
 #PBS -N wave.$id
 #PBS -m abe
+#PBS -M schnetter@gmail.com
 #PBS -o $HOME/src/mpi-rpc/wave.$id.out
 #PBS -e $HOME/src/mpi-rpc/wave.$id.err
 
@@ -74,14 +74,16 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 # threads: $threads   threads/proc: $[$threads/$procs]
 # smts:    $smts   smts/thread: $[$smts/$threads]
 
-# run: $run
-
 set -e
 set -u
 set -x
 cd $HOME/src/mpi-rpc
-export SIMFACTORY_SIM=$HOME/work/Cbeta/simfactory3/sim
-source $HOME/SIMFACTORY/all-all/env.sh
+
+date
+
+source $HOME/work/SIMFACTORY/all-all/env.sh
+
+export SIMFACTORY_MACHINE=hopper
 
 echo '[BEGIN ENV]'
 env | sort
@@ -93,26 +95,23 @@ echo '[END NODES]'
 
 date
 echo '[BEGIN MPIRUN]'
-\$MPIRUN                                                                \\
-    -np $procs                                                          \\
-    --map-by ppr:$ppr                                                   \\
-    --display-map                                                       \\
-    --mca btl self,sm,openib                                            \\
-    --bind-to $bind_to                                                  \\
-    --report-bindings                                                   \\
-    -x RPC_NODES=$nodes                                                 \\
-    -x RPC_CORES=$cores_per_node                                        \\
-    -x RPC_PROCESSES=$procs                                             \\
-    -x RPC_THREADS=$threads_per_proc                                    \\
-    -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
-    -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
-    -x QTHREAD_STACK_SIZE=65536                                         \\
-    -x QTHREAD_INFO=0                                                   \\
+export OMP_NUM_THREADS=$threads_per_proc
+export RPC_NODES=$nodes
+export RPC_CORES=$cores_per_node
+export RPC_PROCESSES=$procs
+export RPC_THREADS=$threads_per_proc
+export QTHREAD_NUM_SHEPHERDS=$proc_sockets
+export QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket
+export QTHREAD_STACK_SIZE=65536
+#export QTHREAD_INFO=0
+date
+time aprun -n $procs -N $procs_per_node -d $threads_per_proc            \\
     ./wave                                                              \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
     --hpx:threads=$threads_per_proc                                     \\
     >wave.$id.log 2>&1
+date
 echo '[END MPIRUN]'
 date
 EOF
@@ -120,4 +119,4 @@ EOF
 : >$HOME/src/mpi-rpc/wave.$id.out
 : >$HOME/src/mpi-rpc/wave.$id.err
 : >$HOME/src/mpi-rpc/wave.$id.log
-qsub $HOME/src/mpi-rpc/wave.$id.sub
+/opt/torque/4.2.7.h1/bin/qsub $HOME/src/mpi-rpc/wave.$id.sub

@@ -1,6 +1,7 @@
 #ifndef CXX_OSTREAMING_HH
 #define CXX_OSTREAMING_HH
 
+#include "cxx_foldable.hh"
 #include "cxx_functor.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
@@ -162,13 +163,14 @@ make(As &&... as) {
 
 // monad: bind
 // Bind a function to an ostreaming
+// TODO: decay invoke_of?
 template <typename T, typename F, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = /*TODO: why? */ typename std::decay<
-              typename cxx::invoke_of<F, T, As...>::type>::type,
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
-C<R> bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
+typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
+bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
   const T &value = xs.value;
   ostreaming<R> result = cxx::invoke(f, value, as...);
   const ostreamer &left = xs.ostr;
@@ -188,6 +190,26 @@ C<R> bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
 //   ostreamer combined = std::move(left) << std::move(right);
 //   return { std::move(combined), std::move(result.value) };
 // }
+template <typename T, typename F, typename... As,
+          typename CT = cxx::ostreaming<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename R = typename cxx::kinds<CR>::value_type>
+typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
+operator>>=(const cxx::ostreaming<T> &xs, const F &f) {
+  return cxx::bind(xs, f);
+}
+
+template <typename T, typename R, typename CT = cxx::ostreaming<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+C<R> bind0(const cxx::ostreaming<T> &xs, const cxx::ostreaming<R> &rs) {
+  return cxx::bind(xs, [rs](const T &) { return rs; });
+}
+template <typename T, typename R, typename CT = cxx::ostreaming<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+C<R> operator>>(const cxx::ostreaming<T> &xs, const cxx::ostreaming<R> &rs) {
+  return cxx::bind0(xs, rs);
+}
 
 // monad: join
 // Combine two ostreamings
@@ -215,6 +237,99 @@ C<T> join(const ostreaming<ostreaming<T> > &xss) {
 //   T &value = xss.value.value;
 //   return { std::move(combined), std::move(value) };
 // }
+
+// mapM :: Monad m => (a -> m b) -> [a] -> m [b]
+// mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
+template <typename F, typename IT, typename... As,
+          typename T = typename IT::value_type,
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          template <typename> class C = cxx::kinds<CR>::template constructor,
+          typename R = typename cxx::kinds<CR>::value_type>
+typename std::enable_if<cxx::is_ostreaming<CR>::value, C<std::tuple<> > >::type
+mapM_(const F &f, const IT &xs, const As &... as) {
+  ostreamer ostr;
+#warning "TODO: Use foldable instead of iterators"
+  for (const T &x : xs) {
+    C<R> ys = cxx::invoke(f, x, as...);
+    ostr = std::move(ostr) << std::move(ys.ostr);
+  }
+  return C<std::tuple<> >(std::move(ostr), std::tuple<>());
+}
+
+// // sequence :: Monad m => [m a] -> m [a]
+// // sequence_ :: Monad m => [m a] -> m ()
+// template <typename ICT,
+//           template <typename> class I = cxx::kinds<ICT>::template
+//           constructor,
+//           typename CT = typename cxx::kinds<ICT>::value_type,
+//           template <typename> class C = cxx::kinds<CT>::template constructor,
+//           typename T = typename cxx::kinds<CT>::value_type>
+// typename std::enable_if<cxx::is_ostreaming<CT>::value, C<std::tuple<> >
+// >::type
+// sequence_(const ICT &xss) {
+//   C<std::tuple<> > rs;
+//   for (const C<T> &xs : xss)
+//     for (const T &x : xs)
+//       if (!rs)
+//         rs = unit<C>(std::tuple<>());
+//   return std::move(rs);
+// }
+
+// mvoid :: Functor f => f a -> f ()
+template <typename T, typename CT = cxx::ostreaming<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+C<std::tuple<> > mvoid(const cxx::ostreaming<T> &xs) {
+  return C<std::tuple<> >(xs.ostr, std::tuple<>());
+}
+template <typename T, typename CT = cxx::ostreaming<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
+C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
+  return C<std::tuple<> >(std::move(xs.ostr), std::tuple<>());
+}
+
+// // foldM :: Monad m => (a -> b -> m a) -> a -> [b] -> m a
+// template <typename F, typename R, typename IT, typename... As,
+//           typename T = typename cxx::kinds<IT>::value_type,
+//           typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+//           template <typename> class C = cxx::kinds<CR>::template constructor,
+//           typename R1 = typename cxx::kinds<CR>::value_type,
+//           template <typename> class I = cxx::kinds<IT>::template constructor>
+// typename std::enable_if<
+//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >::type
+// foldM(const F &f, const R &z, const IT &xs, const As &... as) {
+//   C<R> rs;
+//   for (const T &x : xs) {
+//     C<R> ys = cxx::invoke(f, z, x, as...);
+//     std::move(ys.begin(), ys.end(), std::inserter(rs, rs.end()));
+//   }
+//   return std::move(rs);
+// }
+
+// // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()
+// template <typename F, typename R, typename IT, typename... As,
+//           typename T = typename cxx::kinds<IT>::value_type,
+//           typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+//           template <typename> class C = cxx::kinds<CR>::template constructor,
+//           typename R1 = typename cxx::kinds<CR>::value_type,
+//           template <typename> class I = cxx::kinds<IT>::template constructor>
+// typename std::enable_if<
+//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >::type
+// foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
+//   C<std::tuple<> > rs;
+//   for (const T &x : xs) {
+//     C<R> ys = cxx::invoke(f, z, x, as...);
+//     if (!ys.empty())
+//       if (!rs)
+//         rs = unit<C>(std::tuple<>());
+//   }
+//   return std::move(rs);
+// }
+
+// liftM :: Monad m => (a1 -> r) -> m a1 -> m r
+
+// liftM2 :: Monad m => (a1 -> a2 -> r) -> m a1 -> m a2 -> m r
+
+// ap :: Monad m => m (a -> b) -> m a -> m b
 }
 
 #endif // #ifndef CXX_OSTREAMING_HH

@@ -28,7 +28,7 @@ auto broadcast(const C &dests, const F &func, const As &... args)
   std::vector<future<typename cxx::invoke_of<F, As...>::type> > fs;
   // TODO: use tree
   for (const int dest : dests) {
-    fs.push_back(async(remote::async, dest, func, args...));
+    fs.push_back(async(rlaunch::async, dest, func, args...));
   }
   return fs;
 }
@@ -38,7 +38,7 @@ auto broadcast_detached(const C &dests, const F &func, const As &... args)
     -> typename std::enable_if<is_action<F>::value, void>::type {
   // TODO: use tree
   for (const int dest : dests) {
-    detached(remote::detached, dest, func, args...);
+    detached(rlaunch::detached, dest, func, args...);
   }
 }
 
@@ -53,7 +53,7 @@ auto broadcast_barrier(F func, const As &... args, int b = 0, int e = -1)
   // TODO: execute on different processes
   // TODO: create an action for this?
   if (sz == 1)
-    return async(remote::async, b, func, args...);
+    return async(rlaunch::async, b, func, args...);
   const auto m = b + sz / 2;
   const auto fs0 = broadcast_barrier(func, args..., b, m);
   const auto fs1 = broadcast_barrier(func, args..., m, e);
@@ -78,7 +78,7 @@ auto async_broadcast(int b, int e, const F &func, As &&... args)
   promise<void> *p = nullptr;
   auto evalptr =
       std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
-  return async(remote::async, b, detail::async_broadcast_action(), b, e,
+  return async(rlaunch::async, b, detail::async_broadcast_action(), b, e,
                evalptr);
 }
 
@@ -176,20 +176,20 @@ struct map_reduce_impl {
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");
 
   // Assert that B can be constructed from a future to B
-  static_assert(std::is_convertible<future<B>, B>::value, "");
+  // static_assert(std::is_convertible<future<B>, B>::value, "");
 
   B map_reduce1(const I &b, const I &e) const {
     const auto sz = e - b;
     RPC_ASSERT(sz > 0);
     if (sz == 1) {
-      return async(remote::async, f, *b);
+      return remote(f, *b);
     }
     const auto m = b + sz / 2;
     B res1 = map_reduce1(b, m);
     B res2 = map_reduce1(m, e);
     // B res1 = async(&map_reduce_impl::map_reduce1, this, b, m);
     // B res2 = async(&map_reduce_impl::map_reduce1, this, m, e);
-    return async(remote::async, r, res1, res2);
+    return remote(r, res1, res2);
   }
 
   B map_reduce(const I &b, const I &e) const {
@@ -251,7 +251,7 @@ struct reduce_impl {
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");
 
   // Assert that B can be constructed from a future to B
-  static_assert(std::is_convertible<future<B>, B>::value, "");
+  // static_assert(std::is_convertible<future<B>, B>::value, "");
 
   B reduce1(const I &b, const I &e) const {
     const auto sz = e - b;
@@ -264,7 +264,7 @@ struct reduce_impl {
     B res2 = reduce1(m, e);
     // B res1 = async(&reduce_impl::reduce1, this, b, m);
     // B res2 = async(&reduce_impl::reduce1, this, m, e);
-    return async(remote::async, r, res1, res2);
+    return remote(r, res1, res2);
   }
 
   B reduce(const I &b, const I &e) const {

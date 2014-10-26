@@ -8,7 +8,7 @@
 #include "cxx_ostreaming.hh"
 
 #include "cxx_tree.hh"
-#include "cxx_monad_operators.hh"
+// #include "cxx_monad_operators.hh"
 
 #include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
@@ -37,6 +37,7 @@ using cxx::iota_range_t;
 using cxx::make;
 using cxx::ostreaming;
 using cxx::ostreamer;
+using cxx::output;
 using cxx::put;
 using cxx::range_t;
 using cxx::unit;
@@ -50,7 +51,7 @@ using rpc::launch;
 using rpc::make_client;
 using rpc::make_ready_future;
 using rpc::make_remote_client;
-using rpc::remote;
+using rpc::rlaunch;
 using rpc::server;
 using rpc::shared_future;
 using rpc::sync;
@@ -79,8 +80,8 @@ using std::vector;
 // Global definitions, a poor man's parameter file
 
 struct defs_t {
-  const ptrdiff_t rho = 1; // resolution scale
-  // const ptrdiff_t rho = 10; // resolution scale
+  // const ptrdiff_t rho = 1; // resolution scale
+  const ptrdiff_t rho = 10; // resolution scale
   const ptrdiff_t ncells_per_grid = 10;
 
   const double xmin = 0.0;
@@ -88,18 +89,18 @@ struct defs_t {
   const double cfl = 0.5;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = -1;
-  // const ptrdiff_t nsteps = 10;
+  // const ptrdiff_t nsteps = -1;
+  const ptrdiff_t nsteps = 10;
 
   ptrdiff_t ncells;
   double dx;
   double dt;
 
   const ptrdiff_t wait_every = 0;
-  const ptrdiff_t info_every = 10;
-  // const ptrdiff_t info_every = 0;
-  const ptrdiff_t file_every = 0;
-  // const ptrdiff_t file_every = -1;
+  // const ptrdiff_t info_every = 10;
+  const ptrdiff_t info_every = 0;
+  // const ptrdiff_t file_every = 0;
+  const ptrdiff_t file_every = -1;
   defs_t(int nprocs, int nthreads)
       : ncells(rho * ncells_per_grid * nprocs * nthreads),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}
@@ -291,7 +292,15 @@ public:
   }
 
   // Wait until the grid is ready
-  auto wait() const { return tuple<>(); }
+  auto wait() const {
+    static std::atomic<int> count(0);
+    ++count;
+    cout << "grid_t::wait.0 imin=" << imin << " count=" << count << "\n";
+    // return tuple<>();
+    auto r = tuple<>();
+    cout << "grid_t::wait.9 imin=" << imin << " count=" << count << "\n";
+    return r;
+  }
 
   // Output
   auto output() const -> ostreaming<tuple<> > {
@@ -313,8 +322,14 @@ public:
 
   // Norm
   auto norm() const {
-    return foldl([](const norm_t &x, const cell_t &y) { return x + y.norm(); },
-                 norm_t(), cells);
+    cout << "gn.0\n";
+    // return foldl([](const norm_t &x, const cell_t &y) { return x + y.norm();
+    // }, norm_t(), cells);
+    auto r =
+        foldl([](const norm_t &x, const cell_t &y) { return x + y.norm(); },
+              norm_t(), cells);
+    cout << "gn.9\n";
+    return r;
   }
 
   // Initial condition
@@ -355,6 +370,9 @@ auto grid_get_boundary(const grid_t &g, bool face_upper) {
 }
 RPC_ACTION(grid_get_boundary);
 
+auto grid_wait_foldl(tuple<>, const grid_t &g) -> tuple<> { return g.wait(); }
+RPC_ACTION(grid_wait_foldl);
+
 auto grid_output_foldl(const ostreaming<tuple<> > &ostr, const grid_t &g)
     -> ostreaming<tuple<> > {
   return ostr >> g.output();
@@ -367,7 +385,13 @@ auto grid_axpy(const grid_t &y, const grid_t &x, double a) {
 }
 RPC_ACTION(grid_axpy);
 
-auto grid_norm_foldl(const norm_t &x, const grid_t &y) { return x + y.norm(); }
+auto grid_norm_foldl(const norm_t &x, const grid_t &y) {
+  cout << "gnf.0\n";
+  // return x + y.norm();
+  auto r = x + y.norm();
+  cout << "gnf.9\n";
+  return r;
+}
 RPC_ACTION(grid_norm_foldl);
 
 // Note: Arguments re-ordered
@@ -410,15 +434,19 @@ struct domain_t {
 
   // Wait until all grids are ready
   auto wait() const -> tuple<> {
-    return foldl([](tuple<>, const grid_t &g) { return tuple<>(); }, tuple<>(),
-                 grids);
+    cout << "domain_t::wait.0\n";
+    // foldl(grid_wait_foldl_action(), tuple<>(), grids);
+    auto r = foldl(grid_wait_foldl_action(), tuple<>(), grids);
+    cout << "domain_t::wait.9\n";
+    return r;
   }
 
   // Output
   auto output() const -> ostreaming<tuple<> > {
     return put(ostreamer() << "domain: t=" << t << "\n") >>
            foldl(grid_output_foldl_action(), make<ostreaming, tuple<> >(),
-                 grids);
+                 grids) >>
+           put(ostreamer() << "  tree=\n") >> cxx::output(grids);
   }
 
   // Linear combination
@@ -431,7 +459,13 @@ struct domain_t {
       : domain_t(axpy(), a, *x, *y) {}
 
   // Norm
-  auto norm() const { return foldl(grid_norm_foldl_action(), norm_t(), grids); }
+  auto norm() const {
+    cout << "dn.0\n";
+    // return foldl(grid_norm_foldl_action(), norm_t(), grids);
+    auto r = foldl(grid_norm_foldl_action(), norm_t(), grids);
+    cout << "dn.9\n";
+    return r;
+  }
 
   // Initial condition
   // (Also choose a domain decomposition)
@@ -480,7 +514,8 @@ struct memoized_t {
   memoized_t(ptrdiff_t n, const client<domain_t> &state) : n(n), state(state) {
     rhs = make_client<domain_t>(launch::deferred, domain_t::rhs(), state);
     error = make_client<domain_t>(launch::deferred, domain_t::error(), state);
-    error_norm = async(launch::deferred, &domain_t::norm, error);
+#warning "TODO"
+    error_norm = async(/*launch::deferred,*/ &domain_t::norm, error);
   }
 };
 
@@ -499,21 +534,36 @@ auto rk2(const shared_ptr<memoized_t> &m) -> client<domain_t> {
 auto do_info_output(const shared_future<ostream *> &fos,
                     const shared_ptr<memoized_t> &m) -> ostream * {
   RPC_ASSERT(server->rank() == 0);
+  cout << "dio.0\n";
   const shared_ptr<domain_t> &s = m->state.get();
+  cout << "dio.0.1\n";
+  m->error.get();
+  cout << "dio.0.2\n";
+  m->error.get()->wait();
+  cout << "dio.0.3\n";
+  cout << m->state->output().get(cout);
+  cout << "dio.1\n";
   const norm_t &en = m->error_norm.get();
+  cout << "dio.2\n";
   auto cell_size = cell_t().norm().count;
+  cout << "dio.3\n";
   auto ncells = en.count / cell_size;
+  cout << "dio.4\n";
   ostream *os = fos.get();
+  cout << "dio.5\n";
   *os << "n=" << m->n << " t=" << s->t << " "
       << "ncells: " << ncells << " "
       << "L2-norm[error]: " << en.norm2() << "\n" << flush;
+  cout << "dio.9\n";
   return os;
 }
 
 auto info_output(shared_future<ostream *> fos, const shared_ptr<memoized_t> &m)
     -> shared_future<ostream *> {
+  cout << "io.0\n";
   if (do_this_time(m->n, defs->info_every))
     fos = async(do_info_output, fos, m);
+  cout << "io.9\n";
   return fos;
 }
 
@@ -621,17 +671,27 @@ auto rpc_main(int argc, char **argv) -> int {
   // Initialization
   stats_t istats;
 
+  cout << "i.0\n";
   auto s = make_client<domain_t>(domain_t::initial(), defs->tmin);
+  cout << "i.1\n";
   auto m = make_shared<memoized_t>(0, s);
+  cout << "i.2\n";
   fio = info_output(fio, m);
+  cout << "i.3\n";
   ffo = file_output(ffo, m);
+  cout << "i.4\n";
 
   if (do_this_time(m->n, defs->wait_every)) {
+    cout << "i.5\n";
     // Rate limiter
     s.wait();
+    cout << "i.6\n";
     fio.wait();
+    cout << "i.7\n";
     ffo.wait();
+    cout << "i.8\n";
   }
+  cout << "i.9\n";
 
   istats.stop();
   cout << "Initialization:\n" << istats;
@@ -671,10 +731,10 @@ auto rpc_main(int argc, char **argv) -> int {
   // cout << "Elapsed time (calc): " << elapsed_calc << " sec\n";
 
   // for (int p = 0; p < rpc::server->size(); ++p) {
-  //   cout << sync(remote::sync, p, get_thread_stats_action());
+  //   cout << sync(rlaunch::sync, p, get_thread_stats_action());
   // }
   // for (int p = 0; p < rpc::server->size(); ++p) {
-  //   cout << sync(remote::sync, p, get_server_stats_action());
+  //   cout << sync(rlaunch::sync, p, get_server_stats_action());
   // }
 
   file.close();

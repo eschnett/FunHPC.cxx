@@ -12,7 +12,8 @@
 
 #include <cereal/archives/binary.hpp>
 
-#include <array>
+#include <cassert>
+#include <iterator>
 #include <type_traits>
 #include <utility>
 
@@ -21,30 +22,123 @@ namespace rpc {
 template <typename T>
 template <class Archive>
 void client<T>::serialize(Archive &ar) {
-  ar(data);
+  ar(proc, data);
 }
 
 template <typename T, typename... As>
 client<T> make_remote_client(int proc, const As &... args) {
-  return make_remote_client<T>(remote::async, proc, args...);
+  return make_remote_client<T>(rlaunch::async, proc, args...);
 }
 
 template <typename T, typename... As>
 client<T> make_remote_client(const shared_future<int> &proc,
                              const As &... args) {
-  return make_remote_client<T>(remote::async, proc, args...);
+  return make_remote_client<T>(rlaunch::async, proc, args...);
 }
 
 template <typename T, typename... As>
-client<T> make_remote_client(remote policy, int proc, const As &... args) {
-  return async(policy, proc, make_global_shared_action<T, As...>(), args...);
+client<T> make_remote_client(rlaunch policy, int proc, const As &... args) {
+  return client<T>(proc, async(policy, proc,
+                               make_global_shared_action<T, As...>(), args...));
 }
 
 template <typename T, typename... As>
-client<T> make_remote_client(remote policy, const shared_future<int> &proc,
+client<T> make_remote_client(rlaunch policy, const shared_future<int> &proc,
                              const As &... args) {
   return async(policy, proc, make_global_shared_action<T, As...>(), args...);
 }
+
+// template <typename F, typename... As>
+// auto local(launch policy, const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   typedef typename cxx::invoke_of<F, As...>::type CT;
+//   // We don't know the process number since the client may be null
+//   return CT(async(policy, f, std::move(args)...));
+// }
+//
+// template <typename F, typename... As>
+// auto local(const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   return local(launch::async, f, std::move(args)...);
+// }
+//
+// template <typename F, typename... As>
+// auto remote(rlaunch policy, int proc, const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   typedef typename cxx::invoke_of<F, As...>::type CT;
+//   return CT(proc, async(policy, proc, f, std::move(args)...));
+// }
+//
+// template <typename F, typename... As>
+// auto remote(rlaunch policy, const shared_future<int> &proc, const F &f,
+//             As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   typedef typename cxx::invoke_of<F, As...>::type CT;
+//   return CT(proc, async(policy, proc, f, std::move(args)...));
+// }
+//
+// template <typename F, typename... As>
+// auto remote(int proc, const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   return remote(rlaunch::async, proc, f, std::move(args)...);
+// }
+//
+// template <typename F, typename... As>
+// auto remote(const shared_future<int> &proc, const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   return remote(rlaunch::async, proc, f, std::move(args)...);
+// }
+//
+// template <typename F, typename G, typename... As>
+// auto remote(rlaunch policy, F, G &&global, As &&... args)
+//     -> typename std::enable_if<
+//           is_action<F>::value && is_global<G>::value &&
+//               is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
+//           typename cxx::invoke_of<F, G, As...>::type>::type {
+//   auto proc = global.get_proc_future();
+//   // return remote(policy, proc, F(), std::move(global), std::move(args)...);
+//   auto r = remote(policy, proc, F(), std::move(global), std::move(args)...);
+//   return r;
+// }
+//
+// template <typename F, typename G, typename... As>
+// auto remote(F, G &&global, As &&... args)
+//     -> typename std::enable_if<
+//           is_action<F>::value && is_global<G>::value &&
+//               is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
+//           typename cxx::invoke_of<F, G, As...>::type>::type {
+//   return remote(rlaunch::async, F(), std::move(global), std::move(args)...);
+// }
+
+// template <typename F, typename... As>
+// auto rewrap_client(int proc, const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   typedef typename cxx::invoke_of<F, As...>::type CT;
+//   return CT(proc, async(f, std::move(args)...));
+// }
+
+// template <typename F, typename... As>
+// auto rewrap_client(const F &f, As &&... args)
+//     -> typename std::enable_if<
+//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
+//           typename cxx::invoke_of<F, As...>::type>::type {
+//   typedef typename cxx::invoke_of<F, As...>::type CT;
+//   return CT(async(f, std::move(args)...));
+// }
 }
 
 namespace rpc {
@@ -55,6 +149,262 @@ int choose_dest();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+namespace rpc {
+
+// Iterator
+
+template <typename T> struct client_iterator {
+  typedef std::ptrdiff_t difference_type;
+  typedef T value_type;
+  typedef T *pointer_type;
+  typedef T &reference_type;
+  typedef std::random_access_iterator_tag iterator_category;
+  client<T> &c;
+  std::ptrdiff_t i;
+  client_iterator(client<T> &c, std::ptrdiff_t i = 0) : c(c), i(i) {}
+  reference_type operator*() {
+    assert(i == 0);
+    return (&*c)[i];
+  }
+  client_iterator &operator++() {
+    ++i;
+    return *this;
+  }
+  bool operator==(const client_iterator<T> &it) const {
+    return &c == &it.c && i == it.i;
+  }
+  bool operator!=(const client_iterator<T> &it) const { return !(*this == it); }
+  client_iterator operator++(int) {
+    client_iterator r(*this);
+    ++*this;
+    return r;
+  }
+  client_iterator &operator--() {
+    --i;
+    return *this;
+  }
+  client_iterator operator--(int) {
+    client_iterator r(*this);
+    --*this;
+    return r;
+  }
+  client_iterator &operator+=(difference_type n) {
+    i += n;
+    return *this;
+  }
+  client_iterator operator+(difference_type n) const {
+    client_iterator r(*this);
+    r += n;
+    return r;
+  }
+  client_iterator &operator-=(difference_type n) {
+    i -= n;
+    return *this;
+  }
+  client_iterator operator-(difference_type n) const {
+    client_iterator r(*this);
+    r -= n;
+    return r;
+  }
+  difference_type operator-(const client_iterator &it) const {
+    assert(&c == &it.c);
+    return it.i - i;
+  }
+  reference_type operator[](difference_type n) { return *(*this + n); }
+  bool operator<(const client_iterator &it) const { return (it - *this) > 0; }
+  bool operator>(const client_iterator &it) const { return it < *this; }
+  bool operator<=(const client_iterator &it) const { return !(*this < it); }
+  bool operator>=(const client_iterator &it) const { return !(*this > it); }
+};
+
+template <typename T> struct const_client_iterator {
+  typedef std::ptrdiff_t difference_type;
+  typedef T value_type;
+  typedef const T *pointer_type;
+  typedef const T &reference_type;
+  typedef std::random_access_iterator_tag iterator_category;
+  const client<T> &c;
+  std::ptrdiff_t i;
+  const_client_iterator(const client<T> &c, std::ptrdiff_t i = 0)
+      : c(c), i(i) {}
+  reference_type operator*() const {
+    // TODO: We don't like the call to make_Local here, but iterators
+    // are process-local
+    assert(i == 0);
+    // return (&*c)[i];
+    return *c.make_local();
+  }
+  const_client_iterator &operator++() {
+    ++i;
+    return *this;
+  }
+  bool operator==(const const_client_iterator<T> &it) const {
+    return &c == &it.c && i == it.i;
+  }
+  bool operator!=(const const_client_iterator<T> &it) const {
+    return !(*this == it);
+  }
+  const_client_iterator operator++(int) {
+    const_client_iterator r(*this);
+    ++*this;
+    return r;
+  }
+  const_client_iterator &operator--() {
+    --i;
+    return *this;
+  }
+  const_client_iterator operator--(int) {
+    const_client_iterator r(*this);
+    --*this;
+    return r;
+  }
+  const_client_iterator &operator+=(difference_type n) {
+    i += n;
+    return *this;
+  }
+  const_client_iterator operator+(difference_type n) const {
+    const_client_iterator r(*this);
+    r += n;
+    return r;
+  }
+  const_client_iterator &operator-=(difference_type n) {
+    i -= n;
+    return *this;
+  }
+  const_client_iterator operator-(difference_type n) const {
+    const_client_iterator r(*this);
+    r -= n;
+    return r;
+  }
+  difference_type operator-(const const_client_iterator &it) const {
+    assert(&c == &it.c);
+    return it.i - i;
+  }
+  reference_type operator[](difference_type n) const { return *(*this + n); }
+  bool operator<(const const_client_iterator &it) const {
+    return (it - *this) > 0;
+  }
+  bool operator>(const const_client_iterator &it) const { return it < *this; }
+  bool operator<=(const const_client_iterator &it) const {
+    return !(*this < it);
+  }
+  bool operator>=(const const_client_iterator &it) const {
+    return !(*this > it);
+  }
+};
+}
+
+namespace std {
+template <typename T> struct iterator_traits<rpc::client_iterator<T> > {
+  typedef typename rpc::client_iterator<T>::difference_type difference_type;
+  typedef typename rpc::client_iterator<T>::value_type value_type;
+  typedef typename rpc::client_iterator<T>::pointer_type pointer_type;
+  typedef typename rpc::client_iterator<T>::reference_type reference_type;
+  typedef typename rpc::client_iterator<T>::iterator_category iterator_category;
+};
+
+template <typename T, typename Distance>
+void advance(rpc::client_iterator<T> &it, Distance n) {
+  it += n;
+}
+template <typename T>
+typename std::iterator_traits<rpc::client_iterator<T> >::difference_type
+distance(const rpc::client_iterator<T> &first,
+         const rpc::client_iterator<T> &last) {
+  return last - first;
+}
+
+template <typename T>
+rpc::client_iterator<T> next(
+    rpc::client_iterator<T> it,
+    typename std::iterator_traits<rpc::client_iterator<T> >::difference_type n =
+        1) {
+  std::advance(it, n);
+  return it;
+}
+template <typename T>
+rpc::client_iterator<T> prev(
+    rpc::client_iterator<T> it,
+    typename std::iterator_traits<rpc::client_iterator<T> >::difference_type n =
+        1) {
+  std::advance(it, -n);
+  return it;
+}
+
+template <typename T> rpc::client_iterator<T> begin(rpc::client<T> &c) {
+  return rpc::client_iterator<T>(c);
+}
+template <typename T> rpc::client_iterator<T> end(rpc::client<T> &c) {
+  return rpc::client_iterator<T>(c, 1);
+}
+
+template <typename T> struct iterator_traits<rpc::const_client_iterator<T> > {
+  typedef typename rpc::const_client_iterator<T>::difference_type
+      difference_type;
+  typedef typename rpc::const_client_iterator<T>::value_type value_type;
+  typedef typename rpc::const_client_iterator<T>::pointer_type pointer_type;
+  typedef typename rpc::const_client_iterator<T>::reference_type reference_type;
+  typedef typename rpc::const_client_iterator<T>::iterator_category
+      iterator_category;
+};
+
+template <typename T, typename Distance,
+          typename IT = rpc::const_client_iterator<T> >
+void advance(IT &it, Distance n) {
+  it += n;
+}
+template <typename T, typename IT = rpc::const_client_iterator<T> >
+typename std::iterator_traits<IT>::difference_type distance(const IT &first,
+                                                            const IT &last) {
+  return last - first;
+}
+
+template <typename T>
+rpc::const_client_iterator<T>
+next(rpc::const_client_iterator<T> it,
+     typename std::iterator_traits<
+         rpc::const_client_iterator<T> >::difference_type n = 1) {
+  std::advance(it, n);
+  return it;
+}
+template <typename T>
+rpc::const_client_iterator<T>
+prev(rpc::const_client_iterator<T> it,
+     typename std::iterator_traits<
+         rpc::const_client_iterator<T> >::difference_type n = 1) {
+  std::advance(it, -n);
+  return it;
+}
+
+template <typename T>
+rpc::const_client_iterator<T> begin(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c);
+}
+template <typename T>
+rpc::const_client_iterator<T> cbegin(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c);
+}
+template <typename T>
+rpc::const_client_iterator<T> end(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c, 1);
+}
+template <typename T>
+rpc::const_client_iterator<T> cend(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c, 1);
+}
+}
+
+namespace rpc {
+template <typename T>
+rpc::const_client_iterator<T> begin(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c);
+}
+template <typename T>
+rpc::const_client_iterator<T> end(const rpc::client<T> &c) {
+  return rpc::const_client_iterator<T>(c, 1);
+}
+}
 
 namespace cxx {
 
@@ -80,8 +430,13 @@ typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
     R>::type
 foldl(const F &f, const R &z, const rpc::client<T> &xs, const As &... as) {
-  return client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
+  std::cout << "client::foldl.0\n";
+  // return client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
+  //     f, z, xs, as...);
+  auto r = client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
       f, z, xs, as...);
+  std::cout << "client::foldl.9\n";
+  return r;
 }
 
 template <typename F, typename R, typename T, typename... As>
@@ -91,23 +446,23 @@ struct client_foldable<F, false, R, T, As...> {
       std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
       "");
 
-  static R foldl_null(const F &f, const R &z, const rpc::client<T> &xs,
-                      const As &... as) {
-    return z;
-  }
-
   static R foldl_client(const F &f, const R &z, const rpc::client<T> &xs,
                         const As &... as) {
-    // Note: We could call make_local, but we don't want to for non-actions
-    return cxx::invoke(f, z, *xs, as...);
+    std::cout << "client::foldl_client/f.0\n";
+    // return cxx::invoke(f, z, *xs, as...);
+    auto r = cxx::invoke(f, z, *xs, as...);
+    std::cout << "client::foldl_client/f.9\n";
+    return r;
   }
 
   static R foldl(const F &f, const R &z, const rpc::client<T> &xs,
                  const As &... as) {
-    // Note: operator bool waits for the client to be ready
+    std::cout << "client::foldl/f.0\n";
     bool s = bool(xs);
-    return s == false ? foldl_null(f, z, xs, as...)
-                      : foldl_client(f, z, xs, as...);
+    // return s == false ? z : foldl_client(f, z, xs, as...);
+    auto r = s == false ? z : foldl_client(f, z, xs, as...);
+    std::cout << "client::foldl/f.9\n";
+    return r;
   }
 };
 
@@ -118,23 +473,30 @@ struct client_foldable<F, true, R, T, As...> {
       std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
       "");
 
-  static R foldl_null(const R &z, const rpc::client<T> &xs, const As &... as) {
-    return z;
-  }
-
   static R foldl_client(const R &z, const rpc::client<T> &xs,
                         const As &... as) {
+    std::cout << "client::foldl_client/a.0\n";
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
-    return cxx::invoke(F(), z, *xs, as...);
+    // return cxx::invoke(F(), z, *xs, as...);
+    auto r = cxx::invoke(F(), z, *xs, as...);
+    std::cout << "client::foldl_client/a.9 T=" << typeid(T).name()
+              << " R=" << typeid(R).name() << "\n";
+    return r;
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
 
   static R foldl(F, const R &z, const rpc::client<T> &xs, const As &... as) {
-    // Note: operator bool waits for the client to be ready
+    std::cout << "client::foldl/a.0 T=" << typeid(T).name()
+              << " R=" << typeid(R).name() << "\n";
     bool s = bool(xs);
-    return s == false ? foldl_null(z, xs, as...)
-                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                                  foldl_client_action(), z, xs, as...);
+    std::cout << "  s=" << s << "\n";
+    std::cout << "  xs.get_proc=" << xs.get_proc() << "\n";
+    // return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+    //                                   foldl_client_action(), z, xs, as...);
+    auto r = s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                        foldl_client_action(), z, xs, as...);
+    std::cout << "client::foldl/a.9\n";
+    return r;
   }
 };
 // Define action exports
@@ -170,11 +532,6 @@ struct client_foldable2<F, false, R, T, T2, As...> {
       std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
       "");
 
-  static R foldl2_null(const F &f, const R &z, const rpc::client<T> &xs,
-                       const rpc::client<T2> &ys, const As &... as) {
-    return z;
-  }
-
   static R foldl2_client(const F &f, const R &z, const rpc::client<T> &xs,
                          const rpc::client<T2> &ys, const As &... as) {
     // Note: We could call make_local, but we don't want to for non-actions
@@ -186,8 +543,7 @@ struct client_foldable2<F, false, R, T, T2, As...> {
     // Note: operator bool waits for the client to be ready
     bool s = bool(xs);
     assert(bool(ys) == s);
-    return s == false ? foldl2_null(f, z, xs, ys, as...)
-                      : foldl2_client(f, z, xs, ys, as...);
+    return s == false ? z : foldl2_client(f, z, xs, ys, as...);
   }
 };
 
@@ -197,11 +553,6 @@ struct client_foldable2<F, true, R, T, T2, As...> {
   static_assert(
       std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
       "");
-
-  static R foldl2_null(const R &z, const rpc::client<T> &xs,
-                       const rpc::client<T2> &ys, const As &... as) {
-    return z;
-  }
 
   static R foldl2_client(const R &z, const rpc::client<T> &xs,
                          const rpc::client<T2> &ys, const As &... as) {
@@ -214,10 +565,8 @@ struct client_foldable2<F, true, R, T, T2, As...> {
                   const rpc::client<T2> &ys, const As &... as) {
     bool s = bool(xs);
     assert(bool(ys) == s);
-    // Note: operator bool waits for the client to be ready
-    return s == false ? foldl2_null(z, xs, ys, as...)
-                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                                  foldl2_client_action(), z, xs, ys, as...);
+    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                      foldl2_client_action(), z, xs, ys, as...);
   }
 };
 // Define action exports
@@ -250,17 +599,24 @@ struct client_functor<F, false, T, As...> {
 
   typedef typename cxx::invoke_of<F, T, As...>::type R;
 
+  static rpc::global_shared_ptr<R>
+  fmap_client_local(const F &f, const rpc::client<T> &xs, const As &... as) {
+    // Note: We could call make_local, but we don't want to for non-actions
+    return rpc::make_global_shared<R>(cxx::invoke(f, *xs, as...));
+  }
+
   static rpc::client<R> fmap_client(const F &f, const rpc::client<T> &xs,
                                     const As &... as) {
-    // Note: We could call make_local, but we don't want to for non-actions
     bool s = bool(xs);
-    return s == false ? rpc::client<R>()
-                      : rpc::make_client<R>(cxx::invoke(f, *xs, as...));
+    return s == false
+               ? rpc::client<R>()
+               : rpc::client<R>(rpc::server->rank(),
+                                rpc::async(fmap_client_local, f, xs, as...));
   }
 
   static rpc::client<R> fmap(const F &f, const rpc::client<T> &xs,
                              const As &... as) {
-    return rpc::client<R>(async(fmap_client, f, xs, as...));
+    return rpc::client<R>(rpc::async(fmap_client, f, xs, as...));
   }
 };
 
@@ -270,11 +626,10 @@ struct client_functor<F, true, T, As...> {
 
   typedef typename cxx::invoke_of<F, T, As...>::type R;
 
-  // TODO: Use make_remote_client instead
-  static rpc::client<R> fmap_client_remote(const rpc::client<T> &xs,
-                                           const As &... as) {
+  static rpc::global_shared_ptr<R> fmap_client_remote(const rpc::client<T> &xs,
+                                                      const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client_remote);
-    return rpc::make_client<R>(cxx::invoke(F(), *xs, as...));
+    return rpc::make_global_shared<R>(cxx::invoke(F(), *xs, as...));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_client_remote);
 
@@ -282,8 +637,10 @@ struct client_functor<F, true, T, As...> {
                                     const As &... as) {
     bool s = bool(xs);
     return s == false ? rpc::client<R>()
-                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                                  fmap_client_remote_action(), xs, as...);
+                      : rpc::client<R>(
+                            xs.get_proc(),
+                            rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                       fmap_client_remote_action(), xs, as...));
   }
 
   static rpc::client<R> fmap(F, const rpc::client<T> &xs, const As &... as) {
@@ -317,19 +674,28 @@ struct client_functor2<F, false, T, T2, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
 
+  static rpc::global_shared_ptr<R> fmap2_client_local(const F &f,
+                                                      const rpc::client<T> &xs,
+                                                      const rpc::client<T2> &ys,
+                                                      const As &... as) {
+    // Note: We could call make_local, but we don't want to for non-actions
+    return rpc::make_global_shared<R>(cxx::invoke(f, *xs, *ys, as...));
+  }
+
   static rpc::client<R> fmap2_client(const F &f, const rpc::client<T> &xs,
                                      const rpc::client<T2> &ys,
                                      const As &... as) {
-    // Note: We could call make_local, but we don't want to for non-actions
     bool s = bool(xs);
     assert(bool(ys) == s);
     return s == false ? rpc::client<R>()
-                      : rpc::make_client<R>(cxx::invoke(f, *xs, *ys, as...));
+                      : rpc::client<R>(
+                            rpc::server->rank(),
+                            rpc::async(fmap2_client_local, f, xs, ys, as...));
   }
 
   static rpc::client<R> fmap2(const F &f, const rpc::client<T> &xs,
                               const rpc::client<T2> &ys, const As &... as) {
-    return rpc::client<R>(async(fmap2_client, f, xs, ys, as...));
+    return rpc::client<R>(rpc::async(fmap2_client, f, xs, ys, as...));
   }
 };
 
@@ -339,12 +705,12 @@ struct client_functor2<F, true, T, T2, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
 
-  // TODO: Use make_remote_client instead
-  static rpc::client<R> fmap2_client_remote(const rpc::client<T> &xs,
-                                            const rpc::client<T2> &ys,
-                                            const As &... as) {
+  static rpc::global_shared_ptr<R> fmap2_client_remote(const rpc::client<T> &xs,
+                                                       const rpc::client<T> &ys,
+                                                       const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
-    return rpc::make_client<R>(cxx::invoke(F(), *xs, *ys.make_local(), as...));
+    return rpc::make_global_shared<R>(
+        cxx::invoke(F(), *xs, *ys.make_local(), as...));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
 
@@ -353,9 +719,12 @@ struct client_functor2<F, true, T, T2, As...> {
                                      const As &... as) {
     bool s = bool(xs);
     assert(bool(ys) == s);
-    return s == false ? rpc::client<R>()
-                      : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                                  fmap2_client_remote_action(), xs, ys, as...);
+    return s == false
+               ? rpc::client<R>()
+               : rpc::client<R>(xs.get_proc(),
+                                rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                           fmap2_client_remote_action(), xs, ys,
+                                           as...));
   }
 
   static rpc::client<R> fmap2(F, const rpc::client<T> &xs,
@@ -395,23 +764,32 @@ struct client_functor3<F, false, T, T2, T3, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, T3, As...>::type R;
 
+  static rpc::global_shared_ptr<R> fmap3_client_local(const F &f,
+                                                      const rpc::client<T> &xs,
+                                                      const rpc::client<T2> &ys,
+                                                      const rpc::client<T3> &zs,
+                                                      const As &... as) {
+    // Note: We could call make_local, but we don't want to for non-actions
+    return rpc::make_global_shared<R>(cxx::invoke(f, *xs, *ys, *zs, as...));
+  }
+
   static rpc::client<R> fmap3_client(const F &f, const rpc::client<T> &xs,
                                      const rpc::client<T2> &ys,
                                      const rpc::client<T3> &zs,
                                      const As &... as) {
-    // Note: We could call make_local, but we don't want to for non-actions
     bool s = bool(xs);
     assert(bool(ys) == s);
     assert(bool(zs) == s);
-    return s == false
-               ? rpc::client<R>()
-               : rpc::make_client<R>(cxx::invoke(f, *xs, *ys, *zs, as...));
+    return s == false ? rpc::client<R>()
+                      : rpc::client<R>(rpc::server->rank(),
+                                       rpc::async(fmap3_client_local, f, xs, ys,
+                                                  zs, as...));
   }
 
   static rpc::client<R> fmap3(const F &f, const rpc::client<T> &xs,
                               const rpc::client<T2> &ys,
                               const rpc::client<T3> &zs, const As &... as) {
-    return rpc::client<R>(async(fmap3_client, f, xs, ys, zs, as...));
+    return rpc::client<R>(rpc::async(fmap3_client, f, xs, ys, zs, as...));
   }
 };
 
@@ -421,13 +799,11 @@ struct client_functor3<F, true, T, T2, T3, As...> {
 
   typedef typename cxx::invoke_of<F, T, T2, T3, As...>::type R;
 
-  // TODO: Use make_remote_client instead
-  static rpc::client<R> fmap3_client_remote(const rpc::client<T> &xs,
-                                            const rpc::client<T2> &ys,
-                                            const rpc::client<T3> &zs,
-                                            const As &... as) {
+  static rpc::global_shared_ptr<R>
+  fmap3_client_remote(const rpc::client<T> &xs, const rpc::client<T2> &ys,
+                      const rpc::client<T3> &zs, const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
-    return rpc::make_client<R>(
+    return rpc::make_global_shared<R>(
         cxx::invoke(F(), *xs, *ys.make_local(), *zs.make_local(), as...));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
@@ -441,8 +817,10 @@ struct client_functor3<F, true, T, T2, T3, As...> {
     assert(bool(zs) == s);
     return s == false
                ? rpc::client<R>()
-               : rpc::sync(rpc::remote::sync, xs.get_proc(),
-                           fmap3_client_remote_action(), xs, ys, zs, as...);
+               : rpc::client<R>(xs.get_proc(),
+                                rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                           fmap3_client_remote_action(), xs, ys,
+                                           zs, as...));
   }
 
   static rpc::client<R> fmap3(F, const rpc::client<T> &xs,
@@ -491,7 +869,7 @@ namespace detail {
 template <typename T, typename F, typename... As>
 typename std::enable_if<rpc::is_action<F>::value,
                         typename cxx::invoke_of<F, T, As...>::type>::type
-bind(const rpc::client<T> &xs, F, const As &... as) {
+bind(const rpc::client<T> &xs, const F &f, const As &... as) {
   return cxx::invoke(F(), *xs, as...);
 }
 template <typename T, typename F, typename... As>
@@ -500,8 +878,8 @@ struct bind_action
           bind_action<T, F, As...>,
           rpc::wrap<decltype(&bind<T, F, As...>), &bind<T, F, As...> > > {};
 // TODO: automate implementing this action:
-// RPC_CLASS_EXPORT(rpc::detail::bind_action<T, F, As...>::evaluate);
-// RPC_CLASS_EXPORT(rpc::detail::bind_action<T, F, As...>::finish);
+// RPC_CLASS_EXPORT(rpc::detail::bind_action<T,  F, As...>::evaluate);
+// RPC_CLASS_EXPORT(rpc::detail::bind_action<T,  F, As...>::finish);
 }
 
 template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
@@ -510,10 +888,10 @@ template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
 bind(const rpc::client<T> &xs, const F &f, const As &... as) {
-  return C<R>(rpc::async([f](const rpc::client<T> &xs, const As &... as) {
-                           return cxx::invoke(f, *xs, as...);
-                         },
-                         xs, as...));
+  return rpc::client<R>([f](const rpc::client<T> &xs, const As &... as) {
+                          return cxx::invoke(f, *xs, as...);
+                        },
+                        xs, as...);
 }
 
 template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
@@ -521,18 +899,33 @@ template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<rpc::is_action<F>::value, C<R> >::type
-bind(const rpc::client<T> &xs, F, const As &... as) {
-  return C<R>(rpc::async(rpc::remote::async, xs.get_proc_future(),
-                         detail::bind_action<T, F, As...>(), xs, F(), as...));
+bind(const rpc::client<T> &xs, const F &f, const As &... as) {
+  return rpc::client<R>(async(rpc::rlaunch::async, xs.get_proc_future(),
+                              detail::bind_action<T, F, As...>(), xs, F(),
+                              as...));
 }
 
-// TODO: execute remotely
+// mapM :: Monad m => (a -> m b) -> [a] -> m [b]
+// mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
+template <typename F, typename IT, typename... As,
+          typename T = typename IT::value_type,
+          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          template <typename> class C = cxx::kinds<CR>::template constructor,
+          typename R = typename cxx::kinds<CR>::value_type>
+typename std::enable_if<cxx::is_client<CR>::value, C<std::tuple<> > >::type
+mapM_(const F &f, const IT &xs, const As &... as) {
+  for (const T &x : xs)
+    cxx::invoke(f, x, as...);
+  return unit<C>(std::tuple<>());
+}
+
+// TODO: execute remotely?
 template <typename T, typename CCT = rpc::client<rpc::shared_future<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
 C<T> join(const rpc::client<rpc::client<T> > &xss) {
-  return C<T>(rpc::async([xss]() { return *xss.make_local(); }));
+  return rpc::client<T>(rpc::async([xss]() { return *xss.make_local(); }));
 }
 
 // iota

@@ -174,12 +174,13 @@ public:
 };
 
 template <typename T, typename... As> client<T> make_client(As &&... args) {
-  return client<T>::create(find_here(), make_shared<T>(forward<As>(args)...));
+  return client<T>::create(find_here(),
+                           boost::make_shared<T>(forward<As>(args)...));
 }
 
 template <typename T, typename... As>
 client<T> make_remote_client(const id_type &loc, As &&... args) {
-  return client<T>::create(loc, make_shared<T>(forward<As>(args)...));
+  return client<T>::create(loc, boost::make_shared<T>(forward<As>(args)...));
 }
 
 // namespace detail {
@@ -678,7 +679,7 @@ int main(int argc, char **argv) {
 
   int n = 0;
   auto s = make_client<domain_t>(domain_t::initial(), defs::tmin);
-  auto m = make_shared<memoized_t>(n, s);
+  auto m = boost::make_shared<memoized_t>(n, s);
   auto fio = info_output(make_ready_future<ostream *>(&cout), m);
   auto ffo = file_output(make_ready_future<ostream *>(&file), m);
 
@@ -691,7 +692,7 @@ int main(int argc, char **argv) {
 
     s = rk2(m);
     ++n;
-    m = make_shared<memoized_t>(n, s);
+    m = boost::make_shared<memoized_t>(n, s);
     fio = info_output(fio, m);
     ffo = file_output(ffo, m);
   }

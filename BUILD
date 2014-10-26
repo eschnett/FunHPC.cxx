@@ -41,7 +41,7 @@ done
 
 (. ~/SIMFACTORY/all-all/env.sh && make -j8 wave) && for n in 4 8 16 32; do for t in 1 16; do ./wave.stampede.submit.sh $n 2 8 $[$n*16/$t] $t 1& done; done; wait
 
-for f in wave.n*.s*.c*.p*.t*.m*.log; do grep -H 'Time:' $f | tail -n +2; done 
+for f in wave.n*.s*.c*.p*.t*.m*.log; do grep -H 'Time:' $f | tail -n +3; done 
 
 
 

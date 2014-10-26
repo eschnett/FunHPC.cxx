@@ -1,6 +1,6 @@
 # source $HOME/SIMFACTORY/all-all/env.sh
 
-DEBUG =
+DEBUG = 1
 
 CC  := ${CC}	# ${MPICC}
 CXX := ${CXX}   # ${MPICXX}

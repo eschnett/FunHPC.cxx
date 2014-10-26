@@ -18,8 +18,8 @@ std::vector<int> find_all_threads_partial(int dmin, int dmax) {
     return std::vector<int>(nthreads, server->rank());
   }
   auto dmed = (dmin + dmax) / 2;
-  auto freshi =
-      async(remote::async, dmed, find_all_threads_partial_action(), dmed, dmax);
+  auto freshi = async(rlaunch::async, dmed, find_all_threads_partial_action(),
+                      dmed, dmax);
   auto res = find_all_threads_partial(dmin, dmed);
   auto reshi = freshi.get();
   res.insert(res.end(), reshi.begin(), reshi.end());
@@ -49,7 +49,7 @@ inline void async_broadcast(int b, int e,
   if (sz == 1)
     return evalptr->execute();
   int m = b + sz / 2;
-  auto f = async(remote::async, m, async_broadcast_action(), m, e, evalptr);
+  auto f = async(rlaunch::async, m, async_broadcast_action(), m, e, evalptr);
   async_broadcast(b, m, evalptr);
   f.wait();
 }

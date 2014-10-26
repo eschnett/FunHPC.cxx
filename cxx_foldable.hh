@@ -31,6 +31,7 @@ namespace cxx {
 // TODO: introduce foldable2
 
 // array
+
 template <typename F, typename R, typename T, std::size_t N, typename... As,
           typename CT = std::array<T, N>,
           template <typename> class C = kinds<CT>::template constructor>
@@ -96,6 +97,7 @@ foldl1(const F &f, const std::array<T, N> &xs, const As &... as) {
 }
 
 // list
+
 template <typename F, typename R, typename T, typename Allocator,
           typename... As, typename CT = std::list<T, Allocator>,
           template <typename> class C = kinds<CT>::template constructor>
@@ -126,6 +128,7 @@ foldl1(const F &f, const std::list<T, Allocator> &xs, const As &... as) {
 }
 
 // set
+
 template <typename F, typename R, typename T, typename Compare,
           typename Allocator, typename... As,
           typename CT = std::set<T, Compare, Allocator>,
@@ -158,6 +161,7 @@ foldl1(const F &f, const std::set<T, Compare, Allocator> &xs,
 }
 
 // shared_ptr
+
 template <typename F, typename R, typename T, typename... As,
           typename CT = std::shared_ptr<T>,
           template <typename> class C = kinds<CT>::template constructor>
@@ -180,6 +184,7 @@ foldl1(const F &f, const std::shared_ptr<T> &xs, const As &... as) {
 }
 
 // vector
+
 template <typename F, typename R, typename T, typename Allocator,
           typename... As, typename CT = std::vector<T, Allocator>,
           template <typename> class C = kinds<CT>::template constructor>
@@ -188,11 +193,13 @@ typename std::enable_if<
     R>::type
 foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs,
       const As &... as) {
+  std::cout << "vector::foldl.0\n";
   std::size_t s = xs.size();
   R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], as...);
-  return r;
+  std::cout << "vector::foldl.9\n";
+  return std::move(r);
 }
 
 template <typename F, typename R, typename T, typename Allocator, typename T2,
@@ -209,7 +216,7 @@ foldl2(const F &f, const R &z, const std::vector<T, Allocator> &xs,
   R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], ys[i], as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename T, typename Allocator, typename... As,
@@ -224,7 +231,7 @@ foldl1(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
   T r(xs[0]);
   for (std::size_t i = 1; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], as...);
-  return r;
+  return std::move(r);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

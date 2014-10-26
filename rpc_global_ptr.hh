@@ -21,7 +21,8 @@ namespace rpc {
 // const {
 //   // Don't know whether to copy or not for local pointers
 //   RPC_ASSERT(!is_local());
-//   return async(remote::async, get_proc(), global_ptr_get_action<T>(), *this);
+//   return async(rlaunch::async, get_proc(), global_ptr_get_action<T>(),
+//   *this);
 // }
 
 template <typename T, typename... As>

@@ -176,10 +176,9 @@ auto block_vector_t::fnrm2() const -> scalar_t::client {
       fs->push_back(afnrm2(block(ib)));
     }
   }
-  return rpc::async(rpc::remote::async, fnrm2_finalize_action(),
-                    rpc::map_reduce(fnrm2_process_action(),
-                                    fnrm2_combine_action(), fnrm2_init_action(),
-                                    fs));
+  return local(fnrm2_finalize_action(),
+               rpc::map_reduce(fnrm2_process_action(), fnrm2_combine_action(),
+                               fnrm2_init_action(), fs));
 }
 
 auto block_vector_t::fscal(double alpha) const -> ptr {
@@ -395,10 +394,9 @@ auto block_matrix_t::fnrm2() const -> scalar_t::client {
       }
     }
   }
-  return rpc::async(rpc::remote::async, fnrm2_finalize_action(),
-                    rpc::map_reduce(fnrm2_process_action(),
-                                    fnrm2_combine_action(), fnrm2_init_action(),
-                                    fs));
+  return local(fnrm2_finalize_action(),
+               rpc::map_reduce(fnrm2_process_action(), fnrm2_combine_action(),
+                               fnrm2_init_action(), fs));
 }
 
 auto block_matrix_t::fscal(bool trans, double alpha) const -> ptr {

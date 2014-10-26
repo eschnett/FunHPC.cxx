@@ -34,7 +34,7 @@ future<std::shared_ptr<T> > global_shared_ptr<T>::make_local() const {
     return rpc::make_ready_future(std::shared_ptr<T>(nullptr));
   if (is_local())
     return rpc::make_ready_future(get());
-  return async(remote::async, global_shared_ptr_get_action<T>(),
+  return async(rlaunch::async, global_shared_ptr_get_action<T>(),
                mgr->get_owner());
 }
 
@@ -75,7 +75,7 @@ void global_shared_ptr<T>::load(Archive &ar) {
       // The object is local: use the owner as manager
       mgr = (global_manager<T> *)owner.get();
       mgr->incref();
-      detached(remote::detached, other.get_proc(),
+      detached(rlaunch::detached, other.get_proc(),
                global_shared::unregister_action(), other);
     } else {
       mgr = new global_manager<T>(owner, other, gptr);

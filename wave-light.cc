@@ -1023,19 +1023,19 @@ auto file_output(shared_future<ostream *> fos, const shared_ptr<memoized_t> &m)
   driver has a certain appeal, and (b) the high-level driver has a
   very simple structure, so that an imperative design does not make
   things difficult to understand.
-  
+
   We begin by defining a helper class stats_t to keep track of
   run-time statistics. Here we only measure time; in a more complex
   setting, we would also count things such as threads, messages,
   transferred data, etc.
-  
+
   Our main program consists of three parts: Setup, initialization, and
   evolution.
-  
+
   Setup is the phase before any physics happens; here we set up the
   run-time parameters, open the output file, and create the futures
   wrapping the output streams that we use for token passing.
-  
+
   In the initialization phase we create the grids and set up the
   initial conditions, and output them. We first create the initial
   state s, then the memoization object m, then we call the output
@@ -1045,7 +1045,7 @@ auto file_output(shared_future<ostream *> fos, const shared_ptr<memoized_t> &m)
   production run, this rate limiter would of course be inactive, so
   that the time evolution can begin while the output routines are
   still busy.
-  
+
   The third and main phase is evolution. It consists of a while loop
   that checks the termination condition, and performs a time step and
   output at each iteration. A new state vector is calculated via the
@@ -1180,7 +1180,7 @@ auto main(int argc, char **argv) -> int {
   ./wave-light
 
   This uses clang 3.5.0.
-  
+
   This code uses some C++14 features. In particular, not all functions
   have their return type declared explicitly, and some lambda
   expressions use explicit initializations in capture expressions.

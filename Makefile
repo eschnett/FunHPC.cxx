@@ -12,6 +12,7 @@ CPPFLAGS :=					\
 	-DHPX_LIMIT=10				\
 	-DRPC_QTHREADS				\
 	-DBLAS
+# -DJEMALLOC_MANGLE -include stdlib.h -include jemalloc/jemalloc.h
 CFLAGS   := -g -Wall ${CFLAGS}   ${MPI_CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
 CXXFLAGS := -g -Wall ${CXXFLAGS} ${MPI_CXXFLAGS} ${CXX14FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0
 FFLAGS   := -g -Wall ${FFLAGS}   ${MPI_FFLAGS}                 -march=native

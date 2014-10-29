@@ -3,6 +3,7 @@
 
 namespace rpc {
 void set_cpu_bindings();
+void output_cpu_bindings();
 }
 
 #define RPC_HWLOC_HH_DONE

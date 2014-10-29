@@ -10,6 +10,7 @@
 
 #include <qthread/qthread.hpp>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -29,6 +30,7 @@ template <typename T> struct is_future<shared_future<T> > : std::true_type {};
 template <typename T> class future_state {
   syncvar m_ready;
   std::function<T()> m_deferred;
+  std::atomic<char> deferred_is_running;
   bool has_exception;
   T value;
 
@@ -36,6 +38,7 @@ public:
   future_state() : has_exception(false) { m_ready.empty(); }
   future_state(const std::function<T()> &deferred) : future_state() {
     m_deferred = deferred;
+    deferred_is_running = false;
   }
   ~future_state() { m_ready.fill(); }
   future_state(const future_state &) = delete;
@@ -45,25 +48,27 @@ public:
   bool is_ready() { return m_ready.status(); }
   void wait() {
     if (m_deferred) {
-      RPC_ASSERT(!is_ready());
-      value = m_deferred();
-      m_deferred = {};
-      m_ready.fill();
+      if (!bool(deferred_is_running.fetch_or(true))) {
+        RPC_ASSERT(!is_ready());
+        value = m_deferred();
+        m_deferred = {};
+        m_ready.fill();
+      }
     }
     m_ready.readFF();
   }
   void set_value(const T &value_) {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     value = value_;
     m_ready.fill();
   }
   void set_value(T &&value_) {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     std::swap(value, value_);
     m_ready.fill();
   }
   void set_exception() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     has_exception = true;
     RPC_ASSERT(0); // TODO
     m_ready.fill();
@@ -78,12 +83,14 @@ public:
 template <> class future_state<void> {
   syncvar m_ready;
   std::function<void()> m_deferred;
+  std::atomic<char> deferred_is_running;
   bool has_exception;
 
 public:
   future_state() : has_exception(false) { m_ready.empty(); }
   future_state(const std::function<void()> &deferred) : future_state() {
     m_deferred = deferred;
+    deferred_is_running = false;
   }
   ~future_state() { m_ready.fill(); }
   future_state(const future_state &) = delete;
@@ -93,19 +100,21 @@ public:
   bool is_ready() { return m_ready.status(); }
   void wait() {
     if (m_deferred) {
-      RPC_ASSERT(!is_ready());
-      m_deferred();
-      m_deferred = {};
-      m_ready.fill();
+      if (!bool(deferred_is_running.fetch_or(true))) {
+        RPC_ASSERT(!is_ready());
+        m_deferred();
+        m_deferred = {};
+        m_ready.fill();
+      }
     }
     m_ready.readFF();
   }
   void set_value() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     m_ready.fill();
   }
   void set_exception() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     has_exception = true;
     RPC_ASSERT(0); // TODO
     m_ready.fill();
@@ -199,7 +208,7 @@ public:
     swap(other);
     return *this;
   }
-  const value_type get() const { return state->get_value(); };
+  value_type get() const { return state->get_value(); };
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>

@@ -120,8 +120,8 @@ C<R> fmap(const F &f, const rpc::shared_future<T> &xs, const As &... as) {
   bool s = xs.valid();
   if (s == false)
     return rpc::shared_future<R>();
-  return rpc::async([f](const rpc::shared_future<T> & xs, const As & ... as)
-                        ->R { return cxx::invoke(f, xs.get(), as...); },
+  return rpc::async([f](const rpc::shared_future<T> &xs, const As &... as)
+                        -> R { return cxx::invoke(f, xs.get(), as...); },
                     xs, as...).share();
 }
 
@@ -135,12 +135,11 @@ C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
   assert(ys.valid() == s);
   if (s == false)
     return rpc::shared_future<R>();
-  return rpc::async([f](const rpc::shared_future<T> xs,
-                        const rpc::shared_future<T2> ys, const As & ... as)
-                        ->R {
-                      return cxx::invoke(f, xs.get(), ys.get(), as...);
-                    },
-                    xs, ys, as...).share();
+  return rpc::async(
+             [f](const rpc::shared_future<T> xs,
+                 const rpc::shared_future<T2> ys, const As &... as)
+                 -> R { return cxx::invoke(f, xs.get(), ys.get(), as...); },
+             xs, ys, as...).share();
 }
 
 // monad

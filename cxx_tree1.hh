@@ -202,16 +202,14 @@ public:
   }
 
   bool empty() const {
-    return node.gfoldl([](const P<leaf<T, C, P> > &pl) { return pl->empty(); },
-                       [](const P<branch<T, C, P> > &pb) {
-      return pb->empty();
-    });
+    return node.gfoldl(
+        [](const P<leaf<T, C, P> > &pl) { return pl->empty(); },
+        [](const P<branch<T, C, P> > &pb) { return pb->empty(); });
   }
   size_type size() const {
-    return node.gfoldl([](const P<leaf<T, C, P> > &pl) { return pl->size(); },
-                       [](const P<branch<T, C, P> > &pb) {
-      return pb->size();
-    });
+    return node.gfoldl(
+        [](const P<leaf<T, C, P> > &pl) { return pl->size(); },
+        [](const P<branch<T, C, P> > &pb) { return pb->size(); });
   }
 
   // fmap
@@ -289,12 +287,9 @@ public:
   typename std::enable_if<
       std::is_same<typename cxx::invoke_of<F, R, T>::type, R>::value, R>::type
   foldl(const F &f, const R &z) const {
-    return node.gfoldl([f, z](const P<leaf<T, C, P> > &pl) {
-                         return pl->foldl(f, z);
-                       },
-                       [f, z](const P<branch<T, C, P> > &pb) {
-      return pb->foldl(f, z);
-    });
+    return node.gfoldl(
+        [f, z](const P<leaf<T, C, P> > &pl) { return pl->foldl(f, z); },
+        [f, z](const P<branch<T, C, P> > &pb) { return pb->foldl(f, z); });
   }
 
   // size
@@ -329,9 +324,7 @@ foldl(const F &f, const R &z, const tree<T, C, P> &x) {
 
 // functor
 namespace detail {
-template <typename T> struct unwrap_tree {
-  typedef T type;
-};
+template <typename T> struct unwrap_tree { typedef T type; };
 template <typename T, template <typename> class C, template <typename> class P>
 struct unwrap_tree<tree<T, C, P> > {
   typedef T type;

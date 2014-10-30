@@ -18,6 +18,7 @@ using std::make_shared;
 using std::printf;
 using std::shared_ptr;
 using std::string;
+using std::to_string;
 using std::vector;
 
 int f(int n) {
@@ -100,6 +101,13 @@ void test_call() {
   cout << "Calling out detached...\n" << flush;
   rpc::detached(rpc::remote::detached, dest, out_action(), string("hello"));
   cout << "Done calling out\n";
+
+  cout << "Calling out synchronously on all " << rpc::server->size()
+       << " processes...\n" << flush;
+  for (int p = 0; p < rpc::server->size(); ++p)
+    rpc::sync(rpc::remote::sync, dest, out_action(),
+              string("   rank=") + to_string(p) + "/" +
+                  to_string(rpc::server->size()));
 
   auto p = rpc::make_client<point>();
   auto q = rpc::make_client<point>();

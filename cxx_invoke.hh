@@ -134,9 +134,8 @@ template <class... _Tp> struct check_complete;
 template <> struct check_complete<> {};
 
 template <class _Hp, class _T0, class... _Tp>
-struct check_complete<_Hp, _T0, _Tp...> : private check_complete<_Hp>,
-                                          private check_complete<_T0, _Tp...> {
-};
+struct check_complete<_Hp, _T0, _Tp...>
+    : private check_complete<_Hp>, private check_complete<_T0, _Tp...> {};
 
 template <class _Hp>
 struct check_complete<_Hp, _Hp> : private check_complete<_Hp> {};
@@ -162,54 +161,54 @@ struct check_complete<_Rp(_Param...)> : private check_complete<_Rp> {};
 template <class... _Param> struct check_complete<void(_Param...)> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...)> : private check_complete<
-                                                        _Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...)>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<
-    _Rp (_Class::*)(_Param...) const> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<
-    _Rp (_Class::*)(_Param...) volatile> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) volatile>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) const
-                      volatile> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const volatile>
+    : private check_complete<_Class> {};
 
 #if __has_feature(cxx_reference_qualified_functions)
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) &> : private check_complete<
-                                                          _Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) &>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) const
-                      &> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const &>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<
-    _Rp (_Class::*)(_Param...) volatile &> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) volatile &>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) const
-                      volatile &> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const volatile &>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) && > : private check_complete<
-                                                            _Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) && >
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) const
-                      &&> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const &&>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<
-    _Rp (_Class::*)(_Param...) volatile &&> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) volatile &&>
+    : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) const
-                      volatile &&> : private check_complete<_Class> {};
+struct check_complete<_Rp (_Class::*)(_Param...) const volatile &&>
+    : private check_complete<_Class> {};
 
 #endif
 
@@ -224,15 +223,14 @@ template <class... _Args> auto invoke(__any, _Args &&... __args) -> __nat;
 
 // bullets 1 and 2
 
-template <
-    class _Fp, class _A0, class... _Args,
-    class = typename std::enable_if<
-        std::is_member_function_pointer<
-            typename std::remove_reference<_Fp>::type>::value &&
-            std::is_base_of<
-                typename member_pointer_traits<
-                    typename std::remove_reference<_Fp>::type>::class_type,
-                typename std::remove_reference<_A0>::type>::value>::type>
+template <class _Fp, class _A0, class... _Args,
+          class = typename std::enable_if<
+              std::is_member_function_pointer<
+                  typename std::remove_reference<_Fp>::type>::value &&
+              std::is_base_of<
+                  typename member_pointer_traits<
+                      typename std::remove_reference<_Fp>::type>::class_type,
+                  typename std::remove_reference<_A0>::type>::value>::type>
 auto invoke(_Fp &&__f, _A0 &&__a0, _Args &&... __args)
     -> decltype((std::forward<_A0>(__a0).*__f)(std::forward<_Args>(__args)...));
 
@@ -241,24 +239,23 @@ template <class _Fp, class _A0, class... _Args,
               std::is_member_function_pointer<
                   typename std::remove_reference<_Fp>::type>::value &&
               !std::is_base_of<
-                   typename member_pointer_traits<
-                       typename std::remove_reference<_Fp>::type>::class_type,
-                   typename std::remove_reference<_A0>::type>::value>::type>
+                  typename member_pointer_traits<
+                      typename std::remove_reference<_Fp>::type>::class_type,
+                  typename std::remove_reference<_A0>::type>::value>::type>
 auto invoke(_Fp &&__f, _A0 &&__a0, _Args &&... __args)
     -> decltype(((*std::forward<_A0>(__a0)).*
                  __f)(std::forward<_Args>(__args)...));
 
 // bullets 3 and 4
 
-template <
-    class _Fp, class _A0,
-    class = typename std::enable_if<
-        std::is_member_object_pointer<
-            typename std::remove_reference<_Fp>::type>::value &&
-            std::is_base_of<
-                typename member_pointer_traits<
-                    typename std::remove_reference<_Fp>::type>::class_type,
-                typename std::remove_reference<_A0>::type>::value>::type>
+template <class _Fp, class _A0,
+          class = typename std::enable_if<
+              std::is_member_object_pointer<
+                  typename std::remove_reference<_Fp>::type>::value &&
+              std::is_base_of<
+                  typename member_pointer_traits<
+                      typename std::remove_reference<_Fp>::type>::class_type,
+                  typename std::remove_reference<_A0>::type>::value>::type>
 auto invoke(_Fp &&__f, _A0 &&__a0) -> decltype(std::forward<_A0>(__a0).*__f);
 
 template <class _Fp, class _A0,
@@ -266,9 +263,9 @@ template <class _Fp, class _A0,
               std::is_member_object_pointer<
                   typename std::remove_reference<_Fp>::type>::value &&
               !std::is_base_of<
-                   typename member_pointer_traits<
-                       typename std::remove_reference<_Fp>::type>::class_type,
-                   typename std::remove_reference<_A0>::type>::value>::type>
+                  typename member_pointer_traits<
+                      typename std::remove_reference<_Fp>::type>::class_type,
+                  typename std::remove_reference<_A0>::type>::value>::type>
 auto invoke(_Fp &&__f, _A0 &&__a0) -> decltype((*std::forward<_A0>(__a0)).*__f);
 
 // bullet 5

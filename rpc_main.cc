@@ -38,8 +38,7 @@ void check_procs() {
                   << ") is inconsistent with the environment variable "
                      "RPC_PROCESSES (" << rpc_nprocs << ")\n";
       }
-    }
-    catch (...) {
+    } catch (...) {
       std::cout << "[" << server->rank() << "] "
                 << "WARNING: Environment variable RPC_PROCESSES ("
                 << rpc_processes << ") is not an integer\n";
@@ -70,8 +69,7 @@ void check_threads() {
             << ") is inconsistent with the environment variable RPC_THREADS ("
             << rpc_nthreads << ")\n";
       }
-    }
-    catch (...) {
+    } catch (...) {
       std::cout << "[" << server->rank() << "] "
                 << "WARNING: Environment variable RPC_THREADS (" << rpc_threads
                 << ") is not an integer\n";
@@ -124,8 +122,7 @@ void check_nodes() {
                   << ") is inconsistent with the environment variable "
                      "RPC_NODES (" << rpc_nodes << ")\n";
       }
-    }
-    catch (...) {
+    } catch (...) {
       std::cout << "[" << server->rank() << "] "
                 << "WARNING: Environment variable RPC_NODES (" << rpc_nodes
                 << ") is not an integer\n";
@@ -165,8 +162,7 @@ void check_cores() {
                   << ") is inconsistent with the environment variable "
                      "RPC_CORES (" << rpc_cores << ")\n";
       }
-    }
-    catch (...) {
+    } catch (...) {
       std::cout << "[" << server->rank() << "] "
                 << "WARNING: Environment variable RPC_CORES (" << rpc_cores
                 << ") is not an integer\n";
@@ -197,8 +193,7 @@ void check_layout() {
                     << ") differs from the total number of software threads ("
                     << sw_count << ")\n";
         }
-      }
-      catch (...) {
+      } catch (...) {
         // do nothing
       }
     }
@@ -213,6 +208,11 @@ void check_procs_threads() {
   check_layout();
 }
 
+int wrapped_main(int argc, char **argv) {
+  rpc::output_cpu_bindings();
+  return rpc_main(argc, argv);
+}
+
 int real_main(int argc, char **argv) {
   // MPI_Init(&argc, &argv);
   rpc::server = new rpc::server_mpi(argc, argv);
@@ -222,7 +222,7 @@ int real_main(int argc, char **argv) {
   if (rpc::server->rank() == 0) {
     std::cout << "Running...\n";
   }
-  int iret = rpc::server->event_loop(rpc_main);
+  int iret = rpc::server->event_loop(wrapped_main);
   if (rpc::server->rank() == 0) {
     if (iret == 0) {
       std::cout << "Done: success.\n";

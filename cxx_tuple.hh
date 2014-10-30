@@ -24,9 +24,7 @@ template <size_t...> struct seq {};
 template <size_t N, size_t... S>
 struct make_seq : make_seq<N - 1, N - 1, S...> {};
 
-template <size_t... S> struct make_seq<0, S...> {
-  typedef seq<S...> type;
-};
+template <size_t... S> struct make_seq<0, S...> { typedef seq<S...> type; };
 }
 
 template <typename F, typename... As, size_t... S>

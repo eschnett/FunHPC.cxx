@@ -92,13 +92,12 @@ template <typename T, template <typename> class Outer,
               F, T, typename detail::unwrap_nested<As>::type...>::type>
 C<R> fmap(const F &f, const cxx::nested<T, Outer, Inner> &xs,
           const As &... as) {
-  return C<R>{
-    fmap([f](const Inner<T> &ys,
-             const typename detail::unwrap_nested<As>::inner_type &... as) {
-           return fmap(f, ys, as...);
-         },
-         xs.values, detail::unwrap_nested<As>()(as)...)
-  };
+  return C<R>{ fmap(
+      [f](const Inner<T> &ys,
+          const typename detail::unwrap_nested<As>::inner_type &... as) {
+        return fmap(f, ys, as...);
+      },
+      xs.values, detail::unwrap_nested<As>()(as)...) };
 }
 
 // monad
@@ -110,8 +109,8 @@ template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type
 unit(T1 &&x) {
-  return C<T>{ C<T>::outer_unit /*unit<C<T>::outer_constructor>*/(
-      C<T>::inner_unit /*unit<C<T>::inner_constructor>*/(
+  return C<T>{ C<T>::outer_unit /*unit<C<T>::outer_constructor>*/ (
+      C<T>::inner_unit /*unit<C<T>::inner_constructor>*/ (
           std::forward<T1>(x))) };
 }
 
@@ -153,8 +152,9 @@ make(As &&... as) {
 
 // [generic] bind xs f = join (fmap f xs)
 
-template <typename T, template <typename> class Outer, template <typename>
-          class Inner, typename F, typename CT = cxx::nested<T, Outer, Inner>,
+template <typename T, template <typename> class Outer,
+          template <typename> class Inner, typename F,
+          typename CT = cxx::nested<T, Outer, Inner>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::value_type>

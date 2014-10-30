@@ -8,11 +8,7 @@
 
 namespace qthread {
 
-enum class launch : int {
-  async = 1,
-  deferred = 2,
-  sync = 4
-};
+enum class launch : int { async = 1, deferred = 2, sync = 4 };
 
 inline constexpr launch operator~(launch a) {
   return static_cast<launch>(~static_cast<int>(a));
@@ -28,21 +24,24 @@ inline constexpr launch operator^(launch a, launch b) {
   return static_cast<launch>(static_cast<int>(a) ^ static_cast<int>(b));
 }
 
-inline launch &operator&=(launch &a, launch b) { return a = a & b; }
+inline launch &
+operator&=(launch &a, launch b) {
+  return a = a & b;
+}
 inline launch &operator|=(launch &a, launch b) { return a = a | b; }
 inline launch &operator^=(launch &a, launch b) { return a = a ^ b; }
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
-          !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type;
+        !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
+        future<typename cxx::invoke_of<F, As...>::type> >::type;
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
     -> typename std::enable_if<
-          std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type;
+        std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
+        future<typename cxx::invoke_of<F, As...>::type> >::type;
 
 // template<typename F, typename... As>
 // auto async(launch policy, const F& func, As&&... args) ->

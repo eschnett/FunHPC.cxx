@@ -47,12 +47,14 @@ void test_dense() {
   std::cout << "c=" << c << std::endl;
 
   const double nrm2_result = sqrt(14.0);
-  const vector_t axpy_result(NI, (double[NI]) { 7, 10, 13, 16 });
-  const vector_t gemv_result(NI, (double[NI]) { 70, 109, 148, 187 });
-  const matrix_t gemm_result(NI, NJ, (double[NI][NJ]) { { 180, 205, 230 },
-                                                        { 249, 282, 315 },
-                                                        { 318, 359, 400 },
-                                                        { 387, 436, 485 }, });
+  const vector_t axpy_result(NI, (double[NI]){ 7, 10, 13, 16 });
+  const vector_t gemv_result(NI, (double[NI]){ 70, 109, 148, 187 });
+  const matrix_t gemm_result(NI, NJ, (double[NI][NJ]){
+                                       { 180, 205, 230 },
+                                       { 249, 282, 315 },
+                                       { 318, 359, 400 },
+                                       { 387, 436, 485 },
+                                     });
 
   std::cout << std::endl;
 
@@ -243,23 +245,27 @@ void test_block() {
 
   typedef block_vector_t::block_t B;
   typedef vector_t V;
-  const block_vector_t axpy_result(istr, { B(1, V(1, (double[1]) { 7 })),
-                                           B(4, V(2, (double[2]) { 10, 13 })),
-                                           B(9, V(1, (double[1]) { 16 })) });
-  const block_vector_t gemv_result(istr, { B(1, V(1, (double[1]) { 70 })),
-                                           B(4, V(2, (double[2]) { 109, 148 })),
-                                           B(9, V(1, (double[1]) { 187 })), });
+  const block_vector_t axpy_result(istr, { B(1, V(1, (double[1]){ 7 })),
+                                           B(4, V(2, (double[2]){ 10, 13 })),
+                                           B(9, V(1, (double[1]){ 16 })) });
+  const block_vector_t gemv_result(istr, {
+                                           B(1, V(1, (double[1]){ 70 })),
+                                           B(4, V(2, (double[2]){ 109, 148 })),
+                                           B(9, V(1, (double[1]){ 187 })),
+                                         });
 
   typedef block_matrix_t::block_t A;
   typedef matrix_t M;
   const block_matrix_t gemm_result(
       istr, jstr,
-      { A(1, 0, M(1, 2, (double[1][2]) { { 180, 205 } })),
-        A(1, 4, M(1, 1, (double[1][1]) { { 230 } })),
-        A(4, 0, M(2, 2, (double[2][2]) { { 249, 282 }, { 318, 359 } })),
-        A(4, 4, M(2, 1, (double[2][1]) { { 315 }, { 400 } })),
-        A(9, 0, M(1, 2, (double[1][2]) { { 387, 436 } })),
-        A(9, 4, M(1, 1, (double[1][1]) { { 485 } })), });
+      {
+        A(1, 0, M(1, 2, (double[1][2]){ { 180, 205 } })),
+        A(1, 4, M(1, 1, (double[1][1]){ { 230 } })),
+        A(4, 0, M(2, 2, (double[2][2]){ { 249, 282 }, { 318, 359 } })),
+        A(4, 4, M(2, 1, (double[2][1]){ { 315 }, { 400 } })),
+        A(9, 0, M(1, 2, (double[1][2]){ { 387, 436 } })),
+        A(9, 4, M(1, 1, (double[1][1]){ { 485 } })),
+      });
 
   std::cout << std::endl;
 

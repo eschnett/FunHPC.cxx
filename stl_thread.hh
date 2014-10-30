@@ -72,9 +72,7 @@ struct thread_stats_t {
   std::ptrdiff_t threads_started;
   std::ptrdiff_t threads_stopped;
 };
-inline thread_stats_t get_thread_stats() {
-  return { 0, 0 };
-}
+inline thread_stats_t get_thread_stats() { return { 0, 0 }; }
 
 int real_main(int argc, char **argv);
 inline int thread_main(int argc, char **argv) { return real_main(argc, argv); }

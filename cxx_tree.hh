@@ -158,11 +158,13 @@ class leaf {
             typename T2, typename... As>
   friend struct tree_foldable2;
 
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename... As>
   friend struct tree_functor;
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename T2, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename T2, typename... As>
   friend struct tree_functor2;
 
   template <typename F, typename G, bool is_action, typename T1,
@@ -227,11 +229,13 @@ class branch {
             typename T2, typename... As>
   friend struct tree_foldable2;
 
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename... As>
   friend struct tree_functor;
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename T2, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename T2, typename... As>
   friend struct tree_functor2;
 
   template <typename F, typename G, bool is_action, typename T1,
@@ -262,21 +266,21 @@ public:
   // size
   bool empty() const {
     return cxx::foldl([](bool is_empty, const P<tree<T, C, P> > &t) {
-                        return cxx::foldl([](bool is_empty,
-                                             const tree<T, C, P> &t) {
-                                            return is_empty && t.empty();
-                                          },
-                                          true, t);
+                        return cxx::foldl(
+                            [](bool is_empty, const tree<T, C, P> &t) {
+                              return is_empty && t.empty();
+                            },
+                            true, t);
                       },
                       true, trees);
   }
   std::size_t size() const {
     return cxx::foldl([](std::size_t size, const P<tree<T, C, P> > &t) {
-                        return cxx::foldl([](std::size_t size,
-                                             const tree<T, C, P> &t) {
-                                            return size + t.size();
-                                          },
-                                          std::size_t(0), t);
+                        return cxx::foldl(
+                            [](std::size_t size, const tree<T, C, P> &t) {
+                              return size + t.size();
+                            },
+                            std::size_t(0), t);
                       },
                       std::size_t(0), trees);
   }
@@ -286,14 +290,11 @@ public:
   typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
                           branch<R, C, P> >::type
   join() const {
-    return branch<R, C, P>(
-        cxx::fmap([](const P<tree<T, C, P> > &pt) {
-                    return cxx::fmap([](const tree<T, C, P> &t) {
-                                       return t.join();
-                                     },
-                                     pt);
-                  },
-                  trees));
+    return branch<R, C, P>(cxx::fmap(
+        [](const P<tree<T, C, P> > &pt) {
+          return cxx::fmap([](const tree<T, C, P> &t) { return t.join(); }, pt);
+        },
+        trees));
   }
 };
 
@@ -321,11 +322,13 @@ class tree {
             typename T2, typename... As>
   friend struct tree_foldable2;
 
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename... As>
   friend struct tree_functor;
-  template <typename F, bool is_action, typename T1, template <typename>
-            class C1, template <typename> class P1, typename T2, typename... As>
+  template <typename F, bool is_action, typename T1,
+            template <typename> class C1, template <typename> class P1,
+            typename T2, typename... As>
   friend struct tree_functor2;
 
   template <typename F, typename G, bool is_action, typename T1,
@@ -498,13 +501,13 @@ struct tree_foldable<F, true, R, T, C, P, As...> {
 template <typename F, typename R, typename T, template <typename> class C,
           template <typename> class P, typename... As>
 typename tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_evaluate_export_t
-tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_evaluate_export =
-    foldl_tree_evaluate_export_init();
+    tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_evaluate_export =
+        foldl_tree_evaluate_export_init();
 template <typename F, typename R, typename T, template <typename> class C,
           template <typename> class P, typename... As>
 typename tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_finish_export_t
-tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_finish_export =
-    foldl_tree_finish_export_init();
+    tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_finish_export =
+        foldl_tree_finish_export_init();
 
 template <typename F, typename R, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
@@ -599,14 +602,15 @@ template <typename F, typename R, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
 typename tree_foldable2<F, true, R, T, C, P, T2,
                         As...>::foldl2_tree_evaluate_export_t
-tree_foldable2<F, true, R, T, C, P, T2, As...>::foldl2_tree_evaluate_export =
-    foldl2_tree_evaluate_export_init();
+    tree_foldable2<F, true, R, T, C, P, T2,
+                   As...>::foldl2_tree_evaluate_export =
+        foldl2_tree_evaluate_export_init();
 template <typename F, typename R, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
 typename tree_foldable2<F, true, R, T, C, P, T2,
                         As...>::foldl2_tree_finish_export_t
-tree_foldable2<F, true, R, T, C, P, T2, As...>::foldl2_tree_finish_export =
-    foldl2_tree_finish_export_init();
+    tree_foldable2<F, true, R, T, C, P, T2, As...>::foldl2_tree_finish_export =
+        foldl2_tree_finish_export_init();
 
 // iota
 
@@ -762,12 +766,12 @@ struct tree_iota<F, true, tree, As...> {
 // Define action exports
 template <typename F, template <typename> class tree, typename... As>
 typename tree_iota<F, true, tree, As...>::iota_tree_evaluate_export_t
-tree_iota<F, true, tree, As...>::iota_tree_evaluate_export =
-    iota_tree_evaluate_export_init();
+    tree_iota<F, true, tree, As...>::iota_tree_evaluate_export =
+        iota_tree_evaluate_export_init();
 template <typename F, template <typename> class tree, typename... As>
 typename tree_iota<F, true, tree, As...>::iota_tree_finish_export_t
-tree_iota<F, true, tree, As...>::iota_tree_finish_export =
-    iota_tree_finish_export_init();
+    tree_iota<F, true, tree, As...>::iota_tree_finish_export =
+        iota_tree_finish_export_init();
 
 // functor
 
@@ -850,13 +854,13 @@ struct tree_functor<F, true, T, C, P, As...> {
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename... As>
 typename tree_functor<F, true, T, C, P, As...>::fmap_tree_evaluate_export_t
-tree_functor<F, true, T, C, P, As...>::fmap_tree_evaluate_export =
-    fmap_tree_evaluate_export_init();
+    tree_functor<F, true, T, C, P, As...>::fmap_tree_evaluate_export =
+        fmap_tree_evaluate_export_init();
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename... As>
 typename tree_functor<F, true, T, C, P, As...>::fmap_tree_finish_export_t
-tree_functor<F, true, T, C, P, As...>::fmap_tree_finish_export =
-    fmap_tree_finish_export_init();
+    tree_functor<F, true, T, C, P, As...>::fmap_tree_finish_export =
+        fmap_tree_finish_export_init();
 
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
@@ -949,13 +953,13 @@ template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
 typename tree_functor2<F, true, T, C, P, T2,
                        As...>::fmap2_tree_evaluate_export_t
-tree_functor2<F, true, T, C, P, T2, As...>::fmap2_tree_evaluate_export =
-    fmap2_tree_evaluate_export_init();
+    tree_functor2<F, true, T, C, P, T2, As...>::fmap2_tree_evaluate_export =
+        fmap2_tree_evaluate_export_init();
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As>
 typename tree_functor2<F, true, T, C, P, T2, As...>::fmap2_tree_finish_export_t
-tree_functor2<F, true, T, C, P, T2, As...>::fmap2_tree_finish_export =
-    fmap2_tree_finish_export_init();
+    tree_functor2<F, true, T, C, P, T2, As...>::fmap2_tree_finish_export =
+        fmap2_tree_finish_export_init();
 
 template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B>
@@ -1062,28 +1066,30 @@ template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B>
 typename tree_stencil_functor<F, G, true, T, C, P,
                               B>::stencil_fmap_tree_evaluate_export_t
-tree_stencil_functor<F, G, true, T, C, P,
-                     B>::stencil_fmap_tree_evaluate_export =
-    stencil_fmap_tree_evaluate_export_init();
+    tree_stencil_functor<F, G, true, T, C, P,
+                         B>::stencil_fmap_tree_evaluate_export =
+        stencil_fmap_tree_evaluate_export_init();
 template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B>
 typename tree_stencil_functor<F, G, true, T, C, P,
                               B>::stencil_fmap_tree_finish_export_t
-tree_stencil_functor<F, G, true, T, C, P, B>::stencil_fmap_tree_finish_export =
-    stencil_fmap_tree_finish_export_init();
+    tree_stencil_functor<F, G, true, T, C, P,
+                         B>::stencil_fmap_tree_finish_export =
+        stencil_fmap_tree_finish_export_init();
 template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B>
 typename tree_stencil_functor<F, G, true, T, C, P,
                               B>::get_boundary_tree_evaluate_export_t
-tree_stencil_functor<F, G, true, T, C, P,
-                     B>::get_boundary_tree_evaluate_export =
-    get_boundary_tree_evaluate_export_init();
+    tree_stencil_functor<F, G, true, T, C, P,
+                         B>::get_boundary_tree_evaluate_export =
+        get_boundary_tree_evaluate_export_init();
 template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B>
 typename tree_stencil_functor<F, G, true, T, C, P,
                               B>::get_boundary_tree_finish_export_t
-tree_stencil_functor<F, G, true, T, C, P, B>::get_boundary_tree_finish_export =
-    get_boundary_tree_finish_export_init();
+    tree_stencil_functor<F, G, true, T, C, P,
+                         B>::get_boundary_tree_finish_export =
+        get_boundary_tree_finish_export_init();
 
 // monad
 

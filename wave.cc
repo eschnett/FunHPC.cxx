@@ -79,8 +79,8 @@ using std::vector;
 // Global definitions, a poor man's parameter file
 
 struct defs_t {
-  const ptrdiff_t rho = 1; // resolution scale
-  // const ptrdiff_t rho = 10; // resolution scale
+  // const ptrdiff_t rho = 1; // resolution scale
+  const ptrdiff_t rho = 10; // resolution scale
   const ptrdiff_t ncells_per_grid = 10;
 
   const double xmin = 0.0;
@@ -88,18 +88,18 @@ struct defs_t {
   const double cfl = 0.5;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = -1;
-  // const ptrdiff_t nsteps = 10;
+  // const ptrdiff_t nsteps = -1;
+  const ptrdiff_t nsteps = 10;
 
   ptrdiff_t ncells;
   double dx;
   double dt;
 
   const ptrdiff_t wait_every = 0;
-  const ptrdiff_t info_every = 10;
-  // const ptrdiff_t info_every = 0;
-  const ptrdiff_t file_every = 0;
-  // const ptrdiff_t file_every = -1;
+  // const ptrdiff_t info_every = 10;
+  const ptrdiff_t info_every = 0;
+  // const ptrdiff_t file_every = 0;
+  const ptrdiff_t file_every = -1;
   defs_t(int nprocs, int nthreads)
       : ncells(rho * ncells_per_grid * nprocs * nthreads),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}
@@ -321,10 +321,9 @@ public:
   struct initial : tuple<> {};
   grid_t(initial, double t, ptrdiff_t imin)
       : imin(imin), imax(min(imin + defs->ncells_per_grid, defs->ncells)),
-        cells(iota<vector_>([t](ptrdiff_t i) {
-                              return cell_t(cell_t::initial(), t, x(i));
-                            },
-                            iota_range_t(imin, imax))) {}
+        cells(iota<vector_>(
+            [t](ptrdiff_t i) { return cell_t(cell_t::initial(), t, x(i)); },
+            iota_range_t(imin, imax))) {}
 
   // Error
   struct error : tuple<> {};
@@ -338,12 +337,10 @@ public:
   struct rhs : tuple<> {};
   grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
       : imin(g.imin), imax(g.imax),
-        cells(cxx::stencil_fmap([](const cell_t &c, const cell_t &cm,
-                                   const cell_t &cp) {
-                                  return cell_t(cell_t::rhs(), c, cm, cp);
-                                },
-                                [](const cell_t &c, bool) { return c; },
-                                g.cells, bm, bp)) {}
+        cells(cxx::stencil_fmap(
+            [](const cell_t &c, const cell_t &cm,
+               const cell_t &cp) { return cell_t(cell_t::rhs(), c, cm, cp); },
+            [](const cell_t &c, bool) { return c; }, g.cells, bm, bp)) {}
 };
 RPC_COMPONENT(grid_t);
 

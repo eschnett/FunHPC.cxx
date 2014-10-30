@@ -141,12 +141,12 @@ struct client_foldable<F, true, R, T, As...> {
 // Define action exports
 template <typename F, typename R, typename T, typename... As>
 typename client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export_t
-client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export =
-    foldl_client_evaluate_export_init();
+    client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export =
+        foldl_client_evaluate_export_init();
 template <typename F, typename R, typename T, typename... As>
 typename client_foldable<F, true, R, T, As...>::foldl_client_finish_export_t
-client_foldable<F, true, R, T, As...>::foldl_client_finish_export =
-    foldl_client_finish_export_init();
+    client_foldable<F, true, R, T, As...>::foldl_client_finish_export =
+        foldl_client_finish_export_init();
 
 template <typename F, bool is_action, typename R, typename T, typename T2,
           typename... As>
@@ -225,13 +225,13 @@ struct client_foldable2<F, true, R, T, T2, As...> {
 template <typename F, typename R, typename T, typename T2, typename... As>
 typename client_foldable2<F, true, R, T, T2,
                           As...>::foldl2_client_evaluate_export_t
-client_foldable2<F, true, R, T, T2, As...>::foldl2_client_evaluate_export =
-    foldl2_client_evaluate_export_init();
+    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_evaluate_export =
+        foldl2_client_evaluate_export_init();
 template <typename F, typename R, typename T, typename T2, typename... As>
 typename client_foldable2<F, true, R, T, T2,
                           As...>::foldl2_client_finish_export_t
-client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
-    foldl2_client_finish_export_init();
+    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
+        foldl2_client_finish_export_init();
 
 // functor
 
@@ -289,12 +289,12 @@ struct client_functor<F, true, T, As...> {
 // Define action exports
 template <typename F, typename T, typename... As>
 typename client_functor<F, true, T, As...>::fmap_client_evaluate_export_t
-client_functor<F, true, T, As...>::fmap_client_evaluate_export =
-    fmap_client_evaluate_export_init();
+    client_functor<F, true, T, As...>::fmap_client_evaluate_export =
+        fmap_client_evaluate_export_init();
 template <typename F, typename T, typename... As>
 typename client_functor<F, true, T, As...>::fmap_client_finish_export_t
-client_functor<F, true, T, As...>::fmap_client_finish_export =
-    fmap_client_finish_export_init();
+    client_functor<F, true, T, As...>::fmap_client_finish_export =
+        fmap_client_finish_export_init();
 
 template <typename F, bool is_action, typename T, typename T2, typename... As>
 struct client_functor2;
@@ -356,12 +356,12 @@ struct client_functor2<F, true, T, T2, As...> {
 // Define action exports
 template <typename F, typename T, typename T2, typename... As>
 typename client_functor2<F, true, T, T2, As...>::fmap2_client_evaluate_export_t
-client_functor2<F, true, T, T2, As...>::fmap2_client_evaluate_export =
-    fmap2_client_evaluate_export_init();
+    client_functor2<F, true, T, T2, As...>::fmap2_client_evaluate_export =
+        fmap2_client_evaluate_export_init();
 template <typename F, typename T, typename T2, typename... As>
 typename client_functor2<F, true, T, T2, As...>::fmap2_client_finish_export_t
-client_functor2<F, true, T, T2, As...>::fmap2_client_finish_export =
-    fmap2_client_finish_export_init();
+    client_functor2<F, true, T, T2, As...>::fmap2_client_finish_export =
+        fmap2_client_finish_export_init();
 
 template <typename F, bool is_action, typename T, typename T2, typename T3,
           typename... As>
@@ -434,13 +434,13 @@ struct client_functor3<F, true, T, T2, T3, As...> {
 template <typename F, typename T, typename T2, typename T3, typename... As>
 typename client_functor3<F, true, T, T2, T3,
                          As...>::fmap3_client_evaluate_export_t
-client_functor3<F, true, T, T2, T3, As...>::fmap3_client_evaluate_export =
-    fmap3_client_evaluate_export_init();
+    client_functor3<F, true, T, T2, T3, As...>::fmap3_client_evaluate_export =
+        fmap3_client_evaluate_export_init();
 template <typename F, typename T, typename T2, typename T3, typename... As>
 typename client_functor3<F, true, T, T2, T3,
                          As...>::fmap3_client_finish_export_t
-client_functor3<F, true, T, T2, T3, As...>::fmap3_client_finish_export =
-    fmap3_client_finish_export_init();
+    client_functor3<F, true, T, T2, T3, As...>::fmap3_client_finish_export =
+        fmap3_client_finish_export_init();
 
 // monad
 

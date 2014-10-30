@@ -5,8 +5,8 @@ set -u
 #set -x
 
 # User choices
-if (($#!=6)); then
-    echo "Synopsis: $0 <nodes> <sockets/node> <cores/socket> <procs> <threads/proc> <smts/thread>" >&2
+if (($#!=7)); then
+    echo "Synopsis: $0 <nodes> <sockets/node> <cores/socket> <procs> <threads/proc> <smts/thread> <run_id>" >&2
     exit 1
 fi
 echo "User choices:"
@@ -16,6 +16,7 @@ cores_per_socket=$3
 procs=$4
 threads_per_proc=$5
 smts_per_thread=$6
+run=$7
 echo "   nodes=$nodes sockets/node=$sockets_per_node cores/socket=$cores_per_socket proc=$procs threads/proc=$threads_per_proc smts/thread=$smts_per_thread"
 
 # Automatically calculated quantities
@@ -27,7 +28,7 @@ threads=$[$threads_per_proc*$procs]
 smts=$[$smts_per_thread*$threads]
 echo "   procs=$procs threads=$threads smts=$smts"
 
-id="n$nodes.s$sockets_per_node.c$cores_per_socket.p$procs.t$threads_per_proc.m$smts_per_thread"
+id="n$nodes.s$sockets_per_node.c$cores_per_socket.p$procs.t$threads_per_proc.m$smts_per_thread.r$run"
 
 # Settings specific to the submit script
 cores_per_node=$[$cores_per_socket*$sockets_per_node]
@@ -62,7 +63,7 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 #! /bin/bash
 
 #SBATCH --verbose
-#SBATCH --account=TG-ASC120003
+#SBATCH --account=TG-PHY100033
 #SBATCH --partition=$partition
 #SBATCH --time=0:10:00
 #SBATCH --nodes=$nodes --ntasks=$procs
@@ -80,10 +81,14 @@ cat >$HOME/src/mpi-rpc/wave.$id.sub <<EOF
 # threads: $threads   threads/proc: $[$threads/$procs]
 # smts:    $smts   smts/thread: $[$smts/$threads]
 
+# run: $run
+
 set -e
 set -u
 set -x
 cd $HOME/src/mpi-rpc
+export SIMFACTORY_MACHINE=stampede
+export SIMFACTORY_SIM=$HOME/work/Cbeta/simfactory3/sim
 source $HOME/SIMFACTORY/all-all/env.sh
 
 echo '[BEGIN ENV]'
@@ -98,16 +103,56 @@ echo '[END NODES]'
 
 date
 echo '[BEGIN MPIRUN]'
-export OMP_NUM_THREADS=$threads_per_proc
-export RPC_NODES=$nodes
-export RPC_CORES=$cores_per_node
-export RPC_PROCESSES=$procs
-export RPC_THREADS=$threads_per_proc
-export QTHREAD_NUM_SHEPHERDS=$proc_sockets
-export QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket
-export QTHREAD_STACK_SIZE=65536
-#export QTHREAD_INFO=0
-ibrun tacc_affinity                                                     \\
+unset SLURM_CHECKPOINT_IMAGE_DIR
+unset SLURM_CPUS_ON_NODE
+unset SLURMD_NODENAME
+unset SLURM_GTIDS
+unset SLURM_JOB_CPUS_PER_NODE
+unset SLURM_JOB_ID
+unset SLURM_JOBID
+unset SLURM_JOB_NAME
+unset SLURM_JOB_NODELIST
+unset SLURM_JOB_NUM_NODES
+unset SLURM_LOCALID
+unset SLURM_NNODES
+unset SLURM_NODE_ALIASES
+unset SLURM_NODEID
+unset SLURM_NODELIST
+unset SLURM_NPROCS
+unset SLURM_NTASKS
+unset SLURM_PRIO_PROCESS
+unset SLURM_PROCID
+unset SLURM_QUEUE
+unset SLURM_SUBMIT_DIR
+unset SLURM_SUBMIT_HOST
+unset SLURM_TACC_ACCOUNT
+unset SLURM_TACC_CORES
+unset SLURM_TACC_JOBNAME
+unset SLURM_TACC_NCORES_SET
+unset SLURM_TACC_NNODES_SET
+unset SLURM_TACC_NODES
+unset SLURM_TACC_RUNLIMIT_MINS
+unset SLURM_TASK_PID
+unset SLURM_TASKS_PER_NODE
+unset SLURM_TOPOLOGY_ADDR
+unset SLURM_TOPOLOGY_ADDR_PATTERN
+\$MPIRUN                                                                \\
+    --verbose                                                           \\
+    --hostfile \$hostfile                                               \\
+    -np $procs                                                          \\
+    --map-by ppr:$ppr                                                   \\
+    --display-map                                                       \\
+    --mca btl self,sm,openib                                            \\
+    --bind-to $bind_to                                                  \\
+    --report-bindings                                                   \\
+    -x RPC_NODES=$nodes                                                 \\
+    -x RPC_CORES=$cores_per_node                                        \\
+    -x RPC_PROCESSES=$procs                                             \\
+    -x RPC_THREADS=$threads_per_proc                                    \\
+    -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
+    -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
+    -x QTHREAD_STACK_SIZE=500000                                        \\
+    -x QTHREAD_INFO=0                                                   \\
     ./wave                                                              \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\

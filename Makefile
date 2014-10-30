@@ -38,8 +38,8 @@ LIBS     := ${MPI_LIBS} ${LIBS}
 EXES = bench boost_bw_lat cereal_bw_lat demo hpx_bw_lat hpx_wave hwloc_test matbench mattest mpi_bw_lat ostreaming qthread_test rpc_bw_lat tree wave
 
 QTHREAD_SRCS = qthread_thread.cc
-HPX_SRCS     = hpx.cc
-HWLOC_SRCS   = hwloc.cc
+HPX_SRCS     = # hpx.cc
+HWLOC_SRCS   = # hwloc.cc
 RPC_SRCS     = rpc_action.cc rpc_broadcast.cc rpc_client.cc rpc_defs.cc	\
 	rpc_global_shared_ptr.cc rpc_hwloc.cc rpc_main.cc rpc_server.cc	\
 	rpc_server_mpi.cc						\

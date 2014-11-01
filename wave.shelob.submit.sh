@@ -93,11 +93,13 @@ echo '[END NODES]'
 
 date
 echo '[BEGIN MPIRUN]'
+# --mca btl self,sm,openib
+# --mca btl self,sm,tcp
 \$MPIRUN                                                                \\
     -np $procs                                                          \\
     --map-by ppr:$ppr                                                   \\
     --display-map                                                       \\
-    --mca btl self,sm,openib                                            \\
+    --mca btl self,sm,tcp                                               \\
     --bind-to $bind_to                                                  \\
     --report-bindings                                                   \\
     -x RPC_NODES=$nodes                                                 \\

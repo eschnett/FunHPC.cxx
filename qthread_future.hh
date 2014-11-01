@@ -58,17 +58,17 @@ public:
     m_ready.readFF();
   }
   void set_value(const T &value_) {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     value = value_;
     m_ready.fill();
   }
   void set_value(T &&value_) {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     std::swap(value, value_);
     m_ready.fill();
   }
   void set_exception() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     has_exception = true;
     RPC_ASSERT(0); // TODO
     m_ready.fill();
@@ -110,11 +110,11 @@ public:
     m_ready.readFF();
   }
   void set_value() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     m_ready.fill();
   }
   void set_exception() {
-    RPC_ASSERT(!is_ready());
+    RPC_ASSERT(!is_ready() && !(m_deferred && bool(deferred_is_running)));
     has_exception = true;
     RPC_ASSERT(0); // TODO
     m_ready.fill();

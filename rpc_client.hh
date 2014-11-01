@@ -47,98 +47,6 @@ client<T> make_remote_client(rlaunch policy, const shared_future<int> &proc,
                              const As &... args) {
   return async(policy, proc, make_global_shared_action<T, As...>(), args...);
 }
-
-// template <typename F, typename... As>
-// auto local(launch policy, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   typedef typename cxx::invoke_of<F, As...>::type CT;
-//   // We don't know the process number since the client may be null
-//   return CT(async(policy, f, std::move(args)...));
-// }
-//
-// template <typename F, typename... As>
-// auto local(const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   return local(launch::async, f, std::move(args)...);
-// }
-//
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   typedef typename cxx::invoke_of<F, As...>::type CT;
-//   return CT(proc, async(policy, proc, f, std::move(args)...));
-// }
-//
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, const shared_future<int> &proc, const F &f,
-//             As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   typedef typename cxx::invoke_of<F, As...>::type CT;
-//   return CT(proc, async(policy, proc, f, std::move(args)...));
-// }
-//
-// template <typename F, typename... As>
-// auto remote(int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   return remote(rlaunch::async, proc, f, std::move(args)...);
-// }
-//
-// template <typename F, typename... As>
-// auto remote(const shared_future<int> &proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   return remote(rlaunch::async, proc, f, std::move(args)...);
-// }
-//
-// template <typename F, typename G, typename... As>
-// auto remote(rlaunch policy, F, G &&global, As &&... args)
-//     -> typename std::enable_if<
-//           is_action<F>::value && is_global<G>::value &&
-//               is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
-//           typename cxx::invoke_of<F, G, As...>::type>::type {
-//   auto proc = global.get_proc_future();
-//   // return remote(policy, proc, F(), std::move(global), std::move(args)...);
-//   auto r = remote(policy, proc, F(), std::move(global), std::move(args)...);
-//   return r;
-// }
-//
-// template <typename F, typename G, typename... As>
-// auto remote(F, G &&global, As &&... args)
-//     -> typename std::enable_if<
-//           is_action<F>::value && is_global<G>::value &&
-//               is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
-//           typename cxx::invoke_of<F, G, As...>::type>::type {
-//   return remote(rlaunch::async, F(), std::move(global), std::move(args)...);
-// }
-
-// template <typename F, typename... As>
-// auto rewrap_client(int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   typedef typename cxx::invoke_of<F, As...>::type CT;
-//   return CT(proc, async(f, std::move(args)...));
-// }
-
-// template <typename F, typename... As>
-// auto rewrap_client(const F &f, As &&... args)
-//     -> typename std::enable_if<
-//           is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//           typename cxx::invoke_of<F, As...>::type>::type {
-//   typedef typename cxx::invoke_of<F, As...>::type CT;
-//   return CT(async(f, std::move(args)...));
-// }
 }
 
 namespace rpc {
@@ -430,13 +338,8 @@ typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
     R>::type
 foldl(const F &f, const R &z, const rpc::client<T> &xs, const As &... as) {
-  std::cout << "client::foldl.0\n";
-  // return client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
-  //     f, z, xs, as...);
-  auto r = client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
+  return client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
       f, z, xs, as...);
-  std::cout << "client::foldl.9\n";
-  return r;
 }
 
 template <typename F, typename R, typename T, typename... As>
@@ -448,21 +351,13 @@ struct client_foldable<F, false, R, T, As...> {
 
   static R foldl_client(const F &f, const R &z, const rpc::client<T> &xs,
                         const As &... as) {
-    std::cout << "client::foldl_client/f.0\n";
-    // return cxx::invoke(f, z, *xs, as...);
-    auto r = cxx::invoke(f, z, *xs, as...);
-    std::cout << "client::foldl_client/f.9\n";
-    return r;
+    return cxx::invoke(f, z, *xs, as...);
   }
 
   static R foldl(const F &f, const R &z, const rpc::client<T> &xs,
                  const As &... as) {
-    std::cout << "client::foldl/f.0\n";
     bool s = bool(xs);
-    // return s == false ? z : foldl_client(f, z, xs, as...);
-    auto r = s == false ? z : foldl_client(f, z, xs, as...);
-    std::cout << "client::foldl/f.9\n";
-    return r;
+    return s == false ? z : foldl_client(f, z, xs, as...);
   }
 };
 
@@ -475,28 +370,15 @@ struct client_foldable<F, true, R, T, As...> {
 
   static R foldl_client(const R &z, const rpc::client<T> &xs,
                         const As &... as) {
-    std::cout << "client::foldl_client/a.0\n";
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
-    // return cxx::invoke(F(), z, *xs, as...);
-    auto r = cxx::invoke(F(), z, *xs, as...);
-    std::cout << "client::foldl_client/a.9 T=" << typeid(T).name()
-              << " R=" << typeid(R).name() << "\n";
-    return r;
+    return cxx::invoke(F(), z, *xs, as...);
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
 
   static R foldl(F, const R &z, const rpc::client<T> &xs, const As &... as) {
-    std::cout << "client::foldl/a.0 T=" << typeid(T).name()
-              << " R=" << typeid(R).name() << "\n";
     bool s = bool(xs);
-    std::cout << "  s=" << s << "\n";
-    std::cout << "  xs.get_proc=" << xs.get_proc() << "\n";
-    // return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
-    //                                   foldl_client_action(), z, xs, as...);
-    auto r = s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
-                                        foldl_client_action(), z, xs, as...);
-    std::cout << "client::foldl/a.9\n";
-    return r;
+    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                      foldl_client_action(), z, xs, as...);
   }
 };
 // Define action exports

@@ -193,12 +193,10 @@ typename std::enable_if<
     R>::type
 foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs,
       const As &... as) {
-  std::cout << "vector::foldl.0\n";
   std::size_t s = xs.size();
   R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], as...);
-  std::cout << "vector::foldl.9\n";
   return std::move(r);
 }
 

@@ -546,11 +546,7 @@ struct tree_foldable<F, false, R, T, C, P, As...> {
   }
 
   static R foldl(const F &f, const R &z, const tree<T> &t, const As &... as) {
-    std::cout << "tree/f::foldl.0\n";
-    // return foldl_tree(z, t, f, as...);
-    auto r = foldl_tree(z, t, f, as...);
-    std::cout << "tree/f::foldl.9\n";
-    return r;
+    return foldl_tree(z, t, f, as...);
   }
 };
 
@@ -567,53 +563,29 @@ struct tree_foldable<F, true, R, T, C, P, As...> {
   template <typename U> using tree = tree<U, C, P>;
 
   static R foldl_pvalue(const R &z, const P<T> &pv, const As &... as) {
-    std::cout << "foldl_pvalue.0\n";
-    // return cxx::foldl(F(), z, pv, as...);
-    auto r = cxx::foldl(F(), z, pv, as...);
-    std::cout << "foldl_pvalue.9\n";
-    return r;
+    return cxx::foldl(F(), z, pv, as...);
   }
 
   static R foldl_leaf(const leaf<T> &l, const R &z, const As &... as) {
-    std::cout << "foldl_leaf.0\n";
-    // return cxx::foldl(foldl_pvalue, z, l.values, as...);
-    auto r = cxx::foldl(foldl_pvalue, z, l.values, as...);
-    std::cout << "foldl_leaf.9\n";
-    return r;
+    return cxx::foldl(foldl_pvalue, z, l.values, as...);
   }
 
   static R foldl_ptree(const R &z, const P<tree<T> > &pt, const As &... as) {
-    std::cout << "foldl_ptree.0\n";
-    // return cxx::foldl(foldl_tree_action(), z, pt, as...);
-    auto r = cxx::foldl(foldl_tree_action(), z, pt, as...);
-    std::cout << "foldl_ptree.9\n";
-    return r;
+    return cxx::foldl(foldl_tree_action(), z, pt, as...);
   }
 
   static R foldl_branch(const branch<T> &b, const R &z, const As &... as) {
-    std::cout << "foldl_branch.0\n";
-    // return cxx::foldl(foldl_ptree, z, b.trees, as...);
-    auto r = cxx::foldl(foldl_ptree, z, b.trees, as...);
-    std::cout << "foldl_branch.9\n";
-    return r;
+    return cxx::foldl(foldl_ptree, z, b.trees, as...);
   }
 
   static R foldl_tree(const R &z, const tree<T> &t, const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
-    std::cout << "foldl_tree.0\n";
-    // return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
-    auto r = cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
-    std::cout << "foldl_tree.9\n";
-    return r;
+    return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
 
   static R foldl(F, const R &z, const tree<T> &t, const As &... as) {
-    std::cout << "tree/a::foldl.0\n";
-    // return foldl_tree(z, t, as...);
-    auto r = foldl_tree(z, t, as...);
-    std::cout << "tree::foldl.9\n";
-    return r;
+    return foldl_tree(z, t, as...);
   }
 };
 // Define action exports
@@ -826,8 +798,6 @@ struct tree_iota<F, true, tree, As...> {
     iota_range_t range1(range.global,
                         { i, std::min(range.local.imax, i + range.local.istep),
                           range.global.istep });
-    // std::cout << "iota_pvalue i=" << i << " range=" << range
-    //           << " range1=" << range1 << "\n";
     assert(range1.local.size() == 1);
     return cxx::iota<P>(F(), range1, as...);
   }
@@ -837,7 +807,6 @@ struct tree_iota<F, true, tree, As...> {
     assert(!range.local.empty() && range.local.size() <= max_node_size);
     iota_range_t range1(range.global, { range.local.imin, range.local.imax,
                                         range.global.istep });
-    // std::cout << "iota_leaf range=" << range << " range1=" << range1 << "\n";
     return leaf<R>(cxx::iota<C>(iota_pvalue, range1, range1, as...));
   }
 
@@ -846,8 +815,6 @@ struct tree_iota<F, true, tree, As...> {
     iota_range_t range1(range.global,
                         { i, std::min(range.local.imax, i + range.local.istep),
                           range.global.istep });
-    // std::cout << "iota_ptree i=" << i << " range=" << range
-    //           << " range1=" << range1 << "\n";
     return cxx::iota<P>(iota_tree, range1, range1, as...);
   }
 
@@ -859,8 +826,6 @@ struct tree_iota<F, true, tree, As...> {
           cxx::align_ceil(
               cxx::div_ceil(range.local.imax - range.local.imin, max_node_size),
               range.global.istep) });
-    // std::cout << "iota_branch range=" << range << " range1=" << range1 <<
-    // "\n";
     assert(!range1.local.empty() && range1.local.size() <= max_node_size);
     return branch<R>(cxx::iota<C>(iota_ptree, range1, range1, as...));
   }
@@ -868,7 +833,6 @@ struct tree_iota<F, true, tree, As...> {
   static tree<R> iota_tree(std::ptrdiff_t i, const iota_range_t &range,
                            const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(iota_tree);
-    // std::cout << "iota_tree i=" << i << " range=" << range << "\n";
     assert(i == range.local.imin);
     if (range.local.size() <= max_node_size) {
       return tree<R>(iota_leaf(range, as...));

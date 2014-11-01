@@ -28,35 +28,6 @@ template <typename T, typename... As>
 client<T> make_remote_client(rpc::rlaunch policy, const shared_future<int> &,
                              const As &... args);
 
-// template <typename F, typename... As>
-// auto local(launch policy, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-//
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, const shared_future<int> &proc, const F &f,
-//             As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-
-// template <typename F, typename... As>
-// auto rewrap_client(int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto rewrap_client(const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-
 template <typename T> class client {
   // gcc 4.7 thinks that shared_future::get is non-const
   mutable rpc::shared_future<int> proc;
@@ -80,36 +51,6 @@ template <typename T> class client {
   friend client<U> make_remote_client(rpc::rlaunch policy,
                                       const shared_future<int> &,
                                       const As &... args);
-
-  // template <typename F, typename... As>
-  // friend auto local(launch policy, const F &f, As &&... args)
-  //     -> typename std::enable_if<
-  //         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-  //         typename cxx::invoke_of<F, As...>::type>::type;
-  //
-  // template <typename F, typename... As>
-  // friend auto remote(rlaunch policy, int proc, const F &f, As &&... args)
-  //     -> typename std::enable_if<
-  //         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-  //         typename cxx::invoke_of<F, As...>::type>::type;
-  // template <typename F, typename... As>
-  // friend auto remote(rlaunch policy, const shared_future<int> &proc, const F
-  // &f,
-  //                    As &&... args)
-  //     -> typename std::enable_if<
-  //         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-  //         typename cxx::invoke_of<F, As...>::type>::type;
-
-  // template <typename F, typename... As>
-  // friend auto rewrap_client(int proc, const F &f, As &&... args)
-  //     -> typename std::enable_if<
-  //         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-  //         typename cxx::invoke_of<F, As...>::type>::type;
-  // template <typename F, typename... As>
-  // friend auto rewrap_client(const F &f, As &&... args)
-  //     -> typename std::enable_if<
-  //         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-  //         typename cxx::invoke_of<F, As...>::type>::type;
 
 public:
   typedef T element_type;
@@ -223,18 +164,19 @@ public:
   }
 #endif
 
+  // TODO: Return 0 for nullptr? But then need to adapt end() and
+  // cend() as well.
+  std::size_t size() const { return 1; }
+
   bool operator==(const client &other) const {
     return data.get() == other.data.get();
   }
   bool operator!=(const client &other) const { return !(*this == other); }
 
   std::tuple<> wait() const {
-    std::cout << "cw.0\n";
     proc.wait();
-    std::cout << "cw.1\n";
     data.wait();
-    std::cout << "cw.2\n";
-    return {};
+    return std::tuple<>();
   }
   const std::shared_ptr<T> &get() const {
     assert(proc_invariant());
@@ -293,62 +235,6 @@ client<T> make_remote_client(rpc::rlaunch policy, int proc, const As &... args);
 template <typename T, typename... As>
 client<T> make_remote_client(rpc::rlaunch policy, const shared_future<int> &,
                              const As &... args);
-
-// template <typename F, typename... As>
-// auto local(launch policy, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto local(const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-//
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto remote(rlaunch policy, const shared_future<int> &proc, const F &f,
-//             As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto remote(int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto remote(const shared_future<int> &proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename G, typename... As>
-// auto remote(rlaunch policy, F, G &&global, As &&... args)
-//     -> typename std::enable_if<
-//         is_action<F>::value && is_global<G>::value &&
-//             is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
-//         typename cxx::invoke_of<F, G, As...>::type>::type;
-// template <typename F, typename G, typename... As>
-// auto remote(F, G &&global, As &&... args)
-//     -> typename std::enable_if<
-//         is_action<F>::value && is_global<G>::value &&
-//             is_client<typename cxx::invoke_of<F, G, As...>::type>::value,
-//         typename cxx::invoke_of<F, G, As...>::type>::type;
-
-// template <typename F, typename... As>
-// auto rewrap_client(int proc, const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
-// template <typename F, typename... As>
-// auto rewrap_client(const F &f, As &&... args)
-//     -> typename std::enable_if<
-//         is_client<typename cxx::invoke_of<F, As...>::type>::value,
-//         typename cxx::invoke_of<F, As...>::type>::type;
 }
 
 #define RPC_CLIENT_FWD_HH_DONE

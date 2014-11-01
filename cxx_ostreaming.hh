@@ -247,12 +247,20 @@ template <typename F, typename IT, typename... As,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<cxx::is_ostreaming<CR>::value, C<std::tuple<> > >::type
 mapM_(const F &f, const IT &xs, const As &... as) {
+  std::cout << "ostreaming::mapM_.0 F=" << typeid(F).name()
+            << " IT=" << typeid(IT).name() << " sz=" << xs.size() << "\n";
+  assert(xs.size() <= 1000);
   ostreamer ostr;
 #warning "TODO: Use foldable instead of iterators"
+  size_t i = 0;
   for (const T &x : xs) {
+    std::cout << "ostreaming::mapM_.1 i=" << i++ << "\n";
     C<R> ys = cxx::invoke(f, x, as...);
-    ostr = std::move(ostr) << std::move(ys.ostr);
+    std::cout << "ostreaming::mapM_.2\n";
+    // ostr = std::move(ostr) << std::move(ys.ostr);
+    ostr = ostr << ys.ostr;
   }
+  std::cout << "ostreaming::mapM_.9\n";
   return C<std::tuple<> >(std::move(ostr), std::tuple<>());
 }
 

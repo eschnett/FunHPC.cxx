@@ -214,9 +214,12 @@ int wrapped_main(int argc, char **argv) {
 }
 
 int real_main(int argc, char **argv) {
+  std::cout << "After startup\n" << std::flush;
   // MPI_Init(&argc, &argv);
   rpc::server = new rpc::server_mpi(argc, argv);
+  std::cout << "After MPI init\n" << std::flush;
   rpc::thread_initialize();
+  std::cout << "After qthreads init\n" << std::flush;
   rpc::check_procs_threads();
   rpc::set_cpu_bindings();
   if (rpc::server->rank() == 0) {

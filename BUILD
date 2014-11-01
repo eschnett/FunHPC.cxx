@@ -43,6 +43,8 @@ done
 
 for f in wave.n*.s*.c*.p*.t*.m*.log; do grep -H 'Time:' $f | tail -n +3; done 
 
+for f in job.n*.s*.c*.p*.t*.m*.r*.log; do grep -H 'Time:' $f | tail -n +3; done 
+
 
 
 RUNNING:

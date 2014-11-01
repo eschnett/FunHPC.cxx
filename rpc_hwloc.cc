@@ -1,11 +1,15 @@
+#include "rpc_action.hh"
+#include "rpc_broadcast.hh"
 #include "rpc_server.hh"
 #include "rpc_thread.hh"
 
 #include <hwloc.h>
 
-// #include <mpi.h>
+#include <cereal/types/array.hpp>
+#include <cereal/types/string.hpp>
 
 #include <atomic>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <ostream>
@@ -166,13 +170,10 @@ bool run(bool do_set, bool do_output, const proc_map_t *proc_map_,
   if (!worker_done[thread]) {
     worker_done[thread] = true;
     std::stringstream os;
+    if (do_set)
+      have_error |= set_affinity(os, topology, proc_map);
     if (do_output)
       have_error |= output_affinity(os, topology, proc_map);
-    if (do_set) {
-      have_error |= set_affinity(os, topology, proc_map);
-      if (do_output)
-        have_error |= output_affinity(os, topology, proc_map);
-    }
     infos[thread] = os.str();
   }
 
@@ -223,6 +224,16 @@ std::string run_on_threads(bool do_set, bool do_output,
 }
 }
 
+namespace {
+// Saved messages for later output
+const int num_messages = 3;
+const char *descriptions[num_messages] = {
+  "Process maps:\n", "Original CPU bindings:\n", "New CPU bindings:\n",
+};
+std::array<std::string, num_messages> messages;
+}
+
+// This routine is called early, and runs on each process
 void set_cpu_bindings() {
   hwloc_topology_t topology;
   hwloc_topology_init(&topology);
@@ -255,25 +266,47 @@ void set_cpu_bindings() {
   //   std::cout << "P" << proc << ": " << hostname << "\n";
   // }
 
-  if (proc_map.rank == 0) {
-    std::cout << "Process map: "
-              << "N" << proc_map.node << "/" << proc_map.nodes << " "
-              << "L" << proc_map.local_rank << "/" << proc_map.local_size << " "
-              << "P" << proc_map.rank << "/" << proc_map.size << "\n";
+  if (do_output && proc_map.node == 0) {
+    std::stringstream os;
+    os << "   "
+       << "N" << proc_map.node << "/" << proc_map.nodes << " "
+       << "L" << proc_map.local_rank << "/" << proc_map.local_size << " "
+       << "P" << proc_map.rank << "/" << proc_map.size << "\n";
+    messages[0] = os.str();
   }
-  server->barrier();
 
-  std::string message = run_on_threads(do_set, do_output, proc_map, topology);
-  // TODO: Do not block unrelated processes
-  // for (int proc = 0; proc < proc_map.local_size; ++proc) {
-  //   if (proc_map.local_rank == proc)
-  //     std::cout << message;
-  //   server->barrier();
-  // }
-  // TODO: Split and sort messages
-  std::cout << message;
-  server->barrier();
+  if (do_output && proc_map.node == 0) {
+    messages[1] = run_on_threads(false, true, proc_map, topology);
+  }
+
+  if (do_set)
+    run_on_threads(true, false, proc_map, topology);
+
+  if (do_set && do_output && proc_map.node == 0) {
+    messages[2] = run_on_threads(false, true, proc_map, topology);
+  }
 
   hwloc_topology_destroy(topology);
 }
+
+auto hwloc_get_messages() -> std::array<std::string, num_messages> {
+  return messages;
 }
+RPC_DECLARE_ACTION(hwloc_get_messages);
+
+// This routine is called after setup, and runs only on one process
+void output_cpu_bindings() {
+  auto foutputs =
+      rpc::broadcast(rpc::find_all_processes(), hwloc_get_messages_action());
+  std::vector<std::array<std::string, num_messages> > outputs;
+  for (auto &fstr : foutputs)
+    outputs.push_back(fstr.get());
+  for (int stage = 0; stage < num_messages; ++stage) {
+    std::cout << descriptions[stage];
+    for (const auto &output : outputs)
+      std::cout << output[stage];
+  }
+}
+}
+
+RPC_IMPLEMENT_ACTION(rpc::hwloc_get_messages);

@@ -103,6 +103,10 @@ hostfile=/tmp/hostfile.\$SLURM_JOB_ID
 scontrol show hostnames \$SLURM_NODELIST | tee \$hostfile
 echo '[END NODES]'
 
+echo '[BEGIN IFCONFIG]'
+/sbin/ifconfig || true
+echo '[END IFCONFIG]'
+
 date
 echo '[BEGIN MPIRUN]'
 unset SLURM_CHECKPOINT_IMAGE_DIR
@@ -138,17 +142,23 @@ unset SLURM_TASK_PID
 unset SLURM_TASKS_PER_NODE
 unset SLURM_TOPOLOGY_ADDR
 unset SLURM_TOPOLOGY_ADDR_PATTERN
+# --verbose
+# --report-bindings
+# --mca btl_base_verbose 100
+# --mca btl_openib_verbose 1
+# --mca btl_tcp_verbose 1
 # --mca btl self,sm,openib
 # --mca btl self,sm,tcp
 \$MPIRUN                                                                \\
-    --verbose                                                           \\
     --hostfile \$hostfile                                               \\
     -np $procs                                                          \\
     --map-by ppr:$ppr                                                   \\
     --display-map                                                       \\
     --mca btl self,sm,tcp                                               \\
+    --mca btl_openib_if_include ib0                                     \\
+    --mca btl_tcp_if_include eth0                                       \\
+    --mca oob_tcp_if_include eth0                                       \\
     --bind-to $bind_to                                                  \\
-    --report-bindings                                                   \\
     -x RPC_NODES=$nodes                                                 \\
     -x RPC_CORES=$cores_per_node                                        \\
     -x RPC_PROCESSES=$procs                                             \\
@@ -156,7 +166,7 @@ unset SLURM_TOPOLOGY_ADDR_PATTERN
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
     -x QTHREAD_STACK_SIZE=524288                                        \\
-    -x QTHREAD_INFO=1                                                   \\
+    -x QTHREAD_INFO=0                                                   \\
     $prog                                                               \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\

@@ -4,6 +4,7 @@
 
 #include <cereal/archives/binary.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -13,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace rpc {
 
@@ -23,11 +25,11 @@ enum tags { tag_small = 1, tag_large = 2 };
 
 template <typename T> class send_req_t {
   std::string buf;
-  boost::mpi::request req;
+  MPI_Request req;
   bool req_complete;
 
-  void pack(std::string &buf, const T &obj) {
-    std::stringstream ss;
+  static void pack(std::string &buf, const T &obj) {
+    std::ostringstream ss;
     {
       cereal::BinaryOutputArchive oa(ss);
       oa(obj);
@@ -43,39 +45,48 @@ public:
   send_req_t(send_req_t &&) = delete;
   send_req_t &operator=(const send_req_t &) = delete;
   send_req_t &operator=(send_req_t &&) = delete;
-  send_req_t(const boost::mpi::communicator &comm, int dest, const T &obj) {
+  send_req_t(const MPI_Comm &comm, int dest, const T &obj) {
     pack(buf, obj);
     int tag = buf.size() <= max_small_size ? tag_small : tag_large;
-    req = comm.isend(dest, tag, buf.data(), buf.size());
+    MPI_Isend(buf.data(), buf.size(), MPI_CHAR, dest, tag, comm, &req);
     req_complete = false;
   }
   ~send_req_t() {
     if (!req_complete)
-      req.cancel();
+      MPI_Cancel(&req);
   }
-  bool test() { return req_complete = bool(req.test()); }
+  bool test() {
+    int flag;
+    MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+    return req_complete = flag;
+  }
   void cancel() {
     assert(!req_complete);
-    req.cancel();
+    MPI_Cancel(&req);
     req_complete = true;
   }
 };
 
 template <typename T> class recv_req_t {
-  boost::mpi::communicator comm;
-  std::string buf;
-  boost::mpi::request req;
+  MPI_Comm comm;
+  std::vector<char> buf;
+  MPI_Request req;
   bool req_complete;
 
   void post_irecv() {
     assert(req_complete);
     buf.resize(max_small_size);
-    req = comm.irecv(boost::mpi::any_source, tag_small,
-                     const_cast<char *>(buf.data()), buf.size());
+    MPI_Irecv(const_cast<char *>(buf.data()), buf.size(), MPI_CHAR,
+              MPI_ANY_SOURCE, tag_small, comm, &req);
     req_complete = false;
   }
-  void unpack(T &obj, std::string &&buf) {
+  static void unpack(T &obj, std::string &&buf) {
     std::stringstream ss(std::move(buf));
+    cereal::BinaryInputArchive ia(ss);
+    ia(obj);
+  }
+  static void unpack(T &obj, std::vector<char> &&buf) {
+    std::stringstream ss(std::string(buf.begin(), buf.end()));
     cereal::BinaryInputArchive ia(ss);
     ia(obj);
   }
@@ -88,21 +99,20 @@ public:
   recv_req_t(recv_req_t &&) = delete;
   recv_req_t &operator=(const recv_req_t &) = delete;
   recv_req_t &operator=(recv_req_t &&) = delete;
-  recv_req_t(const boost::mpi::communicator &comm)
-      : comm(comm), req_complete(true) {
+  recv_req_t(const MPI_Comm &comm) : comm(comm), req_complete(true) {
     post_irecv();
   }
   ~recv_req_t() {
     if (!req_complete)
-      req.cancel();
+      MPI_Cancel(&req);
   }
   template <typename F> bool test(const F &func) {
     // Check for a small message
-    auto st = req.test();
-    if (st) {
+    int recvd;
+    MPI_Status st;
+    MPI_Test(&req, &recvd, &st);
+    if (recvd) {
       req_complete = true;
-      // int sz = *st->count<char>();
-      // buf.resize(sz);
       T obj;
       unpack(obj, std::move(buf));
       post_irecv();
@@ -110,13 +120,14 @@ public:
       return true;
     }
     // Check for a large message
-    st = comm.iprobe(boost::mpi::any_source, tag_large);
-    if (st) {
-      int sz = *st->template count<char>();
+    MPI_Iprobe(MPI_ANY_SOURCE, tag_large, comm, &recvd, &st);
+    if (recvd) {
+      int sz;
+      MPI_Get_count(&st, MPI_CHAR, &sz);
       std::string lbuf;
       lbuf.resize(sz);
-      comm.recv(st->source(), st->tag(), const_cast<char *>(lbuf.data()),
-                lbuf.size());
+      MPI_Recv(const_cast<char *>(lbuf.data()), lbuf.size(), MPI_CHAR,
+               st.MPI_SOURCE, st.MPI_TAG, comm, MPI_STATUS_IGNORE);
       T obj;
       unpack(obj, std::move(lbuf));
       func(std::move(obj));
@@ -126,21 +137,25 @@ public:
   }
   void cancel() {
     assert(!req_complete);
-    req.cancel();
+    MPI_Cancel(&req);
     req_complete = true;
   }
 };
 
 server_mpi::server_mpi(int &argc, char **&argv)
-    : argc(argc), argv(argv),
-      env(argc, argv, boost::mpi::threading::level::funneled),
-      comm(MPI_COMM_WORLD, boost::mpi::comm_duplicate), termination_stage(0),
-      stats({ 0, 0 }) {
-  rank_ = comm.rank();
-  size_ = comm.size();
+    : argc(argc), argv(argv), termination_stage(0), stats({ 0, 0 }) {
+  int provided;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+  assert(provided != MPI_THREAD_SINGLE);
+  MPI_Comm_dup(MPI_COMM_WORLD, &comm);
+  MPI_Comm_rank(comm, &rank_);
+  MPI_Comm_size(comm, &size_);
 }
 
-server_mpi::~server_mpi() { RPC_ASSERT(we_should_terminate()); }
+server_mpi::~server_mpi() {
+  RPC_ASSERT(we_should_terminate());
+  MPI_Finalize();
+}
 
 void server_mpi::terminate_stage_1() {
   RPC_ASSERT(termination_stage == 0);
@@ -191,17 +206,16 @@ void server_mpi::terminate_stage_4() {
 
 int server_mpi::event_loop(const user_main_t &user_main) {
 #ifndef RPC_DISABLE_CALL_SHORTCUT
-  if (comm.size() == 1) {
+  if (size() == 1) {
     // Optimization: Don't start the MPI communication server
     iret = user_main(argc, argv);
     termination_stage = 4;
-    boost::mpi::broadcast(comm, iret, 0);
-    return iret;
+    MPI_Bcast(&iret, 1, MPI_INT, 0, comm);
   }
 #endif
 
   // Start main program, but only on process 0
-  if (comm.rank() == 0) {
+  if (rank() == 0) {
     thread([=]() {
              iret = user_main(argc, argv);
              terminate_stage_1();
@@ -230,10 +244,10 @@ int server_mpi::event_loop(const user_main_t &user_main) {
     }
     // Receive as many items as possible
     for (;;) {
-      // Note: In this mpi::test call, the object is deserialized,
+      // Note: In this MPI_Test call, the object is deserialized,
       // which calls the load function, which triggers an mpi::send,
       // which doesn't happen immediately since the event loop is
-      // still trapped in mpi::test.
+      // still trapped in MPI_Test.
       bool did_receive = recv_req.test([this](const call_t &call) {
         if (!we_should_ignore_call(call))
           thread(&callable_base::execute, call).detach();
@@ -267,7 +281,7 @@ int server_mpi::event_loop(const user_main_t &user_main) {
     send_req->cancel();
 
   // Broadcast return value
-  boost::mpi::broadcast(comm, iret, 0);
+  MPI_Bcast(&iret, 1, MPI_INT, 0, comm);
   return iret;
 }
 

@@ -6,7 +6,7 @@
 #include "rpc_defs.hh"
 #include "rpc_server.hh"
 
-#include <boost/mpi.hpp>
+#include <mpi.h>
 
 namespace rpc {
 
@@ -25,8 +25,7 @@ class server_mpi : public server_base {
   int &argc;
   char **&argv;
 
-  boost::mpi::environment env;
-  boost::mpi::communicator comm;
+  MPI_Comm comm;
 
   struct send_item_t {
     int dest;
@@ -47,7 +46,7 @@ public:
   server_mpi(int &argc, char **&argv);
   virtual ~server_mpi();
 
-  virtual void barrier() { comm.barrier(); }
+  virtual void barrier() { MPI_Barrier(comm); }
 
   virtual stats_t get_stats() const { return stats; }
 

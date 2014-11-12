@@ -150,6 +150,8 @@ server_mpi::server_mpi(int &argc, char **&argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank_);
   MPI_Comm_size(comm, &size_);
+  // Ensure communication is working
+  MPI_Barrier(comm);
 }
 
 server_mpi::~server_mpi() {

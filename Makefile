@@ -1,5 +1,7 @@
 # source $HOME/SIMFACTORY/all-all/env.sh
 
+# (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 bench demo wave wave-light)
+
 DEBUG =
 
 CC  := ${CC}	# ${MPICC}
@@ -41,10 +43,11 @@ QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = hpx.cc
 HWLOC_SRCS   = hwloc.cc
 LA_SRCS      = la_blocked.cc la_dense.cc
+# ${HPX_SRCS} ${HWLOC_SRCS}
 RPC_SRCS     = rpc_action.cc rpc_broadcast.cc rpc_client.cc rpc_defs.cc	\
 	rpc_global_shared_ptr.cc rpc_hwloc.cc rpc_main.cc rpc_server.cc	\
 	rpc_server_mpi.cc						\
-	${QTHREAD_SRCS} ${HPX_SRCS} ${HWLOC_SRCS}
+	${QTHREAD_SRCS}
 MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
 
 BENCH_SRCS         = bench.cc ${RPC_SRCS}

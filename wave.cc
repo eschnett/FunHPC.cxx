@@ -93,8 +93,8 @@ RPC_ACTION(string_mappend);
 // Global definitions, a poor man's parameter file
 
 struct defs_t {
-  // const ptrdiff_t rho = 1; // resolution scale
-  const ptrdiff_t rho = 10; // resolution scale
+#if 1                        // benchmark
+  const ptrdiff_t rho = 100; // resolution scale
   const ptrdiff_t ncells_per_grid = 10;
 
   const double xmin = 0.0;
@@ -102,18 +102,44 @@ struct defs_t {
   const double cfl = 0.5;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  // const ptrdiff_t nsteps = -1;
   const ptrdiff_t nsteps = 10;
+  const ptrdiff_t wait_every = 0;
+  const ptrdiff_t info_every = 0;
+  const ptrdiff_t file_every = -1;
+#elif 0 // test
+  const ptrdiff_t rho = 1; // resolution scale
+  const ptrdiff_t ncells_per_grid = 10;
+
+  const double xmin = 0.0;
+  const double xmax = 1.0;
+  const double cfl = 0.5;
+  const double tmin = 0.0;
+  const double tmax = 1.0;
+  const ptrdiff_t nsteps = -1;
+  const ptrdiff_t wait_every = 10;
+  const ptrdiff_t info_every = 10;
+  const ptrdiff_t file_every = 0;
+#elif 0 // debug
+  const ptrdiff_t rho = 1; // resolution scale
+  const ptrdiff_t ncells_per_grid = 10;
+
+  const double xmin = 0.0;
+  const double xmax = 1.0;
+  const double cfl = 0.5;
+  const double tmin = 0.0;
+  const double tmax = 1.0;
+  const ptrdiff_t nsteps = -1;
+  const ptrdiff_t wait_every = 1;
+  const ptrdiff_t info_every = 1;
+  const ptrdiff_t file_every = 1;
+#else
+#error "No parameter settings selected"
+#endif
 
   ptrdiff_t ncells;
   double dx;
   double dt;
 
-  const ptrdiff_t wait_every = 0;
-  // const ptrdiff_t info_every = 10;
-  const ptrdiff_t info_every = 0;
-  // const ptrdiff_t file_every = 0;
-  const ptrdiff_t file_every = -1;
   defs_t(int nprocs, int nthreads)
       : ncells(rho * ncells_per_grid * nprocs * nthreads),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}

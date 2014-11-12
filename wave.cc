@@ -576,8 +576,7 @@ struct memoized_t {
   memoized_t(ptrdiff_t n, const client<domain_t> &state) : n(n), state(state) {
     rhs = make_client<domain_t>(launch::deferred, domain_t::rhs(), state);
     error = make_client<domain_t>(launch::deferred, domain_t::error(), state);
-#warning "TODO"
-    error_norm = async(/*launch::deferred,*/ &domain_t::norm, error);
+    error_norm = async(launch::deferred, &domain_t::norm, error);
   }
 };
 

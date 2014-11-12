@@ -732,6 +732,8 @@ auto rpc_main(int argc, char **argv) -> int {
     s.wait();
     fio.wait();
     ffo.wait();
+    fio.get()->flush();
+    ffo.get()->flush();
   }
 
   istats.stop();
@@ -757,6 +759,8 @@ auto rpc_main(int argc, char **argv) -> int {
       s.wait();
       fio.wait();
       ffo.wait();
+      fio.get()->flush();
+      ffo.get()->flush();
     }
   }
 

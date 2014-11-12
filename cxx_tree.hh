@@ -221,8 +221,8 @@ public:
   explicit leaf() {}
   explicit leaf(const C<P<T> > &vs) : values(vs) {}
   explicit leaf(C<P<T> > &&vs) : values(std::move(vs)) {}
-  explicit leaf(const P<T> &v) : leaf(cxx::unit<C>(v)) {}
-  explicit leaf(P<T> &&v) : leaf(cxx::unit<C>(std::move(v))) {}
+  explicit leaf(const P<T> &v) : leaf(cxx::munit<C>(v)) {}
+  explicit leaf(P<T> &&v) : leaf(cxx::munit<C>(std::move(v))) {}
   leaf(const leaf &l) : values(l.values) {}
   leaf(leaf &&l) : values(std::move(l.values)) {}
 
@@ -230,11 +230,11 @@ public:
   bool empty() const { return values.empty(); }
   std::size_t size() const { return values.size(); }
 
-  // monad: join
+  // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
   typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
                           branch<R, C, P> >::type
-  join() const {
+  mjoin() const {
     return branch<R, C, P>(values);
   }
 };
@@ -296,8 +296,9 @@ public:
   explicit branch() {}
   explicit branch(const C<P<tree<T, C, P> > > &ts) : trees(ts) {}
   explicit branch(C<P<tree<T, C, P> > > &&ts) : trees(std::move(ts)) {}
-  explicit branch(const P<tree<T, C, P> > &t) : branch(cxx::unit<C>(t)) {}
-  explicit branch(P<tree<T, C, P> > &&t) : branch(cxx::unit<C>(std::move(t))) {}
+  explicit branch(const P<tree<T, C, P> > &t) : branch(cxx::munit<C>(t)) {}
+  explicit branch(P<tree<T, C, P> > &&t)
+      : branch(cxx::munit<C>(std::move(t))) {}
   branch(const branch &b) : trees(b.trees) {}
   branch(branch &&b) : trees(std::move(b.trees)) {}
 
@@ -319,16 +320,17 @@ public:
                         std::plus<std::size_t>(), std::size_t(0), trees);
   }
 
-  // monad: join
+  // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
   typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
                           branch<R, C, P> >::type
-  join() const {
-    return branch<R, C, P>(cxx::fmap(
-        [](const P<tree<T, C, P> > &pt) {
-          return cxx::fmap([](const tree<T, C, P> &t) { return t.join(); }, pt);
-        },
-        trees));
+  mjoin() const {
+    return branch<R, C, P>(
+        cxx::fmap([](const P<tree<T, C, P> > &pt) {
+                    return cxx::fmap(
+                        [](const tree<T, C, P> &t) { return t.mjoin(); }, pt);
+                  },
+                  trees));
   }
 };
 
@@ -403,8 +405,8 @@ public:
   explicit tree(node_t &&n) : node(std::move(n)) {}
   explicit tree(const P<T> &pv) : tree(leaf<T, C, P>(pv)) {}
   explicit tree(P<T> &&pv) : tree(leaf<T, C, P>(std::move(pv))) {}
-  explicit tree(const T &v) : tree(cxx::unit<P>(v)) {}
-  explicit tree(T &&v) : tree(cxx::unit<P>(std::move(v))) {}
+  explicit tree(const T &v) : tree(cxx::munit<P>(v)) {}
+  explicit tree(T &&v) : tree(cxx::munit<P>(std::move(v))) {}
   tree(const tree &t) : node(t.node) {}
   tree(tree &&t) : node(std::move(t.node)) {}
   tree &operator=(const tree &t) {

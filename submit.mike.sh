@@ -2,7 +2,7 @@
 
 set -e
 set -u
-#set -x
+# set -x
 
 # User choices
 if (($#<8)); then
@@ -55,7 +55,7 @@ elif (($procs_per_node)); then
     bind_to='none'
 fi
 
-cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
+cat >job.$id.sub <<EOF
 #! /bin/bash
 
 #PBS -V
@@ -91,14 +91,27 @@ env | sort
 echo '[END ENV]'
 
 echo '[BEGIN NODES]'
-cat \$PBS_NODEFILE
+hostfile=/tmp/hostfile.\$PBS_JOBID
+sort -u \$PBS_NODEFILE | tee \$hostfile
 echo '[END NODES]'
+
+echo '[BEGIN IFCONFIG]'
+ifconfig
+ip link
+echo '[END IFCONFIG]'
+
+echo '[BEGIN LSTOPO]'
+unset DISPLAY
+lstopo
+echo '[END LSTOPO]'
 
 date
 echo '[BEGIN MPIRUN]'
+# --verbose
 # --mca btl self,sm,openib
 # --mca btl self,sm,tcp
 \$MPIRUN                                                                \\
+    --hostfile \$hostfile                                               \\
     -np $procs                                                          \\
     --map-by ppr:$ppr                                                   \\
     --display-map                                                       \\
@@ -111,19 +124,52 @@ echo '[BEGIN MPIRUN]'
     -x RPC_THREADS=$threads_per_proc                                    \\
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
-    -x QTHREAD_STACK_SIZE=524288                                        \\
-    -x QTHREAD_GUARD_PAGES=1                                            \\
-    -x QTHREAD_INFO=1                                                   \\
-    $prog                                                               \\
+    -x QTHREAD_STACK_SIZE=65536                                         \\
+    -x QTHREAD_GUARD_PAGES=0                                            \\
+    -x QTHREAD_INFO=0                                                   \\
+    job.$id.exe                                                         \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
     --hpx:threads=$threads_per_proc                                     \\
     >job.$id.log 2>&1
 echo '[END MPIRUN]'
 date
+
+rm -f \$hostfile
 EOF
 
-: >$HOME/src/mpi-rpc/job.$id.out
-: >$HOME/src/mpi-rpc/job.$id.err
-: >$HOME/src/mpi-rpc/job.$id.log
-qsub $HOME/src/mpi-rpc/job.$id.sub
+# Note: The cache always needs to be updated atomically
+
+# Create the cache if it does not exist
+: >$prog.cache.$$
+mv -n $prog.cache.$$ $prog.cache
+rm -f $prog.cache.$$
+
+# Try to use the cache
+ln -f $prog.cache job.$id.exe
+
+# Do we have the correct executable?
+if ! cmp $prog job.$id.exe | head -n 1 | grep -qv ''; then
+    # No: make temporary copy of executable, then update cache
+    cp -f $prog job.$id.exe.tmp # this may be slow
+
+    # Try to use the cache (again)
+    ln -f $prog.cache job.$id.exe
+
+    # Is the executable now correct (because the cache changed in the
+    # mean time?)
+    if cmp $prog job.$id.exe | head -n 1 | grep -qv ''; then
+        # Yes: delete the temporary executable
+        rm job.$id.exe.tmp
+    else
+        # No: update the cache, and use the temporary copy
+        ln job.$id.exe.tmp $prog.cache.$$
+        mv -f $prog.cache.$$ $prog.cache
+        mv -f job.$id.exe.tmp job.$id.exe
+    fi
+fi
+
+: >job.$id.out
+: >job.$id.err
+: >job.$id.log
+qsub job.$id.sub

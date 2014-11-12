@@ -107,6 +107,8 @@ echo '[BEGIN IFCONFIG]'
 /sbin/ifconfig || true
 echo '[END IFCONFIG]'
 
+ulimit -c unlimited
+
 date
 echo '[BEGIN MPIRUN]'
 unset SLURM_CHECKPOINT_IMAGE_DIR
@@ -166,7 +168,8 @@ unset SLURM_TOPOLOGY_ADDR_PATTERN
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
     -x QTHREAD_STACK_SIZE=524288                                        \\
-    -x QTHREAD_INFO=0                                                   \\
+    -x QTHREAD_GUARD_PAGES=1                                            \\
+    -x QTHREAD_INFO=1                                                   \\
     $prog                                                               \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\

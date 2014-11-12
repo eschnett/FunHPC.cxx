@@ -55,19 +55,18 @@ elif (($procs_per_node)); then
     bind_to='none'
 fi
 
-cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
+cat >$HOME/datura/src/mpi-rpc/job.$id.sub <<EOF
 #! /bin/bash
 
-#PBS -V
-#PBS -A hpc_hyrel14
-#PBS -q checkpt
-#PBS -r n
-#PBS -l walltime=0:10:00
-#PBS -l nodes=$nodes:ppn=$cores_per_node
-#PBS -N job.$id
-#PBS -m abe
-#PBS -o $HOME/src/mpi-rpc/job.$id.out
-#PBS -e $HOME/src/mpi-rpc/job.$id.err
+#$ -V
+#$ -q daturamon.q
+#$ -r n
+#$ -l h_rt=0:10:00
+#$ -pe daturamon $cores
+#$ -N job.$id
+#$ -m abe
+#$ -o $HOME/datura/src/mpi-rpc/job.$id.out
+#$ -e $HOME/datura/src/mpi-rpc/job.$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -82,16 +81,16 @@ cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
 set -e
 set -u
 set -x
-cd $HOME/src/mpi-rpc
-export SIMFACTORY_SIM=$HOME/work/Cbeta/simfactory3/sim
-source $HOME/SIMFACTORY/all-all/env.sh
+cd $HOME/datura/src/mpi-rpc
+export SIMFACTORY_SIM=$HOME/datura/work/Cbeta/simfactory3/sim
+source $HOME/datura/SIMFACTORY/all-all/env.sh
 
 echo '[BEGIN ENV]'
 env | sort
 echo '[END ENV]'
 
 echo '[BEGIN NODES]'
-cat \$PBS_NODEFILE
+cat \$PE_HOSTFILE
 echo '[END NODES]'
 
 date
@@ -123,7 +122,7 @@ echo '[END MPIRUN]'
 date
 EOF
 
-: >$HOME/src/mpi-rpc/job.$id.out
-: >$HOME/src/mpi-rpc/job.$id.err
-: >$HOME/src/mpi-rpc/job.$id.log
-qsub $HOME/src/mpi-rpc/job.$id.sub
+: >$HOME/datura/src/mpi-rpc/job.$id.out
+: >$HOME/datura/src/mpi-rpc/job.$id.err
+: >$HOME/datura/src/mpi-rpc/job.$id.log
+qsub $HOME/datura/src/mpi-rpc/job.$id.sub

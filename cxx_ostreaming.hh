@@ -26,7 +26,7 @@ class ostreamer {
   friend class cereal::access;
   template <typename Archive> void save(Archive &ar) const {
     std::ostringstream os;
-    (*fun)(os);
+    (*this)(os);
     ar(os.str());
   }
   template <typename Archive> void load(Archive &ar) {
@@ -47,17 +47,17 @@ public:
 // Functions for ostreamers
 
 // Create an ostreamer from something that can be output
+ostreamer make_ostreamer(const ostreamer &os) { return os; }
+
 template <typename Elem> ostreamer make_ostreamer(const Elem &e) {
   return ostreamer([e](std::ostream & os) -> std::ostream &
                    { return os << e; });
 }
-template <typename Elem> ostreamer make_ostreamer_str(const Elem &e) {
-  std::ostringstream oss;
-  oss << e;
-  std::string s = oss.str();
-  return ostreamer([s](std::ostream & os) -> std::ostream &
-                   { return os << s; });
-}
+// template <typename Elem> ostreamer make_ostreamer_str(const Elem &e) {
+//   std::ostringstream oss;
+//   oss << e;
+//   return make_ostreamer(oss.str());
+// }
 
 // Combine two ostreamers
 // (This is just function composition)

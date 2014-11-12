@@ -186,7 +186,8 @@ template <template <typename> class C, typename F, typename... As,
           typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
 typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
 iota(const F &f, const iota_range_t &range, const As &... as) {
-  return unit<C>(cxx::invoke(f, range.local.imin, as...));
+  assert(range.local.size() == 1);
+  return munit<C>(cxx::invoke(f, range.local.imin, as...));
 }
 }
 

@@ -711,9 +711,6 @@ struct tree_iota<F, false, tree, As...> {
 
   typedef typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type R;
 
-  // template <typename U> using leaf = leaf<U, C, P>;
-  // template <typename U> using branch = branch<U, C, P>;
-  // template <typename U> using tree = tree<U, C, P>;
   template <typename U> using leaf = typename tree<U>::leaf_t;
   template <typename U> using branch = typename tree<U>::branch_t;
 
@@ -743,9 +740,13 @@ struct tree_iota<F, false, tree, As...> {
   static P<tree<R> > iota_ptree(std::ptrdiff_t i, const F &f,
                                 const iota_range_t &range, const As &... as) {
     iota_range_t range1(range.global,
+                        { i, std::min(range.local.imin, i + range.local.istep),
+                          range.global.istep });
+    assert(range1.local.size() == 1);
+    iota_range_t range2(range.global,
                         { i, std::min(range.local.imax, i + range.local.istep),
                           range.global.istep });
-    return cxx::iota<P>(iota_tree, range1, f, range1, as...);
+    return cxx::iota<P>(iota_tree, range1, f, range2, as...);
   }
 
   static branch<R> iota_branch(const F &f, const iota_range_t &range,
@@ -813,9 +814,13 @@ struct tree_iota<F, true, tree, As...> {
   static P<tree<R> > iota_ptree(std::ptrdiff_t i, const iota_range_t &range,
                                 const As &... as) {
     iota_range_t range1(range.global,
+                        { i, std::min(range.local.imax, i + range.global.istep),
+                          range.global.istep });
+    assert(range1.local.size() == 1);
+    iota_range_t range2(range.global,
                         { i, std::min(range.local.imax, i + range.local.istep),
                           range.global.istep });
-    return cxx::iota<P>(iota_tree, range1, range1, as...);
+    return cxx::iota<P>(iota_tree, range1, range2, as...);
   }
 
   static branch<R> iota_branch(const iota_range_t &range, const As &... as) {

@@ -677,6 +677,11 @@ struct stats_t {
   auto start() { snapshot(start_); }
   auto stop() { snapshot(stop_); }
   stats_t() { start(); }
+  auto time_elapsed() const {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+               stop_.time - start_.time).count() /
+           1.0e+9;
+  }
   auto output(ostream &os) const -> ostream & {
     auto messages_sent =
         stop_.server_stats.messages_sent - start_.server_stats.messages_sent;
@@ -686,14 +691,11 @@ struct stats_t {
                            start_.thread_stats.threads_started;
     auto threads_stopped = stop_.thread_stats.threads_stopped -
                            start_.thread_stats.threads_stopped;
-    auto time_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                            stop_.time - start_.time).count() /
-                        1.0e+9;
     return os << "   Messages: sent: " << messages_sent
               << ", received: " << messages_received << "\n"
               << "   Threads: started: " << threads_started
               << ", stopped: " << threads_stopped << "\n"
-              << "   Time: " << time_elapsed << " sec\n";
+              << "   Time: " << time_elapsed() << " sec\n";
   }
 };
 auto operator<<(ostream &os, const stats_t &stats) -> ostream & {
@@ -715,6 +717,7 @@ auto rpc_main(int argc, char **argv) -> int {
 
   sstats.stop();
   cout << "Setup:\n" << sstats;
+  ptrdiff_t nthreads = server->size() * thread::hardware_concurrency();
 
   // Initialization
   stats_t istats;
@@ -733,6 +736,10 @@ auto rpc_main(int argc, char **argv) -> int {
 
   istats.stop();
   cout << "Initialization:\n" << istats;
+  ptrdiff_t ncells = defs->ncells;
+  double time_init_cell = istats.time_elapsed() * nthreads / ncells;
+  cout << "   num cells: " << ncells << "\n"
+       << "   cpu time/cell: " << time_init_cell * 1.0e+9 << " nsec\n";
 
   // Evolution
   stats_t estats;
@@ -758,6 +765,12 @@ auto rpc_main(int argc, char **argv) -> int {
 
   estats.stop();
   cout << "Evolution:\n" << estats;
+  ptrdiff_t nrhsevals = m->n * 2; // factor 2 for RK2
+  double time_rhs = estats.time_elapsed() / nrhsevals;
+  double time_rhs_cell = time_rhs * nthreads / ncells;
+  cout << "   num RHS evals: " << nrhsevals << "\n"
+       << "   wall time/RHS: " << time_rhs << " sec\n"
+       << "   cpu time/RHS/cell: " << time_rhs_cell * 1.0e+9 << " nsec\n";
 
   // double elapsed_init =
   //     std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /

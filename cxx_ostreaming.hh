@@ -146,22 +146,22 @@ C<R> fmap(const F &f, cxx::ostreaming<T> &&ostr, As &&... as) {
   return { std::move(ostr.ostr), std::move(result) };
 }
 
-// monad: unit
+// monad: munit
 // Turn a regular function in a function that is ostreaming (outputting nothing)
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_ostreaming<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
+munit(T1 &&x) {
   return { ostreamer(), std::forward<T1>(x) };
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_ostreaming<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   return { ostreamer(), T(std::forward<As>(as)...) };
 }
 
-// monad: bind
+// monad: mbind
 // Bind a function to an ostreaming
 // TODO: decay invoke_of?
 template <typename T, typename F, typename... As,
@@ -170,7 +170,7 @@ template <typename T, typename F, typename... As,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
-bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
+mbind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
   const T &value = xs.value;
   ostreaming<R> result = cxx::invoke(f, value, as...);
   const ostreamer &left = xs.ostr;
@@ -182,7 +182,7 @@ bind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
 //           template <typename> class C = cxx::kinds<CT>::template constructor,
 //           typename CR = typename cxx::invoke_of<F, T &&>::type,
 //           typename R = typename cxx::kinds<CR>::value_type>
-// C<R> bind(cxx::ostreaming<T> &&xs, const F &f) {
+// C<R> mbind(cxx::ostreaming<T> &&xs, const F &f) {
 //   T &value = xs.value;
 //   ostreaming<R> result = cxx::invoke(f, std::move(value));
 //   ostreamer &left = xs.ostr;
@@ -197,27 +197,27 @@ template <typename T, typename F, typename... As,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
 operator>>=(const cxx::ostreaming<T> &xs, const F &f) {
-  return cxx::bind(xs, f);
+  return cxx::mbind(xs, f);
 }
 
 template <typename T, typename R, typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> bind0(const cxx::ostreaming<T> &xs, const cxx::ostreaming<R> &rs) {
-  return cxx::bind(xs, [rs](const T &) { return rs; });
+C<R> mbind0(const cxx::ostreaming<T> &xs, const cxx::ostreaming<R> &rs) {
+  return cxx::mbind(xs, [rs](const T &) { return rs; });
 }
 template <typename T, typename R, typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
 C<R> operator>>(const cxx::ostreaming<T> &xs, const cxx::ostreaming<R> &rs) {
-  return cxx::bind0(xs, rs);
+  return cxx::mbind0(xs, rs);
 }
 
-// monad: join
+// monad: mjoin
 // Combine two ostreamings
 template <typename T, typename CCT = ostreaming<ostreaming<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const ostreaming<ostreaming<T> > &xss) {
+C<T> mjoin(const ostreaming<ostreaming<T> > &xss) {
   const ostreamer &outer = xss.ostr;
   const ostreamer &inner = xss.value.ostr;
   ostreamer combined = outer << inner;
@@ -230,7 +230,7 @@ C<T> join(const ostreaming<ostreaming<T> > &xss) {
 //           typename CT = typename cxx::kinds<CCT>::value_type,
 //           template <typename> class C2 = cxx::kinds<CT>::template
 // constructor>
-// C<T> join(ostreaming<ostreaming<T> > &&xss) {
+// C<T> mjoin(ostreaming<ostreaming<T> > &&xss) {
 //   ostreamer &outer = xss.ostr;
 //   ostreamer &inner = xss.value.ostr;
 //   ostreamer combined = std::move(outer) << std::move(inner);
@@ -279,7 +279,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
 //   for (const C<T> &xs : xss)
 //     for (const T &x : xs)
 //       if (!rs)
-//         rs = unit<C>(std::tuple<>());
+//         rs = munit<C>(std::tuple<>());
 //   return std::move(rs);
 // }
 
@@ -328,7 +328,7 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 //     C<R> ys = cxx::invoke(f, z, x, as...);
 //     if (!ys.empty())
 //       if (!rs)
-//         rs = unit<C>(std::tuple<>());
+//         rs = munit<C>(std::tuple<>());
 //   }
 //   return std::move(rs);
 // }

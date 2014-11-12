@@ -281,13 +281,13 @@ C<R> fmap2(const F &f, const cxx::either<L, T> &xs,
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
+munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
@@ -296,7 +296,7 @@ template <typename T, typename L, typename F, typename... As,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
-C<R> bind(const cxx::either<L, T> &xs, const F &f, As &&... as) {
+C<R> mbind(const cxx::either<L, T> &xs, const F &f, As &&... as) {
   if (xs.is_left())
     return C<R>(xs.left(), std::forward<As>(as)...);
   return cxx::invoke(f, xs.right(), std::forward<As>(as)...);
@@ -307,14 +307,14 @@ template <typename T, typename L,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const cxx::either<L, cxx::either<L, T> > &xss) {
+C<T> mjoin(const cxx::either<L, cxx::either<L, T> > &xss) {
   if (xss.is_left())
     return C<T>(xss.left());
   return xss.right();
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type zero() {
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type mzero() {
   return C<T>(typename C<T>::left_type());
 }
 
@@ -323,17 +323,18 @@ template <typename T, typename L, typename... As,
           template <typename> class C = cxx::kinds<CT>::template constructor>
 typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
                         C<T> >::type
-plus(const cxx::either<L, T> &xs, const As &... as) {
+mplus(const cxx::either<L, T> &xs, const As &... as) {
   std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
   for (size_t i = 0; i < xss.size(); ++i)
     if (xss[i]->is_right())
       return *xss[i];
-  return zero<C, T>();
+  return mzero<C, T>();
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type some(T &&x) {
-  return unit<C>(std::forward<T>(x));
+typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
+msome(T &&x) {
+  return munit<C>(std::forward<T>(x));
 }
 
 // iota
@@ -343,7 +344,7 @@ template <template <typename> class C, typename F, typename... As,
 typename std::enable_if<cxx::is_either<C<T> >::value, C<T> >::type
 iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
      const As &... as) {
-  return unit<C>(cxx::invoke(f, imin, as...));
+  return munit<C>(cxx::invoke(f, imin, as...));
 }
 }
 

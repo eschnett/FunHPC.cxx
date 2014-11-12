@@ -33,13 +33,13 @@ using cxx::fmap2;
 using cxx::foldl;
 using cxx::iota;
 using cxx::iota_range_t;
-using cxx::make;
+using cxx::mmake;
 // using cxx::ostreaming;
 // using cxx::ostreamer;
 // using cxx::output;
 // using cxx::put;
 using cxx::range_t;
-using cxx::unit;
+using cxx::munit;
 
 using rpc::async;
 using rpc::broadcast;
@@ -497,10 +497,10 @@ struct domain_t {
       : t(1.0), // dt/dt
         grids(
             stencil_fmap(grid_rhs_action(), grid_get_boundary_action(), s.grids,
-                         make<client, cell_t>(cell_t::boundary(), s.t,
-                                              defs->xmin - 0.5 * defs->dx),
-                         make<client, cell_t>(cell_t::boundary(), s.t,
-                                              defs->xmax + 0.5 * defs->dx))) {}
+                         mmake<client, cell_t>(cell_t::boundary(), s.t,
+                                               defs->xmin - 0.5 * defs->dx),
+                         mmake<client, cell_t>(cell_t::boundary(), s.t,
+                                               defs->xmax + 0.5 * defs->dx))) {}
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
 

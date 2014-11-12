@@ -733,7 +733,7 @@ typename client_functor3<F, true, T, T2, T3,
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
+munit(T1 &&x) {
   // return rpc::make_client<T>(std::forward<T1>(x));
   return rpc::make_remote_client<T>(rpc::detail::choose_dest(),
                                     std::forward<T1>(x));
@@ -741,7 +741,7 @@ unit(T1 &&x) {
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   // return rpc::make_client<T>(std::forward<As>(as)...);
   return rpc::make_remote_client<T>(rpc::detail::choose_dest(),
                                     std::forward<As>(as)...);
@@ -751,14 +751,14 @@ namespace detail {
 template <typename T, typename F, typename... As>
 typename std::enable_if<rpc::is_action<F>::value,
                         typename cxx::invoke_of<F, T, As...>::type>::type
-bind(const rpc::client<T> &xs, const F &f, const As &... as) {
+mbind(const rpc::client<T> &xs, const F &f, const As &... as) {
   return cxx::invoke(F(), *xs, as...);
 }
 template <typename T, typename F, typename... As>
 struct bind_action
     : public rpc::action_impl<
           bind_action<T, F, As...>,
-          rpc::wrap<decltype(&bind<T, F, As...>), &bind<T, F, As...> > > {};
+          rpc::wrap<decltype(&mbind<T, F, As...>), &mbind<T, F, As...> > > {};
 // TODO: automate implementing this action:
 // RPC_CLASS_EXPORT(rpc::detail::bind_action<T,  F, As...>::evaluate);
 // RPC_CLASS_EXPORT(rpc::detail::bind_action<T,  F, As...>::finish);
@@ -769,11 +769,11 @@ template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<!rpc::is_action<F>::value, C<R> >::type
-bind(const rpc::client<T> &xs, const F &f, const As &... as) {
-  return rpc::client<R>([f](const rpc::client<T> &xs, const As &... as) {
-                          return cxx::invoke(f, *xs, as...);
-                        },
-                        xs, as...);
+mbind(const rpc::client<T> &xs, const F &f, const As &... as) {
+  return rpc::client<R>(async([f](const rpc::client<T> &xs, const As &... as) {
+                                return cxx::invoke(f, *xs, as...);
+                              },
+                              xs, as...));
 }
 
 template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
@@ -781,7 +781,7 @@ template <typename T, typename F, typename... As, typename CT = rpc::client<T>,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<rpc::is_action<F>::value, C<R> >::type
-bind(const rpc::client<T> &xs, const F &f, const As &... as) {
+mbind(const rpc::client<T> &xs, const F &f, const As &... as) {
   return rpc::client<R>(async(rpc::rlaunch::async, xs.get_proc_future(),
                               detail::bind_action<T, F, As...>(), xs, F(),
                               as...));
@@ -798,7 +798,7 @@ typename std::enable_if<cxx::is_client<CR>::value, C<std::tuple<> > >::type
 mapM_(const F &f, const IT &xs, const As &... as) {
   for (const T &x : xs)
     cxx::invoke(f, x, as...);
-  return unit<C>(std::tuple<>());
+  return munit<C>(std::tuple<>());
 }
 
 // TODO: execute remotely?
@@ -806,7 +806,7 @@ template <typename T, typename CCT = rpc::client<rpc::shared_future<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const rpc::client<rpc::client<T> > &xss) {
+C<T> mjoin(const rpc::client<rpc::client<T> > &xss) {
   return rpc::client<T>(rpc::async([xss]() { return *xss.make_local(); }));
 }
 

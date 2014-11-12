@@ -22,19 +22,19 @@ struct nested {
   typedef T value_type;
   template <typename U> using outer_constructor = Outer<T>;
   template <typename U> using inner_constructor = Inner<T>;
-  template <typename U> static Outer<U> outer_unit(U &&x) {
-    return unit<Outer>(std::forward<U>(x));
+  template <typename U> static Outer<U> outer_munit(U &&x) {
+    return munit<Outer>(std::forward<U>(x));
   }
-  template <typename U> static Inner<U> inner_unit(U &&x) {
-    return unit<Inner>(std::forward<U>(x));
+  template <typename U> static Inner<U> inner_munit(U &&x) {
+    return munit<Inner>(std::forward<U>(x));
   }
   // template <typename U, typename... As>
-  // static Outer<U> outer_make(As &&... as) {
-  //   return make<Outer>(std::forward<As>(as)...);
+  // static Outer<U> outer_mmake(As &&... as) {
+  //   return mmake<Outer>(std::forward<As>(as)...);
   // }
   template <typename U, typename... As>
-  static Inner<U> inner_make(As &&... as) {
-    return make<Inner, U>(std::forward<As>(as)...);
+  static Inner<U> inner_mmake(As &&... as) {
+    return mmake<Inner, U>(std::forward<As>(as)...);
   }
   Outer<Inner<T> > values;
 };
@@ -102,55 +102,55 @@ C<R> fmap(const F &f, const cxx::nested<T, Outer, Inner> &xs,
 
 // monad
 
-// unit :: a -> C a
-// unit :: a -> O (I a)
-// unit a = unitO (unitI a)
+// munit :: a -> C a
+// munit :: a -> O (I a)
+// munit a = munitO (munitI a)
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
-  return C<T>{ C<T>::outer_unit /*unit<C<T>::outer_constructor>*/ (
-      C<T>::inner_unit /*unit<C<T>::inner_constructor>*/ (
+munit(T1 &&x) {
+  return C<T>{ C<T>::outer_munit /*munit<C<T>::outer_constructor>*/ (
+      C<T>::inner_munit /*munit<C<T>::inner_constructor>*/ (
           std::forward<T1>(x))) };
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type
-make(As &&... as) {
-  return C<T>{ C<T>::outer_unit(
-      C<T>::template inner_make<T>(std::forward<As>(as)...)) };
+mmake(As &&... as) {
+  return C<T>{ C<T>::outer_munit(
+      C<T>::template inner_mmake<T>(std::forward<As>(as)...)) };
 }
 
-// unit :: a -> O (I a)
-// unitI :: a -> I a
-// unitO :: a -> O a
+// munit :: a -> O (I a)
+// munitI :: a -> I a
+// munitO :: a -> O a
 
 // fmap :: (a -> b) -> O (I a) -> O (I b)
 // fmapI :: (a -> b) -> I a -> I b
 // fmapO :: (a -> b) -> O a -> O b
 
-// bindI :: I a -> (a -> I b) -> I b
-// bindO :: O a -> (a -> O b) -> O b
+// mbindI :: I a -> (a -> I b) -> I b
+// mbindO :: O a -> (a -> O b) -> O b
 
-// joinI :: I (I a) -> I a
-// joinO :: O (O a) -> O b
+// mjoinI :: I (I a) -> I a
+// mjoinO :: O (O a) -> O b
 
-// bind :: O (I a) -> (a -> O (I b)) -> O (I b)
-// bind xs f =
+// mbind :: O (I a) -> (a -> O (I b)) -> O (I b)
+// mbind xs f =
 //      xs :: O (I a)
 //      f  :: a -> O (I b)
-//      unitI . f :: a -> I (O (I b))
-//      unitO . f :: a -> O (O (I b))
+//      munitI . f :: a -> I (O (I b))
+//      munitO . f :: a -> O (O (I b))
 //      fmapI f :: I a -> I (O (I b))
 //      fmapO f :: O a -> O (O (I b))
-//      unitO . fmapI f :: I a -> O (I (O (I b)))
-//      fmapO (unitI . f) :: O a -> O (I (O (I b)))
-//      bindO :: O a     -> (a   -> O b            ) -> O b
-//      bindO :: O (I a) -> (I a -> O (I (O (I b)))) -> O (I (O (I b)))
+//      munitO . fmapI f :: I a -> O (I (O (I b)))
+//      fmapO (munitI . f) :: O a -> O (I (O (I b)))
+//      mbindO :: O a     -> (a   -> O b            ) -> O b
+//      mbindO :: O (I a) -> (I a -> O (I (O (I b)))) -> O (I (O (I b)))
 
-// [previous] bind xs f = bind (bind xs f) (\ys -> fmap f ys)
+// [previous] mbind xs f = mbind (mbind xs f) (\ys -> fmap f ys)
 
-// [generic] bind xs f = join (fmap f xs)
+// [generic] mbind xs f = mjoin (fmap f xs)
 
 template <typename T, template <typename> class Outer,
           template <typename> class Inner, typename F,
@@ -158,27 +158,27 @@ template <typename T, template <typename> class Outer,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T>::type,
           typename R = typename cxx::kinds<CR>::value_type>
-C<R> bind(const cxx::nested<T, Outer, Inner> &xs, const F &f) {
-  return C<R>{ cxx::bind(cxx::bind(xs.values, f), [f](const Inner<T> &ys) {
+C<R> mbind(const cxx::nested<T, Outer, Inner> &xs, const F &f) {
+  return C<R>{ cxx::mbind(cxx::mbind(xs.values, f), [f](const Inner<T> &ys) {
     return cxx::fmap(f, ys);
   }) };
 }
 
 #if 0
 
-// join :: C (C a) -> C a
-// join :: O (I (O (I a))) -> O (I a)
-// join xss = bind xss id
+// mjoin :: C (C a) -> C a
+// mjoin :: O (I (O (I a))) -> O (I a)
+// mjoin xss = mbind xss id
 
-// join xss =
+// mjoin xss =
 //      xss :: O (I (O (I a)))
 template <template <typename> class M1, template <typename> class M2,
           typename T>
 typename std::enable_if<((detail::is_cxx_monad<M1, M2<T> >::value) &&
                          (detail::is_cxx_monad<M2, T>::value)),
                         M1<M2<T> > >::type
-join(const M1<M2<M1<M2<T> > > > &x) {
-  return join<M2>(x);
+mjoin(const M1<M2<M1<M2<T> > > > &x) {
+  return mjoin<M2>(x);
 }
 
 #endif

@@ -11,20 +11,20 @@
 
 namespace cxx {
 
-// unit: m a
-// make: m a
-// bind: m a -> (a -> m b) -> m b
+// munit: m a
+// mmake: m a
+// mbind: m a -> (a -> m b) -> m b
 // fmap: (a -> b) -> m a -> m b
-// join: m (m a) -> m a
-// zero: m a
-// plus: [m a] -> m a
-// some: [a] -> m a
+// mjoin: m (m a) -> m a
+// mzero: m a
+// mplus: [m a] -> m a
+// msome: [a] -> m a
 
 // TODO: append one entry (push_back)?
 // TODO: introduce iota function
 
 // TODO: introduce cxx_applicative?
-//       pure (unit)
+//       pure (munit)
 //       <*>
 //       also: sequenceA
 
@@ -40,28 +40,28 @@ namespace cxx {
 #if 0
   template <template <typename> class C> struct monad {
 
-    template <typename T1, typename T = typename std::decay<T1>::type> C<T> unit(T1 &&x);
+    template <typename T1, typename T = typename std::decay<T1>::type> C<T> munit(T1 &&x);
 
 template <template <typename> class C, typename T, typename... As>
-C<T> make(As &&... as);
+C<T> mmake(As &&... as);
 
 template <template <typename> class C, typename R, typename T, typename... As,
           typename F>
-C<R> bind(const C<T> &xs, const F &f, const As &... as);
+C<R> mbind(const C<T> &xs, const F &f, const As &... as);
 
     template <template <typename> class C, typename R, typename T, typename... As, typename F>
 C<R> fmap(const F &f, const C<T> &xs, const As&... as);
 
 template <template <typename> class C, typename T>
-C<T> join(const C<C<T> > &xss);
+C<T> mjoin(const C<C<T> > &xss);
 
-template <template <typename> class C, typename T> C<T> zero();
+template <template <typename> class C, typename T> C<T> mzero();
 
     template <template <typename> class C, typename T, typename...As>
-C<T> plus(const C<T> &xs, const As &... as);
+C<T> mplus(const C<T> &xs, const As &... as);
 
 template <template <typename> class C, typename T, typename... As>
-C<T> some(const C<T> &xs, const As &... as);
+C<T> msome(const C<T> &xs, const As &... as);
   };
 
 #endif
@@ -70,32 +70,32 @@ C<T> some(const C<T> &xs, const As &... as);
 
 // Sample implementations
 
-// bind :: C a -> (a -> C b) -> C b
-// bind xs f = join (fmap f xs)
+// mbind :: C a -> (a -> C b) -> C b
+// mbind xs f = mjoin (fmap f xs)
   template <template <typename> class C, typename R, typename T, typename...As,typename F>
-  C<R> bind(const C<T> &xs, const F &f, As&&...as) {
-    return join(fmap(f, xs, std::forward<As>(as)...));
+  C<R> mbind(const C<T> &xs, const F &f, As&&...as) {
+    return mjoin(fmap(f, xs, std::forward<As>(as)...));
 }
 
 // fmap :: (a -> b) -> C a -> C b
-// fmap f xs = bind xs (unit . f)
-// fmap f xs = bind xs (\x -> unit (f x))
+// fmap f xs = mbind xs (munit . f)
+// fmap f xs = mbind xs (\x -> munit (f x))
   template <template <typename> class C, typename R, typename T, typename...As,typename F>
 C<R> fmap(const F &f, const C<T> &xs,  As&&...as) {
-    return bind(xs, [f](const T &y) { return unit<C>(std::invoke(f, y)); },std::forward<As>(as)...);
+    return mbind(xs, [f](const T &y) { return munit<C>(std::invoke(f, y)); },std::forward<As>(as)...);
 }
 
-// join :: C (C a) -> C a
-// join xss = bind xss id
-// join xss = bind xss (\x -> x)
+// mjoin :: C (C a) -> C a
+// mjoin xss = mbind xss id
+// mjoin xss = mbind xss (\x -> x)
 template <template <typename> class C, typename T>
-C<T> join(const C<C<T> > &xss) {
-  return bind(xss, [](const T &xs) { return xs; });
+C<T> mjoin(const C<C<T> > &xss) {
+  return mbind(xss, [](const T &xs) { return xs; });
 }
 
 template <template <typename> class C, typename T, typename... As>
-C<T> some(T &&x,  As &&... as) {
-  return plus(unit<C>(std::forward<T>(x)), unit<C>(std::forward<As>(as))...);
+C<T> msome(T &&x,  As &&... as) {
+  return mplus(munit<C>(std::forward<T>(x)), munit<C>(std::forward<As>(as))...);
 }
 
 #endif

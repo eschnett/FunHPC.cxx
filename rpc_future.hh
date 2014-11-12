@@ -150,13 +150,13 @@ C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
+munit(T1 &&x) {
   return rpc::make_ready_future(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   return rpc::make_ready_future(T(std::forward<As>(as)...));
 }
 
@@ -165,7 +165,7 @@ template <typename T, typename F, typename... As,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
-C<R> bind(const rpc::shared_future<T> &xs, const F &f, const As &... as) {
+C<R> mbind(const rpc::shared_future<T> &xs, const F &f, const As &... as) {
   return rpc::future_then(
       xs, [f](const rpc::shared_future<T> &xs, const As &... as) {
         return cxx::invoke(f, xs.get(), as...).get();
@@ -176,7 +176,7 @@ template <typename T, typename CCT = rpc::shared_future<rpc::shared_future<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const rpc::shared_future<rpc::shared_future<T> > &xss) {
+C<T> mjoin(const rpc::shared_future<rpc::shared_future<T> > &xss) {
   return xss.unwrap();
 }
 

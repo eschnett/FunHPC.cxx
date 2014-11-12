@@ -412,29 +412,30 @@ public:
                        [](const branch<T, C, P> &b) { return b.size(); });
   }
 
-  // monad: join
+  // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
   typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
                           tree<R, C, P> >::type
-  join() const {
-    return tree<R, C, P>(node.is_left() ? node.left().join()
-                                        : node.right().join());
+  mjoin() const {
+    return tree<R, C, P>(node.is_left() ? node.left().mjoin()
+                                        : node.right().mjoin());
   }
 
-  // plus
-  struct plus : std::tuple<> {};
-  tree(plus, const P<tree> &x, const P<tree> &y)
-      : tree(branch<T, C, P>(cxx::some<C>(x, y))) {}
-  tree(plus, const tree &x, const tree &y)
-      : tree(plus(), cxx::unit<P>(x), cxx::unit<P>(y)) {}
+  // mplus
+  struct mplus : std::tuple<> {};
+  tree(mplus, const P<tree> &x, const P<tree> &y)
+      : tree(branch<T, C, P>(cxx::msome<C>(x, y))) {}
+  tree(mplus, const tree &x, const tree &y)
+      : tree(mplus(), cxx::munit<P>(x), cxx::munit<P>(y)) {}
 
   // size
   bool empty_slow() const {
-    return foldl([](bool, const T &v) { return false; }, true, *this);
+    return foldMap([](const T &v) { return false; }, std::logical_and<bool>(),
+                   true, *this);
   }
   std::size_t size_slow() const {
-    return foldl([](std::size_t s, const T &v) { return s + 1; },
-                 std::size_t(0), *this);
+    return foldMap([](const T &v) { return std::size_t(1); },
+                   std::plus<std::size_t>(), std::size_t(0), *this);
   }
 };
 
@@ -490,7 +491,7 @@ struct tree_output {
 
   static auto output(const tree &xs) -> cxx::ostreaming<std::tuple<> > {
     // TODO: output without structure?
-    return bind0(
+    return mbind0(
         cxx::put(cxx::ostreamer() << "tree[" << typeid(xs).name() << "]\n"),
         output_tree(xs, 0));
   }
@@ -1099,16 +1100,16 @@ struct tree_stencil_functor<F, G, true, T, C, P, B> {
     } else {
       trees[0] =
           cxx::fmap(stencil_fmap_tree_action(), b.trees[0], bm,
-                    cxx::bind(b.trees[1], get_boundary_tree_action(), false));
+                    cxx::mbind(b.trees[1], get_boundary_tree_action(), false));
       for (std::size_t i = 1; i < s - 1; ++i) {
         trees[i] = cxx::fmap(
             stencil_fmap_tree_action(), b.trees[i],
-            cxx::bind(b.trees[i - 1], get_boundary_tree_action(), true),
-            cxx::bind(b.trees[i + 1], get_boundary_tree_action(), false));
+            cxx::mbind(b.trees[i - 1], get_boundary_tree_action(), true),
+            cxx::mbind(b.trees[i + 1], get_boundary_tree_action(), false));
       }
       trees[s - 1] = cxx::fmap(
           stencil_fmap_tree_action(), b.trees[s - 1],
-          cxx::bind(b.trees[s - 2], get_boundary_tree_action(), true), bp);
+          cxx::mbind(b.trees[s - 2], get_boundary_tree_action(), true), bp);
     }
     return branch<R>(std::move(trees));
   }
@@ -1134,8 +1135,8 @@ struct tree_stencil_functor<F, G, true, T, C, P, B> {
 
   static P<B> get_boundary_branch(const branch<T> &b, bool face_upper) {
     assert(!b.trees.empty());
-    return cxx::bind(!face_upper ? b.trees.front() : b.trees.back(),
-                     get_boundary_tree_action(), face_upper);
+    return cxx::mbind(!face_upper ? b.trees.front() : b.trees.back(),
+                      get_boundary_tree_action(), face_upper);
   }
 
   static P<B> get_boundary_tree(const tree<T> &t, bool face_upper) {
@@ -1183,13 +1184,13 @@ typename tree_stencil_functor<F, G, true, T, C, P,
 
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type unit(T1 &&x) {
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
@@ -1198,8 +1199,8 @@ template <typename T, template <typename> class C1, template <typename> class P,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const cxx::tree<cxx::tree<T, C1, P>, C1, P> &xss) {
-  return xss.join();
+C<T> mjoin(const cxx::tree<cxx::tree<T, C1, P>, C1, P> &xss) {
+  return xss.mjoin();
 }
 
 // TODO: Implement this directly
@@ -1208,12 +1209,12 @@ template <typename T, template <typename> class C1, template <typename> class P,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
-C<R> bind(const cxx::tree<T, C1, P> &xs, const F &f, const As &... as) {
-  return join(fmap(f, xs, as...));
+C<R> mbind(const cxx::tree<T, C1, P> &xs, const F &f, const As &... as) {
+  return mjoin(fmap(f, xs, as...));
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type zero() {
+typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
@@ -1222,17 +1223,17 @@ template <typename T, template <typename> class C1, template <typename> class P,
           template <typename> class C = cxx::kinds<CT>::template constructor>
 typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
                         C<T> >::type
-plus(const cxx::tree<T, C1, P> &xs, const As &... as) {
-  return C<T>(typename C<T>::plus(), xs, as...);
+mplus(const cxx::tree<T, C1, P> &xs, const As &... as) {
+  return C<T>(typename C<T>::mplus(), xs, as...);
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<((cxx::is_tree<C<T> >::value) &&
                          (cxx::all<std::is_same<As, T>::value...>::value)),
                         C<T> >::type
-some(T &&x, As &&... as) {
+msome(T &&x, As &&... as) {
   // TODO: Implement directly
-  return plus(unit<C>(std::forward<T>(x)), unit<C>(std::forward<As>(as))...);
+  return mplus(munit<C>(std::forward<T>(x)), munit<C>(std::forward<As>(as))...);
 }
 }
 

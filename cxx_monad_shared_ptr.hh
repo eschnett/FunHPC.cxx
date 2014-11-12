@@ -16,13 +16,13 @@ namespace cxx {
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type>
 typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
-unit(T1 &&x) {
+munit(T1 &&x) {
   return std::make_shared<T>(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
 typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
-make(As &&... as) {
+mmake(As &&... as) {
   return std::make_shared<T>(std::forward<As>(as)...);
 }
 
@@ -32,7 +32,7 @@ template <typename T, typename F, typename... As,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<cxx::is_shared_ptr<CR>::value, C<R> >::type
-bind(const std::shared_ptr<T> &xs, const F &f, const As &... as) {
+mbind(const std::shared_ptr<T> &xs, const F &f, const As &... as) {
   if (!xs)
     return C<R>();
   return cxx::invoke(f, *xs, std::forward<As>(as)...);
@@ -44,25 +44,25 @@ template <typename T, typename F, typename... As,
           typename R = typename cxx::kinds<CR>::value_type>
 typename std::enable_if<cxx::is_shared_ptr<CR>::value, C<R> >::type
 operator>>=(const std::shared_ptr<T> &xs, const F &f) {
-  return cxx::bind(xs, f);
+  return cxx::mbind(xs, f);
 }
 
 template <typename T, typename R, typename CT = std::shared_ptr<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> bind0(const std::shared_ptr<T> &, const std::shared_ptr<R> &rs) {
+C<R> mbind0(const std::shared_ptr<T> &, const std::shared_ptr<R> &rs) {
   return rs;
 }
 template <typename T, typename R, typename CT = std::shared_ptr<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
 C<R> operator>>(const std::shared_ptr<T> &xs, const std::shared_ptr<R> &rs) {
-  return cxx::bind0(xs, rs);
+  return cxx::mbind0(xs, rs);
 }
 
 template <typename T, typename CCT = std::shared_ptr<std::shared_ptr<T> >,
           template <typename> class C = cxx::kinds<CCT>::template constructor,
           typename CT = typename cxx::kinds<CCT>::value_type,
           template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> join(const std::shared_ptr<std::shared_ptr<T> > &xss) {
+C<T> mjoin(const std::shared_ptr<std::shared_ptr<T> > &xss) {
   if (!xss)
     return C<T>();
   return *xss;
@@ -82,7 +82,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
     C<R> ys = cxx::invoke(f, x, as...);
     if (!ys.empty())
       if (!rs)
-        rs = unit<C>(std::tuple<>());
+        rs = munit<C>(std::tuple<>());
   }
   return std::move(rs);
 }
@@ -100,7 +100,7 @@ sequence_(const ICT &xss) {
   for (const C<T> &xs : xss)
     for (const T &x : xs)
       if (!rs)
-        rs = unit<C>(std::tuple<>());
+        rs = munit<C>(std::tuple<>());
   return std::move(rs);
 }
 
@@ -110,7 +110,7 @@ template <typename T, typename CT = std::shared_ptr<T>,
 C<std::tuple<> > mvoid(const std::shared_ptr<T> &xs) {
   C<std::tuple<> > rs;
   if (!xs.empty())
-    rs = unit<C>(std::tuple<>());
+    rs = munit<C>(std::tuple<>());
   return std::move(rs);
 }
 
@@ -147,7 +147,7 @@ foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
     C<R> ys = cxx::invoke(f, z, x, as...);
     if (!ys.empty())
       if (!rs)
-        rs = unit<C>(std::tuple<>());
+        rs = munit<C>(std::tuple<>());
   }
   return std::move(rs);
 }
@@ -161,7 +161,7 @@ foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
 // MonadPlus
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type zero() {
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
@@ -169,18 +169,18 @@ template <typename T, typename... As, typename CT = std::shared_ptr<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
 typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
                         C<T> >::type
-plus(const std::shared_ptr<T> &xs, const As &... as) {
+mplus(const std::shared_ptr<T> &xs, const As &... as) {
   std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
   for (size_t i = 0; i < xss.size(); ++i)
     if (*xss[i])
       return *xss[i];
-  return zero<C, T>();
+  return mzero<C, T>();
 }
 
 template <template <typename> class C, typename T>
 typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
-some(T &&x) {
-  return unit<C>(std::forward<T>(x));
+msome(T &&x) {
+  return munit<C>(std::forward<T>(x));
 }
 
 template <typename FCT,
@@ -191,7 +191,7 @@ template <typename FCT,
 typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
 msum(const FCT &xss) {
   // msum = foldr mplus mzero
-  return cxx::foldl(plus<T>, zero<C, T>);
+  return cxx::fold(mplus<T>, mzero<C, T>);
 }
 
 template <template <typename> class C, typename IT,
@@ -201,9 +201,9 @@ typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
 mfold(const IT &xs) {
   // mfold = mfromList . Foldable.toList
   if (xs.empty())
-    return zero<C, T>();
+    return mzero<C, T>();
   const T &x = *xs.begin();
-  return unit<T>(x);
+  return munit<T>(x);
 }
 }
 

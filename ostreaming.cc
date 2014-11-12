@@ -12,7 +12,7 @@ void simple(std::ostream &os) {
   ostr(os);
 }
 
-cxx::ostreaming<int> f(int x) { return cxx::unit<cxx::ostreaming>(x + 1); }
+cxx::ostreaming<int> f(int x) { return cxx::munit<cxx::ostreaming>(x + 1); }
 int g(int x) { return x + 1; }
 cxx::ostreaming<int> h(int x) {
   cxx::ostreamer output = cxx::make_ostreamer(x) << "\n";
@@ -28,7 +28,7 @@ cxx::ostreaming<int> h0() {
 void real(std::ostream &os) {
   auto out1 = f(1);
   auto out2 = cxx::fmap(g, out1);
-  auto out3 = cxx::join(fmap(h, out2));
+  auto out3 = cxx::mjoin(fmap(h, out2));
   auto out4 = out3 >>= h;
   auto out5 = out4 >> h0();
   auto result = out5.get(os);

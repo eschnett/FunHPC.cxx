@@ -216,6 +216,47 @@ template <typename L, typename R>
 struct is_either<either<L, R> > : std::true_type {};
 
 // foldable
+template <typename Op, typename R, typename L, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
+    R>::type
+fold(const Op &op, const R &z, const either<L, R> &xs, const As &... as) {
+  bool s = xs.is_right();
+  if (s == false)
+    return z;
+  return xs.right();
+}
+
+template <typename F, typename Op, typename R, typename T, typename L,
+          typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, const R &z, const either<L, T> &xs,
+        const As &... as) {
+  bool s = xs.is_right();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.right(), as...);
+}
+
+template <typename F, typename Op, typename R, typename T, typename L,
+          typename T2, typename L2, typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap2(const F &f, const Op &op, const R &z, const either<L, T> &xs,
+         const either<L2, T2> &ys, const As &... as) {
+  bool s = xs.is_right();
+  assert(ys.is_right() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.right(), ys.right(), as...);
+}
+
+#if 0
 template <typename F, typename R, typename T, typename L, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
@@ -240,6 +281,7 @@ foldl2(const F &f, const R &z, const either<L, T> &xs, const either<L2, T2> &ys,
     return z;
   return cxx::invoke(f, z, xs.right(), ys.right(), as...);
 }
+#endif
 
 // functor
 namespace detail {

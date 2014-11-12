@@ -59,35 +59,52 @@ auto output(const tree<T, C, P> &xs) -> cxx::ostreaming<std::tuple<> > {
 
 // foldable
 
-template <typename F, bool is_action, typename R, typename T,
+template <typename F, typename Op, bool is_action, typename R, typename T,
           template <typename> class C, template <typename> class P,
           typename... As>
 struct tree_foldable;
 
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename... As>
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P,
+          typename... As>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldl(const F &f, const R &z, const tree<T, C, P> &xs, const As &... as) {
-  return tree_foldable<F, rpc::is_action<F>::value, R, T, C, P, As...>::foldl(
-      f, z, xs, as...);
+foldMap(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
+        const As &... as) {
+  return tree_foldable<F, Op, rpc::is_action<F>::value, R, T, C, P,
+                       As...>::foldMap(f, op, z, xs, as...);
 }
 
-template <typename F, bool is_action, typename R, typename T,
+template <typename F, typename Op, bool is_action, typename R, typename T,
           template <typename> class C, template <typename> class P, typename T2,
           typename... As>
 struct tree_foldable2;
 
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename T2, typename... As>
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P, typename T2,
+          typename... As>
 typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldl2(const F &f, const R &z, const tree<T, C, P> &xs,
-       const tree<T2, C, P> &ys, const As &... as) {
-  return tree_foldable2<F, rpc::is_action<F>::value, R, T, C, P, T2,
-                        As...>::foldl2(f, z, xs, ys, as...);
+foldMap2(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
+         const tree<T2, C, P> &ys, const As &... as) {
+  return tree_foldable2<F, Op, rpc::is_action<F>::value, R, T, C, P, T2,
+                        As...>::foldMap2(f, op, z, xs, ys, as...);
+}
+
+template <bool is_action, typename T> struct tree_fold;
+
+template <typename Op, typename R, template <typename> class C,
+          template <typename> class P, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, As...>::type, R>::value,
+    R>::type
+fold(const Op &op, const R &z, const tree<R, C, P> &xs, const As &... as) {
+  return foldMap(tree_fold<rpc::is_action<Op>::value, R>::get_identity(), op, z,
+                 xs);
 }
 
 // iota
@@ -166,11 +183,11 @@ class leaf {
             template <typename> class P1>
   friend struct tree_output;
 
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename... As>
   friend struct tree_foldable;
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename T2, typename... As>
   friend struct tree_foldable2;
@@ -241,11 +258,11 @@ class branch {
             template <typename> class P1>
   friend struct tree_output;
 
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename... As>
   friend struct tree_foldable;
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename T2, typename... As>
   friend struct tree_foldable2;
@@ -286,24 +303,20 @@ public:
 
   // size
   bool empty() const {
-    return cxx::foldl([](bool is_empty, const P<tree<T, C, P> > &t) {
-                        return cxx::foldl(
-                            [](bool is_empty, const tree<T, C, P> &t) {
-                              return is_empty && t.empty();
-                            },
-                            true, t);
-                      },
-                      true, trees);
+    return cxx::foldMap([](const P<tree<T, C, P> > &pt) {
+                          return cxx::foldMap(
+                              [](const tree<T, C, P> &t) { return t.empty(); },
+                              std::logical_and<bool>(), true, pt);
+                        },
+                        std::logical_and<bool>(), true, trees);
   }
   std::size_t size() const {
-    return cxx::foldl([](std::size_t size, const P<tree<T, C, P> > &t) {
-                        return cxx::foldl(
-                            [](std::size_t size, const tree<T, C, P> &t) {
-                              return size + t.size();
-                            },
-                            std::size_t(0), t);
-                      },
-                      std::size_t(0), trees);
+    return cxx::foldMap([](const P<tree<T, C, P> > &pt) {
+                          return cxx::foldMap(
+                              [](const tree<T, C, P> &t) { return t.size(); },
+                              std::plus<std::size_t>(), std::size_t(0), pt);
+                        },
+                        std::plus<std::size_t>(), std::size_t(0), trees);
   }
 
   // monad: join
@@ -338,11 +351,11 @@ class tree {
             template <typename> class P1>
   friend struct tree_output;
 
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename... As>
   friend struct tree_foldable;
-  template <typename F, bool is_action, typename R, typename T1,
+  template <typename F, typename Op, bool is_action, typename R, typename T1,
             template <typename> class C1, template <typename> class P1,
             typename T2, typename... As>
   friend struct tree_foldable2;
@@ -508,201 +521,255 @@ typename tree_output<T, C, P>::output_tree_finish_export_t
 
 // foldable
 
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename... As>
-struct tree_foldable<F, false, R, T, C, P, As...> {
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P,
+          typename... As>
+struct tree_foldable<F, Op, false, R, T, C, P, As...> {
   static_assert(!rpc::is_action<F>::value, "");
+  static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-      "");
+      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
 
-  // TODO: These don't need to be templates
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
   template <typename U> using tree = tree<U, C, P>;
 
-  static R foldl_pvalue(const R &z, const P<T> &pv, const F &f,
+  static R foldMap_pvalue(const P<T> &pv, const F &f, const Op &op, const R &z,
+                          const As &... as) {
+    return cxx::foldMap(f, op, z, pv, as...);
+  }
+
+  static R foldMap_leaf(const leaf<T> &l, const F &f, const Op &op, const R &z,
                         const As &... as) {
-    return cxx::foldl(f, z, pv, as...);
+    return cxx::foldMap(foldMap_pvalue, op, z, l.values, f, op, z, as...);
   }
 
-  static R foldl_leaf(const leaf<T> &l, const R &z, const F &f,
-                      const As &... as) {
-    return cxx::foldl(foldl_pvalue, z, l.values, f, as...);
+  static R foldMap_ptree(const P<tree<T> > &pt, const F &f, const Op &op,
+                         const R &z, const As &... as) {
+    return cxx::foldMap(foldMap_tree, op, z, pt, f, op, z, as...);
   }
 
-  static R foldl_ptree(const R &z, const P<tree<T> > &pt, const F &f,
-                       const As &... as) {
-    return cxx::foldl(foldl_tree, z, pt, f, as...);
+  static R foldMap_branch(const branch<T> &b, const F &f, const Op &op,
+                          const R &z, const As &... as) {
+    return cxx::foldMap(foldMap_ptree, op, z, b.trees, f, op, z, as...);
   }
 
-  static R foldl_branch(const branch<T> &b, const R &z, const F &f,
+  static R foldMap_tree(const tree<T> &t, const F &f, const Op &op, const R &z,
                         const As &... as) {
-    return cxx::foldl(foldl_ptree, z, b.trees, f, as...);
+    return cxx::gfoldl(foldMap_leaf, foldMap_branch, t.node, f, op, z, as...);
   }
 
-  static R foldl_tree(const R &z, const tree<T> &t, const F &f,
-                      const As &... as) {
-    return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, f, as...);
-  }
-
-  static R foldl(const F &f, const R &z, const tree<T> &t, const As &... as) {
-    return foldl_tree(z, t, f, as...);
+  static R foldMap(const F &f, const Op &op, const R &z, const tree<T> &t,
+                   const As &... as) {
+    return foldMap_tree(t, f, op, z, as...);
   }
 };
 
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename... As>
-struct tree_foldable<F, true, R, T, C, P, As...> {
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P,
+          typename... As>
+struct tree_foldable<F, Op, true, R, T, C, P, As...> {
   static_assert(rpc::is_action<F>::value, "");
+  static_assert(rpc::is_action<Op>::value, "");
   static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-      "");
+      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
   template <typename U> using tree = tree<U, C, P>;
 
-  static R foldl_pvalue(const R &z, const P<T> &pv, const As &... as) {
-    return cxx::foldl(F(), z, pv, as...);
+  static R foldMap_pvalue(const P<T> &pv, const R &z, const As &... as) {
+    return cxx::foldMap(F(), Op(), z, pv, as...);
   }
 
-  static R foldl_leaf(const leaf<T> &l, const R &z, const As &... as) {
-    return cxx::foldl(foldl_pvalue, z, l.values, as...);
+  static R foldMap_leaf(const leaf<T> &l, const R &z, const As &... as) {
+    return cxx::foldMap(foldMap_pvalue, Op(), z, l.values, z, as...);
   }
 
-  static R foldl_ptree(const R &z, const P<tree<T> > &pt, const As &... as) {
-    return cxx::foldl(foldl_tree_action(), z, pt, as...);
+  static R foldMap_ptree(const P<tree<T> > &pt, const R &z, const As &... as) {
+    return cxx::foldMap(foldMap_tree_action(), Op(), z, pt, z, as...);
   }
 
-  static R foldl_branch(const branch<T> &b, const R &z, const As &... as) {
-    return cxx::foldl(foldl_ptree, z, b.trees, as...);
+  static R foldMap_branch(const branch<T> &b, const R &z, const As &... as) {
+    return cxx::foldMap(foldMap_ptree, Op(), z, b.trees, z, as...);
   }
 
-  static R foldl_tree(const R &z, const tree<T> &t, const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
-    return cxx::gfoldl(foldl_leaf, foldl_branch, t.node, z, as...);
+  static R foldMap_tree(const tree<T> &t, const R &z, const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap_tree);
+    return cxx::gfoldl(foldMap_leaf, foldMap_branch, t.node, z, as...);
   }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_tree);
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap_tree);
 
-  static R foldl(F, const R &z, const tree<T> &t, const As &... as) {
-    return foldl_tree(z, t, as...);
+  static R foldMap(F, Op, const R &z, const tree<T> &t, const As &... as) {
+    return foldMap_tree(t, z, as...);
   }
 };
 // Define action exports
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename... As>
-typename tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_evaluate_export_t
-    tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_evaluate_export =
-        foldl_tree_evaluate_export_init();
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename... As>
-typename tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_finish_export_t
-    tree_foldable<F, true, R, T, C, P, As...>::foldl_tree_finish_export =
-        foldl_tree_finish_export_init();
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P,
+          typename... As>
+typename tree_foldable<F, Op, true, R, T, C, P,
+                       As...>::foldMap_tree_evaluate_export_t
+    tree_foldable<F, Op, true, R, T, C, P,
+                  As...>::foldMap_tree_evaluate_export =
+        foldMap_tree_evaluate_export_init();
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P,
+          typename... As>
+typename tree_foldable<F, Op, true, R, T, C, P,
+                       As...>::foldMap_tree_finish_export_t
+    tree_foldable<F, Op, true, R, T, C, P, As...>::foldMap_tree_finish_export =
+        foldMap_tree_finish_export_init();
 
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename T2, typename... As>
-struct tree_foldable2<F, false, R, T, C, P, T2, As...> {
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P, typename T2,
+          typename... As>
+struct tree_foldable2<F, Op, false, R, T, C, P, T2, As...> {
   static_assert(!rpc::is_action<F>::value, "");
+  static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
+      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
       "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
   template <typename U> using tree = tree<U, C, P>;
 
-  static R foldl2_pvalue(const R &z, const P<T> &pv, const P<T2> &pv2,
-                         const F &f, const As &... as) {
-    return cxx::foldl2(f, z, pv, pv2, as...);
+  static R foldMap2_pvalue(const R &z, const P<T> &pv, const P<T2> &pv2,
+                           const F &f, const Op &op, const As &... as) {
+    return cxx::foldMap2(f, op, z, pv, pv2, as...);
   }
 
-  static R foldl2_leaf(const leaf<T> &l, const leaf<T2> &l2, const R &z,
-                       const F &f, const As &... as) {
-    return cxx::foldl2(foldl2_pvalue, z, l.values, l2.values, f, as...);
+  static R foldMap2_leaf(const leaf<T> &l, const leaf<T2> &l2, const R &z,
+                         const F &f, const Op &op, const As &... as) {
+    return cxx::foldMap2(foldMap2_pvalue, z, l.values, l2.values, f, op, as...);
   }
 
-  static R foldl2_ptree(const R &z, const P<tree<T> > &pt,
-                        const P<tree<T2> > &pt2, const F &f, const As &... as) {
-    return cxx::foldl2(foldl2_tree, z, pt, pt2, f, as...);
+  static R foldMap2_ptree(const R &z, const P<tree<T> > &pt,
+                          const P<tree<T2> > &pt2, const F &f, const Op &op,
+                          const As &... as) {
+    return cxx::foldMap2(foldMap2_tree, z, pt, pt2, f, op, as...);
   }
 
-  static R foldl2_branch(const branch<T> &b, const branch<T2> &b2, const R &z,
-                         const F &f, const As &... as) {
-    return cxx::foldl2(foldl2_ptree, z, b.trees, b2.trees, f, as...);
+  static R foldMap2_branch(const branch<T> &b, const branch<T2> &b2, const R &z,
+                           const F &f, const Op &op, const As &... as) {
+    return cxx::foldMap2(foldMap2_ptree, z, b.trees, b2.trees, f, op, as...);
   }
 
-  static R foldl2_tree(const R &z, const tree<T> &t, const tree<T2> &t2,
-                       const F &f, const As &... as) {
-    return cxx::gfoldl2(foldl2_leaf, foldl2_branch, t.node, t2.node, z, f,
+  static R foldMap2_tree(const R &z, const tree<T> &t, const tree<T2> &t2,
+                         const F &f, const Op &op, const As &... as) {
+    return cxx::gfoldl2(foldMap2_leaf, foldMap2_branch, t.node, t2.node, z, f,
+                        op, as...);
+  }
+
+  static R foldMap2(const F &f, const Op &op, const R &z, const tree<T> &t,
+                    const tree<T2> &t2, const As &... as) {
+    return foldMap2_tree(z, t, t2, f, op, as...);
+  }
+};
+
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P, typename T2,
+          typename... As>
+struct tree_foldable2<F, Op, true, R, T, C, P, T2, As...> {
+  static_assert(rpc::is_action<F>::value, "");
+  static_assert(rpc::is_action<Op>::value, "");
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
+      "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  template <typename U> using leaf = leaf<U, C, P>;
+  template <typename U> using branch = branch<U, C, P>;
+  template <typename U> using tree = tree<U, C, P>;
+
+  static R foldMap2_pvalue(const R &z, const P<T> &pv, const P<T2> &pv2,
+                           const As &... as) {
+    return cxx::foldMap2(F(), Op(), z, pv, pv2, as...);
+  }
+
+  static R foldMap2_leaf(const leaf<T> &l, const leaf<T2> &l2, const R &z,
+                         const As &... as) {
+    return cxx::foldMap2(foldMap2_pvalue, z, l.values, l2.values, as...);
+  }
+
+  static R foldMap2_ptree(const R &z, const P<tree<T> > &pt,
+                          const P<tree<T2> > &pt2, const As &... as) {
+    return cxx::foldMap2(foldMap2_tree_action(), z, pt, pt2, as...);
+  }
+
+  static R foldMap2_branch(const branch<T> &b, const branch<T2> &b2, const R &z,
+                           const As &... as) {
+    return cxx::foldMap2(foldMap2_ptree, z, b.trees, b2.trees, as...);
+  }
+
+  static R foldMap2_tree(const R &z, const tree<T> &t, const tree<T2> &t2,
+                         const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap2_tree);
+    return cxx::gfoldl2(foldMap2_leaf, foldMap2_branch, t.node, t2.node, z,
                         as...);
   }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap2_tree);
 
-  static R foldl2(const F &f, const R &z, const tree<T> &t, const tree<T2> &t2,
-                  const As &... as) {
-    return foldl2_tree(z, t, t2, f, as...);
-  }
-};
-
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename T2, typename... As>
-struct tree_foldable2<F, true, R, T, C, P, T2, As...> {
-  static_assert(rpc::is_action<F>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-      "");
-
-  template <typename U> using leaf = leaf<U, C, P>;
-  template <typename U> using branch = branch<U, C, P>;
-  template <typename U> using tree = tree<U, C, P>;
-
-  static R foldl2_pvalue(const R &z, const P<T> &pv, const P<T2> &pv2,
-                         const As &... as) {
-    return cxx::foldl2(F(), z, pv, pv2, as...);
-  }
-
-  static R foldl2_leaf(const leaf<T> &l, const leaf<T2> &l2, const R &z,
-                       const As &... as) {
-    return cxx::foldl2(foldl2_pvalue, z, l.values, l2.values, as...);
-  }
-
-  static R foldl2_ptree(const R &z, const P<tree<T> > &pt,
-                        const P<tree<T2> > &pt2, const As &... as) {
-    return cxx::foldl2(foldl2_tree_action(), z, pt, pt2, as...);
-  }
-
-  static R foldl2_branch(const branch<T> &b, const branch<T2> &b2, const R &z,
-                         const As &... as) {
-    return cxx::foldl2(foldl2_ptree, z, b.trees, b2.trees, as...);
-  }
-
-  static R foldl2_tree(const R &z, const tree<T> &t, const tree<T2> &t2,
-                       const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_tree);
-    return cxx::gfoldl2(foldl2_leaf, foldl2_branch, t.node, t2.node, z, as...);
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_tree);
-
-  static R foldl2(F, const R &z, const tree<T> &t, const tree<T2> &t2,
-                  const As &... as) {
-    return foldl2_tree(z, t, as...);
+  static R foldMap2(F, Op, const R &z, const tree<T> &t, const tree<T2> &t2,
+                    const As &... as) {
+    return foldMap2_tree(z, t, as...);
   }
 };
 // Define action exports
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename T2, typename... As>
-typename tree_foldable2<F, true, R, T, C, P, T2,
-                        As...>::foldl2_tree_evaluate_export_t
-    tree_foldable2<F, true, R, T, C, P, T2,
-                   As...>::foldl2_tree_evaluate_export =
-        foldl2_tree_evaluate_export_init();
-template <typename F, typename R, typename T, template <typename> class C,
-          template <typename> class P, typename T2, typename... As>
-typename tree_foldable2<F, true, R, T, C, P, T2,
-                        As...>::foldl2_tree_finish_export_t
-    tree_foldable2<F, true, R, T, C, P, T2, As...>::foldl2_tree_finish_export =
-        foldl2_tree_finish_export_init();
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P, typename T2,
+          typename... As>
+typename tree_foldable2<F, Op, true, R, T, C, P, T2,
+                        As...>::foldMap2_tree_evaluate_export_t
+    tree_foldable2<F, Op, true, R, T, C, P, T2,
+                   As...>::foldMap2_tree_evaluate_export =
+        foldMap2_tree_evaluate_export_init();
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class C, template <typename> class P, typename T2,
+          typename... As>
+typename tree_foldable2<F, Op, true, R, T, C, P, T2,
+                        As...>::foldMap2_tree_finish_export_t
+    tree_foldable2<F, Op, true, R, T, C, P, T2,
+                   As...>::foldMap2_tree_finish_export =
+        foldMap2_tree_finish_export_init();
+
+template <typename T> struct tree_fold<false, T> {
+  static T identity(const T &x) { return x; }
+  static auto get_identity() { return identity; }
+};
+
+template <typename T> struct tree_fold<true, T> {
+  static T identity(const T &x) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(identity);
+    return x;
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(identity);
+  static auto get_identity() { return identity_action(); }
+};
+template <typename T>
+typename tree_fold<true, T>::identity_evaluate_export_t
+    tree_fold<true, T>::identity_evaluate_export =
+        identity_evaluate_export_init();
+template <typename T>
+typename tree_fold<true, T>::identity_finish_export_t
+    tree_fold<true, T>::identity_finish_export = identity_finish_export_init();
+
+template <typename Op, typename R, template <typename> class C,
+          template <typename> class P>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value, R>::type
+fold(const Op &op, const R &z, const tree<R, C, P> &xs) {
+  return foldMap(tree_fold<rpc::is_action<Op>::value, R>::get_identity(), op, z,
+                 xs);
+}
 
 // iota
 

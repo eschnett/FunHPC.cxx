@@ -30,7 +30,7 @@ using cxx::div_ceil;
 using cxx::div_floor;
 using cxx::fmap;
 using cxx::fmap2;
-using cxx::foldl;
+using cxx::foldMap;
 using cxx::iota;
 using cxx::iota_range_t;
 using cxx::mmake;
@@ -73,6 +73,20 @@ using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::vector;
+
+////////////////////////////////////////////////////////////////////////////////
+
+// Define some Monoids
+
+auto tuple_mempty() { return tuple<>(); }
+RPC_ACTION(tuple_mempty);
+auto tuple_mappend(tuple<>, tuple<>) { return tuple<>(); }
+RPC_ACTION(tuple_mappend);
+
+auto string_mempty() { return string(); }
+RPC_ACTION(string_mempty);
+auto string_mappend(const string &xs, const string &ys) { return xs + ys; }
+RPC_ACTION(string_mappend);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -168,6 +182,11 @@ public:
 };
 RPC_COMPONENT(norm_t);
 inline auto operator+(const norm_t &x, const norm_t &y) { return norm_t(x, y); }
+
+auto norm_mempty() { return norm_t(); }
+RPC_ACTION(norm_mempty);
+auto norm_mappend(const norm_t &x, const norm_t &y) { return norm_t(x, y); }
+RPC_ACTION(norm_mappend);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -322,8 +341,9 @@ public:
 
   // Norm
   auto norm() const {
-    return foldl([](const norm_t &x, const cell_t &y) { return x + y.norm(); },
-                 norm_t(), cells);
+    return foldMap([](const cell_t &c) { return c.norm(); },
+                   [](const norm_t &x, const norm_t &y) { return x + y; },
+                   norm_t(), cells);
   }
 
   // Initial condition
@@ -367,18 +387,16 @@ auto grid_get_boundary(const grid_t &g, bool face_upper) {
 }
 RPC_ACTION(grid_get_boundary);
 
-auto grid_wait_foldl(tuple<>, const grid_t &g) -> tuple<> { return g.wait(); }
-RPC_ACTION(grid_wait_foldl);
+auto grid_wait_foldMap(const grid_t &g) { return g.wait(); }
+RPC_ACTION(grid_wait_foldMap);
 
 // auto grid_output_foldl(const ostreaming<tuple<> > &ostr, const grid_t &g)
 //     -> ostreaming<tuple<> > {
 //   return ostr >> g.output();
 // }
 // RPC_ACTION(grid_output_foldl);
-auto grid_output_foldl(const string &str, const grid_t &g) {
-  return str + g.output();
-}
-RPC_ACTION(grid_output_foldl);
+auto grid_output_foldMap(const grid_t &g) { return g.output(); }
+RPC_ACTION(grid_output_foldMap);
 
 // Note: Arguments re-ordered
 auto grid_axpy(const grid_t &y, const grid_t &x, double a) {
@@ -386,8 +404,8 @@ auto grid_axpy(const grid_t &y, const grid_t &x, double a) {
 }
 RPC_ACTION(grid_axpy);
 
-auto grid_norm_foldl(const norm_t &x, const grid_t &y) { return x + y.norm(); }
-RPC_ACTION(grid_norm_foldl);
+auto grid_norm_foldMap(const grid_t &g) { return g.norm(); }
+RPC_ACTION(grid_norm_foldMap);
 
 // Note: Arguments re-ordered
 auto grid_initial(ptrdiff_t imin, double t) {
@@ -428,21 +446,23 @@ struct domain_t {
   tree_<grid_t> grids;
 
   // Wait until all grids are ready
-  auto wait() const -> tuple<> {
-    foldl(grid_wait_foldl_action(), tuple<>(), grids);
+  auto wait() const {
+    return foldMap(grid_wait_foldMap_action(), tuple_mappend_action(),
+                   tuple<>(), grids);
   }
 
   // Output
   // auto output() const -> ostreaming<tuple<> > {
   //   // return put(ostreamer() << "domain: t=" << t << "\n") >>
-  //   //        foldl(grid_output_foldl_action(), make<ostreaming, tuple<> >(),
+  //   //        foldl(grid_output_foldl_action(), mmake<ostreaming, tuple<>
+  //   >(),
   //   //              grids) >>
   //   //        put(ostreamer() << "  tree=\n") >> cxx::output(grids);
   //   std::cout << "domain_t::output.0\n";
   //   auto a = put(ostreamer() << "domain: t=" << t << "\n");
   //   std::cout << "domain_t::output.1\n";
   //   auto b =
-  //       foldl(grid_output_foldl_action(), make<ostreaming, tuple<> >(),
+  //       foldl(grid_output_foldl_action(), mmake<ostreaming, tuple<> >(),
   //       grids);
   //   std::cout << "domain_t::output.2\n";
   //   auto c = put(ostreamer() << "  tree=\n");
@@ -460,7 +480,8 @@ struct domain_t {
   auto output() const {
     ostringstream os;
     os << "domain: t=" << t << "\n"
-       << foldl(grid_output_foldl_action(), string(), grids);
+       << foldMap(grid_output_foldMap_action(), string_mappend_action(),
+                  string(), grids);
     return os.str();
   }
 
@@ -474,7 +495,10 @@ struct domain_t {
       : domain_t(axpy(), a, *x, *y) {}
 
   // Norm
-  auto norm() const { return foldl(grid_norm_foldl_action(), norm_t(), grids); }
+  auto norm() const {
+    return foldMap(grid_norm_foldMap_action(), norm_mappend_action(), norm_t(),
+                   grids);
+  }
 
   // Initial condition
   // (Also choose a domain decomposition)

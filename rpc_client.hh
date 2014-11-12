@@ -326,10 +326,216 @@ template <typename T> struct is_client<rpc::client<T> > : std::true_type {};
 
 // foldable
 
-// TODO: remove special case for functions; expect actions
-// everywhere. note this requires passing functions as values, not
-// only as types.
+// TODO: Allow additional arguments for fold?
+// TODO: Implement fold in terms of foldMap?
+template <typename Op, bool is_action, typename R> struct client_fold;
 
+template <typename Op, typename R>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value, R>::type
+fold(const Op &op, R z, const rpc::client<R> &xs) {
+  return client_fold<Op, rpc::is_action<Op>::value, R>::fold(op, z, xs);
+}
+
+template <typename Op, typename R> struct client_fold<Op, false, R> {
+  static_assert(!rpc::is_action<Op>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R fold_client(const Op &op, const R &z, const rpc::client<R> &xs) {
+    return *xs;
+  }
+
+  static R fold(const Op &op, const R &z, const rpc::client<R> &xs) {
+    bool s = bool(xs);
+    return s == false ? z : fold_client(op, z, xs);
+  }
+};
+
+template <typename Op, typename R> struct client_fold<Op, true, R> {
+  static_assert(rpc::is_action<Op>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R fold_client(const R &z, const rpc::client<R> &xs) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fold_client);
+    return *xs;
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fold_client);
+
+  static R fold(Op, const R &z, const rpc::client<R> &xs) {
+    bool s = bool(xs);
+    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                      fold_client_action(), z, xs);
+  }
+};
+// Define action exports
+template <typename Op, typename R>
+typename client_fold<Op, true, R>::fold_client_evaluate_export_t
+    client_fold<Op, true, R>::fold_client_evaluate_export =
+        fold_client_evaluate_export_init();
+template <typename Op, typename R>
+typename client_fold<Op, true, R>::fold_client_finish_export_t
+    client_fold<Op, true, R>::fold_client_finish_export =
+        fold_client_finish_export_init();
+
+template <typename F, typename Op, bool is_action, typename R, typename T,
+          typename... As>
+struct client_foldable;
+
+template <typename F, typename Op, typename R, typename T, typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, R z, const rpc::client<T> &xs,
+        const As &... as) {
+  return client_foldable<F, Op, rpc::is_action<Op>::value, R, T,
+                         As...>::foldMap(f, op, z, xs, as...);
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As>
+struct client_foldable<F, Op, false, R, T, As...> {
+  static_assert(!rpc::is_action<F>::value, "");
+  static_assert(!rpc::is_action<Op>::value, "");
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R foldMap_client(const F &f, const Op &op, const R &z,
+                          const rpc::client<T> &xs, const As &... as) {
+    return cxx::invoke(f, *xs, as...);
+  }
+
+  static R foldMap(const F &f, const Op &op, const R &z,
+                   const rpc::client<T> &xs, const As &... as) {
+    bool s = bool(xs);
+    return s == false ? z : foldMap_client(f, op, z, xs, as...);
+  }
+};
+
+template <typename F, typename Op, typename R, typename T, typename... As>
+struct client_foldable<F, Op, true, R, T, As...> {
+  static_assert(rpc::is_action<F>::value, "");
+  static_assert(rpc::is_action<Op>::value, "");
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R foldMap_client(const R &z, const rpc::client<T> &xs,
+                          const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap_client);
+    return cxx::invoke(F(), *xs, as...);
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap_client);
+
+  static R foldMap(F, Op, const R &z, const rpc::client<T> &xs,
+                   const As &... as) {
+    bool s = bool(xs);
+    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                      foldMap_client_action(), z, xs, as...);
+  }
+};
+// Define action exports
+template <typename F, typename Op, typename R, typename T, typename... As>
+typename client_foldable<F, Op, true, R, T,
+                         As...>::foldMap_client_evaluate_export_t
+    client_foldable<F, Op, true, R, T, As...>::foldMap_client_evaluate_export =
+        foldMap_client_evaluate_export_init();
+template <typename F, typename Op, typename R, typename T, typename... As>
+typename client_foldable<F, Op, true, R, T,
+                         As...>::foldMap_client_finish_export_t
+    client_foldable<F, Op, true, R, T, As...>::foldMap_client_finish_export =
+        foldMap_client_finish_export_init();
+
+template <typename F, typename Op, bool is_action, typename R, typename T,
+          typename T2, typename... As>
+struct client_foldable2;
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap2(const F &f, const Op &op, R z, const rpc::client<T> &xs,
+         const rpc::client<T2> &ys, const As &... as) {
+  return client_foldable2<F, Op, rpc::is_action<Op>::value, R, T, T2,
+                          As...>::foldMap2(f, op, z, xs, ys, as...);
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+struct client_foldable2<F, Op, false, R, T, T2, As...> {
+  static_assert(!rpc::is_action<F>::value, "");
+  static_assert(!rpc::is_action<Op>::value, "");
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
+      "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R foldMap2_client(const F &f, const Op &op, const R &z,
+                           const rpc::client<T> &xs, const rpc::client<T2> &ys,
+                           const As &... as) {
+    return cxx::invoke(f, *xs, *ys, as...);
+  }
+
+  static R foldMap2(const F &f, const Op &op, const R &z,
+                    const rpc::client<T> &xs, const rpc::client<T2> &ys,
+                    const As &... as) {
+    bool s = bool(xs);
+    assert(bool(ys) == s);
+    return s == false ? z : foldMap2_client(f, op, z, xs, ys, as...);
+  }
+};
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+struct client_foldable2<F, Op, true, R, T, T2, As...> {
+  static_assert(rpc::is_action<F>::value, "");
+  static_assert(rpc::is_action<Op>::value, "");
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
+      "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+
+  static R foldMap2_client(const R &z, const rpc::client<T> &xs,
+                           const rpc::client<T2> &ys, const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap2_client);
+    return cxx::invoke(F(), *xs, *ys, as...);
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldMap2_client);
+
+  static R foldMap2(F, Op, const R &z, const rpc::client<T> &xs,
+                    const rpc::client<T2> &ys, const As &... as) {
+    bool s = bool(xs);
+    assert(bool(ys) == s);
+    return s == false ? z
+                      : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
+                                  foldMap2_client_action(), z, xs, ys, as...);
+  }
+};
+// Define action exports
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+typename client_foldable2<F, Op, true, R, T, T2,
+                          As...>::foldMap2_client_evaluate_export_t
+    client_foldable2<F, Op, true, R, T, T2,
+                     As...>::foldMap2_client_evaluate_export =
+        foldMap2_client_evaluate_export_init();
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+typename client_foldable2<F, Op, true, R, T, T2,
+                          As...>::foldMap2_client_finish_export_t
+    client_foldable2<F, Op, true, R, T, T2,
+                     As...>::foldMap2_client_finish_export =
+        foldMap2_client_finish_export_init();
+
+#if 0
 template <typename F, bool is_action, typename R, typename T, typename... As>
 struct client_foldable;
 
@@ -462,6 +668,7 @@ typename client_foldable2<F, true, R, T, T2,
                           As...>::foldl2_client_finish_export_t
     client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
         foldl2_client_finish_export_init();
+#endif
 
 // functor
 

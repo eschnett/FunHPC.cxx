@@ -82,6 +82,52 @@ template <typename T>
 struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 
 // foldable
+template <typename Op, typename R, typename... As,
+          typename CR = rpc::shared_future<R>,
+          template <typename> class C = kinds<CR>::template constructor>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
+    R>::type
+fold(const Op &op, const R &z, const rpc::shared_future<R> &xs,
+     const As &... as) {
+  bool s = xs.valid();
+  if (s == false)
+    return z;
+  return xs.get();
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
+        const As &... as) {
+  bool s = xs.valid();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.get(), as...);
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As, typename CT = rpc::shared_future<T>,
+          template <typename> class C = kinds<CT>::template constructor>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap2(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
+         const rpc::shared_future<T2> &ys, const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.get(), ys.get(), as...);
+}
+
+#if 0
 template <typename F, typename R, typename T, typename... As,
           typename CT = rpc::shared_future<T>,
           template <typename> class C = kinds<CT>::template constructor>
@@ -110,6 +156,7 @@ foldl2(const F &f, const R &z, const rpc::shared_future<T> &xs,
     return z;
   return cxx::invoke(f, z, xs.get(), ys.get(), as...);
 }
+#endif
 
 // functor
 template <typename F, typename T, typename... As,

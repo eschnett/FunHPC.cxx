@@ -104,6 +104,46 @@ template <typename T> struct is_maybe : std::false_type {};
 template <typename T> struct is_maybe<cxx::maybe<T> > : std::true_type {};
 
 // foldable
+template <typename Op, typename R, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
+    R>::type
+fold(const Op &op, const R &z, const maybe<R> &xs, const As &... as) {
+  bool s = xs.is_just();
+  if (s == false)
+    return z;
+  return xs.just();
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, const R &z, const maybe<T> &xs,
+        const As &... as) {
+  bool s = xs.is_just();
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.just(), as...);
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
+         const As &... as) {
+  bool s = xs.is_just();
+  assert(ys.is_just() == s);
+  if (s == false)
+    return z;
+  return cxx::invoke(f, xs.just(), ys.just(), as...);
+}
+
+#if 0
 template <typename F, typename R, typename T, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
@@ -127,6 +167,7 @@ foldl2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
     return z;
   return cxx::invoke(f, z, xs.just(), ys.just(), as...);
 }
+#endif
 
 // functor
 template <typename F, typename T, typename... As, typename CT = cxx::maybe<T>,

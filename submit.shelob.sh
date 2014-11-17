@@ -55,7 +55,7 @@ elif (($procs_per_node)); then
     bind_to='none'
 fi
 
-cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
+cat >$HOME/src/mpi-rpc/job-$id.sub <<EOF
 #! /bin/bash
 
 #PBS -V
@@ -64,10 +64,10 @@ cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
 #PBS -r n
 #PBS -l walltime=0:10:00
 #PBS -l nodes=$nodes:ppn=$cores_per_node
-#PBS -N job.$id
+#PBS -N job-$id
 #PBS -m abe
-#PBS -o $HOME/src/mpi-rpc/job.$id.out
-#PBS -e $HOME/src/mpi-rpc/job.$id.err
+#PBS -o $HOME/src/mpi-rpc/job-$id.out
+#PBS -e $HOME/src/mpi-rpc/job-$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -118,12 +118,12 @@ echo '[BEGIN MPIRUN]'
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
     --hpx:threads=$threads_per_proc                                     \\
-    >job.$id.log 2>&1
+    >job-$id.log 2>&1
 echo '[END MPIRUN]'
 date
 EOF
 
-: >$HOME/src/mpi-rpc/job.$id.out
-: >$HOME/src/mpi-rpc/job.$id.err
-: >$HOME/src/mpi-rpc/job.$id.log
-qsub $HOME/src/mpi-rpc/job.$id.sub
+: >$HOME/src/mpi-rpc/job-$id.out
+: >$HOME/src/mpi-rpc/job-$id.err
+: >$HOME/src/mpi-rpc/job-$id.log
+qsub $HOME/src/mpi-rpc/job-$id.sub

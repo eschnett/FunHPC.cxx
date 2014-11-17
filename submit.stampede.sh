@@ -62,7 +62,7 @@ else
     partition='large'
 fi
 
-cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
+cat >$HOME/src/mpi-rpc/job-$id.sub <<EOF
 #! /bin/bash
 
 #SBATCH --verbose
@@ -70,11 +70,11 @@ cat >$HOME/src/mpi-rpc/job.$id.sub <<EOF
 #SBATCH --partition=$partition
 #SBATCH --time=0:10:00
 #SBATCH --nodes=$nodes --ntasks=$procs
-#SBATCH --job-name=job.$id
+#SBATCH --job-name=job-$id
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=schnetter@gmail.com
-#SBATCH --output=$HOME/src/mpi-rpc/job.$id.out
-#SBATCH --error=$HOME/src/mpi-rpc/job.$id.err
+#SBATCH --output=$HOME/src/mpi-rpc/job-$id.out
+#SBATCH --error=$HOME/src/mpi-rpc/job-$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -174,14 +174,14 @@ unset SLURM_TOPOLOGY_ADDR_PATTERN
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
     --hpx:threads=$threads_per_proc                                     \\
-    >job.$id.log 2>&1
+    >job-$id.log 2>&1
 echo '[END MPIRUN]'
 date
 
 rm -f \$hostfile
 EOF
 
-: >$HOME/src/mpi-rpc/job.$id.out
-: >$HOME/src/mpi-rpc/job.$id.err
-: >$HOME/src/mpi-rpc/job.$id.log
-sbatch $HOME/src/mpi-rpc/job.$id.sub
+: >$HOME/src/mpi-rpc/job-$id.out
+: >$HOME/src/mpi-rpc/job-$id.err
+: >$HOME/src/mpi-rpc/job-$id.log
+sbatch $HOME/src/mpi-rpc/job-$id.sub

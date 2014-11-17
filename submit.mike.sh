@@ -55,7 +55,7 @@ elif (($procs_per_node)); then
     bind_to='none'
 fi
 
-cat >job.$id.sub <<EOF
+cat >job-$id.sub <<EOF
 #! /bin/bash
 
 #PBS -V
@@ -64,10 +64,10 @@ cat >job.$id.sub <<EOF
 #PBS -r n
 #PBS -l walltime=0:10:00
 #PBS -l nodes=$nodes:ppn=$cores_per_node
-#PBS -N job.$id
+#PBS -N job-$id
 #PBS -m abe
-#PBS -o $HOME/src/mpi-rpc/job.$id.out
-#PBS -e $HOME/src/mpi-rpc/job.$id.err
+#PBS -o $HOME/src/mpi-rpc/job-$id.out
+#PBS -e $HOME/src/mpi-rpc/job-$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -127,11 +127,11 @@ echo '[BEGIN MPIRUN]'
     -x QTHREAD_STACK_SIZE=65536                                         \\
     -x QTHREAD_GUARD_PAGES=0                                            \\
     -x QTHREAD_INFO=0                                                   \\
-    job.$id.exe                                                         \\
+    job-$id.exe                                                         \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
     --hpx:threads=$threads_per_proc                                     \\
-    >job.$id.log 2>&1
+    >job-$id.log 2>&1
 echo '[END MPIRUN]'
 date
 
@@ -146,30 +146,30 @@ mv -n $prog.cache.$$ $prog.cache
 rm -f $prog.cache.$$
 
 # Try to use the cache
-ln -f $prog.cache job.$id.exe
+ln -f $prog.cache job-$id.exe
 
 # Do we have the correct executable?
-if ! cmp $prog job.$id.exe | head -n 1 | grep -qv ''; then
+if ! cmp $prog job-$id.exe | head -n 1 | grep -qv ''; then
     # No: make temporary copy of executable, then update cache
-    cp -f $prog job.$id.exe.tmp # this may be slow
+    cp -f $prog job-$id.exe.tmp # this may be slow
 
     # Try to use the cache (again)
-    ln -f $prog.cache job.$id.exe
+    ln -f $prog.cache job-$id.exe
 
     # Is the executable now correct (because the cache changed in the
     # mean time?)
-    if cmp $prog job.$id.exe | head -n 1 | grep -qv ''; then
+    if cmp $prog job-$id.exe | head -n 1 | grep -qv ''; then
         # Yes: delete the temporary executable
-        rm job.$id.exe.tmp
+        rm job-$id.exe.tmp
     else
         # No: update the cache, and use the temporary copy
-        ln job.$id.exe.tmp $prog.cache.$$
+        ln job-$id.exe.tmp $prog.cache.$$
         mv -f $prog.cache.$$ $prog.cache
-        mv -f job.$id.exe.tmp job.$id.exe
+        mv -f job-$id.exe.tmp job-$id.exe
     fi
 fi
 
-: >job.$id.out
-: >job.$id.err
-: >job.$id.log
-qsub job.$id.sub
+: >job-$id.out
+: >job-$id.err
+: >job-$id.log
+qsub job-$id.sub

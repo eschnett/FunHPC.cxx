@@ -54,6 +54,7 @@ BENCH_SRCS         = bench.cc ${RPC_SRCS}
 BOOST_BW_LAT_SRCS  = boost_bw_lat.cc
 CEREAL_BW_LAT_SRCS = cereal_bw_lat.cc
 DEMO_SRCS          = demo.cc ${RPC_SRCS}
+GRID_SRCS          = grid.cc ${RPC_SRCS}
 HPX_BW_LAT_SRCS    = hpx_bw_lat.cc
 HPX_TEST_SRCS      = hpx_test.cc
 HPX_WAVE_SRCS      = hpx_wave.cc
@@ -74,6 +75,7 @@ BOOST_BW_LAT_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, 
 CEREAL_BW_LAT_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${CEREAL_BW_LAT_SRCS}}}}}
 RPC_BW_LAT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${RPC_BW_LAT_SRCS}}}}}
 DEMO_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
+GRID_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${GRID_SRCS}}}}}
 HPX_BW_LAT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_BW_LAT_SRCS}}}}}
 HPX_TEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
 HPX_WAVE_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_WAVE_SRCS}}}}}
@@ -92,6 +94,7 @@ BENCH_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, 
 BOOST_BW_LAT_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BOOST_BW_LAT_SRCS}}}}}
 CEREAL_BW_LAT_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${CEREAL_BW_LAT_SRCS}}}}}
 DEMO_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
+GRID_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${GRID_SRCS}}}}}
 HPX_BW_LAT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_BW_LAT_SRCS}}}}}
 HPX_TEST_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_TEST_SRCS}}}}}
 HPX_WAVE_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_WAVE_SRCS}}}}}
@@ -135,6 +138,8 @@ boost_bw_lat: ${BOOST_BW_LAT_OBJS}
 cereal_bw_lat: ${CEREAL_BW_LAT_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 demo: ${DEMO_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+grid: ${GRID_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 hpx_bw_lat: ${HPX_BW_LAT_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}

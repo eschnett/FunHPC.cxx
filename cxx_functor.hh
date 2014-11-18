@@ -22,8 +22,18 @@ namespace cxx {
 
 // fmap: (a -> b) -> m a -> m b
 
-// TODO: allow additional arguments for all types
-// TODO: introduce functor2
+// stencil_fmap: (a -> b -> b -> c) -> (a -> Bool -> c) -> m a -> b -> b -> m c
+
+// Handling grid topologies:
+// D: rank
+// array<D>: shape
+// function shape->size
+// function index->offset
+// boundary: rank D-1, array<D,2>
+// F: interior -> boundary -> interior
+// G: interior -> direction -> face -> boundary
+
+////////////////////////////////////////////////////////////////////////////////
 
 // array
 

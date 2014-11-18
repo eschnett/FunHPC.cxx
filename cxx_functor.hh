@@ -5,6 +5,10 @@
 #include "cxx_kinds.hh"
 #include "cxx_utils.hh"
 
+#include <cereal/access.hpp>
+
+#include <array>
+#include <cassert>
 #include <cstddef>
 #include <functional>
 #include <list>

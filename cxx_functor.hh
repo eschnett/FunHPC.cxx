@@ -214,13 +214,18 @@ typename std::enable_if<
 stencil_fmap(const F &f, const G &g, const std::vector<T, Allocator> &xs,
              const B &bm, const B &bp, const As &... as) {
   size_t s = xs.size();
-  assert(s >= 2);
+  assert(s >= 1);
   C<R> rs(s);
-  rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], false));
-  for (size_t i = 1; i < s - 1; ++i)
-    rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], true),
-                        cxx::invoke(g, xs[i + 1], false));
-  rs[s - 1] = cxx::invoke(f, xs[s - 1], cxx::invoke(g, xs[s - 2], true), bp);
+  if (s == 1) {
+    rs[0] = cxx::invoke(f, xs[0], bm, bp, as...);
+  } else {
+    rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], false), as...);
+    for (size_t i = 1; i < s - 1; ++i)
+      rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], true),
+                          cxx::invoke(g, xs[i + 1], false), as...);
+    rs[s - 1] =
+        cxx::invoke(f, xs[s - 1], cxx::invoke(g, xs[s - 2], true), bp, as...);
+  }
   return rs;
 }
 }

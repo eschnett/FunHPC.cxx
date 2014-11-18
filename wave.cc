@@ -312,21 +312,9 @@ private:
   template <typename Archive> auto serialize(Archive &ar) {
     ar(imin, imax, cells);
   }
-  // template <typename Archive>
-  // static void load_and_construct(Archive &ar,
-  //                                cereal::construct<grid_t> &construct) {
-  //   ptrdiff_t imin, imax;
-  //   vector<cell_t> cells;
-  //   ar(imin, imax, cells);
-  //   construct(imin, imax, std::move(cells));
-  // }
 
 public:
   grid_t() {} // only for serialization
-  // grid_t(ptrdiff_t imin, ptrdiff_t imax, const vector<cell_t> &cells)
-  //     : imin(imin), imax(imax), cells(cells) {}
-  // grid_t(ptrdiff_t imin, ptrdiff_t imax, vector<cell_t> &&cells)
-  //     : imin(imin), imax(imax), cells(std::move(cells)) {}
 
   auto get(ptrdiff_t i) const -> const cell_t & {
     assert(i >= imin && i < imax);

@@ -45,12 +45,11 @@ template <typename Op, typename R, std::size_t N, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R z, const std::array<R, N> &xs, const As &... as) {
+fold(const Op &op, R r, const std::array<R, N> &xs, const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, std::size_t N,
@@ -59,13 +58,12 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R z, const std::array<T, N> &xs,
+foldMap(const F &f, const Op &op, R r, const std::array<T, N> &xs,
         const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -74,14 +72,13 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R z, const std::array<T, N> &xs,
+foldMap2(const F &f, const Op &op, R r, const std::array<T, N> &xs,
          const std::array<T2, N> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
-  return r;
+  return std::move(r);
 }
 
 // list
@@ -90,11 +87,10 @@ template <typename Op, typename R, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R z, const std::list<R> &xs, const As &... as) {
-  R r(z);
+fold(const Op &op, R r, const std::list<R> &xs, const As &... as) {
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -102,12 +98,11 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R z, const std::list<T> &xs,
+foldMap(const F &f, const Op &op, R r, const std::list<T> &xs,
         const As &... as) {
-  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -116,15 +111,14 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R z, const std::list<T> &xs,
+foldMap2(const F &f, const Op &op, R r, const std::list<T> &xs,
          const std::list<T2> &ys, const As &... as) {
-  R r(z);
   typename std::list<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::list<T2>::const_iterator yi = ys.begin, ye = ys.end();
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
-  return r;
+  return std::move(r);
 }
 
 // set
@@ -133,11 +127,10 @@ template <typename Op, typename R, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R z, const std::set<R> &xs, const As &... as) {
-  R r(z);
+fold(const Op &op, R r, const std::set<R> &xs, const As &... as) {
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -145,12 +138,11 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R z, const std::set<T> &xs,
+foldMap(const F &f, const Op &op, R r, const std::set<T> &xs,
         const As &... as) {
-  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -159,15 +151,14 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R z, const std::set<T> &xs,
+foldMap2(const F &f, const Op &op, R r, const std::set<T> &xs,
          const std::set<T2> &ys, const As &... as) {
-  R r(z);
   typename std::set<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::set<T2>::const_iterator yi = ys.begin, ye = ys.end();
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
-  return r;
+  return std::move(r);
 }
 
 // shared_ptr
@@ -176,12 +167,11 @@ template <typename Op, typename R, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R z, const std::shared_ptr<R> &xs, const As &... as) {
+fold(const Op &op, R r, const std::shared_ptr<R> &xs, const As &... as) {
   bool s = bool(xs);
-  R r(z);
   if (s)
     r = cxx::invoke(op, std::move(r), *xs, as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -189,13 +179,12 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R z, const std::shared_ptr<T> &xs,
+foldMap(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
         const As &... as) {
   bool s = bool(xs);
-  R r(z);
   if (s)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xs, as...));
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -204,14 +193,13 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R z, const std::shared_ptr<T> &xs,
+foldMap2(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
          const std::shared_ptr<T2> &ys, const As &... as) {
   std::size_t s = bool(xs);
   assert(bool(ys) == s);
-  R r(z);
   if (s)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xs, *ys, as...));
-  return r;
+  return std::move(r);
 }
 
 // vector
@@ -220,12 +208,11 @@ template <typename Op, typename R, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R z, const std::vector<R> &xs, const As &... as) {
+fold(const Op &op, R r, const std::vector<R> &xs, const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -233,13 +220,12 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R z, const std::vector<T> &xs,
+foldMap(const F &f, const Op &op, R r, const std::vector<T> &xs,
         const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
-  return r;
+  return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -248,14 +234,13 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R z, const std::vector<T> &xs,
+foldMap2(const F &f, const Op &op, R r, const std::vector<T> &xs,
          const std::vector<T2> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
-  R r(z);
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
-  return r;
+  return std::move(r);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,8 +257,7 @@ typename std::enable_if<
     R>::type
 foldl(const F &f, const R &z, const std::array<T, N> &xs, const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
-  for (std::size_t i = 0; i < s; ++i)
+    for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], as...);
   return r;
 }
@@ -288,8 +272,7 @@ foldl2(const F &f, const R &z, const std::array<T, N> &xs,
        const std::array<T2, N> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
-  R r(z);
-  for (std::size_t i = 0; i < s; ++i)
+    for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], ys[i], as...);
   return r;
 }
@@ -307,8 +290,7 @@ foldl3(const F &f, const R &z, const std::array<T, N> &xs,
   std::size_t s = xs.size();
   assert(ys.size() == s);
   assert(zs.size() == s);
-  R r(z);
-  for (std::size_t i = 0; i < s; ++i)
+    for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], ys[i], zs[i], as...);
   return r;
 }
@@ -338,8 +320,7 @@ typename std::enable_if<
     R>::type
 foldl(const F &f, const R &z, const std::list<T, Allocator> &xs,
       const As &... as) {
-  R r(z);
-  for (const auto &x : xs)
+    for (const auto &x : xs)
     r = cxx::invoke(f, std::move(r), x, as...);
   return r;
 }
@@ -370,8 +351,7 @@ typename std::enable_if<
     R>::type
 foldl(const F &f, const R &z, const std::set<T, Compare, Allocator> &xs,
       const As &... as) {
-  R r(z);
-  for (const auto &x : xs)
+    for (const auto &x : xs)
     r = cxx::invoke(f, std::move(r), x, as...);
   return r;
 }
@@ -426,8 +406,7 @@ typename std::enable_if<
 foldl(const F &f, const R &z, const std::vector<T, Allocator> &xs,
       const As &... as) {
   std::size_t s = xs.size();
-  R r(z);
-  for (std::size_t i = 0; i < s; ++i)
+    for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], as...);
   return std::move(r);
 }
@@ -443,8 +422,7 @@ foldl2(const F &f, const R &z, const std::vector<T, Allocator> &xs,
        const std::vector<T2, Allocator2> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
-  R r(z);
-  for (std::size_t i = 0; i < s; ++i)
+    for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(f, std::move(r), xs[i], ys[i], as...);
   return std::move(r);
 }

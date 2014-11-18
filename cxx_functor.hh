@@ -203,16 +203,16 @@ C<R> fmap3(const F &f, const std::vector<T, Allocator> &xs,
 }
 
 template <typename F, typename G, typename T, typename Allocator, typename B,
-          typename CT = std::vector<T, Allocator>,
+          typename... As, typename CT = std::vector<T, Allocator>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, B, B>::type>
+          typename R = typename cxx::invoke_of<F, T, B, B, As...>::type>
 typename std::enable_if<
     std::is_same<
         typename std::decay<typename cxx::invoke_of<G, T, bool>::type>::type,
         B>::value,
     C<R> >::type
 stencil_fmap(const F &f, const G &g, const std::vector<T, Allocator> &xs,
-             const B &bm, const B &bp) {
+             const B &bm, const B &bp, const As &... as) {
   size_t s = xs.size();
   assert(s >= 2);
   C<R> rs(s);

@@ -429,10 +429,13 @@ struct grid_foldMap {
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    // assert(rr.linear(index<D>::dir(d)) == 1);
-    // assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(xr.linear(index<D>::dir(d)) == 1);
+#pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
     T r(z);
-#pragma omp simd
+#pragma omp simd reduction(op : r)
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(op, std::move(r),
                       foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
@@ -473,11 +476,14 @@ struct grid_foldMap2 {
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    // assert(rr.linear(index<D>::dir(d)) == 1);
-    // assert(xr.linear(index<D>::dir(d)) == 1);
-    // assert(yr.linear(index<D>::dir(d)) == 1);
+// assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(yr.linear(index<D>::dir(d)) == 1);
+#pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
     T r(z);
-#pragma omp simd
+#pragma omp simd reduction(op : r)
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(
           op, std::move(r),

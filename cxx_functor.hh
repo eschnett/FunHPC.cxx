@@ -44,6 +44,7 @@ template <typename F, typename T, size_t N, typename... As,
 C<R> fmap(const F &f, const std::array<T, N> &xs, const As &... as) {
   std::size_t s = xs.size();
   C<R> rs;
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], as...);
   return rs;
@@ -58,6 +59,7 @@ C<R> fmap2(const F &f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
   std::size_t s = xs.size();
   assert(ys.size() == s);
   C<R> rs;
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], ys[i], as...);
   return rs;
@@ -73,6 +75,7 @@ C<R> fmap3(const F &f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
   assert(ys.size() == s);
   assert(zs.size() == s);
   C<R> rs;
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], ys[i], zs[i], as...);
   return rs;
@@ -165,6 +168,7 @@ template <typename F, typename T, typename Allocator, typename... As,
 C<R> fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
   std::size_t s = xs.size();
   C<R> rs(s);
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], as...);
   return rs;
@@ -180,6 +184,7 @@ C<R> fmap2(const F &f, const std::vector<T, Allocator> &xs,
   std::size_t s = xs.size();
   assert(ys.size() == s);
   C<R> rs(s);
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], ys[i], as...);
   return rs;
@@ -197,6 +202,7 @@ C<R> fmap3(const F &f, const std::vector<T, Allocator> &xs,
   assert(ys.size() == s);
   assert(zs.size() == s);
   C<R> rs(s);
+#pragma omp simd
   for (std::size_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], ys[i], zs[i], as...);
   return rs;
@@ -220,6 +226,7 @@ stencil_fmap(const F &f, const G &g, const std::vector<T, Allocator> &xs,
     rs[0] = cxx::invoke(f, xs[0], bm, bp, as...);
   } else {
     rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], false), as...);
+#pragma omp simd
     for (size_t i = 1; i < s - 1; ++i)
       rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], true),
                           cxx::invoke(g, xs[i + 1], false), as...);

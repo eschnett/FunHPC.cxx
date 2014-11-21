@@ -45,8 +45,13 @@ template <typename Op, typename R, std::size_t N, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R r, const std::array<R, N> &xs, const As &... as) {
+fold(const Op &op, const R &z, const std::array<R, N> &xs, const As &... as) {
   std::size_t s = xs.size();
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
   return std::move(r);
@@ -58,9 +63,14 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R r, const std::array<T, N> &xs,
+foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
         const As &... as) {
   std::size_t s = xs.size();
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
   return std::move(r);
@@ -72,10 +82,15 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R r, const std::array<T, N> &xs,
+foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
          const std::array<T2, N> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
   return std::move(r);
@@ -208,8 +223,13 @@ template <typename Op, typename R, typename... As>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
     R>::type
-fold(const Op &op, R r, const std::vector<R> &xs, const As &... as) {
+fold(const Op &op, const R &z, const std::vector<R> &xs, const As &... as) {
   std::size_t s = xs.size();
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
   return std::move(r);
@@ -220,9 +240,14 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap(const F &f, const Op &op, R r, const std::vector<T> &xs,
+foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
         const As &... as) {
   std::size_t s = xs.size();
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
   return std::move(r);
@@ -234,10 +259,15 @@ typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
      std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
     R>::type
-foldMap2(const F &f, const Op &op, R r, const std::vector<T> &xs,
+foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
          const std::vector<T2> &ys, const As &... as) {
   std::size_t s = xs.size();
   assert(ys.size() == s);
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out), omp_in,    \
+                                            as...))) initializer(omp_priv(z))
+  R r(z);
+#pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
   return std::move(r);

@@ -48,7 +48,6 @@ using std::ios_base;
 using std::make_shared;
 using std::max;
 using std::min;
-using std::move;
 using std::numeric_limits;
 using std::ostream;
 using std::ostringstream;
@@ -144,20 +143,7 @@ auto do_this_time(ptrdiff_t iteration, ptrdiff_t do_every) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Linear combinations
-
-// TODO: introduce the notion of a vector space for this?
-
-// inline double axpy(double a, double x, double y) { return a * x + y; }
-// RPC_ACTION(axpy);
-
-////////////////////////////////////////////////////////////////////////////////
-
 // A norm
-
-// TODO: introduce cxx_monoid for this?
-// mempty, mappend, mconcat
-// also: sum, product, any, all
 
 struct norm_t {
   double sum, sum2, count;
@@ -268,8 +254,6 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 // Each grid lives on a process
 
 struct grid_t {
-  // TODO: introduce irange for these two (e.g. irange_t =
-  // array<ptrdiff_t,2>)
   ptrdiff_t imin, imax; // spatial indices
   static auto x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
 
@@ -358,8 +342,8 @@ public:
 RPC_COMPONENT(grid_t);
 
 // Output
-auto operator<<(ostream &os, const client<grid_t> &g) -> ostream & {
-  return os << g.make_local()->output();
+auto operator<<(ostream &os, const grid_t &g) -> ostream & {
+  return os << g.output();
 }
 
 auto grid_get_boundary(const client<grid_t> &g, bool face_upper) {
@@ -375,7 +359,8 @@ RPC_ACTION(grid_output);
 
 // Note: Arguments re-ordered
 auto grid_axpy(const client<grid_t> &x, double a, const client<grid_t> &y) {
-  return make_client<grid_t>(grid_t::axpy(), a, *x, *y);
+  auto yl = y.make_local();
+  return make_client<grid_t>(grid_t::axpy(), a, *x, *yl);
 }
 RPC_ACTION(grid_axpy);
 
@@ -395,7 +380,9 @@ RPC_ACTION(grid_error);
 
 auto grid_rhs(const client<grid_t> &g, const client<cell_t> &bm,
               const client<cell_t> &bp) {
-  return make_client<grid_t>(grid_t::rhs(), *g, *bm, *bp);
+  auto bml = bm.make_local();
+  auto bpl = bp.make_local();
+  return make_client<grid_t>(grid_t::rhs(), *g, *bml, *bpl);
 }
 RPC_ACTION(grid_rhs);
 
@@ -416,13 +403,6 @@ struct domain_t {
     return div_floor(icell, defs->ncells_per_grid);
   }
   vector<client<grid_t> > grids;
-
-  // private:
-  //   friend class cereal::access;
-  //   template <typename Archive> auto serialize(Archive &ar) { ar(t, grids); }
-
-  // public:
-  //   domain_t() {} // only for serialization
 
   // Wait until all grids are ready
   auto wait() const {
@@ -459,7 +439,7 @@ struct domain_t {
   auto norm() const {
     vector<future<norm_t> > fs;
     for (const auto &g : grids)
-      fs.push_back(async(grid_norm_action(), g));
+      fs.push_back(async(rlaunch::async, grid_norm_action(), g));
     norm_t n;
     for (auto &f : fs)
       n = n + f.get();
@@ -493,27 +473,29 @@ struct domain_t {
   domain_t(rhs, const domain_t &s)
       : t(1.0), // dt/dt
         grids(s.grids.size()) {
-    auto bm = make_client<cell_t>(cell_t::boundary(), s.t,
-                                  defs->xmin - 0.5 * defs->dx);
-    auto bp = make_client<cell_t>(cell_t::boundary(), s.t,
-                                  defs->xmax + 0.5 * defs->dx);
     for (size_t i = 0; i < grids.size(); ++i) {
-      auto cm = i == 0 ? bm : client<cell_t>(async(grid_get_boundary_action(),
-                                                   grids[i - 1], true));
-      auto cp = i == grids.size() - 1
-                    ? bp
-                    : client<cell_t>(async(grid_get_boundary_action(),
-                                           grids[i + 1], false));
-      grids[i] = client<grid_t>(async(grid_rhs_action(), s.grids[i], cm, cp));
+      auto cm =
+          i == 0
+              ? make_client<cell_t>(cell_t::boundary(), s.t,
+                                    defs->xmin - 0.5 * defs->dx)
+              : client<cell_t>(async(rlaunch::async, grid_get_boundary_action(),
+                                     s.grids[i - 1], true));
+      auto cp =
+          i == grids.size() - 1
+              ? make_client<cell_t>(cell_t::boundary(), s.t,
+                                    defs->xmax + 0.5 * defs->dx)
+              : client<cell_t>(async(rlaunch::async, grid_get_boundary_action(),
+                                     s.grids[i + 1], false));
+      grids[i] = client<grid_t>(
+          async(rlaunch::async, grid_rhs_action(), s.grids[i], cm, cp));
     }
   }
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
-// RPC_COMPONENT(domain_t);
 
 // Output
-auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
-  return os << d.make_local()->output();
+auto operator<<(ostream &os, const domain_t &d) -> ostream & {
+  return os << d.output();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,11 +736,3 @@ auto rpc_main(int argc, char **argv) -> int {
 #define RPC_IMPLEMENT_NAMED_ACTION(action)                                     \
   RPC_CLASS_EXPORT(action::evaluate);                                          \
   RPC_CLASS_EXPORT(action::finish);
-
-// RPC_IMPLEMENT_NAMED_ACTION(RPC_IDENTITY_TYPE((cxx::detail::bind_action<
-//     cxx::tree<grid_t, vector_, rpc::client>,
-//     cxx::tree_stencil_functor<grid_rhs_action, grid_get_boundary_action,
-//     true,
-//                               grid_t, vector_, rpc::client,
-//                               cell_t>::get_boundary_tree_action,
-//     bool>)));

@@ -71,8 +71,8 @@ public:
   }
   void set_exception() {
     RPC_ASSERT(!is_ready() && !bool(m_is_deferred));
-    has_exception = true;
     RPC_ASSERT(0); // TODO
+    has_exception = true;
     m_ready.fill();
   }
   T &get_value() {
@@ -119,8 +119,8 @@ public:
   }
   void set_exception() {
     RPC_ASSERT(!is_ready() && !bool(m_is_deferred));
-    has_exception = true;
     RPC_ASSERT(0); // TODO
+    has_exception = true;
     m_ready.fill();
   }
   void get_value() {

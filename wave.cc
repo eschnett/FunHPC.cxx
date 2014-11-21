@@ -1,3 +1,5 @@
+// The scalar wave equation, with all nuts and bolts
+
 #include "rpc.hh"
 
 #include "cxx_foldable.hh"
@@ -34,12 +36,12 @@ using cxx::foldMap;
 using cxx::iota;
 using cxx::iota_range_t;
 using cxx::mmake;
+using cxx::munit;
 // using cxx::ostreaming;
 // using cxx::ostreamer;
 // using cxx::output;
 // using cxx::put;
 using cxx::range_t;
-using cxx::munit;
 
 using rpc::async;
 using rpc::broadcast;
@@ -300,6 +302,7 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 template <typename T> using vector_ = vector<T>;
 
 struct grid_t {
+private:
   // TODO: introduce irange for these two (e.g. irange_t =
   // array<ptrdiff_t,2>)
   ptrdiff_t imin, imax; // spatial indices
@@ -307,7 +310,6 @@ struct grid_t {
 
   vector<cell_t> cells;
 
-private:
   friend class cereal::access;
   template <typename Archive> auto serialize(Archive &ar) {
     ar(imin, imax, cells);
@@ -413,7 +415,7 @@ auto grid_output_foldMap(const grid_t &g) { return g.output(); }
 RPC_ACTION(grid_output_foldMap);
 
 // Note: Arguments re-ordered
-auto grid_axpy(const grid_t &y, const grid_t &x, double a) {
+auto grid_axpy(const grid_t &x, const grid_t &y, double a) {
   return grid_t(grid_t::axpy(), a, x, y);
 }
 RPC_ACTION(grid_axpy);
@@ -449,6 +451,7 @@ struct domain_t {
 
   double t;
 
+private:
   static auto ngrids() -> ptrdiff_t {
     return div_ceil(defs->ncells, defs->ncells_per_grid);
   }
@@ -459,6 +462,7 @@ struct domain_t {
   // vector<client<grid_t> > grids;
   tree_<grid_t> grids;
 
+public:
   // Wait until all grids are ready
   auto wait() const {
     return foldMap(grid_wait_foldMap_action(), tuple_mappend_action(),
@@ -504,7 +508,7 @@ struct domain_t {
   domain_t(axpy, double a, const domain_t &x, const domain_t &y)
       : t(a * x.t + y.t), grids(fmap2(grid_axpy_action(),
                                       // TODO: grid_t::axpy_action(),
-                                      y.grids, x.grids, a)) {}
+                                      x.grids, y.grids, a)) {}
   domain_t(axpy, double a, const client<domain_t> &x, const client<domain_t> &y)
       : domain_t(axpy(), a, *x, *y) {}
 

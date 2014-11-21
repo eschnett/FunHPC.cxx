@@ -146,7 +146,8 @@ std::ostream &operator<<(std::ostream &os, const vector_t &x);
 // TODO: allow calling async on rpc::global_shared_ptr<...>?
 inline auto afaxpy(double alpha, const vector_t::client &x,
                    const vector_t::client &y0) -> vector_t::client {
-  return remote(vector_t::cfaxpy_action(), y0, alpha, x);
+  return vector_t::client(
+      rpc::async(rpc::rlaunch::async, vector_t::cfaxpy_action(), y0, alpha, x));
   // TODO: Try this instead, measure performance -- it has fewer
   // asyncs, but also exposes less parallelism
   // return rpc::async(rpc::rlaunch::async, y0.get_proc(),

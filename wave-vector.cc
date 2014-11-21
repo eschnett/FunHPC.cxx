@@ -1,3 +1,7 @@
+// The scalar wave equation, without higher-order functions. This uses
+// a vector instead of a tree to store the remote futures to the
+// grids, and is thus not scalable.
+
 #include "rpc.hh"
 
 #include <cereal/access.hpp>
@@ -53,15 +57,6 @@ using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::vector;
-
-////////////////////////////////////////////////////////////////////////////////
-
-// Define string as Monoid
-
-auto string_mempty() { return string(); }
-RPC_ACTION(string_mempty);
-auto string_mappend(const string &xs, const string &ys) { return xs + ys; }
-RPC_ACTION(string_mappend);
 
 ////////////////////////////////////////////////////////////////////////////////
 

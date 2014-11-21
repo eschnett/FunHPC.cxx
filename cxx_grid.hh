@@ -307,6 +307,7 @@ std::ostream &operator<<(std::ostream &os, const vect<T, D> &i) {
       os << ",";
     os << i[d];
   }
+  os << "]";
   return os;
 }
 
@@ -357,6 +358,11 @@ public:
   }
 };
 
+template <std::ptrdiff_t D>
+std::ostream &operator<<(std::ostream &os, const grid_region<D> &r) {
+  return os << r.imin() << ":" << r.imax();
+}
+
 template <typename T, std::ptrdiff_t D> class boundaries {
   // std::array has problems with default-construction
   // std::array<std::array<T, D>, 2> bndss_;
@@ -398,6 +404,25 @@ public:
                          },
                          bs.bndss_)) {}
 };
+
+template <typename T, std::ptrdiff_t D>
+std::ostream &operator<<(std::ostream &os, const boundaries<T, D> &bs) {
+  os << "[";
+  for (std::ptrdiff_t face = 0; face < 2; ++face) {
+    if (face != 0)
+      os << ",";
+    os << "[";
+    for (std::ptrdiff_t dir = 0; dir < D; ++dir) {
+      if (dir != 0)
+        os << ",";
+      os << bs(dir, face);
+    }
+    os << "]";
+  }
+  os << "]";
+  return os;
+}
+
 template <typename F, typename T, std::ptrdiff_t D, typename... As>
 auto fmap(const F &f, const boundaries<T, D> &bs, const As &... as) {
   typedef typename cxx::invoke_of<F, T, As...>::type R;

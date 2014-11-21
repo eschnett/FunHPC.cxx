@@ -13,10 +13,12 @@
 #include <cereal/types/tuple.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <memory>
+#include <ostream>
 #include <tuple>
 #include <vector>
 
@@ -26,6 +28,8 @@ namespace cxx {
 
 template <typename T, std::ptrdiff_t D> class vect {
   std::array<T, D> elts;
+
+  template <typename T1, std::ptrdiff_t D1> friend class vect;
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) { ar(elts); }
@@ -43,6 +47,12 @@ public:
       r.elts[d] = 0;
     return r;
   }
+  static constexpr vect set1(T a) {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = a;
+    return r;
+  }
   static constexpr vect iota() {
     vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
@@ -51,15 +61,22 @@ public:
   }
   static constexpr vect dir(std::ptrdiff_t d) { return zero().set(d, 1); }
   // Element access
-  constexpr T operator[](std::ptrdiff_t d) const {
+  T operator[](std::ptrdiff_t d) const {
     // assert(d >= 0 && d < D);
     return elts[d];
   }
   // Updating
-  constexpr vect set(std::ptrdiff_t d, std::ptrdiff_t a) const {
+  vect set(std::ptrdiff_t d, T a) const {
     // assert(d >= 0 && d < D);
     vect r(*this);
     r.elts[d] = a;
+    return r;
+  }
+  // Conversion
+  template <typename R> operator vect<R, D>() const {
+    vect<R, D> r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = R(elts[d]);
     return r;
   }
   // Logic
@@ -138,6 +155,25 @@ public:
   vect operator>(const vect &i) const { return i < *this; }
   vect operator<=(const vect &i) const { return !(*this > i); }
   vect operator>=(const vect &i) const { return i <= *this; }
+  vect max(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = std::max(elts[d], i.elts[d]);
+    return r;
+  }
+  vect min(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = std::min(elts[d], i.elts[d]);
+    return r;
+  }
+  template <typename U>
+  vect<U, D> ifthen(const vect<U, D> &i, const vect<U, D> &j) const {
+    vect<U, D> r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = elts[d] ? i.elts[d] : j.elts[d];
+    return r;
+  }
   // Reductions
   bool all() const {
     bool r = true;
@@ -151,26 +187,44 @@ public:
       r = r || elts[d];
     return r;
   }
-  T sum() const {
-    T r = 0;
-    for (std::ptrdiff_t d = 0; d < D; ++d)
-      r += elts[d];
-    return r;
-  }
   T prod() const {
     T r = 1;
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r *= elts[d];
     return r;
   }
+  T sum() const {
+    T r = 0;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r += elts[d];
+    return r;
+  }
   // Prefix reductions
   // (TODO)
   // Higher order
-  template <typename Op> auto fold(const Op &op) const {
-    typedef typename cxx::invoke_of<Op, T>::type R;
-    static_assert(D > 0, "");
-    R r = elts[0];
-    for (std::ptrdiff_t d = 1; d < D; ++d)
+  template <typename Op>
+  typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<Op, T, T>::type, T>::value, T>::type
+  fold(const Op &op, T r) const {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r = cxx::invoke(op, r, elts[d]);
+    return r;
+  }
+  template <typename F, typename Op, typename R>
+  typename std::enable_if<
+      (std::is_same<typename cxx::invoke_of<F, T>::type, R>::value &&
+       std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+      R>::type
+  foldMap(const F &f, const Op &op, R r) const {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r = cxx::invoke(op, r, cxx::invoke(f, elts[d]));
+    return r;
+  }
+  template <typename Op, typename R>
+  typename std::enable_if<
+      std::is_same<typename cxx::invoke_of<Op, R, T>::type, R>::value, R>::type
+  foldl(const Op &op, R r) const {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
       r = cxx::invoke(op, r, elts[d]);
     return r;
   }
@@ -193,21 +247,49 @@ template <typename T, std::ptrdiff_t D>
 auto operator*(T a, const vect<T, D> &i) {
   return i * a;
 }
+template <typename T, std::ptrdiff_t D>
+auto max(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.max(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto min(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.min(j);
+}
+template <typename T, typename U, std::ptrdiff_t D>
+auto ifthen(const vect<T, D> &b, const vect<U, D> &i, const vect<U, D> &j) {
+  return b.ifthen(i, j);
+}
 template <typename T, std::ptrdiff_t D> auto all_of(const vect<T, D> &i) {
   return i.all();
 }
 template <typename T, std::ptrdiff_t D> auto any_of(const vect<T, D> &i) {
   return i.any();
 }
-template <typename T, std::ptrdiff_t D> auto sum(const vect<T, D> &i) {
-  return i.sum();
-}
 template <typename T, std::ptrdiff_t D> auto prod(const vect<T, D> &i) {
   return i.prod();
 }
+template <typename T, std::ptrdiff_t D> auto sum(const vect<T, D> &i) {
+  return i.sum();
+}
 template <typename Op, typename T, std::ptrdiff_t D>
-auto fold(const Op &op, const vect<T, D> &i) {
-  return i.fold(op);
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, T, T>::type, T>::value, T>::type
+fold(const Op &op, T z, const vect<T, D> &i) {
+  return i.fold(op, z);
+}
+template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D>
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, const R &z, const vect<T, D> &i) {
+  return i.foldMap(f, op, z);
+}
+template <typename Op, typename R, typename T, std::ptrdiff_t D>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, R, T>::type, R>::value, R>::type
+foldl(const Op &op, const R &z, const vect<T, D> &i) {
+  return i.foldl(op, z);
 }
 template <typename F, typename T, std::ptrdiff_t D>
 auto fmap(const F &f, const vect<T, D> &i) {
@@ -216,6 +298,16 @@ auto fmap(const F &f, const vect<T, D> &i) {
 template <typename F, typename T, std::ptrdiff_t D>
 auto fmap2(const F &f, const vect<T, D> &i, const vect<T, D> &j) {
   return i.fmap2(f, j);
+}
+template <typename T, std::ptrdiff_t D>
+std::ostream &operator<<(std::ostream &os, const vect<T, D> &i) {
+  os << "[";
+  for (std::ptrdiff_t d = 0; d < D; ++d) {
+    if (d != 0)
+      os << ",";
+    os << i[d];
+  }
+  return os;
 }
 
 template <std::ptrdiff_t D> using index = vect<std::ptrdiff_t, D>;
@@ -243,6 +335,10 @@ public:
   index<D> shape() const { return imax_ - imin_; }
   bool empty() const { return any_of(imax_ == imin_); }
   std::ptrdiff_t size() const { return prod(shape()); }
+  bool operator==(const grid_region &r) const {
+    return all_of(imin_ == r.imin_ && imax_ == r.imax_);
+  }
+  bool operator!=(const grid_region &r) const { return !(*this == r); }
   bool is_sub_region_of(const grid_region &r) const {
     return all_of(imin_ >= r.imin_ && imax_ <= r.imax_);
   }
@@ -262,12 +358,19 @@ public:
 };
 
 template <typename T, std::ptrdiff_t D> class boundaries {
-  std::array<std::array<T, D>, 2> bndss_;
+  // std::array has problems with default-construction
+  // std::array<std::array<T, D>, 2> bndss_;
+  T bndss_[2][D];
 
   template <typename T1, std::ptrdiff_t D1> friend class boundaries;
 
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) { ar(bndss_); }
+  template <typename Archive> void serialize(Archive &ar) {
+    // ar(bndss_);
+    for (std::ptrdiff_t face = 0; face < 2; ++face)
+      for (std::ptrdiff_t dir = 0; dir < D; ++dir)
+        ar(bndss_[face][dir]);
+  }
 
 public:
   typedef T value_type;
@@ -329,6 +432,7 @@ struct grid_foldMap {
     // assert(rr.linear(index<D>::dir(d)) == 1);
     // assert(xr.linear(index<D>::dir(d)) == 1);
     T r(z);
+#pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(op, std::move(r),
                       foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
@@ -373,6 +477,7 @@ struct grid_foldMap2 {
     // assert(xr.linear(index<D>::dir(d)) == 1);
     // assert(yr.linear(index<D>::dir(d)) == 1);
     T r(z);
+#pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(
           op, std::move(r),
@@ -409,8 +514,9 @@ struct grid_fmap {
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    // assert(rr.linear(index<D>::dir(d)) == 1);
-    // assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(xr.linear(index<D>::dir(d)) == 1);
+#pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap<d - 1>(f, rr, rs + a, xr, xs + a, as...);
   }
@@ -447,9 +553,10 @@ struct grid_fmap2 {
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    // assert(rr.linear(index<D>::dir(d)) == 1);
-    // assert(xr.linear(index<D>::dir(d)) == 1);
-    // assert(yr.linear(index<D>::dir(d)) == 1);
+// assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(yr.linear(index<D>::dir(d)) == 1);
+#pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap2<d - 1>(f, rr, rs + a, xr, xs + a, yr, ys + a, as...);
   }
@@ -567,7 +674,8 @@ struct grid_stencil_fmap {
         stencil_fmap<dir - 1, newisouters>(f, g, rr, rs + a, xr, xs + a, brs,
                                            newbss, as...);
       }
-      // interior
+// interior
+#pragma omp simd
       for (std::ptrdiff_t a = 1; a < nelts - 1; ++a) {
         constexpr std::size_t newisouters = isouters;
         auto newbss = bss;
@@ -632,7 +740,8 @@ struct grid_iota {
   iota(const F &f, const grid_region<D> &rr, T *restrict rs, index<D> i,
        const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    // assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(rr.linear(index<D>::dir(d)) == 1);
+#pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a) {
       index<D> j = i + a * index<D>::dir(d);
       iota<d - 1>(f, rr, rs + a, j, as...);
@@ -648,6 +757,8 @@ struct grid_iota {
 };
 
 template <typename T, std::ptrdiff_t D> class grid {
+  template <typename T1, std::ptrdiff_t D1> friend class grid;
+
   // Data may be shared with other grids
   std::shared_ptr<std::vector<T> > data_;
   grid_region<D> layout_; // data memory layout
@@ -660,13 +771,13 @@ template <typename T, std::ptrdiff_t D> class grid {
   friend class cereal::access;
   template <typename Archive> void save(Archive &ar) const {
     // Are we referring to all of the data?
-    if (all_of(region_ == layout_)) {
+    if (region_ == layout_) {
       // Yes: save everything
       // TODO: handle padding
       ar(data_, layout_, region_);
     } else {
       // No: create a copy of the respective sub-grid_region, and save it
-      grid(copy()).save(ar);
+      grid(copy(), *this).save(ar);
     }
   }
   template <typename Archive> void load(Archive &ar) {
@@ -683,6 +794,8 @@ public:
   std::ptrdiff_t size() const { return region_.size(); }
   index<D> shape() const { return region_.shape(); }
   //
+  // TODO: hide this function
+  grid() : grid(grid_region<D>()) {}
   struct copy : std::tuple<> {};
   grid(copy, const grid &g) : grid(fmap(), [](T x) { return x; }, region_, g) {}
   struct sub_region : std::tuple<> {};
@@ -692,7 +805,7 @@ public:
   }
   struct boundary : std::tuple<> {};
   grid(boundary, const grid &xs, std::ptrdiff_t dir, bool face)
-      : grid(sub_region(), xs, xs.boundary(dir, face)) {}
+      : grid(sub_region(), xs, xs.region_.boundary(dir, face)) {}
   // foldable
   template <typename F, typename Op, typename R, typename... As>
   typename std::enable_if<
@@ -797,7 +910,8 @@ public:
   struct iota : std::tuple<> {};
   template <typename F, typename... As>
   grid(typename std::enable_if<
-           std::is_same<typename cxx::invoke_of<F, index<D> >::type, T>::value,
+           std::is_same<typename cxx::invoke_of<F, index<D>, As...>::type,
+                        T>::value,
            iota>::type,
        const F &f, const grid_region<D> &rr, const As &... as)
       : grid(rr) {
@@ -875,6 +989,24 @@ template <template <typename> class C, typename F, std::ptrdiff_t D,
 typename std::enable_if<cxx::is_grid<C<T> >::value, C<T> >::type
 iota(const F &f, const grid_region<D> &range, const As &... as) {
   return C<T>(typename C<T>::iota(), f, range, as...);
+}
+
+// output
+
+template <typename T, std::ptrdiff_t D>
+std::ostream &operator<<(std::ostream &os, const grid<T, D> &g) {
+  struct detail {
+    template <typename U> using grid_ = grid<U, D>;
+  };
+  // TODO: This is not efficient
+  auto is = cxx::iota<detail::template grid_>([](index<D> i) { return i; },
+                                              g.region());
+  fmap2([pos = &os](index<D> i, T x) {
+          *pos << "  " << i << ": " << x << "\n";
+          return std::tuple<>();
+        },
+        is, g);
+  return os;
 }
 }
 

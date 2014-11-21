@@ -1,6 +1,6 @@
 # source $HOME/SIMFACTORY/all-all/env.sh
 
-# (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 bench demo grid tree wave wave-light wave-vector)
+# (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 bench demo grid tree wave wave-light wave-vector wave3d-grid)
 
 DEBUG =
 
@@ -37,7 +37,7 @@ LIBS     := ${MPI_LIBS} ${LIBS}
 
 
 # hpx_test
-EXES = bench boost_bw_lat cereal_bw_lat demo grid hpx_bw_lat hpx_wave hwloc_test la_demo matbench mattest mpi_bw_lat ostreaming qthread_test rpc_bw_lat tree wave wave-light wave-vector
+EXES = bench boost_bw_lat cereal_bw_lat demo grid hpx_bw_lat hpx_wave hwloc_test la_demo matbench mattest mpi_bw_lat ostreaming qthread_test rpc_bw_lat tree wave wave-light wave-vector wave3d-grid
 
 QTHREAD_SRCS = qthread_thread.cc
 HPX_SRCS     = hpx.cc
@@ -70,6 +70,7 @@ TREE_SRCS          = tree.cc ${RPC_SRCS}
 WAVE_SRCS          = wave.cc ${RPC_SRCS}
 WAVE_LIGHT_SRCS    = wave-light.cc
 WAVE_VECTOR_SRCS   = wave-vector.cc ${RPC_SRCS}
+WAVE3D_GRID_SRCS   = wave3d-grid.cc ${RPC_SRCS}
 
 BENCH_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
 BOOST_BW_LAT_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BOOST_BW_LAT_SRCS}}}}}
@@ -91,6 +92,7 @@ TREE_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, 
 WAVE_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_SRCS}}}}}
 WAVE_LIGHT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_LIGHT_SRCS}}}}}
 WAVE_VECTOR_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_VECTOR_SRCS}}}}}
+WAVE3D_GRID_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE3D_GRID_SRCS}}}}}
 
 BENCH_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
 BOOST_BW_LAT_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BOOST_BW_LAT_SRCS}}}}}
@@ -112,9 +114,10 @@ TREE_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, 
 WAVE_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_SRCS}}}}}
 WAVE_LIGHT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_LIGHT_SRCS}}}}}
 WAVE_VECTOR_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_VECTOR_SRCS}}}}}
+WAVE3D_GRID_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE3D_GRID_SRCS}}}}}
 
-OBJS = ${BENCH_OBJS} ${BOOST_BW_LAT_OBJS} ${CEREAL_BW_LAT_OBJS} ${DEMO_OBJS} ${GRID_OBJS} ${HPX_BW_LAT_OBJS} ${HPX_TEST_OBJS} ${HPX_WAVE_OBJS} ${HWLOC_TEST_OBJS} ${LA_DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${MPI_BW_LAT_OBJS} ${OSTREAMING_OBJS} ${QTHREAD_TEST_OBJS} ${RPC_BW_LAT_OBJS} ${TREE_OBJS} ${WAVE_OBJS} ${WAVE_LIGHT_OBJS} ${WAVE_VECTOR_OBJS}
-DEPS = ${BENCH_DEPS} ${BOOST_BW_LAT_DEPS} ${CEREAL_BW_LAT_DEPS} ${DEMO_DEPS} ${GRID_DEPS} ${HPX_BW_LAT_DEPS} ${HPX_TEST_DEPS} ${HPX_WAVE_DEPS} ${HWLOC_TEST_DEPS} ${LA_DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${MPI_BW_LAT_DEPS} ${OSTREAMING_DEPS} ${QTHREAD_TEST_DEPS} ${RPC_BW_LAT_DEPS} ${TREE_DEPS} ${WAVE_DEPS} ${WAVE_LIGHT_DEPS} ${WAVE_VECTOR_DEPS}
+OBJS = ${BENCH_OBJS} ${BOOST_BW_LAT_OBJS} ${CEREAL_BW_LAT_OBJS} ${DEMO_OBJS} ${GRID_OBJS} ${HPX_BW_LAT_OBJS} ${HPX_TEST_OBJS} ${HPX_WAVE_OBJS} ${HWLOC_TEST_OBJS} ${LA_DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${MPI_BW_LAT_OBJS} ${OSTREAMING_OBJS} ${QTHREAD_TEST_OBJS} ${RPC_BW_LAT_OBJS} ${TREE_OBJS} ${WAVE_OBJS} ${WAVE_LIGHT_OBJS} ${WAVE_VECTOR_OBJS} ${WAVE3D_GRID_OBJS}
+DEPS = ${BENCH_DEPS} ${BOOST_BW_LAT_DEPS} ${CEREAL_BW_LAT_DEPS} ${DEMO_DEPS} ${GRID_DEPS} ${HPX_BW_LAT_DEPS} ${HPX_TEST_DEPS} ${HPX_WAVE_DEPS} ${HWLOC_TEST_DEPS} ${LA_DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${MPI_BW_LAT_DEPS} ${OSTREAMING_DEPS} ${QTHREAD_TEST_DEPS} ${RPC_BW_LAT_DEPS} ${TREE_DEPS} ${WAVE_DEPS} ${WAVE_LIGHT_DEPS} ${WAVE_VECTOR_DEPS} ${WAVE3D_GRID_DEPS}
 
 
 
@@ -173,6 +176,8 @@ wave: ${WAVE_OBJS}
 wave-light: ${WAVE_LIGHT_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 wave-vector: ${WAVE_VECTOR_OBJS}
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+wave3d-grid: ${WAVE3D_GRID_OBJS}
 	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 %.h.pch: %.h

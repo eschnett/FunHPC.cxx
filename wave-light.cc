@@ -107,12 +107,12 @@ inline future<void> make_ready_future() {
 
 struct defs_t {
   // const ptrdiff_t rho = 1; // resolution scale
-  const ptrdiff_t rho = 10; // resolution scale
+  const ptrdiff_t rho = 100; // resolution scale
   const ptrdiff_t ncells_per_grid = 10;
 
   const double xmin = 0.0;
   const double xmax = 1.0;
-  const double cfl = 0.25;
+  const double cfl = 0.5;
   const double tmin = 0.0;
   const double tmax = 1.0;
   const ptrdiff_t nsteps = -1;

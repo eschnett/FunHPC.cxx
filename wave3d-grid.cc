@@ -305,6 +305,9 @@ public:
     for (ptrdiff_t i = 0; i < dim; ++i)
       v = v.set(i, (bs(i, true).rho - bs(i, false).rho) / (2 * defs->dx));
   }
+
+  struct get_boundary : tuple<> {};
+  cell_t(get_boundary, const cell_t &c, ptrdiff_t dir, bool face) : cell_t(c) {}
 };
 RPC_COMPONENT(cell_t);
 // RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, vdouble);
@@ -396,7 +399,7 @@ public:
                      auto vn = ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir);
                      return cell_t(cell_t::boundary(), t, c.x + vn * defs->dx);
                    },
-                   cells_t(cells_t::boundary(), cells, dir, face))) {}
+                   cells_t(cells_t::boundary(), g.cells, dir, face))) {}
 
   // Error
   struct error : tuple<> {};
@@ -412,8 +415,17 @@ public:
             [](const cell_t &c, const boundaries<cell_t, dim> &bs) {
               return cell_t(cell_t::rhs(), c, bs);
             },
-            [](const cell_t &c, ptrdiff_t, bool) { return c; }, g.cells,
-            grid2cells(bs))) {}
+            [](const cell_t &c, ptrdiff_t dir, bool face) {
+              return cell_t(cell_t::get_boundary(), c, dir, face);
+            },
+            g.cells, grid2cells(bs))) {}
+
+  struct get_boundary : tuple<> {};
+  grid_t(get_boundary, const grid_t &g, ptrdiff_t dir, bool face)
+      : cells(fmap([dir, face](const cell_t &c) {
+                     return cell_t(cell_t::get_boundary(), c, dir, face);
+                   },
+                   cells_t(cells_t::boundary(), g.cells, dir, face))) {}
 };
 RPC_COMPONENT(grid_t);
 
@@ -453,34 +465,11 @@ auto grid_initial(vindex ipos, double t) {
 }
 RPC_ACTION(grid_initial);
 
-auto grid_boundary(const client<grid_t> &g, ptrdiff_t dir, bool face) {
-#warning "TODO"
-  double t = 0.0;
+auto grid_boundary(const client<grid_t> &g, double t, ptrdiff_t dir,
+                   bool face) {
   return make_client<grid_t>(grid_t::boundary(), *g, t, dir, face);
 }
 RPC_ACTION(grid_boundary);
-#if 0
-// A poor man's lambda, since actions cannot be defined for real lambdas
-struct grid_boundary_action : action_base<grid_boundary_action> {
-  double t;
-
-private:
-  friend class cereal::access;
-  template <typename Archive> auto serialize(Archive &ar) { ar(t); }
-
-public:
-  auto operator()(const client<grid_t> &g, ptrdiff_t dir, bool face) const {
-    return make_client<grid_t>(grid_t::boundary(), *g, t, dir, face);
-  }
-  typedef grid_boundary_action F;
-  typedef client<grid_t> R;
-  typedef const client<grid_t> &A0;
-  typedef ptrdiff_t A1;
-  typedef bool A2;
-  typedef action_evaluate<F, R, A0, A1, A2> evaluate;
-  typedef action_finish<F, R> finish;
-};
-#endif
 
 auto grid_error(const client<grid_t> &g, double t) {
   return make_client<grid_t>(grid_t::error(), *g, t);
@@ -500,6 +489,11 @@ auto grid_rhs(const client<grid_t> &g,
   return make_client<grid_t>(grid_t::rhs(), *g, newbs);
 }
 RPC_ACTION(grid_rhs);
+
+auto grid_get_boundary(const client<grid_t> &g, ptrdiff_t dir, bool face) {
+  return make_client<grid_t>(grid_t::get_boundary(), *g, dir, face);
+}
+RPC_ACTION(grid_get_boundary);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -568,10 +562,10 @@ struct domain_t {
   struct boundary : tuple<> {};
   domain_t(boundary, const domain_t &d, double t, ptrdiff_t dir, bool face)
       : t(t), grids(fmap(grid_boundary_action(),
-                         grids_t(grids_t::boundary(), d.grids, dir, face), dir,
-                         face)) {}
+                         grids_t(grids_t::boundary(), d.grids, dir, face), t,
+                         dir, face)) {}
 
-  auto get_boundaries() const {
+  auto all_boundaries() const {
     boundaries<grids_t, dim> bs;
     for (ptrdiff_t face = 0; face < 2; ++face)
       for (ptrdiff_t dir = 0; dir < dim; ++dir)
@@ -590,9 +584,8 @@ struct domain_t {
   struct rhs : tuple<> {};
   domain_t(rhs, const domain_t &s)
       : t(1.0), // dt/dt
-        grids(stencil_fmap(grid_rhs_action(), grid_boundary_action(), s.grids,
-                           get_boundaries())) {}
-
+        grids(stencil_fmap(grid_rhs_action(), grid_get_boundary_action(),
+                           s.grids, s.all_boundaries())) {}
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
 

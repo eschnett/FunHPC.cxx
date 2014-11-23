@@ -178,6 +178,12 @@ public:
       r = r || elts[d];
     return r;
   }
+  T dot(const vect &i) const {
+    T r = 0;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r += elts[d] * i.elts[d];
+    return r;
+  }
   T prod() const {
     T r = 1;
     for (std::ptrdiff_t d = 0; d < D; ++d)
@@ -255,6 +261,10 @@ template <typename T, std::ptrdiff_t D> auto all_of(const vect<T, D> &i) {
 }
 template <typename T, std::ptrdiff_t D> auto any_of(const vect<T, D> &i) {
   return i.any();
+}
+template <typename T, std::ptrdiff_t D>
+auto dot(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.dot(j);
 }
 template <typename T, std::ptrdiff_t D> auto prod(const vect<T, D> &i) {
   return i.prod();

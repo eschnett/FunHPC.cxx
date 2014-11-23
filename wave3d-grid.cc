@@ -593,9 +593,9 @@ struct domain_t {
 auto operator<<(ostream &os, const domain_t &d) -> ostream & {
   return os << d.output();
 }
-// auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
-//   return os << *d.make_local();
-// }
+auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
+  return os << *d.make_local();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

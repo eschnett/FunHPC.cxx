@@ -960,17 +960,33 @@ struct is_grid<grid<T, D> > : std::true_type {};
 
 // foldable
 
+template <typename Op, typename T, std::ptrdiff_t D, typename... As>
+typename std::enable_if<
+    std::is_same<typename cxx::invoke_of<Op, T, T, As...>::type, T>::value,
+    T>::type
+fold(const Op &op, const T &z, const grid<T, D> &xs, const As &... as) {
+  return xs.foldMap([](const T &x) { return x; }, op, z, as...);
+}
+
 template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D,
           typename... As>
-auto foldMap(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
-             const As &... as) {
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
+        const As &... as) {
   return xs.foldMap(f, op, z, as...);
 }
 
 template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D,
           typename T2, typename... As>
-auto foldMap2(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
-              const grid<T2, D> &ys, const As &... as) {
+typename std::enable_if<
+    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
+     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
+    R>::type
+foldMap2(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
+         const grid<T2, D> &ys, const As &... as) {
   return xs.foldMap2(f, op, z, ys, as...);
 }
 

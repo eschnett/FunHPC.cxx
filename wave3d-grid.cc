@@ -55,7 +55,6 @@ using rpc::shared_future;
 using rpc::sync;
 using rpc::thread;
 
-using std::cbrt;
 using std::ceil;
 using std::cerr;
 using std::cout;
@@ -70,6 +69,7 @@ using std::move;
 using std::numeric_limits;
 using std::ostream;
 using std::ostringstream;
+using std::pow;
 using std::ptrdiff_t;
 using std::shared_ptr;
 using std::string;
@@ -147,7 +147,8 @@ struct defs_t {
   double dt;
 
   defs_t(int nprocs, int nthreads)
-      : ncells(ncells_per_grid * lrint(ceil(cbrt(rho * nprocs * nthreads)))),
+      : ncells(ncells_per_grid *
+               lrint(pow(double(rho *nprocs *nthreads), 1 / double(dim)))),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}
 
 private:

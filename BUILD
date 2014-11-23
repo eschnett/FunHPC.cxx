@@ -36,4 +36,4 @@ rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit ux4
 
 
 
-for f in job.n*.s*.c*.p*.t*.m*.r*.log; do grep -H 'Time:' $f | tail -n +3; done
+for f in job-n*.s*.c*.p*.t*.m*.r*.log; do grep -H 'Time:' $f | tail -n +3; done

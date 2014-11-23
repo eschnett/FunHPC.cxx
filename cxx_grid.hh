@@ -390,11 +390,11 @@ public:
   boundaries() {}
   // TODO: Avoid this function, or hide it
   T &operator()(std::ptrdiff_t dir, bool face) {
-    assert(dir >= 0 && dir < D);
+    // assert(dir >= 0 && dir < D);
     return bndss_[face][dir];
   }
   const T &operator()(std::ptrdiff_t dir, bool face) const {
-    assert(dir >= 0 && dir < D);
+    // assert(dir >= 0 && dir < D);
     return bndss_[face][dir];
   }
   struct fmap : std::tuple<> {};

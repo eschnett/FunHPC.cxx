@@ -66,7 +66,7 @@ public:
     return elts[d];
   }
   // Updating
-  vect set(std::ptrdiff_t d, T a) const {
+  vect set(std::ptrdiff_t d, const T &a) const {
     // assert(d >= 0 && d < D);
     vect r(*this);
     r.elts[d] = a;
@@ -235,7 +235,7 @@ public:
   }
 };
 template <typename T, std::ptrdiff_t D>
-auto operator*(T a, const vect<T, D> &i) {
+auto operator*(const T &a, const vect<T, D> &i) {
   return i * a;
 }
 template <typename T, std::ptrdiff_t D>
@@ -265,7 +265,7 @@ template <typename T, std::ptrdiff_t D> auto sum(const vect<T, D> &i) {
 template <typename Op, typename T, std::ptrdiff_t D>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<Op, T, T>::type, T>::value, T>::type
-fold(const Op &op, T z, const vect<T, D> &i) {
+fold(const Op &op, const T &z, const vect<T, D> &i) {
   return i.fold(op, z);
 }
 template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D>

@@ -396,7 +396,8 @@ public:
   struct boundary : tuple<> {};
   grid_t(boundary, const grid_t &g, double t, ptrdiff_t dir, bool face)
       : cells(fmap([t, dir, face](const cell_t &c) {
-                     auto vn = ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir);
+                     auto vn =
+                         vdouble(ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir));
                      return cell_t(cell_t::boundary(), t, c.x + vn * defs->dx);
                    },
                    cells_t(cells_t::boundary(), g.cells, dir, face))) {}

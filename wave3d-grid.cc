@@ -266,16 +266,17 @@ public:
   // Analytic solution
   struct analytic : tuple<> {};
   cell_t(analytic, double t, vdouble x) {
+    double omega = std::sqrt(double(dim));
     this->x = x;
-    u = sin(2 * M_PI * t);
-    rho = 2 * M_PI * cos(2 * M_PI * t);
-    v = vdouble::set1(sin(2 * M_PI * t));
+    u = sin(2 * M_PI * omega * t);
+    rho = 2 * M_PI * omega * cos(2 * M_PI * omega * t);
+    v = vdouble::set1(sin(2 * M_PI * omega * t));
     for (ptrdiff_t j = 0; j < dim; ++j) {
       u *= sin(2 * M_PI * x[j]);
       rho *= sin(2 * M_PI * x[j]);
       for (ptrdiff_t i = 0; i < dim; ++i)
-        v = v.set(i, v[i] * j == i ? 2 * M_PI * cos(2 * M_PI * x[j])
-                                   : sin(2 * M_PI * x[j]));
+        v = v.set(i, v[i] * (j == i ? 2 * M_PI * cos(2 * M_PI * x[j])
+                                    : sin(2 * M_PI * x[j])));
     }
   }
 

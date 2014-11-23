@@ -346,7 +346,7 @@ class grid_t {
 public:
   // only for serialization
   grid_t()
-      : cells(cells_t::iota(), [](vindex i) { return cell_t(); },
+      : cells(cells_t::iota(), [](const vindex &i) { return cell_t(); },
               cxx::grid_region<dim>()) {}
 
   // auto get(vindex i) const -> const cell_t & {
@@ -387,7 +387,7 @@ public:
   struct initial : tuple<> {};
   grid_t(initial, double t, vindex imin)
       : cells(iota<grid_>(
-            [t](vindex i) { return cell_t(cell_t::initial(), t, x(i)); },
+            [t](const vindex &i) { return cell_t(cell_t::initial(), t, x(i)); },
             cxx::grid_region<dim>(
                 imin, min(imin + vindex::set1(defs->ncells_per_grid),
                           vindex::set1(defs->ncells))))) {}

@@ -94,21 +94,21 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 3;
+constexpr ptrdiff_t dim = 1;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 
 struct defs_t {
-#if 1                        // benchmark
-  const ptrdiff_t rho = 100; // resolution scale
+#if 1                       // benchmark
+  const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
   const double xmin = 0.0;
   const double xmax = 1.0;
-  const double cfl = 0.5;
+  const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = 10;
+  const ptrdiff_t nsteps = 8;
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;
@@ -118,12 +118,12 @@ struct defs_t {
 
   const double xmin = 0.0;
   const double xmax = 1.0;
-  const double cfl = 0.5;
+  const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
   const ptrdiff_t nsteps = -1;
-  const ptrdiff_t wait_every = 10;
-  const ptrdiff_t info_every = 10;
+  const ptrdiff_t wait_every = 8;
+  const ptrdiff_t info_every = 8;
   const ptrdiff_t file_every = 0;
 #elif 0 // debug
   const ptrdiff_t rho = 1; // resolution scale
@@ -131,10 +131,10 @@ struct defs_t {
 
   const double xmin = 0.0;
   const double xmax = 1.0;
-  const double cfl = 0.5;
+  const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = -1;
+  const ptrdiff_t nsteps = 8;
   const ptrdiff_t wait_every = 1;
   const ptrdiff_t info_every = 1;
   const ptrdiff_t file_every = 1;

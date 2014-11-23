@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <memory>
 #include <ostream>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -1037,20 +1038,21 @@ iota(const F &f, const grid_region<D> &range, const As &... as) {
 
 // output
 
-template <typename T, std::ptrdiff_t D>
+template <typename T, std::ptrdiff_t D, typename CT = grid<T, D>,
+          template <typename> class C = cxx::kinds<CT>::template constructor>
 std::ostream &operator<<(std::ostream &os, const grid<T, D> &g) {
-  struct detail {
-    template <typename U> using grid_ = grid<U, D>;
-  };
   // TODO: This is not efficient
-  auto is = cxx::iota<detail::template grid_>([](index<D> i) { return i; },
-                                              g.region());
-  fmap2([pos = &os](index<D> i, T x) {
-          *pos << "  " << i << ": " << x << "\n";
-          return std::tuple<>();
-        },
-        is, g);
-  return os;
+  auto is = cxx::iota<C>([](const index<D> &i) { return i; }, g.region());
+  auto ss = fmap2([](const index<D> &i, const T &x) {
+                    std::ostringstream os;
+                    os << "  " << i << ": " << x << "\n";
+                    return os.str();
+                  },
+                  is, g);
+  auto s =
+      fold([](const std::string &xs, const std::string &ys) { return xs + ys; },
+           std::string(), ss);
+  return os << s;
 }
 }
 

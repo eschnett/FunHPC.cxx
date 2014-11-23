@@ -287,7 +287,7 @@ public:
   // Boundary condition
   struct boundary : tuple<> {};
   cell_t(boundary, double t, vdouble x) : cell_t(analytic(), t, x) {}
-  RPC_DECLARE_CONSTRUCTOR(cell_t, boundary, double, vdouble);
+  // RPC_DECLARE_CONSTRUCTOR(cell_t, boundary, double, vdouble);
 
   // Error
   struct error : tuple<> {};
@@ -308,7 +308,7 @@ public:
   }
 };
 RPC_COMPONENT(cell_t);
-RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, vdouble);
+// RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, vdouble);
 
 // Output
 auto operator<<(ostream &os, const cell_t &c) -> ostream & {

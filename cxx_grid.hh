@@ -121,23 +121,14 @@ public:
       elts[d] -= i.elts[d];
     return *this;
   }
-  vect operator+(const vect &i) const {
-    vect r(*this);
-    return r += i;
-  }
-  vect operator-(const vect &i) const {
-    vect r(*this);
-    return r -= i;
-  }
-  vect &operator*=(T a) {
+  vect operator+(const vect &i) const { return vect(*this) += i; }
+  vect operator-(const vect &i) const { return vect(*this) -= i; }
+  vect &operator*=(const T &a) {
     for (std::ptrdiff_t d = 0; d < D; ++d)
       elts[d] *= a;
     return *this;
   }
-  vect operator*(T a) const {
-    vect r(*this);
-    return r *= a;
-  }
+  vect operator*(const T &a) const { return vect(*this) *= a; }
   // Comparisons
   vect operator==(const vect &i) const {
     vect r;

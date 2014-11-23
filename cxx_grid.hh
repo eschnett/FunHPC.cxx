@@ -341,8 +341,8 @@ public:
     return all_of(imin_ == r.imin_ && imax_ == r.imax_);
   }
   bool operator!=(const grid_region &r) const { return !(*this == r); }
-  bool is_sub_region_of(const grid_region &r) const {
-    return all_of(imin_ >= r.imin_ && imax_ <= r.imax_);
+  bool is_subregion_of(const grid_region &r) const {
+    return empty() || all_of(imin_ >= r.imin_ && imax_ <= r.imax_);
   }
   std::ptrdiff_t linear(const index<D> &i) const {
     // assert(all_of(i >= imin_ && i < imax_));

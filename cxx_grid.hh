@@ -833,15 +833,16 @@ public:
   // TODO: hide this function
   grid() : grid(grid_region<D>()) {}
   struct copy : std::tuple<> {};
-  grid(copy, const grid &g) : grid(fmap(), [](T x) { return x; }, region_, g) {}
-  struct sub_region : std::tuple<> {};
-  grid(sub_region, const grid &xs, const grid_region<D> &region)
+  grid(copy, const grid &g)
+      : grid(fmap(), [](const T &x) { return x; }, region_, g) {}
+  struct subregion : std::tuple<> {};
+  grid(subregion, const grid &xs, const grid_region<D> &region)
       : data_(xs.data_), layout_(xs.layout_), region_(region) {
-    assert(region.is_sub_region_of(xs.region_));
+    assert(region.is_subregion_of(xs.region_));
   }
   struct boundary : std::tuple<> {};
   grid(boundary, const grid &xs, std::ptrdiff_t dir, bool face)
-      : grid(sub_region(), xs, xs.region_.boundary(dir, face)) {}
+      : grid(subregion(), xs, xs.region_.boundary(dir, face)) {}
   // foldable
   template <typename F, typename Op, typename R, typename... As>
   typename std::enable_if<
@@ -875,7 +876,7 @@ public:
        const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
        const As &... as)
       : grid(rr) {
-    assert(rr.is_sub_region_of(xs.region_));
+    assert(rr.is_subregion_of(xs.region_));
     grid_fmap<F, D, T, T1, As...>::template fmap<D - 1>(
         f, layout_, data_->data(), xs.layout_,
         xs.data_->data() + xs.layout_.linear(xs.region_.imin()), as...);
@@ -889,8 +890,8 @@ public:
        const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
        const grid<T2, D> &ys, const As &... as)
       : grid(rr) {
-    assert(rr.is_sub_region_of(xs.region_));
-    assert(rr.is_sub_region_of(ys.region_));
+    assert(rr.is_subregion_of(xs.region_));
+    assert(rr.is_subregion_of(ys.region_));
     grid_fmap2<F, D, T, T1, T2, As...>::template fmap2<D - 1>(
         f, layout_, data_->data(), xs.layout_,
         xs.data_->data() + xs.layout_.linear(xs.region_.imin()), ys.layout_,
@@ -909,7 +910,7 @@ public:
        const F &f, const G &g, const grid_region<D> &rr, const grid<T1, D> &xs,
        const boundaries<grid<B, D>, D> &bs, const As &... as)
       : grid(rr) {
-    assert(rr.is_sub_region_of(xs.region_));
+    assert(rr.is_subregion_of(xs.region_));
 #if 0
     boundaries<grid_region<D>, D> brs(
         cxx::fmap([](const grid<B, D> &g) { return g.region_; }, bs));

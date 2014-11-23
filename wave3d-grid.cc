@@ -303,8 +303,7 @@ public:
     for (ptrdiff_t i = 0; i < dim; ++i)
       rho += (bs(i, true).v[i] - bs(i, false).v[i]) / (2 * defs->dx);
     for (ptrdiff_t i = 0; i < dim; ++i)
-      v = v.set(i,
-                v[i] + (bs(i, true).rho - bs(i, false).rho) / (2 * defs->dx));
+      v = v.set(i, (bs(i, true).rho - bs(i, false).rho) / (2 * defs->dx));
   }
 };
 RPC_COMPONENT(cell_t);

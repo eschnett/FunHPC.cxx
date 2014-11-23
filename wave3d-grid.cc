@@ -349,15 +349,6 @@ public:
       : cells(cells_t::iota(), [](const vindex &i) { return cell_t(); },
               cxx::grid_region<dim>()) {}
 
-  // auto get(vindex i) const -> const cell_t & {
-  //   assert(all_of(i >= imin && i < imax));
-  //   return cells[i - imin];
-  // }
-
-  // auto get_boundary(ptrdiff_t dir, bool face) const {
-  //   return cells_t(cells_t::boundary(), cells, dir, face);
-  // }
-
   // Wait until the grid is ready
   auto wait() const { return tuple<>(); }
 
@@ -434,14 +425,6 @@ RPC_COMPONENT(grid_t);
 auto operator<<(ostream &os, const grid_t &g) -> ostream & {
   return os << g.output();
 }
-// auto operator<<(ostream &os, const client<grid_t> &g) -> ostream & {
-//   return os << *g.make_local();
-// }
-
-// auto grid_get_boundary(const client<grid_t> &g, ptrdiff_t dir, bool face) {
-//   return g->get_boundary(dir, face);
-// }
-// RPC_ACTION(grid_get_boundary);
 
 auto grid_wait_foldMap(const client<grid_t> &g) { return g->wait(); }
 RPC_ACTION(grid_wait_foldMap);
@@ -505,14 +488,6 @@ RPC_COMPONENT(grid_<grid_t>);
 struct domain_t {
 
   double t;
-
-  // static auto ngrids() -> ptrdiff_t {
-  //   return div_ceil(defs->ncells, defs->ncells_per_grid);
-  // }
-  // static auto cell2grid(ptrdiff_t icell) -> ptrdiff_t {
-  //   assert(icell >= 0 && icell < defs->ncells);
-  //   return div_floor(icell, defs->ncells_per_grid);
-  // }
 
   typedef grid_<client<grid_t> > grids_t;
   grids_t grids;
@@ -838,11 +813,3 @@ auto rpc_main(int argc, char **argv) -> int {
 #define RPC_IMPLEMENT_NAMED_ACTION(action)                                     \
   RPC_CLASS_EXPORT(action::evaluate);                                          \
   RPC_CLASS_EXPORT(action::finish);
-
-// RPC_IMPLEMENT_NAMED_ACTION(RPC_IDENTITY_TYPE((cxx::detail::bind_action<
-//     cxx::tree<grid_t, vector_, rpc::client>,
-//     cxx::tree_stencil_functor<grid_rhs_action, grid_get_boundary_action,
-//     true,
-//                               grid_t, vector_, rpc::client,
-//                               cell_t>::get_boundary_tree_action,
-//     bool>)));

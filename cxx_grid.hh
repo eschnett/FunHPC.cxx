@@ -344,14 +344,18 @@ public:
   bool is_subregion_of(const grid_region &r) const {
     return empty() || all_of(imin_ >= r.imin_ && imax_ <= r.imax_);
   }
-  std::ptrdiff_t linear(const index<D> &i) const {
-    // assert(all_of(i >= imin_ && i < imax_));
-    std::ptrdiff_t r = 0, off = 1;
+  index<D> strides() const {
+    index<D> r;
+    std::ptrdiff_t str = 1;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
-      r += off * (i[d] - imin_[d]);
-      off *= imax_[d] - imin_[d];
+      r = r.set(d, str);
+      str *= imax_[d] - imin_[d];
     }
     return r;
+  }
+  std::ptrdiff_t linear(const index<D> &i) const {
+    // assert(all_of(i >= imin_ && i < imax_));
+    return dot(strides(), i - imin_);
   }
   grid_region boundary(std::ptrdiff_t dir, bool face) const {
     return grid_region({ imin_.set(dir, !face ? imin_[dir] : imax_[dir] - 1),
@@ -442,7 +446,7 @@ struct grid_foldMap {
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    std::ptrdiff_t xstr = xr.linear(index<D>::dir(d));
+    std::ptrdiff_t xstr = xr.strides()[d];
     T r(z);
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(op, std::move(r),
@@ -455,8 +459,8 @@ struct grid_foldMap {
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.linear(index<D>::dir(d)) == 1);
-// assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(rr.strides()[d] == 1);
+// assert(xr.strides()[d] == 1);
 #pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
                                             as...))) initializer(omp_priv(z))
@@ -486,8 +490,8 @@ struct grid_foldMap2 {
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    std::ptrdiff_t xstr = xr.linear(index<D>::dir(d));
-    std::ptrdiff_t ystr = yr.linear(index<D>::dir(d));
+    std::ptrdiff_t xstr = xr.strides()[d];
+    std::ptrdiff_t ystr = yr.strides()[d];
     T r(z);
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       r = cxx::invoke(op, std::move(r),
@@ -502,9 +506,9 @@ struct grid_foldMap2 {
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.linear(index<D>::dir(d)) == 1);
-// assert(xr.linear(index<D>::dir(d)) == 1);
-// assert(yr.linear(index<D>::dir(d)) == 1);
+// assert(rr.strides()[d] == 1);
+// assert(xr.strides()[d] == 1);
+// assert(yr.strides()[d] == 1);
 #pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
                                             as...))) initializer(omp_priv(z))
@@ -535,8 +539,8 @@ struct grid_fmap {
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    std::ptrdiff_t rstr = rr.linear(index<D>::dir(d));
-    std::ptrdiff_t xstr = xr.linear(index<D>::dir(d));
+    std::ptrdiff_t rstr = rr.strides()[d];
+    std::ptrdiff_t xstr = xr.strides()[d];
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap<d - 1>(f, rr, rs + a * rstr, xr, xs + a * xstr, as...);
   }
@@ -546,8 +550,8 @@ struct grid_fmap {
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.linear(index<D>::dir(d)) == 1);
-// assert(xr.linear(index<D>::dir(d)) == 1);
+// assert(rr.strides()[d] == 1);
+// assert(xr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap<d - 1>(f, rr, rs + a, xr, xs + a, as...);
@@ -571,9 +575,9 @@ struct grid_fmap2 {
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    std::ptrdiff_t rstr = rr.linear(index<D>::dir(d));
-    std::ptrdiff_t xstr = xr.linear(index<D>::dir(d));
-    std::ptrdiff_t ystr = yr.linear(index<D>::dir(d));
+    std::ptrdiff_t rstr = rr.strides()[d];
+    std::ptrdiff_t xstr = xr.strides()[d];
+    std::ptrdiff_t ystr = yr.strides()[d];
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap2<d - 1>(f, rr, rs + a * rstr, xr, xs + a * xstr, yr, ys + a * ystr,
                    as...);
@@ -585,9 +589,9 @@ struct grid_fmap2 {
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.linear(index<D>::dir(d)) == 1);
-// assert(xr.linear(index<D>::dir(d)) == 1);
-// assert(yr.linear(index<D>::dir(d)) == 1);
+// assert(rr.strides()[d] == 1);
+// assert(xr.strides()[d] == 1);
+// assert(yr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap2<d - 1>(f, rr, rs + a, xr, xs + a, yr, ys + a, as...);
@@ -616,8 +620,8 @@ struct grid_stencil_fmap {
                const boundaries<grid_region<D>, D> &brs,
                const boundaries<const B * restrict, D> &bss, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[dir];
-    std::ptrdiff_t rstr = rr.linear(index<D>::dir(dir));
-    std::ptrdiff_t xstr = xr.linear(index<D>::dir(dir));
+    std::ptrdiff_t rstr = rr.strides()[dir];
+    std::ptrdiff_t xstr = xr.strides()[dir];
     if (nelts == 1) {
       // both boundaries
       constexpr std::size_t newisouters =
@@ -627,7 +631,7 @@ struct grid_stencil_fmap {
       for (std::ptrdiff_t f = 0; f < 2; ++f)
         for (std::ptrdiff_t d = 0; d < D; ++d)
           if (d != dir)
-            newbss(d, f) += a * brs(d, f).linear(index<D>::dir(dir));
+            newbss(d, f) += a * brs(d, f).strides()[dir];
       stencil_fmap<dir - 1, newisouters>(f, g, rr, rs + a * rstr, xr,
                                          xs + a * xstr, brs, newbss, as...);
     } else if (nelts > 1) {
@@ -639,7 +643,7 @@ struct grid_stencil_fmap {
         for (std::ptrdiff_t f = 0; f < 2; ++f)
           for (std::ptrdiff_t d = 0; d < D; ++d)
             if (d != dir)
-              newbss(d, f) += a * brs(d, f).linear(index<D>::dir(dir));
+              newbss(d, f) += a * brs(d, f).strides()[dir];
         stencil_fmap<dir - 1, newisouters>(f, g, rr, rs + a * rstr, xr,
                                            xs + a * xstr, brs, newbss, as...);
       }
@@ -650,7 +654,7 @@ struct grid_stencil_fmap {
         for (std::ptrdiff_t f = 0; f < 2; ++f)
           for (std::ptrdiff_t d = 0; d < D; ++d)
             if (d != dir)
-              newbss(d, f) += a * brs(d, f).linear(index<D>::dir(dir));
+              newbss(d, f) += a * brs(d, f).strides()[dir];
         stencil_fmap<dir - 1, newisouters>(f, g, rr, rs + a * rstr, xr,
                                            xs + a * xstr, brs, newbss, as...);
       }
@@ -662,7 +666,7 @@ struct grid_stencil_fmap {
         for (std::ptrdiff_t f = 0; f < 2; ++f)
           for (std::ptrdiff_t d = 0; d < D; ++d)
             if (d != dir)
-              newbss(d, f) += a * brs(d, f).linear(index<D>::dir(dir));
+              newbss(d, f) += a * brs(d, f).strides()[dir];
         stencil_fmap<dir - 1, newisouters>(f, g, rr, rs + a * rstr, xr,
                                            xs + a * xstr, brs, newbss, as...);
       }
@@ -676,11 +680,11 @@ struct grid_stencil_fmap {
                const boundaries<grid_region<D>, D> &brs,
                const boundaries<const B * restrict, D> &bss, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[dir];
-    // assert(rr.linear(index<D>::dir(dir)) == 1);
-    // assert(xr.linear(index<D>::dir(dir)) == 1);
+    // assert(rr.strides()[dir] == 1);
+    // assert(xr.strides()[dir] == 1);
     // for (std::ptrdiff_t f = 0; f < 2; ++f)
     //   for (std::ptrdiff_t d = 0; d < D; ++d)
-    //     assert(brs(d, f).linear(index<D>::dir(dir)) == 1);
+    //     assert(brs(d, f).strides()[dir] == 1);
     if (nelts == 1) {
       // both boundaries
       constexpr std::size_t newisouters =
@@ -743,8 +747,8 @@ struct grid_stencil_fmap {
     for (std::ptrdiff_t f = 0; f < 2; ++f) {
       for (std::ptrdiff_t d = 0; d < D; ++d) {
         bool isouter = isouters & bit(2 * d + f);
-        auto off = (!f ? -1 : +1) * xr.linear(index<D>::dir(d));
-        newbs(d, f) = isouter ? *bss(d, f) : cxx::invoke(g, xs[off], d, f);
+        auto off = (!f ? -1 : +1) * xr.strides()[d];
+        newbs(d, f) = isouter ? *bss(d, f) : cxx::invoke(g, xs[off], d, !f);
       }
     }
     *rs = cxx::invoke(f, *xs, newbs, as...);
@@ -757,26 +761,26 @@ struct grid_iota {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
   static typename std::enable_if<(d > 0 && d < D), void>::type
-  iota(const F &f, const grid_region<D> &rr, T *restrict rs, index<D> i,
+  iota(const F &f, const grid_region<D> &rr, T *restrict rs, index<D> imin,
        const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-    std::ptrdiff_t rstr = rr.linear(index<D>::dir(d));
+    std::ptrdiff_t rstr = rr.strides()[d];
     for (std::ptrdiff_t a = 0; a < nelts; ++a) {
-      index<D> j = i + a * index<D>::dir(d);
-      iota<d - 1>(f, rr, rs + a * rstr, j, as...);
+      index<D> i = imin + a * index<D>::dir(d);
+      iota<d - 1>(f, rr, rs + a * rstr, i, as...);
     }
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
   static typename std::enable_if<(d == 0 && d < D), void>::type
-  iota(const F &f, const grid_region<D> &rr, T *restrict rs, index<D> i,
+  iota(const F &f, const grid_region<D> &rr, T *restrict rs, index<D> imin,
        const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.linear(index<D>::dir(d)) == 1);
+// assert(rr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a) {
-      index<D> j = i + a * index<D>::dir(d);
-      iota<d - 1>(f, rr, rs + a, j, as...);
+      index<D> i = imin + a * index<D>::dir(d);
+      iota<d - 1>(f, rr, rs + a, i, as...);
     }
   }
   // Terminating case for single elements
@@ -819,7 +823,7 @@ template <typename T, std::ptrdiff_t D> class grid {
 public:
   bool invariant() const {
     return bool(data_) && layout_.size() == data_->size() &&
-           region_.is_sub_region_of(layout_);
+           region_.is_subregion_of(layout_);
   }
   grid_region<D> region() const { return region_; }
   bool empty() const { return region_.empty(); }
@@ -847,7 +851,7 @@ public:
   foldMap(const F &f, const Op &op, const R &z, const As &... as) const {
     return grid_foldMap<F, Op, D, R, T, As...>::template foldMap<D - 1>(
         f, op, z, region_, layout_,
-        data_->data() + layout_.linear(region_.imin() - layout_.imin()), as...);
+        data_->data() + layout_.linear(region_.imin()), as...);
   }
   template <typename F, typename Op, typename R, typename T1, typename... As>
   typename std::enable_if<
@@ -859,11 +863,8 @@ public:
     assert(region_.is_subregion_of(ys.region_));
     return grid_foldMap2<F, Op, D, R, T, T1, As...>::template foldMap2<D - 1>(
         f, op, z, region_, layout_,
-        data_->data() + layout_.linear(region_.imin() - layout_.imin()),
-        ys.layout_,
-        ys.data_->data() +
-            ys.layout_.linear(ys.region_.imin() - ys.layout_.imin()),
-        as...);
+        data_->data() + layout_.linear(region_.imin()), ys.layout_,
+        ys.data_->data() + ys.layout_.linear(ys.region_.imin()), as...);
   }
   // functor
   struct fmap : std::tuple<> {};
@@ -877,9 +878,7 @@ public:
     assert(rr.is_sub_region_of(xs.region_));
     grid_fmap<F, D, T, T1, As...>::template fmap<D - 1>(
         f, layout_, data_->data(), xs.layout_,
-        xs.data_->data() +
-            xs.layout_.linear(xs.region_.imin() - xs.layout_.imin()),
-        as...);
+        xs.data_->data() + xs.layout_.linear(xs.region_.imin()), as...);
   }
   struct fmap2 : std::tuple<> {};
   template <typename F, typename T1, typename T2, typename... As>
@@ -894,12 +893,8 @@ public:
     assert(rr.is_sub_region_of(ys.region_));
     grid_fmap2<F, D, T, T1, T2, As...>::template fmap2<D - 1>(
         f, layout_, data_->data(), xs.layout_,
-        xs.data_->data() +
-            xs.layout_.linear(xs.region_.imin() - xs.layout_.imin()),
-        ys.layout_,
-        ys.data_->data() +
-            ys.layout_.linear(ys.region_.imin() - ys.layout_.imin()),
-        as...);
+        xs.data_->data() + xs.layout_.linear(xs.region_.imin()), ys.layout_,
+        ys.data_->data() + ys.layout_.linear(ys.region_.imin()), as...);
   }
   struct stencil_fmap : std::tuple<> {};
   template <typename F, typename G, typename T1, typename B, typename... As>
@@ -948,7 +943,7 @@ public:
        const F &f, const grid_region<D> &rr, const As &... as)
       : grid(rr) {
     grid_iota<F, D, T, As...>::template iota<D - 1>(f, layout_, data_->data(),
-                                                    layout_.imin(), as...);
+                                                    region_.imin(), as...);
   }
 };
 

@@ -1143,6 +1143,7 @@ struct tree_stencil_functor<F, G, true, T, C, P, B> {
     } else {
       values[0] =
           cxx::fmap3(F(), l.values[0], bm, cxx::fmap(G(), l.values[1], false));
+#pragma omp simd
       for (std::size_t i = 1; i < s - 1; ++i) {
         values[i] =
             cxx::fmap3(F(), l.values[i], cxx::fmap(G(), l.values[i - 1], true),
@@ -1170,6 +1171,7 @@ struct tree_stencil_functor<F, G, true, T, C, P, B> {
       trees[0] =
           cxx::fmap(stencil_fmap_tree_action(), b.trees[0], bm,
                     cxx::mbind(b.trees[1], get_boundary_tree_action(), false));
+#pragma omp simd
       for (std::size_t i = 1; i < s - 1; ++i) {
         trees[i] = cxx::fmap(
             stencil_fmap_tree_action(), b.trees[i],

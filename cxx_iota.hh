@@ -109,6 +109,7 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   C<T> rs;
   assert(rs.size() == s);
+#pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, range.local.imin + i * range.local.istep, as...);
   return rs;
@@ -165,6 +166,7 @@ typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
 iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   C<T> rs(s);
+#pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, range.local.imin + i * range.local.istep, as...);
   return rs;

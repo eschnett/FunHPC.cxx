@@ -486,17 +486,17 @@ template <template <typename> class C> bool or_(const C<bool> &xs) {
   return fold(std::logical_or<bool>(), false, xs);
 }
 
-template <template <typename> class C, typename F, typename T>
+template <typename F, typename CT, typename T = typename CT::value_type>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
-any(const F &f, const C<T> &xs) {
+any_of(const F &f, const CT &xs) {
   return foldMap(f, std::logical_or<bool>(), false, xs);
 }
 
-template <template <typename> class C, typename F, typename T>
+template <typename F, typename CT, typename T = typename CT::value_type>
 typename std::enable_if<
     std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
-all(const F &f, const C<T> &xs) {
+all_of(const F &f, const CT &xs) {
   return foldMap(f, std::logical_and<bool>(), true, xs);
 }
 
@@ -515,12 +515,12 @@ std::vector<T> to_vector(const C<T> &xs) {
 
 template <template <typename> class C, typename T>
 bool elem(const T &x, const C<T> &ys) {
-  return any([x](const T &y) { return x == y; }, ys);
+  return any_of([x](const T &y) { return x == y; }, ys);
 }
 
 template <template <typename> class C, typename T>
 bool not_elem(const T &x, const C<T> &ys) {
-  return all([x](const T &y) { return x != y; }, ys);
+  return all_of([x](const T &y) { return x != y; }, ys);
 }
 
 template <template <typename> class C, typename T, typename F>

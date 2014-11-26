@@ -27,44 +27,33 @@ mmake(As &&... as) {
 }
 
 template <typename T, typename F, typename... As,
-          typename CT = std::shared_ptr<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
-          typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_shared_ptr<CR>::value, C<R> >::type
-mbind(const std::shared_ptr<T> &xs, const F &f, const As &... as) {
+          typename CR = typename cxx::invoke_of<F, T, As...>::type>
+auto mbind(const std::shared_ptr<T> &xs, const F &f, const As &... as) {
+  static_assert(cxx::is_shared_ptr<CR>::value, "");
   if (!xs)
-    return C<R>();
+    return CR();
   return cxx::invoke(f, *xs, std::forward<As>(as)...);
 }
-template <typename T, typename F, typename... As,
-          typename CT = std::shared_ptr<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
-          typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_shared_ptr<CR>::value, C<R> >::type
-operator>>=(const std::shared_ptr<T> &xs, const F &f) {
+template <typename T, typename F, typename... As>
+auto operator>>=(const std::shared_ptr<T> &xs, const F &f) {
+  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  static_assert(cxx::is_shared_ptr<CR>::value, "");
   return cxx::mbind(xs, f);
 }
 
-template <typename T, typename R, typename CT = std::shared_ptr<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> mbind0(const std::shared_ptr<T> &, const std::shared_ptr<R> &rs) {
+template <typename T, typename R>
+auto mbind0(const std::shared_ptr<T> &, const std::shared_ptr<R> &rs) {
   return rs;
 }
-template <typename T, typename R, typename CT = std::shared_ptr<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> operator>>(const std::shared_ptr<T> &xs, const std::shared_ptr<R> &rs) {
+template <typename T, typename R>
+auto operator>>(const std::shared_ptr<T> &xs, const std::shared_ptr<R> &rs) {
   return cxx::mbind0(xs, rs);
 }
 
-template <typename T, typename CCT = std::shared_ptr<std::shared_ptr<T> >,
-          template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::value_type,
-          template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> mjoin(const std::shared_ptr<std::shared_ptr<T> > &xss) {
+template <typename T>
+auto mjoin(const std::shared_ptr<std::shared_ptr<T> > &xss) {
   if (!xss)
-    return C<T>();
+    return std::shared_ptr<T>();
   return *xss;
 }
 
@@ -73,13 +62,12 @@ C<T> mjoin(const std::shared_ptr<std::shared_ptr<T> > &xss) {
 template <typename F, typename IT, typename... As,
           typename T = typename IT::value_type,
           typename CR = typename cxx::invoke_of<F, T, As...>::type,
-          template <typename> class C = cxx::kinds<CR>::template constructor,
-          typename R = typename cxx::kinds<CR>::value_type>
+          template <typename> class C = cxx::kinds<CR>::template constructor>
 typename std::enable_if<cxx::is_shared_ptr<CR>::value, C<std::tuple<> > >::type
 mapM_(const F &f, const IT &xs, const As &... as) {
   C<std::tuple<> > rs;
   for (const T &x : xs) {
-    C<R> ys = cxx::invoke(f, x, as...);
+    CR ys = cxx::invoke(f, x, as...);
     if (!ys.empty())
       if (!rs)
         rs = munit<C>(std::tuple<>());

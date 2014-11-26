@@ -29,45 +29,35 @@ mmake(As &&... as) {
   return rs;
 }
 
-template <typename T, typename F, typename... As, typename CT = std::vector<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
-          typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_vector<CR>::value, C<R> >::type
-mbind(const std::vector<T> &xs, const F &f, const As &... as) {
-  C<R> rs;
+template <typename T, typename F, typename... As>
+auto mbind(const std::vector<T> &xs, const F &f, const As &... as) {
+  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  static_assert(cxx::is_vector<CR>::value, "");
+  CR rs;
   for (const auto &x : xs) {
-    C<R> y = cxx::invoke(f, x, as...);
+    CR y = cxx::invoke(f, x, as...);
     std::move(y.begin(), y.end(), std::inserter(rs, rs.end()));
   }
   return rs;
 }
-template <typename T, typename F, typename... As, typename CT = std::vector<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
-          typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_vector<CR>::value, C<R> >::type
-operator>>=(const std::vector<T> &xs, const F &f) {
+template <typename T, typename F, typename... As>
+auto operator>>=(const std::vector<T> &xs, const F &f) {
+  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  static_assert(cxx::is_vector<CR>::value, "");
   return cxx::mbind(xs, f);
 }
 
-template <typename T, typename R, typename CT = std::vector<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> mbind0(const std::vector<T> &, const std::vector<R> &rs) {
+template <typename T, typename R>
+auto mbind0(const std::vector<T> &, const std::vector<R> &rs) {
   return rs;
 }
-template <typename T, typename R, typename CT = std::vector<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-C<R> operator>>(const std::vector<T> &xs, const std::vector<R> &rs) {
+template <typename T, typename R>
+auto operator>>(const std::vector<T> &xs, const std::vector<R> &rs) {
   return cxx::mbind0(xs, rs);
 }
 
-template <typename T, typename CCT = std::vector<std::vector<T> >,
-          template <typename> class C = cxx::kinds<CCT>::template constructor,
-          typename CT = typename cxx::kinds<CCT>::value_type,
-          template <typename> class C2 = cxx::kinds<CT>::template constructor>
-C<T> mjoin(const std::vector<std::vector<T> > &xss) {
-  C<T> rs;
+template <typename T> auto mjoin(const std::vector<std::vector<T> > &xss) {
+  std::vector<T> rs;
   for (const auto &xs : xss) {
     rs.insert(rs.end(), xs.begin(), xs.end());
   }
@@ -169,29 +159,20 @@ typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
-template <typename T, typename... As, typename CT = std::vector<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
-mplus(const std::vector<T> &xs, const As &... as) {
-  C<T> rs(xs);
-  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
-  for (size_t i = 0; i < xss.size(); ++i)
-    rs.insert(rs.end(), xss[i]->begin(), xss[i]->end());
+template <typename T, typename... Ts>
+auto mplus(const std::vector<T> &xs, const std::vector<Ts> &... xss) {
+  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
+  auto rs(xs);
+  for (auto ys : { &xss... })
+    rs.insert(rs.end(), ys->begin(), ys->end());
   return rs;
 }
 
-template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_vector<C<T> >::value &&
-                            cxx::all<std::is_same<As, T>::value...>::value,
-                        C<T> >::type
-msome(const T &x, const As &... as) {
-  C<T> rs;
-  rs.push_back(x);
-  std::array<const T *, sizeof...(As)> xs{ { &as... } };
-  for (size_t i = 0; i < xs.size(); ++i)
-    rs.push_back(*xs[i]);
-  return rs;
+template <template <typename> class C, typename T, typename... Ts>
+typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
+msome(const T &x, const Ts &... xs) {
+  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
+  return C<T>({ x, xs... });
 }
 
 template <typename FCT,

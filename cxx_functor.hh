@@ -144,7 +144,7 @@ C<R> fmap2(const F &f, const std::shared_ptr<T> &xs,
   assert(bool(ys) == s);
   if (s == false)
     return std::make_shared<R>();
-  return std::make_shared<R>(cxx::invoke(f, *xs, &ys, as...));
+  return std::make_shared<R>(cxx::invoke(f, *xs, *ys, as...));
 }
 
 template <typename F, typename T, typename T2, typename T3, typename... As,

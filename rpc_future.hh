@@ -189,6 +189,27 @@ C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
              xs, ys, as...).share();
 }
 
+template <typename F, typename T, typename T2, typename T3, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, T3, As...>::type>
+C<R> fmap3(const F &f, const rpc::shared_future<T> &xs,
+           const rpc::shared_future<T2> &ys, const rpc::shared_future<T3> &zs,
+           const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  assert(zs.valid() == s);
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async(
+             [f](const rpc::shared_future<T> xs,
+                 const rpc::shared_future<T2> ys,
+                 const rpc::shared_future<T3> zs, const As &... as) -> R {
+               return cxx::invoke(f, xs.get(), ys.get(), zs.get(), as...);
+             },
+             xs, ys, zs, as...).share();
+}
+
 // monad
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we

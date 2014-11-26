@@ -3,6 +3,7 @@
 
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
+#include "cxx_utils.hh"
 
 #include <cereal/access.hpp>
 

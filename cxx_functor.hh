@@ -147,6 +147,21 @@ C<R> fmap2(const F &f, const std::shared_ptr<T> &xs,
   return std::make_shared<R>(cxx::invoke(f, *xs, &ys, as...));
 }
 
+template <typename F, typename T, typename T2, typename T3, typename... As,
+          typename CT = std::shared_ptr<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = typename cxx::invoke_of<F, T, T2, T3, As...>::type>
+C<R> fmap3(const F &f, const std::shared_ptr<T> &xs,
+           const std::shared_ptr<T2> &ys, const std::shared_ptr<T3> &zs,
+           const As &... as) {
+  bool s = bool(xs);
+  assert(bool(ys) == s);
+  assert(bool(zs) == s);
+  if (s == false)
+    return std::make_shared<R>();
+  return std::make_shared<R>(cxx::invoke(f, *xs, *ys, *zs, as...));
+}
+
 // vector
 
 namespace detail {

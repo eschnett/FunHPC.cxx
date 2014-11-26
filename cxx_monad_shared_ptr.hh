@@ -153,16 +153,13 @@ typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
-template <typename T, typename... As, typename CT = std::shared_ptr<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
-mplus(const std::shared_ptr<T> &xs, const As &... as) {
-  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
-  for (size_t i = 0; i < xss.size(); ++i)
-    if (*xss[i])
-      return *xss[i];
-  return mzero<C, T>();
+template <typename T, typename... Ts>
+auto mplus(const std::shared_ptr<T> &xs, const std::shared_ptr<Ts> &... xss) {
+  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
+  for (auto ys : { &xs, &xss... })
+    if (*ys)
+      return *ys;
+  return std::shared_ptr<T>();
 }
 
 template <template <typename> class C, typename T>

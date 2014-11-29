@@ -39,7 +39,7 @@ void swap(nested<T, Outer, Inner> &x, nested<T, Outer, Inner> &y) {
   x.swap(y);
 }
 
-// kinds
+// Kinds
 
 template <typename T, template <typename> class Outer,
           template <typename> class Inner>
@@ -52,40 +52,20 @@ template <typename T, template <typename> class Outer,
           template <typename> class Inner>
 struct is_nested<nested<T, Outer, Inner> > : std::true_type {};
 
-// foldable
+// Iota
 
-template <typename F, typename Op, typename R, typename T,
-          template <typename> class Outer, template <typename> class Inner,
-          typename... As>
-auto foldMap(const F &f, const Op &op, const R &z,
-             const nested<T, Outer, Inner> &xs, const As &... as) {
-  return foldMap([&f, &op, &z](const Inner<T> &xs, const As &... as) {
-                   return foldMap(f, op, z, xs, as...);
-                 },
-                 op, z, xs.values, as...);
-}
-
-template <typename F, typename Op, typename R, typename T,
-          template <typename> class Outer, template <typename> class Inner,
-          typename T2, typename... As>
-auto foldMap2(const F &f, const Op &op, const R &z,
-              const nested<T, Outer, Inner> &xs,
-              const nested<T2, Outer, Inner> &ys, const As &... as) {
-  return foldMap2(
-      [&f, &op, &z](const Inner<T> &xs, const Inner<T2> &ys, const As &... as) {
-        return foldMap2(f, op, z, xs, ys, as...);
+template <template <typename> class C, typename F, typename... As,
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_nested<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
+  return C<T>(iota<C<T>::template outer>(
+      [&f](std::ptrdiff_t i, const As &... as) {
+        return munit<C<T>::template inner>(cxx::invoke(f, i, as...));
       },
-      op, z, xs.values, ys.values, as...);
+      range, as...));
 }
 
-template <typename Op, typename R, typename T, template <typename> class Outer,
-          template <typename> class Inner, typename... As>
-auto fold(const Op &op, const R &z, const nested<T, Outer, Inner> &xs,
-          const As &... as) {
-  return foldMap([](const T &x) { return x; }, op, z, xs, as...);
-}
-
-// functor
+// Functor
 
 template <typename F, typename T, template <typename> class Outer,
           template <typename> class Inner, typename... As>
@@ -133,7 +113,53 @@ auto stencil_fmap(const F &f, const G &g, const nested<T, Outer, Inner> &xs,
       xs.values, munit<Inner>(bm), munit<Inner>(bp), as...));
 }
 
-// monad
+// Foldable
+
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class Outer, template <typename> class Inner,
+          typename... As>
+auto foldMap(const F &f, const Op &op, const R &z,
+             const nested<T, Outer, Inner> &xs, const As &... as) {
+  return foldMap([&f, &op, &z](const Inner<T> &x, const As &... as) {
+                   return foldMap(f, op, z, x, as...);
+                 },
+                 op, z, xs.values, as...);
+}
+
+template <typename F, typename Op, typename R, typename T,
+          template <typename> class Outer, template <typename> class Inner,
+          typename T2, typename... As>
+auto foldMap2(const F &f, const Op &op, const R &z,
+              const nested<T, Outer, Inner> &xs,
+              const nested<T2, Outer, Inner> &ys, const As &... as) {
+  return foldMap2(
+      [&f, &op, &z](const Inner<T> &xs, const Inner<T2> &ys, const As &... as) {
+        return foldMap2(f, op, z, xs, ys, as...);
+      },
+      op, z, xs.values, ys.values, as...);
+}
+
+template <typename Op, typename R, typename T, template <typename> class Outer,
+          template <typename> class Inner, typename... As>
+auto fold(const Op &op, const R &z, const nested<T, Outer, Inner> &xs,
+          const As &... as) {
+  return foldMap([](const T &x) { return x; }, op, z, xs, as...);
+}
+
+template <typename T, template <typename> class Outer,
+          template <typename> class Inner>
+const T &head(const nested<T, Outer, Inner> &xs) {
+  assert(!xs.empty());
+  return head(head(xs.values));
+}
+template <typename T, template <typename> class Outer,
+          template <typename> class Inner>
+const T &last(const nested<T, Outer, Inner> &xs) {
+  assert(!xs.empty());
+  return last(last(xs.values));
+}
+
+// Monad
 
 template <template <typename> class C, typename T1,
           typename T = typename std::decay<T1>::type,
@@ -179,6 +205,20 @@ auto mjoin(const nested<nested<T, Outer, Inner>, Outer, Inner> &xss) {
   }));
 }
 
+template <template <typename> class C, typename T,
+          std::enable_if_t<is_nested<C<T> >::value> * = nullptr>
+auto mzero() {
+  return C<T>();
+}
+
+template <template <typename> class C, typename T, typename... Ts,
+          std::enable_if_t<is_nested<C<T> >::value> * = nullptr>
+auto msome(const T &x, const Ts &... xs) {
+  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
+  return C<T>(msome<C<T>::template outer>(munit<C<T>::template inner>(x),
+                                          munit<C<T>::template inner>(xs)...));
+}
+
 template <typename T, template <typename> class Outer,
           template <typename> class Inner, typename... Ts,
           typename CT = nested<T, Outer, Inner>,
@@ -187,11 +227,6 @@ auto mplus(const nested<T, Outer, Inner> &xs,
            const nested<Ts, Outer, Inner> &... yss) {
   static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
   return C<T>(mplus(xs.values, yss.values...));
-}
-
-template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type mzero() {
-  return C<T>();
 }
 }
 

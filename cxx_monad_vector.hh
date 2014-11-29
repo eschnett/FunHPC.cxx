@@ -35,7 +35,7 @@ auto mbind(const std::vector<T> &xs, const F &f, const As &... as) {
   static_assert(cxx::is_vector<CR>::value, "");
   CR rs;
   for (const auto &x : xs) {
-    CR y = cxx::invoke(f, x, as...);
+    CR y(cxx::invoke(f, x, as...));
     std::move(y.begin(), y.end(), std::inserter(rs, rs.end()));
   }
   return rs;
@@ -75,7 +75,7 @@ typename std::enable_if<cxx::is_vector<CR>::value, C<std::tuple<> > >::type
 mapM_(const F &f, const IT &xs, const As &... as) {
   C<std::tuple<> > rs;
   for (const T &x : xs) {
-    C<R> ys = cxx::invoke(f, x, as...);
+    C<R> ys(cxx::invoke(f, x, as...));
     for (const R &y : ys)
       rs.push_back(std::tuple<>());
   }
@@ -121,7 +121,7 @@ typename std::enable_if<cxx::is_vector<CR>::value && std::is_same<R1, R>::value,
 foldM(const F &f, const R &z, const IT &xs, const As &... as) {
   C<R> rs;
   for (const T &x : xs) {
-    C<R> ys = cxx::invoke(f, z, x, as...);
+    C<R> ys(cxx::invoke(f, z, x, as...));
     std::move(ys.begin(), ys.end(), std::inserter(rs, rs.end()));
   }
   return std::move(rs);
@@ -139,7 +139,7 @@ typename std::enable_if<cxx::is_vector<CR>::value && std::is_same<R1, R>::value,
 foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
   C<std::tuple<> > rs;
   for (const T &x : xs) {
-    C<R> ys = cxx::invoke(f, z, x, as...);
+    C<R> ys(cxx::invoke(f, z, x, as...));
     for (const R &y : ys)
       rs.push_back(std::tuple<>());
   }

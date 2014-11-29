@@ -81,6 +81,9 @@ template <typename T> struct is_shared_future : std::false_type {};
 template <typename T>
 struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 
+template <typename T>
+struct is_async<rpc::shared_future<T> > : std::true_type {};
+
 // foldable
 template <typename Op, typename R, typename... As,
           typename CR = rpc::shared_future<R>,
@@ -93,6 +96,15 @@ fold(const Op &op, const R &z, const rpc::shared_future<R> &xs,
   bool s = xs.valid();
   if (s == false)
     return z;
+  return xs.get();
+}
+
+template <typename T> auto head(const rpc::shared_future<T> &xs) {
+  assert(xs.valid());
+  return xs.get();
+}
+template <typename T> auto last(const rpc::shared_future<T> &xs) {
+  assert(xs.valid());
   return xs.get();
 }
 

@@ -56,6 +56,15 @@ auto fold(const Op &op, const R &z, const std::array<R, N> &xs,
   return std::move(r);
 }
 
+template <typename T, std::size_t N> const T &head(const std::array<T, N> &xs) {
+  assert(!xs.empty());
+  return xs.front();
+}
+template <typename T, std::size_t N> const T &last(const std::array<T, N> &xs) {
+  assert(!xs.empty());
+  return xs.back();
+}
+
 template <typename F, typename Op, typename R, typename T, std::size_t N,
           typename... As>
 auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
@@ -109,6 +118,15 @@ auto fold(const Op &op, R r, const std::list<R> &xs, const As &... as) {
   return std::move(r);
 }
 
+template <typename T> const T &head(const std::list<T> &xs) {
+  assert(!xs.empty());
+  return xs.front();
+}
+template <typename T> const T &last(const std::list<T> &xs) {
+  assert(!xs.empty());
+  return xs.back();
+}
+
 template <typename F, typename Op, typename R, typename T, typename... As>
 auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
              const As &... as) {
@@ -152,6 +170,15 @@ auto fold(const Op &op, const R &z, const std::set<R> &xs, const As &... as) {
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
   return std::move(r);
+}
+
+template <typename T> const T &head(const std::set<T> &xs) {
+  assert(!xs.empty());
+  return xs.front();
+}
+template <typename T> const T &last(const std::set<T> &xs) {
+  assert(!xs.empty());
+  return xs.back();
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -198,6 +225,14 @@ auto fold(const Op &op, const R &z, const std::shared_ptr<R> &xs,
   if (s)
     r = cxx::invoke(op, std::move(r), *xs, as...);
   return std::move(r);
+
+template <typename T> const T &head(const std::shared_ptr<T> &xs) {
+  assert(bool(xs));
+  return *xs;
+}
+template <typename T> const T &last(const std::shared_ptr<T> &xs) {
+  assert(bool(xs));
+  return *xs;
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -240,6 +275,15 @@ auto fold(const Op &op, const R &z, const std::vector<R> &xs,
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
   return std::move(r);
+}
+
+template <typename T> const T &head(const std::vector<T> &xs) {
+  assert(!xs.empty());
+  return xs.front();
+}
+template <typename T> const T &last(const std::vector<T> &xs) {
+  assert(!xs.empty());
+  return xs.back();
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>

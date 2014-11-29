@@ -115,6 +115,15 @@ fold(const Op &op, const R &z, const maybe<R> &xs, const As &... as) {
   return xs.just();
 }
 
+template <typename T> const T &head(const maybe<T> &xs) {
+  assert(xs.is_just());
+  return xs.just();
+}
+template <typename T> const T &last(const maybe<T> &xs) {
+  assert(xs.is_just());
+  return xs.just();
+}
+
 template <typename F, typename Op, typename R, typename T, typename... As>
 typename std::enable_if<
     (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&

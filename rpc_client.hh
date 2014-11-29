@@ -324,6 +324,8 @@ template <typename T> struct kinds<rpc::client<T> > {
 template <typename T> struct is_client : std::false_type {};
 template <typename T> struct is_client<rpc::client<T> > : std::true_type {};
 
+template <typename T> struct is_async<rpc::client<T> > : std::true_type {};
+
 // foldable
 
 // TODO: Allow additional arguments for fold?
@@ -382,6 +384,15 @@ typename client_fold<Op, true, R>::fold_client_finish_export_t
 template <typename F, typename Op, bool is_action, typename R, typename T,
           typename... As>
 struct client_foldable;
+
+template <typename T> auto head(const rpc::client<T> &xs) {
+  assert(bool(xs));
+  return *xs;
+}
+template <typename T> auto last(const rpc::client<T> &xs) {
+  assert(bool(xs));
+  return *xs;
+}
 
 template <typename F, typename Op, typename R, typename T, typename... As>
 typename std::enable_if<

@@ -153,6 +153,12 @@ typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
+template <template <typename> class C, typename T>
+typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
+msome(T &&x) {
+  return munit<C>(std::forward<T>(x));
+}
+
 template <typename T, typename... Ts>
 auto mplus(const std::shared_ptr<T> &xs, const std::shared_ptr<Ts> &... xss) {
   static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
@@ -160,12 +166,6 @@ auto mplus(const std::shared_ptr<T> &xs, const std::shared_ptr<Ts> &... xss) {
     if (*ys)
       return *ys;
   return std::shared_ptr<T>();
-}
-
-template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
-msome(T &&x) {
-  return munit<C>(std::forward<T>(x));
 }
 
 template <typename FCT,

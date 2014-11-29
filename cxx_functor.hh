@@ -212,7 +212,7 @@ auto stencil_fmap(const F &f, const G &g, const std::vector<T, Allocator> &xs,
   std::vector<R /* Allocator*/> rs(s);
   if (s == 1) {
     rs[0] = cxx::invoke(f, xs[0], bm, bp, as...);
-  } else {
+  } else if (s > 1) {
     rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], false), as...);
 #pragma omp simd
     for (size_t i = 1; i < s - 1; ++i)

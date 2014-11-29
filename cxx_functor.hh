@@ -128,7 +128,7 @@ auto fmap2(const F &f, const std::shared_ptr<T> &xs,
   bool s = bool(xs);
   assert(bool(ys) == s);
   if (s == false)
-    return std::make_shared<R>();
+    return std::shared_ptr<R>();
   return std::make_shared<R>(cxx::invoke(f, *xs, *ys, as...));
 }
 
@@ -141,7 +141,7 @@ auto fmap3(const F &f, const std::shared_ptr<T> &xs,
   assert(bool(ys) == s);
   assert(bool(zs) == s);
   if (s == false)
-    return std::make_shared<R>();
+    return std::shared_ptr<R>();
   return std::make_shared<R>(cxx::invoke(f, *xs, *ys, *zs, as...));
 }
 

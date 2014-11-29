@@ -147,18 +147,6 @@ auto fmap3(const F &f, const std::shared_ptr<T> &xs,
 
 // vector
 
-namespace detail {
-template <typename T> struct unwrap_vector {
-  typedef T type;
-  const T &operator()(const T &x, std::size_t i) const { return x; }
-};
-template <typename T> struct unwrap_vector<std::vector<T> > {
-  typedef T type;
-  const T &operator()(const std::vector<T> &x, std::size_t i) const {
-    return x[i];
-  }
-};
-}
 template <typename F, typename T, typename Allocator, typename... As>
 auto fmap(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
   typedef cxx::invoke_of_t<F, T, As...> R;

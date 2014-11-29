@@ -531,7 +531,7 @@ foldl1(const F &f, const std::vector<T, Allocator> &xs, const As &... as) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace foldable {
+// namespace foldable {
 
 template <template <typename> class C> bool and_(const C<bool> &xs) {
   return fold(std::logical_and<bool>(), true, xs);
@@ -585,7 +585,7 @@ const T *find(const F &f, const C<T> &xs) {
                  [](const T *r1, const T *r2) { return r1 ? r1 : r2; }, nullptr,
                  xs);
 }
-}
+// }
 }
 
 #endif // #ifndef CXX_FOLDABLE_HH

@@ -62,6 +62,10 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap(f, xs, as...));
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -79,6 +83,10 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
               const std::array<T2, N> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap2(f, xs, ys, as...));
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
@@ -106,6 +114,11 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap(f, xs, as...));
+  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
   return std::move(r);
@@ -117,6 +130,10 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::list<T> &xs,
               const std::list<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap2(f, xs, ys, as...));
   typename std::list<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::list<T2>::const_iterator yi = ys.begin, ye = ys.end();
   R r(z);
@@ -142,6 +159,10 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap(f, xs, as...));
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
@@ -154,6 +175,10 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::set<T> &xs,
               const std::set<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap2(f, xs, ys, as...));
   typename std::set<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::set<T2>::const_iterator yi = ys.begin, ye = ys.end();
   R r(z);
@@ -222,6 +247,10 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap(f, xs, as...));
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -239,6 +268,10 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
               const std::vector<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  // If T is an asynchronous type, then call fmap on all elements
+  // first to expose parallelism
+  if (cxx::is_async<T>::value)
+    return fold(op, z, fmap2(f, xs, ys, as...));
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \

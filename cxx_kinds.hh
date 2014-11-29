@@ -14,6 +14,8 @@ namespace cxx {
 
 template <typename> struct kinds;
 
+template <typename> struct is_async : std::false_type {};
+
 // array
 template <typename T, size_t N> struct kinds<std::array<T, N> > {
   typedef T value_type;

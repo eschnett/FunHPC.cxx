@@ -4,9 +4,11 @@
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
 #include "cxx_invoke.hh"
+#include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 
+#include <cstddef>
 #include <tuple>
 
 namespace cxx {
@@ -16,6 +18,9 @@ template <typename T, template <typename> class Outer,
           template <typename> class Inner>
 struct nested {
   typedef T value_type;
+  template <typename U> using outer = Outer<U>;
+  template <typename U> using inner = Inner<U>;
+
   Outer<Inner<T> > values;
 
   nested() : values(mzero<Outer, Inner<T> >()) {}
@@ -31,6 +36,11 @@ struct nested {
   template <typename... As>
   nested(mmake, As &&... as)
       : values(munit<Outer>(cxx::mmake<Inner, T>(std::forward<As>(as)...))) {}
+
+  // We assume that the Inner container is never empty.
+  bool empty() const { return values.empty(); }
+  // We assume that the Inner container always contains one element
+  std::size_t size() const { return values.size(); }
 };
 
 template <typename T, template <typename> class Outer,

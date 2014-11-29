@@ -1,6 +1,9 @@
 #ifndef CXX_TREE2_HH
 #define CXX_TREE2_HH
 
+#include "rpc_action.hh"
+#include "rpc_call.hh"
+
 #include "cxx_either.hh"
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
@@ -172,7 +175,8 @@ template <typename T, template <typename> class arr> struct tree {
     node.gfoldl(&leaf::output_tree, &branch::output_tree, os);
   }
 
-  template <typename F, typename... As>
+  template <typename F, typename... As,
+            std::enable_if_t<!rpc::is_action<F>::value> * = nullptr>
   static auto iota(const F &f, const iota_range_t &range, const As &... as) {
     if (range.local.size() <= max_arr_size)
       return tree(leaf(cxx::iota<arr>(f, range, as...)));
@@ -187,6 +191,29 @@ template <typename T, template <typename> class arr> struct tree {
           return iota(f, fine_range, as...);
         },
         coarse_range, as...)));
+  }
+  template <typename F, typename... As> struct iota_coarse {
+    static auto call(std::ptrdiff_t i, const F &f, const iota_range_t &range,
+                     const As &... as) {
+      iota_range_t fine_range(
+          range.global, i,
+          std::min(range.local.imax, i + range.local.istep * max_arr_size),
+          range.local.istep);
+      return iota(f, fine_range, as...);
+    }
+    RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(call);
+  };
+  template <typename F, typename... As,
+            std::enable_if_t<rpc::is_action<F>::value> * = nullptr>
+  static auto iota(const F &f, const iota_range_t &range, const As &... as) {
+    if (range.local.size() <= max_arr_size)
+      return tree(leaf(cxx::iota<arr>(f, range, as...)));
+    iota_range_t coarse_range(range.global, range.local.imin, range.local.imax,
+                              range.local.istep * max_arr_size);
+    typedef iota_coarse<F, As...> coarse;
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(coarse::call);
+    return tree(branch(cxx::iota<arr>(typename coarse::call_action(),
+                                      coarse_range, f, range, as...)));
   }
 
   template <typename F, typename... As,
@@ -230,6 +257,14 @@ template <typename T, template <typename> class arr> struct tree {
     return tree(branch(cxx::msome<arr>(*this, xss...)));
   }
 };
+
+template <typename T, template <typename> class arr>
+template <typename F, typename... As>
+typename tree<T, arr>::template iota_coarse<F, As...>::call_evaluate_export_t
+    tree<T, arr>::template iota_coarse<F, As...>::call_evaluate_export =
+        call_evaluate_export_init();
+
+// Output
 
 template <typename T, template <typename> class arr>
 void output_tree(std::ostream &os, const tree<T, arr> &t) {

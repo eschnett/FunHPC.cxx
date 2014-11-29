@@ -166,7 +166,7 @@ template <typename F, typename G, typename L1, typename R1, typename... As>
 decltype(auto) gfoldl(const F &f, const G &g, const either<L1, R1> &xs,
                       As &&... as) {
   typedef cxx::invoke_of_t<F, L1, As...> RL;
-  typedef cxx::invoke_of_t<F, R1, As...> RR;
+  typedef cxx::invoke_of_t<G, R1, As...> RR;
   static_assert(std::is_same<RL, RR>::value, "");
   return xs.gfoldl(f, g, std::forward<As>(as)...);
 }
@@ -175,7 +175,7 @@ template <typename F, typename G, typename L1, typename R1, typename L2,
 decltype(auto) gfoldl2(const F &f, const G &g, const either<L1, R1> &xs,
                        const either<L2, R2> &ys, As &&... as) {
   typedef cxx::invoke_of_t<F, L1, L2, As...> RL;
-  typedef cxx::invoke_of_t<F, R1, R2, As...> RR;
+  typedef cxx::invoke_of_t<G, R1, R2, As...> RR;
   static_assert(std::is_same<RL, RR>::value, "");
   return xs.gfoldl(f, g, ys, std::forward<As>(as)...);
 }

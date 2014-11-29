@@ -1,6 +1,7 @@
 #ifndef CXX_FOLDABLE_HH
 #define CXX_FOLDABLE_HH
 
+#include "cxx_functor.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
@@ -222,9 +223,10 @@ auto fold(const Op &op, const R &z, const std::shared_ptr<R> &xs,
           const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   bool s = bool(xs);
-  if (s)
-    r = cxx::invoke(op, std::move(r), *xs, as...);
-  return std::move(r);
+  if (!s)
+    return z;
+  return *xs;
+}
 
 template <typename T> const T &head(const std::shared_ptr<T> &xs) {
   assert(bool(xs));
@@ -241,9 +243,9 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::shared_ptr<T> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
-  if (s)
-    r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xs, as...));
-  return std::move(r);
+  if (!s)
+    return z;
+  return cxx::invoke(f, *xs, as...);
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -255,9 +257,9 @@ auto foldMap2(const F &f, const Op &op, const R &z,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = bool(xs);
   assert(bool(ys) == s);
-  if (s)
-    r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xs, *ys, as...));
-  return std::move(r);
+  if (!s)
+    return z;
+  return cxx::invoke(f, *xs, *ys, as...);
 }
 
 // vector

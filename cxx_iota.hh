@@ -103,9 +103,9 @@ inline std::ostream &operator<<(std::ostream &os, const iota_range_t &r) {
 
 // array
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_array<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_array<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   C<T> rs;
   assert(rs.size() == s);
@@ -117,9 +117,9 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
 
 // function
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_function<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_function<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   assert(s == 1);
   return munit<C>(cxx::invoke(f, range.local.imin, as...));
@@ -127,9 +127,9 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
 
 // list
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_list<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_list<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   C<T> rs;
   for (std::ptrdiff_t i = range.local.imin; i < range.local.imax;
        i += range.local.istep)
@@ -139,9 +139,9 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
 
 // set
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_set<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_set<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   C<T> rs;
   for (std::ptrdiff_t i = range.local.imin; i < range.local.imax;
        i += range.local.istep)
@@ -151,9 +151,9 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
 
 // shared_ptr
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_shared_ptr<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_shared_ptr<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   assert(s == 1);
   return munit<C>(cxx::invoke(f, range.local.imin, as...));
@@ -161,9 +161,9 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
 
 // vector
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_vector<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   ptrdiff_t s = range.local.size();
   C<T> rs(s);
 #pragma omp simd

@@ -90,7 +90,7 @@ auto fold(const Op &op, const R &z, const nested<T, Outer, Inner> &xs,
 template <typename F, typename T, template <typename> class Outer,
           template <typename> class Inner, typename... As>
 auto fmap(const F &f, const nested<T, Outer, Inner> &xs, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, As...> R;
   return nested<R, Outer, Inner>(fmap(
       [&f](const Inner<T> &xs, const As &... as) { return fmap(f, xs, as...); },
       xs.values));
@@ -100,7 +100,7 @@ template <typename F, typename T, template <typename> class Outer,
           template <typename> class Inner, typename T2, typename... As>
 auto fmap2(const F &f, const nested<T, Outer, Inner> &xs,
            const nested<T2, Outer, Inner> &ys, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, T2, As...> R;
   return nested<R, Outer, Inner>(
       fmap2([&f](const Inner<T> &xs, const Inner<T2> &ys,
                  const As &... as) { return fmap2(f, xs, ys, as...); },
@@ -113,7 +113,7 @@ template <typename F, typename T, template <typename> class Outer,
 auto fmap3(const F &f, const nested<T, Outer, Inner> &xs,
            const nested<T2, Outer, Inner> &ys,
            const nested<T3, Outer, Inner> &zs, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, T2, T3, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, T2, T3, As...> R;
   return nested<R, Outer, Inner>(
       fmap3([&f](const Inner<T> &xs, const Inner<T2> &ys, const Inner<T3> &zs,
                  const As &... as) { return fmap3(f, xs, ys, zs, as...); },
@@ -124,9 +124,8 @@ template <typename F, typename G, typename T, template <typename> class Outer,
           template <typename> class Inner, typename B, typename... As>
 auto stencil_fmap(const F &f, const G &g, const nested<T, Outer, Inner> &xs,
                   const B &bm, const B &bp, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, B, B, As...>::type R;
-  static_assert(
-      std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value, "");
+  typedef cxx::invoke_of_t<F, T, B, B, As...> R;
+  static_assert(std::is_same<cxx::invoke_of_t<G, T, bool>, B>::value, "");
   return nested<R, Outer, Inner>(stencil_fmap(
       [&f](const Inner<T> &px, const Inner<B> &bm, const Inner<B> &bp,
            const As &... as) { return fmap3(f, px, bm, bp, as...); },
@@ -137,22 +136,22 @@ auto stencil_fmap(const F &f, const G &g, const nested<T, Outer, Inner> &xs,
 // monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type
-munit(T1 &&x) {
+          typename T = typename std::decay<T1>::type,
+          std::enable_if_t<is_nested<C<T> >::value> * = nullptr>
+auto munit(T1 &&x) {
   return C<T>{ std::forward<T1>(x) };
 }
 
-template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_nested<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+template <template <typename> class C, typename T, typename... As,
+          std::enable_if_t<is_nested<C<T> >::value, C<T> > * = nullptr>
+auto mmake(As &&... as) {
   return C<T>(typename C<T>::mmake(), std::forward<As>(as)...);
 }
 
 template <typename T, template <typename> class Outer,
           template <typename> class Inner, typename F, typename... As>
 auto mbind(const nested<T, Outer, Inner> &xs, const F &f, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  typedef cxx::invoke_of_t<F, T, As...> CR;
   static_assert(is_nested<CR>::value, "");
   typedef typename CR::value_type R;
   return CR(mbind(xs.values,

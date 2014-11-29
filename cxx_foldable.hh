@@ -42,10 +42,9 @@ namespace cxx {
 // array
 
 template <typename Op, typename R, std::size_t N, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, const R &z, const std::array<R, N> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const std::array<R, N> &xs,
+          const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -59,12 +58,10 @@ fold(const Op &op, const R &z, const std::array<R, N> &xs, const As &... as) {
 
 template <typename F, typename Op, typename R, typename T, std::size_t N,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -78,12 +75,10 @@ foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           std::size_t N, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
-         const std::array<T2, N> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
+              const std::array<T2, N> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
@@ -99,22 +94,18 @@ foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
 // list
 
 template <typename Op, typename R, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, R r, const std::list<R> &xs, const As &... as) {
+auto fold(const Op &op, R r, const std::list<R> &xs, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
   return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, R r, const std::list<T> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
   return std::move(r);
@@ -122,14 +113,13 @@ foldMap(const F &f, const Op &op, R r, const std::list<T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, R r, const std::list<T> &xs,
-         const std::list<T2> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z, const std::list<T> &xs,
+              const std::list<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   typename std::list<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::list<T2>::const_iterator yi = ys.begin, ye = ys.end();
+  R r(z);
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
@@ -139,22 +129,20 @@ foldMap2(const F &f, const Op &op, R r, const std::list<T> &xs,
 // set
 
 template <typename Op, typename R, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, R r, const std::set<R> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const std::set<R> &xs, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
+  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
   return std::move(r);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, R r, const std::set<T> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
   return std::move(r);
@@ -162,14 +150,13 @@ foldMap(const F &f, const Op &op, R r, const std::set<T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, R r, const std::set<T> &xs,
-         const std::set<T2> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z, const std::set<T> &xs,
+              const std::set<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   typename std::set<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::set<T2>::const_iterator yi = ys.begin, ye = ys.end();
+  R r(z);
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
@@ -179,10 +166,9 @@ foldMap2(const F &f, const Op &op, R r, const std::set<T> &xs,
 // shared_ptr
 
 template <typename Op, typename R, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, R r, const std::shared_ptr<R> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const std::shared_ptr<R> &xs,
+          const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   bool s = bool(xs);
   if (s)
     r = cxx::invoke(op, std::move(r), *xs, as...);
@@ -190,12 +176,10 @@ fold(const Op &op, R r, const std::shared_ptr<R> &xs, const As &... as) {
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const std::shared_ptr<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   if (s)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xs, as...));
@@ -204,12 +188,11 @@ foldMap(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
-         const std::shared_ptr<T2> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z,
+              const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
+              const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = bool(xs);
   assert(bool(ys) == s);
   if (s)
@@ -220,10 +203,9 @@ foldMap2(const F &f, const Op &op, R r, const std::shared_ptr<T> &xs,
 // vector
 
 template <typename Op, typename R, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, const R &z, const std::vector<R> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const std::vector<R> &xs,
+          const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -236,12 +218,10 @@ fold(const Op &op, const R &z, const std::vector<R> &xs, const As &... as) {
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -255,12 +235,10 @@ foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
-         const std::vector<T2> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
+              const std::vector<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
@@ -487,16 +465,14 @@ template <template <typename> class C> bool or_(const C<bool> &xs) {
 }
 
 template <typename F, typename CT, typename T = typename CT::value_type>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
-any_of(const F &f, const CT &xs) {
+auto any_of(const F &f, const CT &xs) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T>, bool>::value, "");
   return foldMap(f, std::logical_or<bool>(), false, xs);
 }
 
 template <typename F, typename CT, typename T = typename CT::value_type>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value, bool>::type
-all_of(const F &f, const CT &xs) {
+auto all_of(const F &f, const CT &xs) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T>, bool>::value, "");
   return foldMap(f, std::logical_and<bool>(), true, xs);
 }
 
@@ -524,10 +500,8 @@ bool not_elem(const T &x, const C<T> &ys) {
 }
 
 template <template <typename> class C, typename T, typename F>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, T>::type, bool>::value,
-    const T *>::type
-find(const F &f, const C<T> &xs) {
+const T *find(const F &f, const C<T> &xs) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T>, bool>::value, "");
   // TODO: Use ptr's monadic operations
   // TODO: Use foldl if present, since more efficient?
   return foldMap([f](const T &x) { return cxx::invoke(f, x) ? &x : nullptr; },

@@ -301,6 +301,9 @@ template <class _Fp, class... _Args>
 struct invoke_of
     : public invoke_of_imp<invokable<_Fp, _Args...>::value, _Fp, _Args...> {};
 
+template <class... _Args>
+using invoke_of_t = typename invoke_of<_Args...>::type;
+
 // invoke, taken from libc++ 3.4
 
 // bullets 1 and 2

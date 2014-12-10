@@ -6,7 +6,6 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 
-#include <array>
 #include <list>
 #include <type_traits>
 
@@ -53,30 +52,26 @@ typename std::enable_if<cxx::is_list<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
-template <typename T, typename... As, typename CT = std::list<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
-mplus(const std::list<T> &xs, const As &... as) {
-  C<T> rs(xs);
-  std::array<const C<T> *, sizeof...(As)> xss{ &as... };
-  for (size_t i = 0; i < xss.size(); ++i)
-    rs.insert(rs.end(), *xss[i]);
+template <typename T, typename... Ts>
+auto mplus(const std::list<T> &xs, const std::list<Ts> &... xss) {
+  static_assert(cxx::all<std::is_same<Ts, T>::value...>::value, "");
+  std::list<T> rs(xs);
+  for (auto pxs : { &xss... })
+    rs.insert(rs.end(), pxs->begin(), pxs->end());
   return rs;
 }
 
-template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<((cxx::is_list<C<T> >::value) &&
-                         (cxx::all<std::is_same<As, T>::value...>::value)),
-                        C<T> >::type
-msome(const T &x, const As &... as) {
-  C<T> rs;
-  rs.push_back(x);
-  std::array<const T *, sizeof...(As)> xs{ &as... };
-  for (size_t i = 0; i < xs.size(); ++i)
-    rs.push_back(*xs[i]);
-  return rs;
+template <template <typename> class C, typename T, typename... Ts,
+          std::enable_if_t<cxx::is_list<C<T> >::value> * = nullptr>
+auto msome(const T &x, const Ts &... xs) {
+  static_assert(cxx::all<std::is_same<Ts, T>::value...>::value, "");
+  return C<T>{ x, xs... };
 }
 }
 
-#endif // #ifndef CXX_MONAD_LIST_HH
+#define CXX_MONAD_LIST_HH_DONE
+#else
+#ifndef CXX_MONAD_LIST_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_LIST_HH

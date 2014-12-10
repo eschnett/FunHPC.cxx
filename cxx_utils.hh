@@ -151,4 +151,4 @@ struct ffs<false, xs...>
 #ifndef CXX_UTILS_HH_DONE
 #error "Cyclic include dependency"
 #endif
-#endif // CXX_UTILS_HH
+#endif // #ifdef CXX_UTILS_HH

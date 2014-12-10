@@ -159,13 +159,6 @@ typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
-template <template <typename> class C, typename T, typename... Ts>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-msome(const T &x, const Ts &... xs) {
-  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
-  return C<T>({ x, xs... });
-}
-
 template <typename T, typename... Ts>
 auto mplus(const std::vector<T> &xs, const std::vector<Ts> &... xss) {
   static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
@@ -173,6 +166,13 @@ auto mplus(const std::vector<T> &xs, const std::vector<Ts> &... xss) {
   for (auto ys : { &xss... })
     rs.insert(rs.end(), ys->begin(), ys->end());
   return rs;
+}
+
+template <template <typename> class C, typename T, typename... Ts,
+          std::enable_if_t<cxx::is_vector<C<T> >::value> * = nullptr>
+auto msome(const T &x, const Ts &... xs) {
+  static_assert(cxx::all<std::is_same<T, Ts>::value...>::value, "");
+  return C<T>({ x, xs... });
 }
 
 template <typename FCT,
@@ -199,4 +199,9 @@ mfold(const IT &xs) {
 }
 }
 
-#endif // #ifndef CXX_MONAD_VECTOR_HH
+#define CXX_MONAD_VECTOR_HH_DONE
+#else
+#ifndef CXX_MONAD_VECTOR_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_VECTOR_HH

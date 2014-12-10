@@ -8,11 +8,11 @@ using namespace std;
 template <typename T> using grid_ = grid<T, 3>;
 
 auto fiota(const grid_region<3> &r, double h) {
-  return iota<grid_>([h](index<3> i) {
+  return iota<grid_>([h](const grid_region<3> &, index<3> i) {
                        return 1.0 * h * i[0] + 100.0 * h * i[1] +
                               100000.0 * h * i[2];
                      },
-                     r);
+                     r, r);
 }
 
 auto fcopy(const grid<double, 3> &xs) {

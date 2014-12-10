@@ -101,4 +101,9 @@ C<T> msome(T &&x,  As &&... as) {
 #endif
 }
 
-#endif // #ifndef CXX_MONAD_HH
+#define CXX_MONAD_HH_DONE
+#else
+#ifndef CXX_MONAD_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_HH

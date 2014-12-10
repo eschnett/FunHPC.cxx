@@ -350,4 +350,4 @@ inline auto invoke(_Fp &&__f, _Args &&... __args)
 #ifndef CXX_INVOKE_HH_DONE
 #error "Cyclic include dependency"
 #endif
-#endif // CXX_INVOKE_HH
+#endif // #ifdef CXX_INVOKE_HH

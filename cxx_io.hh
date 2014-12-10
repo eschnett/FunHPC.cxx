@@ -95,4 +95,10 @@ template <typename U> IO<std::tuple<> > output(const U &x) {
   return IO<std::tuple<> >(std::tuple<>(), writer(x));
 }
 }
-#endif // #ifndef CXX_IO
+
+#define CXX_IO_HH_DONE
+#else
+#ifndef CXX_IO_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_IO_HH

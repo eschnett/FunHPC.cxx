@@ -1,14 +1,15 @@
-// The scalar wave equation, with all nuts and bolts
+// The scalar wave equation in multiple dimensions. This uses a vector
+// instead of a tree to store the remote futures to the grids, and is
+// thus not scalable.
 
 #include "rpc.hh"
 
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
+#include "cxx_grid.hh"
 #include "cxx_iota.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
-// #include "cxx_ostreaming.hh"
-
 #include "cxx_tree.hh"
 
 #include <cereal/access.hpp>
@@ -28,20 +29,20 @@
 #include <tuple>
 #include <vector>
 
+using cxx::boundaries;
 using cxx::div_ceil;
 using cxx::div_floor;
 using cxx::fmap;
 using cxx::fmap2;
 using cxx::foldMap;
+using cxx::grid;
+using cxx::grid_region;
 using cxx::iota;
-using cxx::iota_range_t;
-using cxx::mmake;
-using cxx::munit;
-// using cxx::ostreaming;
-// using cxx::ostreamer;
-// using cxx::output;
-// using cxx::put;
-using cxx::range_t;
+// using cxx::iota_range_t;
+// using cxx::range_t;
+using cxx::stencil_fmap;
+using cxx::tree;
+using cxx::vect;
 
 using rpc::async;
 using rpc::broadcast;
@@ -58,11 +59,13 @@ using rpc::shared_future;
 using rpc::sync;
 using rpc::thread;
 
+using std::ceil;
 using std::cerr;
 using std::cout;
 using std::flush;
 using std::ofstream;
 using std::ios_base;
+using std::lrint;
 using std::make_shared;
 using std::max;
 using std::min;
@@ -70,6 +73,7 @@ using std::move;
 using std::numeric_limits;
 using std::ostream;
 using std::ostringstream;
+using std::pow;
 using std::ptrdiff_t;
 using std::shared_ptr;
 using std::string;
@@ -94,8 +98,13 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
+constexpr ptrdiff_t dim = 1;
+typedef cxx::index<dim> vindex;
+typedef vect<double, dim> vdouble;
+typedef grid_region<dim> region;
+
 struct defs_t {
-#if 1                       // benchmark
+#if 0   // benchmark
   const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -108,7 +117,7 @@ struct defs_t {
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;
-#elif 0 // test
+#elif 1 // test
   const ptrdiff_t rho = 1; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -130,7 +139,7 @@ struct defs_t {
   const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = -1;
+  const ptrdiff_t nsteps = 8;
   const ptrdiff_t wait_every = 1;
   const ptrdiff_t info_every = 1;
   const ptrdiff_t file_every = 1;
@@ -143,7 +152,8 @@ struct defs_t {
   double dt;
 
   defs_t(int nprocs, int nthreads)
-      : ncells(rho * ncells_per_grid * nprocs * nthreads),
+      : ncells(ncells_per_grid *
+               lrint(pow(double(rho *nprocs *nthreads), 1 / double(dim)))),
         dx((xmax - xmin) / ncells), dt(cfl * dx) {}
 
 private:
@@ -223,10 +233,10 @@ RPC_ACTION(norm_mappend);
 struct cell_t {
   static constexpr auto nan = numeric_limits<double>::quiet_NaN();
 
-  double x;
+  vdouble x;
   double u;
   double rho;
-  double v;
+  vdouble v;
 
 private:
   friend class cereal::access;
@@ -234,7 +244,7 @@ private:
 
 public:
   // For safety
-  cell_t() : x(nan), u(nan), rho(nan), v(nan) {}
+  cell_t() : x(vdouble::set1(nan)), u(nan), rho(nan), v(vdouble::set1(nan)) {}
 
   // Output
   auto output() const {
@@ -253,25 +263,36 @@ public:
   }
 
   // Norm
-  auto norm() const { return norm_t(u) + norm_t(rho) + norm_t(v); }
+  auto norm() const {
+    return norm_t(u) + norm_t(rho) + foldMap([](double x) { return norm_t(x); },
+                                             norm_mappend, norm_mempty(), v);
+  }
 
   // Analytic solution
   struct analytic : tuple<> {};
-  cell_t(analytic, double t, double x) {
+  cell_t(analytic, double t, vdouble x) {
+    double omega = sqrt(double(dim));
     this->x = x;
-    u = sin(2 * M_PI * t) * sin(2 * M_PI * x);
-    rho = 2 * M_PI * cos(2 * M_PI * t) * sin(2 * M_PI * x);
-    v = 2 * M_PI * sin(2 * M_PI * t) * cos(2 * M_PI * x);
+    u = sin(2 * M_PI * omega * t);
+    rho = 2 * M_PI * omega * cos(2 * M_PI * omega * t);
+    v = vdouble::set1(sin(2 * M_PI * omega * t));
+    for (ptrdiff_t j = 0; j < dim; ++j) {
+      u *= sin(2 * M_PI * x[j]);
+      rho *= sin(2 * M_PI * x[j]);
+      for (ptrdiff_t i = 0; i < dim; ++i)
+        v = v.set(i, v[i] * (j == i ? 2 * M_PI * cos(2 * M_PI * x[j])
+                                    : sin(2 * M_PI * x[j])));
+    }
   }
 
   // Initial condition
   struct initial : tuple<> {};
-  cell_t(initial, double t, double x) : cell_t(analytic(), t, x) {}
+  cell_t(initial, double t, vdouble x) : cell_t(analytic(), t, x) {}
 
   // Boundary condition
   struct boundary : tuple<> {};
-  cell_t(boundary, double t, double x) : cell_t(analytic(), t, x) {}
-  RPC_DECLARE_CONSTRUCTOR(cell_t, boundary, double, double);
+  cell_t(boundary, double t, vdouble x) : cell_t(analytic(), t, x) {}
+  // RPC_DECLARE_CONSTRUCTOR(cell_t, boundary, double, vdouble);
 
   // Error
   struct error : tuple<> {};
@@ -280,15 +301,21 @@ public:
 
   // RHS
   struct rhs : tuple<> {};
-  cell_t(rhs, const cell_t &c, const cell_t &cm, const cell_t &cp) {
-    x = 0.0; // dx/dt
+  cell_t(rhs, const cell_t &c, const boundaries<cell_t, dim> &bs) {
+    x = vdouble::zero(); // dx/dt
     u = c.rho;
-    rho = (cp.v - cm.v) / (2 * defs->dx);
-    v = (cp.rho - cm.rho) / (2 * defs->dx);
+    rho = 0.0;
+    for (ptrdiff_t i = 0; i < dim; ++i)
+      rho += (bs(i, true).v[i] - bs(i, false).v[i]) / (2 * defs->dx);
+    for (ptrdiff_t i = 0; i < dim; ++i)
+      v = v.set(i, (bs(i, true).rho - bs(i, false).rho) / (2 * defs->dx));
   }
+
+  struct get_boundary : tuple<> {};
+  cell_t(get_boundary, const cell_t &c, ptrdiff_t dir, bool face) : cell_t(c) {}
 };
 RPC_COMPONENT(cell_t);
-RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, double);
+// RPC_IMPLEMENT_CONSTRUCTOR(cell_t, cell_t::boundary, double, vdouble);
 
 // Output
 auto operator<<(ostream &os, const cell_t &c) -> ostream & {
@@ -299,58 +326,41 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 
 // Each grid lives on a process
 
-template <typename T> using vector_ = vector<T>;
+template <typename T> using grid_ = grid<T, dim>;
 
-struct grid_t {
-private:
-  // TODO: introduce irange for these two (e.g. irange_t =
-  // array<ptrdiff_t,2>)
-  ptrdiff_t imin, imax; // spatial indices
-  static auto x(ptrdiff_t i) { return defs->xmin + (i + 0.5) * defs->dx; }
+class grid_t {
+  typedef grid_<cell_t> cells_t;
+  cells_t cells;
 
-  vector<cell_t> cells;
+  static auto x(const vindex &i) {
+    return vdouble::set1(defs->xmin) +
+           (vdouble(i) + vdouble::set1(0.5)) * defs->dx;
+  }
 
   friend class cereal::access;
-  template <typename Archive> auto serialize(Archive &ar) {
-    ar(imin, imax, cells);
-  }
+  template <typename Archive> auto serialize(Archive &ar) { ar(cells); }
 
 public:
-  grid_t() {} // only for serialization
-
-  auto get(ptrdiff_t i) const -> const cell_t & {
-    assert(i >= imin && i < imax);
-    return cells[i - imin];
-  }
-
-  auto get_boundary(bool face_upper) const {
-    return get(face_upper ? imax - 1 : imin);
-  }
+  // only for serialization
+  grid_t()
+      : cells(cells_t::iota(),
+              [](const region &, const vindex &i) { return cell_t(); },
+              region(), region()) {}
 
   // Wait until the grid is ready
   auto wait() const { return tuple<>(); }
 
   // Output
-  // auto output() const -> ostreaming<tuple<> > {
-  //   ostringstream os;
-  //   for (ptrdiff_t i = imin; i < imax; ++i) {
-  //     os << "   i=" << i << " " << get(i) << "\n";
-  //   }
-  //   return put(os.str());
-  // }
   auto output() const {
     ostringstream os;
-    for (ptrdiff_t i = imin; i < imax; ++i) {
-      os << "   i=" << i << " " << get(i) << "\n";
-    }
+    os << cells;
     return os.str();
   }
 
   // Linear combination
   struct axpy : tuple<> {};
   grid_t(axpy, double a, const grid_t &x, const grid_t &y)
-      : imin(y.imin), imax(y.imax),
-        cells(fmap2([a](const cell_t &x, const cell_t &y) {
+      : cells(fmap2([a](const cell_t &x, const cell_t &y) {
                       return cell_t(cell_t::axpy(), a, x, y);
                     },
                     x.cells, y.cells)) {}
@@ -364,53 +374,62 @@ public:
 
   // Initial condition
   struct initial : tuple<> {};
-  grid_t(initial, double t, ptrdiff_t imin)
-      : imin(imin), imax(min(imin + defs->ncells_per_grid, defs->ncells)),
-        cells(iota<vector_>(
-            [t](ptrdiff_t i) { return cell_t(cell_t::initial(), t, x(i)); },
-            iota_range_t(imin, imax))) {}
+  grid_t(initial, double t, const vindex &imin)
+      : cells(iota<grid_>(
+            [t](const region &,
+                const vindex &i) { return cell_t(cell_t::initial(), t, x(i)); },
+            region(imin, min(imin + vindex::set1(defs->ncells_per_grid),
+                             vindex::set1(defs->ncells))),
+            region(imin, min(imin + vindex::set1(defs->ncells_per_grid),
+                             vindex::set1(defs->ncells))))) {}
+
+  // Boundary condition
+  struct boundary : tuple<> {};
+  grid_t(boundary, const grid_t &g, double t, ptrdiff_t dir, bool face)
+      : cells(fmap([t, dir, face](const cell_t &c) {
+                     auto vn =
+                         vdouble(ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir));
+                     return cell_t(cell_t::boundary(), t, c.x + vn * defs->dx);
+                   },
+                   cells_t(cells_t::boundary(), g.cells, dir, face))) {}
 
   // Error
   struct error : tuple<> {};
   grid_t(error, const grid_t &g, double t)
-      : imin(g.imin), imax(g.imax),
-        cells(
+      : cells(
             fmap([t](const cell_t &c) { return cell_t(cell_t::error(), c, t); },
                  g.cells)) {}
 
   // RHS
   struct rhs : tuple<> {};
-  grid_t(rhs, const grid_t &g, const cell_t &bm, const cell_t &bp)
-      : imin(g.imin), imax(g.imax),
-        cells(cxx::stencil_fmap(
-            [](const cell_t &c, const cell_t &cm,
-               const cell_t &cp) { return cell_t(cell_t::rhs(), c, cm, cp); },
-            [](const cell_t &c, bool) { return c; }, g.cells, bm, bp)) {}
+  grid_t(rhs, const grid_t &g, const boundaries<grid_t, dim> &bs)
+      : cells(stencil_fmap(
+            [](const cell_t &c, const boundaries<cell_t, dim> &bs) {
+              return cell_t(cell_t::rhs(), c, bs);
+            },
+            [](const cell_t &c, ptrdiff_t dir, bool face) {
+              return cell_t(cell_t::get_boundary(), c, dir, face);
+            },
+            g.cells, fmap([](const grid_t &g) { return g.cells; }, bs))) {}
+
+  struct get_boundary : tuple<> {};
+  grid_t(get_boundary, const grid_t &g, ptrdiff_t dir, bool face)
+      : cells(cxx::boundary([](const cell_t &c, ptrdiff_t dir, bool face) {
+                              return cell_t(cell_t::get_boundary(), c, dir,
+                                            face);
+                            },
+                            g.cells, dir, face)) {}
 };
 RPC_COMPONENT(grid_t);
 
 // Output
-// auto operator<<(ostream &os, const client<grid_t> &g) -> ostream & {
-//   g->output().get(os);
-//   return os;
-// }
-auto operator<<(ostream &os, const client<grid_t> &g) -> ostream & {
-  return os << g.make_local()->output();
+auto operator<<(ostream &os, const grid_t &g) -> ostream & {
+  return os << g.output();
 }
-
-auto grid_get_boundary(const grid_t &g, bool face_upper) {
-  return g.get_boundary(face_upper);
-}
-RPC_ACTION(grid_get_boundary);
 
 auto grid_wait_foldMap(const grid_t &g) { return g.wait(); }
 RPC_ACTION(grid_wait_foldMap);
 
-// auto grid_output_foldl(const ostreaming<tuple<> > &ostr, const grid_t &g)
-//     -> ostreaming<tuple<> > {
-//   return ostr >> g.output();
-// }
-// RPC_ACTION(grid_output_foldl);
 auto grid_output_foldMap(const grid_t &g) { return g.output(); }
 RPC_ACTION(grid_output_foldMap);
 
@@ -424,45 +443,44 @@ auto grid_norm_foldMap(const grid_t &g) { return g.norm(); }
 RPC_ACTION(grid_norm_foldMap);
 
 // Note: Arguments re-ordered
-auto grid_initial(ptrdiff_t imin, double t) {
-  return grid_t(grid_t::initial(), t, imin);
+auto grid_initial(const region &, const vindex &ipos, double t) {
+  return grid_t(grid_t::initial(), t, ipos * defs->ncells_per_grid);
 }
 RPC_ACTION(grid_initial);
+
+auto grid_boundary(const grid_t &g, double t, ptrdiff_t dir, bool face) {
+  return grid_t(grid_t::boundary(), g, t, dir, face);
+}
+RPC_ACTION(grid_boundary);
 
 auto grid_error(const grid_t &g, double t) {
   return grid_t(grid_t::error(), g, t);
 }
 RPC_ACTION(grid_error);
 
-auto grid_rhs(const grid_t &g, const cell_t &bm, const cell_t &bp) {
-  return grid_t(grid_t::rhs(), g, bm, bp);
+auto grid_rhs(const grid_t &g, const boundaries<grid_t, dim> &bs) {
+  return grid_t(grid_t::rhs(), g, bs);
 }
 RPC_ACTION(grid_rhs);
+
+auto grid_get_boundary(const grid_t &g, ptrdiff_t dir, bool face) {
+  return grid_t(grid_t::get_boundary(), g, dir, face);
+}
+RPC_ACTION(grid_get_boundary);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // The domain is distributed over multiple processes
 
-template <typename T> using tree_ = cxx::tree<T, vector_, client>;
-RPC_COMPONENT(tree_<grid_t>);
+template <typename T> using tree_ = tree<T, grid_, client>;
 
 struct domain_t {
-  // TODO: implement serialize routine
 
   double t;
 
-private:
-  static auto ngrids() -> ptrdiff_t {
-    return div_ceil(defs->ncells, defs->ncells_per_grid);
-  }
-  static auto cell2grid(ptrdiff_t icell) -> ptrdiff_t {
-    assert(icell >= 0 && icell < defs->ncells);
-    return div_floor(icell, defs->ncells_per_grid);
-  }
-  // vector<client<grid_t> > grids;
-  tree_<grid_t> grids;
+  typedef tree_<grid_t> grids_t;
+  grids_t grids;
 
-public:
   // Wait until all grids are ready
   auto wait() const {
     return foldMap(grid_wait_foldMap_action(), tuple_mappend_action(),
@@ -470,31 +488,6 @@ public:
   }
 
   // Output
-  // auto output() const -> ostreaming<tuple<> > {
-  //   // return put(ostreamer() << "domain: t=" << t << "\n") >>
-  //   //        foldl(grid_output_foldl_action(), mmake<ostreaming, tuple<>
-  //   >(),
-  //   //              grids) >>
-  //   //        put(ostreamer() << "  tree=\n") >> cxx::output(grids);
-  //   std::cout << "domain_t::output.0\n";
-  //   auto a = put(ostreamer() << "domain: t=" << t << "\n");
-  //   std::cout << "domain_t::output.1\n";
-  //   auto b =
-  //       foldl(grid_output_foldl_action(), mmake<ostreaming, tuple<> >(),
-  //       grids);
-  //   std::cout << "domain_t::output.2\n";
-  //   auto c = put(ostreamer() << "  tree=\n");
-  //   std::cout << "domain_t::output.3\n";
-  //   auto d = cxx::output(grids);
-  //   std::cout << "domain_t::output.4\n";
-  //   auto r0 = a >> b;
-  //   std::cout << "domain_t::output.5\n";
-  //   auto r1 = r0 >> c;
-  //   std::cout << "domain_t::output.6\n";
-  //   auto r2 = r1 >> d;
-  //   std::cout << "domain_t::output.7\n";
-  //   return r2;
-  // }
   auto output() const {
     ostringstream os;
     os << "domain: t=" << t << "\n"
@@ -523,9 +516,27 @@ public:
   struct initial : tuple<> {};
   domain_t(initial, double t)
       : t(t),
-        grids(iota<tree_>(grid_initial_action(),
-                          iota_range_t(0, defs->ncells, defs->ncells_per_grid),
-                          t)) {}
+        grids(iota<tree_>(
+            grid_initial_action(),
+            region(vindex::zero(),
+                   vindex::set1(div_ceil(defs->ncells, defs->ncells_per_grid))),
+            region(vindex::zero(),
+                   vindex::set1(div_ceil(defs->ncells, defs->ncells_per_grid))),
+            t)) {}
+
+  // Boundary condition
+  struct boundary : tuple<> {};
+  domain_t(boundary, const domain_t &d, double t, ptrdiff_t dir, bool face)
+      : t(t), grids(fmap(grid_boundary_action(), d.grids, t, dir, face)) {}
+
+  auto all_boundaries() const {
+    boundaries<grids_t, dim> bs;
+    for (ptrdiff_t face = 0; face < 2; ++face)
+      for (ptrdiff_t dir = 0; dir < dim; ++dir)
+        bs(dir, face) =
+            domain_t(domain_t::boundary(), *this, t, dir, face).grids;
+    return bs;
+  }
 
   // Error
   struct error : tuple<> {};
@@ -537,20 +548,17 @@ public:
   struct rhs : tuple<> {};
   domain_t(rhs, const domain_t &s)
       : t(1.0), // dt/dt
-        grids(stencil_fmap(
-            grid_rhs_action(), grid_get_boundary_action(), s.grids,
-            cell_t(cell_t::boundary(), s.t, defs->xmin - 0.5 * defs->dx),
-            cell_t(cell_t::boundary(), s.t, defs->xmax + 0.5 * defs->dx))) {}
+        grids(stencil_fmap(grid_rhs_action(), grid_get_boundary_action(),
+                           s.grids, s.all_boundaries())) {}
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
 
 // Output
-// auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
-//   d->output().get(os);
-//   return os;
-// }
+auto operator<<(ostream &os, const domain_t &d) -> ostream & {
+  return os << d.output();
+}
 auto operator<<(ostream &os, const client<domain_t> &d) -> ostream & {
-  return os << d.make_local()->output();
+  return os << *d.make_local();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,10 +774,12 @@ auto rpc_main(int argc, char **argv) -> int {
        << "   cpu time/RHS/cell: " << time_rhs_cell * 1.0e+9 << " nsec\n";
 
   // double elapsed_init =
-  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() /
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count()
+  //     /
   //     1.0e+9;
   // double elapsed_calc =
-  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() /
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count()
+  //     /
   //     1.0e+9;
   // cout << "Elapsed time (init): " << elapsed_init << " sec\n";
   // cout << "Elapsed time (calc): " << elapsed_calc << " sec\n";
@@ -791,10 +801,3 @@ auto rpc_main(int argc, char **argv) -> int {
 #define RPC_IMPLEMENT_NAMED_ACTION(action)                                     \
   RPC_CLASS_EXPORT(action::evaluate);                                          \
   RPC_CLASS_EXPORT(action::finish);
-
-RPC_IMPLEMENT_NAMED_ACTION(RPC_IDENTITY_TYPE((cxx::detail::bind_action<
-    cxx::tree<grid_t, vector_, rpc::client>,
-    cxx::tree_stencil_functor<grid_rhs_action, grid_get_boundary_action, true,
-                              grid_t, vector_, rpc::client,
-                              cell_t>::get_boundary_tree_action,
-    bool>)));

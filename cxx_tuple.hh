@@ -165,4 +165,4 @@ std::ostream &operator<<(std::ostream &os, const std::tuple<As...> &t) {
 #ifndef CXX_TUPLE_HH_DONE
 #error "Cyclic include dependency"
 #endif
-#endif // #ifndef CXX_TUPLE_HH
+#endif // #ifdef CXX_TUPLE_HH

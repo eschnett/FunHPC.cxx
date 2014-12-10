@@ -34,6 +34,8 @@ using cxx::div_floor;
 using cxx::fmap;
 using cxx::fmap2;
 using cxx::foldMap;
+using cxx::grid;
+using cxx::grid_region;
 using cxx::iota;
 // using cxx::iota_range_t;
 // using cxx::range_t;
@@ -97,9 +99,10 @@ RPC_ACTION(string_mappend);
 constexpr ptrdiff_t dim = 1;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
+typedef grid_region<dim> region;
 
 struct defs_t {
-#if 1                       // benchmark
+#if 0   // benchmark
   const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -112,7 +115,7 @@ struct defs_t {
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;
-#elif 0 // test
+#elif 1 // test
   const ptrdiff_t rho = 1; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -266,7 +269,7 @@ public:
   // Analytic solution
   struct analytic : tuple<> {};
   cell_t(analytic, double t, vdouble x) {
-    double omega = std::sqrt(double(dim));
+    double omega = sqrt(double(dim));
     this->x = x;
     u = sin(2 * M_PI * omega * t);
     rho = 2 * M_PI * omega * cos(2 * M_PI * omega * t);
@@ -321,7 +324,7 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 
 // Each grid lives on a process
 
-template <typename T> using grid_ = cxx::grid<T, dim>;
+template <typename T> using grid_ = grid<T, dim>;
 
 class grid_t {
   typedef grid_<cell_t> cells_t;
@@ -335,7 +338,7 @@ class grid_t {
     return newbs;
   }
 
-  static auto x(vindex i) {
+  static auto x(const vindex &i) {
     return vdouble::set1(defs->xmin) +
            (vdouble(i) + vdouble::set1(0.5)) * defs->dx;
   }
@@ -346,8 +349,9 @@ class grid_t {
 public:
   // only for serialization
   grid_t()
-      : cells(cells_t::iota(), [](const vindex &i) { return cell_t(); },
-              cxx::grid_region<dim>()) {}
+      : cells(cells_t::iota(),
+              [](const region &, const vindex &i) { return cell_t(); },
+              region(), region()) {}
 
   // Wait until the grid is ready
   auto wait() const { return tuple<>(); }
@@ -376,12 +380,14 @@ public:
 
   // Initial condition
   struct initial : tuple<> {};
-  grid_t(initial, double t, vindex imin)
+  grid_t(initial, double t, const vindex &imin)
       : cells(iota<grid_>(
-            [t](const vindex &i) { return cell_t(cell_t::initial(), t, x(i)); },
-            cxx::grid_region<dim>(
-                imin, min(imin + vindex::set1(defs->ncells_per_grid),
-                          vindex::set1(defs->ncells))))) {}
+            [t](const region &,
+                const vindex &i) { return cell_t(cell_t::initial(), t, x(i)); },
+            region(imin, min(imin + vindex::set1(defs->ncells_per_grid),
+                             vindex::set1(defs->ncells))),
+            region(imin, min(imin + vindex::set1(defs->ncells_per_grid),
+                             vindex::set1(defs->ncells))))) {}
 
   // Boundary condition
   struct boundary : tuple<> {};
@@ -443,7 +449,7 @@ auto grid_norm_foldMap(const client<grid_t> &g) { return g->norm(); }
 RPC_ACTION(grid_norm_foldMap);
 
 // Note: Arguments re-ordered
-auto grid_initial(vindex ipos, double t) {
+auto grid_initial(const region &, const vindex &ipos, double t) {
   return make_client<grid_t>(grid_t::initial(), t,
                              ipos * defs->ncells_per_grid);
 }
@@ -482,8 +488,6 @@ RPC_ACTION(grid_get_boundary);
 ////////////////////////////////////////////////////////////////////////////////
 
 // The domain is distributed over multiple processes
-
-RPC_COMPONENT(grid_<grid_t>);
 
 struct domain_t {
 
@@ -529,9 +533,10 @@ struct domain_t {
       : t(t),
         grids(iota<grid_>(
             grid_initial_action(),
-            cxx::grid_region<dim>(
-                vindex::zero(),
-                vindex::set1(div_ceil(defs->ncells, defs->ncells_per_grid))),
+            region(vindex::zero(),
+                   vindex::set1(div_ceil(defs->ncells, defs->ncells_per_grid))),
+            region(vindex::zero(),
+                   vindex::set1(div_ceil(defs->ncells, defs->ncells_per_grid))),
             t)) {}
 
   // Boundary condition

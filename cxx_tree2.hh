@@ -12,6 +12,7 @@
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
 #include "cxx_monad_vector.hh"
+#include "cxx_shape.hh"
 
 #include <algorithm>
 #include <cstddef>
@@ -49,7 +50,11 @@ template <typename T, template <typename> class arr> struct tree {
   struct leaf;
   struct branch;
 
+  template <typename U> using leaf1 = typename tree<U, arr>::leaf;
+  template <typename U> using branch1 = typename tree<U, arr>::branch;
+
   struct leaf {
+
     arr<T> values;
 
     bool invariant() const { return true; }
@@ -69,16 +74,33 @@ template <typename T, template <typename> class arr> struct tree {
 
     template <typename F, typename... As,
               typename R = cxx::invoke_of_t<F, T, As...> >
-    typename tree<R, arr>::leaf fmap(const F &f, const As &... as) const {
+    leaf1<R> fmap(const F &f, const As &... as) const {
       return { cxx::fmap(f, values, as...) };
     }
 
     template <typename F, typename G, typename B, typename... As,
               typename R = cxx::invoke_of_t<F, T, B, B, As...> >
-    typename tree<R, arr>::leaf stencil_fmap(const F &f, const G &g,
-                                             const B &bm, const B &bp,
-                                             const As &... as) const {
+    leaf1<R> stencil_fmap(const F &f, const G &g, const B &bm, const B &bp,
+                          const As &... as) const {
       return { cxx::stencil_fmap(f, g, values, bm, bp, as...) };
+    }
+
+    template <typename F, typename... As,
+              typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, bool, As...> >
+    leaf1<R> boundary(const F &f, std::ptrdiff_t dir, bool face,
+                      const As &... as) const {
+      return { cxx::boundary(f, values, dir, face, as...) };
+    }
+
+    template <typename F, typename G, std::ptrdiff_t D, typename... As,
+              typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t, bool>,
+              typename R = cxx::invoke_of_t<F, T, boundaries<B, D>, As...> >
+    leaf1<R> stencil_fmap(const F &f, const G &g,
+                          const boundaries<leaf1<B>, D> &bs,
+                          const As &... as) const {
+      return { cxx::stencil_fmap(
+          f, g, values, cxx::fmap([](const auto &b) { return b.values; }, bs),
+          as...) };
     }
 
     template <typename F, typename Op, typename R>
@@ -119,7 +141,7 @@ template <typename T, template <typename> class arr> struct tree {
 
     template <typename F, typename... As,
               typename R = cxx::invoke_of_t<F, T, As...> >
-    typename tree<R, arr>::branch fmap(const F &f, const As &... as) const {
+    branch1<R> fmap(const F &f, const As &... as) const {
       return { cxx::fmap(
           [&f](const tree &t, const As &... as) { return t.fmap(f, as...); },
           trees, as...) };
@@ -127,9 +149,8 @@ template <typename T, template <typename> class arr> struct tree {
 
     template <typename F, typename G, typename B, typename... As,
               typename R = cxx::invoke_of_t<F, T, B, B, As...> >
-    typename tree<R, arr>::branch stencil_fmap(const F &f, const G &g,
-                                               const B &bm, const B &bp,
-                                               const As &... as) const {
+    branch1<R> stencil_fmap(const F &f, const G &g, const B &bm, const B &bp,
+                            const As &... as) const {
       return { cxx::stencil_fmap(
           [&f, &g](const tree &t, const B &bm, const B &bp, const As &... as) {
             return t.stencil_fmap(f, g, bm, bp, as...);
@@ -138,6 +159,31 @@ template <typename T, template <typename> class arr> struct tree {
             return cxx::invoke(g, !face ? t.head() : t.last(), face);
           },
           trees, bm, bp, as...) };
+    }
+
+    template <typename F, typename... As,
+              typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, bool, As...> >
+    branch1<R> boundary(const F &f, std::ptrdiff_t dir, bool face,
+                        const As &... as) const {
+      return { cxx::boundary(
+          [](const tree &t, std::ptrdiff_t dir, bool face, const F &f,
+             const As &... as) { return t.boundary(f, dir, face, as...); },
+          trees, dir, face, f, as...) };
+    }
+
+    template <typename F, typename G, std::ptrdiff_t D, typename... As,
+              typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t, bool>,
+              typename R = cxx::invoke_of_t<F, T, boundaries<B, D>, As...> >
+    branch1<R> stencil_fmap(const F &f, const G &g,
+                            const boundaries<branch1<B>, D> &bs,
+                            const As &... as) const {
+      return { cxx::stencil_fmap(
+          [&f, &g](const auto &t, const auto &bs, const As &... as) {
+            return t.stencil_fmap(f, g, bs, as...);
+          },
+          [&g](const auto &t, std::ptrdiff_t dir,
+               bool face) { return t.boundary(g, dir, face); },
+          trees, cxx::fmap([](const auto &b) { return b.trees; }, bs), as...) };
     }
 
     template <typename F, typename Op, typename R>
@@ -216,6 +262,27 @@ template <typename T, template <typename> class arr> struct tree {
                                       coarse_range, f, range, as...)));
   }
 
+  template <typename F, std::ptrdiff_t D, typename... As
+            /*std::enable_if_t<!rpc::is_action<F>::value> * = nullptr*/>
+  static auto iota(const F &f, const grid_region<D> &global_range,
+                   const grid_region<D> &range, const As &... as) {
+    if (range.size() <= max_arr_size)
+      return tree(leaf(cxx::iota<arr>(f, global_range, range, as...)));
+    std::ptrdiff_t fact = std::llrint(
+        std::floor(std::pow(double(max_arr_size), 1.0 / double(D))));
+    grid_region<D> coarse_range(
+        (range.imax() - range.imin() + index<D>::set1(fact - 1)) / fact);
+    assert(!coarse_range.empty());
+    return tree(branch(
+        cxx::iota<arr>([&f, &range, fact](const grid_region<D> &global_range,
+                                          const index<D> &i, const As &... as) {
+                         grid_region<D> fine_range(
+                             i, min(range.imax(), i + index<D>::set1(fact)));
+                         return iota(f, global_range, fine_range, as...);
+                       },
+                       global_range, coarse_range, as...)));
+  }
+
   template <typename F, typename... As,
             typename R = cxx::invoke_of_t<F, T, As...> >
   tree<R, arr> fmap(const F &f, const As &... as) const {
@@ -232,6 +299,38 @@ template <typename T, template <typename> class arr> struct tree {
         [&](const leaf &l) { return l.stencil_fmap(f, g, bm, bp, as...); },
         [&](const branch &b) { return b.stencil_fmap(f, g, bm, bp, as...); },
         node) };
+  }
+
+  template <typename F, typename... As,
+            typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, bool, As...> >
+  tree<R, arr> boundary(const F &f, std::ptrdiff_t dir, bool face,
+                        const As &... as) const {
+    return { cxx::gmap(&leaf::template boundary<F, As...>,
+                       &branch::template boundary<F, As...>, node, f, dir, face,
+                       as...) };
+  }
+
+  template <typename F, typename G, std::ptrdiff_t D, typename... As,
+            typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t, bool>,
+            typename R = cxx::invoke_of_t<F, T, boundaries<B, D>, As...> >
+  tree<R, arr> stencil_fmap(const F &f, const G &g,
+                            const boundaries<tree<B, arr>, D> &bs,
+                            const As &... as) const {
+    return { cxx::gmap(
+        [](const leaf &l, const F &f, const G &g, const auto &bs,
+           const As &... as) {
+          return l.stencil_fmap(
+              f, g, cxx::fmap([](const auto &b) { return b.left(); }, bs),
+              as...);
+        },
+        [](const branch &b, const F &f, const G &g, const auto &bs,
+           const As &... as) {
+          return b.stencil_fmap(
+              f, g, cxx::fmap([](const auto &b) { return b.right(); }, bs),
+              as...);
+        },
+        node, f, g, cxx::fmap([](const auto &b) { return b.node; }, bs),
+        as...) };
   }
 
   template <typename F, typename Op, typename R>
@@ -292,6 +391,15 @@ auto iota(const F &f, const iota_range_t &range, const As &... as) {
   return C<T>::iota(f, range, as...);
 }
 
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_tree<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  return C<T>::iota(f, global_range, range, as...);
+}
+
 // Functor
 
 template <typename F, typename T, template <typename> class arr, typename... As>
@@ -307,6 +415,22 @@ auto stencil_fmap(const F &f, const G &g, const tree<T, arr> &xs, const B &bm,
   typedef cxx::invoke_of_t<F, T, B, B, As...> R;
   static_assert(std::is_same<cxx::invoke_of_t<G, T, bool>, B>::value, "");
   return xs.stencil_fmap(f, g, bm, bp, as...);
+}
+
+template <typename F, typename T, template <typename> class arr, typename... As>
+auto boundary(const F &f, const tree<T, arr> &xs, std::ptrdiff_t dir, bool face,
+              const As &... as) {
+  return xs.boundary(f, dir, face, as...);
+}
+
+template <typename F, typename G, typename T, template <typename> class arr,
+          typename B, std::ptrdiff_t D, typename... As>
+auto stencil_fmap(const F &f, const G &g, const tree<T, arr> &xs,
+                  const boundaries<tree<B, arr>, D> &bs, const As &... as) {
+  typedef cxx::invoke_of_t<F, T, boundaries<B, D>, As...> R;
+  static_assert(
+      std::is_same<cxx::invoke_of_t<G, T, std::ptrdiff_t, bool>, B>::value, "");
+  return xs.stencil_fmap(f, g, bs, as...);
 }
 
 // Foldable
@@ -385,4 +509,9 @@ auto mplus(const tree<T, arr> &xs, const tree<Ts, arr> &... xss) {
 }
 }
 
-#endif // CXX_TREE2_HH
+#define CXX_TREE2_HH_DONE
+#else
+#ifndef CXX_TREE2_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_TREE2_HH

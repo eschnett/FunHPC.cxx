@@ -3,6 +3,7 @@
 
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
+#include "cxx_shape_fwd.hh"
 
 #include <cereal/access.hpp>
 
@@ -202,6 +203,31 @@ C<R> fmap2(const F &f, const cxx::maybe<T> &xs, const cxx::maybe<T2> &ys,
   return C<R>(cxx::invoke(f, xs.just(), ys.just(), as...));
 }
 
+template <
+    typename F, typename T, typename B, std::ptrdiff_t D, typename... As,
+    typename CT = cxx::maybe<T>,
+    template <typename> class C = cxx::kinds<CT>::template constructor,
+    typename R = typename cxx::invoke_of<F, T, boundaries<B, D>, As...>::type>
+C<R> fmap_boundaries(const F &f, const cxx::maybe<T> &xs,
+                     const boundaries<cxx::maybe<B>, D> &bss,
+                     const As &... as) {
+  bool s = xs.is_just();
+  if (s == false)
+    return C<R>();
+  assert(foldMap([](const cxx::maybe<B> &bs) { return bs.is_just(); },
+                 std::logical_and<bool>(), true, bss));
+  return C<R>(cxx::invoke(
+      f, xs.just(),
+      fmap([](const cxx::maybe<B> &bs) { return bs.just(); }, bss), as...));
+}
+
+// template <typename F, typename T, typename... As>
+// auto boundary(const F &f, const maybe<T> &xs, std::ptrdiff_t dir, bool face,
+//               const As &... as) {
+//   assert(xs.is_just());
+//   return fmap(f, xs, dir, face, as...);
+// }
+
 // monad
 
 template <template <typename> class C, typename T1,
@@ -262,12 +288,29 @@ typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type msome(T &&x) {
 // iota
 
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type
-iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
-     const As &... as) {
-  return munit<C>(cxx::invoke(f, imin, as...));
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_maybe<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
+  std::ptrdiff_t s = range.local.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, range.local.imin, as...));
+}
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_maybe<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  std::ptrdiff_t s = range.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, global_range, range.imin(), as...));
 }
 }
 
-#endif // #ifndef CXX_MAYBE_HH
+#define CXX_MAYBE_HH_DONE
+#else
+#ifndef CXX_MAYBE_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MAYBE_HH

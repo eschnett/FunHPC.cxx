@@ -55,30 +55,26 @@ typename std::enable_if<cxx::is_set<C<T> >::value, C<T> >::type mzero() {
   return C<T>();
 }
 
-template <typename T, typename... As, typename CT = std::set<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
-mplus(const std::set<T> &xs, const As &... as) {
-  C<T> rs(xs);
-  std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
-  for (size_t i = 0; i < xss.size(); ++i)
-    rs.insert(xss[i]->begin(), xss[i]->end());
+template <typename T, typename... Ts>
+auto mplus(const std::set<T> &xs, const std::set<Ts> &... xss) {
+  static_assert(cxx::all<std::is_same<Ts, T>::value...>::value, "");
+  std::set<T> rs(xs);
+  for (auto pxs : { &xss... })
+    rs.insert(pxs->begin(), pxs->end());
   return rs;
 }
 
-template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<((cxx::is_set<C<T> >::value) &&
-                         (cxx::all<std::is_same<As, T>::value...>::value)),
-                        C<T> >::type
-msome(const T &x, const As &... as) {
-  C<T> rs;
-  rs.insert(x);
-  std::array<const T *, sizeof...(As)> xs{ &as... };
-  for (size_t i = 0; i < xs.size(); ++i)
-    rs.insert(*xs[i]);
-  return rs;
+template <template <typename> class C, typename T, typename... Ts,
+          std::enable_if_t<cxx::is_set<C<T> >::value> * = nullptr>
+auto msome(const T &x, const Ts &... xs) {
+  static_assert(cxx::all<std::is_same<Ts, T>::value...>::value, "");
+  return C<T>{ x, xs... };
 }
 }
 
-#endif // #ifndef CXX_MONAD_SET_HH
+#define CXX_MONAD_SET_HH_DONE
+#else
+#ifndef CXX_MONAD_SET_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_SET_HH

@@ -192,4 +192,9 @@ mfold(const IT &xs) {
 }
 }
 
-#endif // #ifndef CXX_MONAD_SHARED_PTR_HH
+#define CXX_MONAD_SHARED_PTR_HH_DONE
+#else
+#ifndef CXX_MONAD_SHARED_PTR_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_SHARED_PTR_HH

@@ -9,6 +9,7 @@
 
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
+#include "cxx_shape.hh"
 
 #include <cereal/archives/binary.hpp>
 
@@ -385,11 +386,11 @@ template <typename F, typename Op, bool is_action, typename R, typename T,
           typename... As>
 struct client_foldable;
 
-template <typename T> auto head(const rpc::client<T> &xs) {
+template <typename T> const T &head(const rpc::client<T> &xs) {
   assert(bool(xs));
   return *xs;
 }
-template <typename T> auto last(const rpc::client<T> &xs) {
+template <typename T> const T &last(const rpc::client<T> &xs) {
   assert(bool(xs));
   return *xs;
 }
@@ -656,7 +657,8 @@ struct client_foldable2<F, true, R, T, T2, As...> {
   static R foldl2_client(const R &z, const rpc::client<T> &xs,
                          const rpc::client<T2> &ys, const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_client);
-    return cxx::invoke(F(), z, *xs, *ys.make_local(), as...);
+    auto ysl = ys.make_local();
+    return cxx::invoke(F(), z, *xs, *ysl, as...);
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_client);
 
@@ -809,8 +811,8 @@ struct client_functor2<F, true, T, T2, As...> {
                                                        const rpc::client<T> &ys,
                                                        const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
-    return rpc::make_global_shared<R>(
-        cxx::invoke(F(), *xs, *ys.make_local(), as...));
+    auto ysl = ys.make_local();
+    return rpc::make_global_shared<R>(cxx::invoke(F(), *xs, *ysl, as...));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap2_client_remote);
 
@@ -903,8 +905,9 @@ struct client_functor3<F, true, T, T2, T3, As...> {
   fmap3_client_remote(const rpc::client<T> &xs, const rpc::client<T2> &ys,
                       const rpc::client<T3> &zs, const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
-    return rpc::make_global_shared<R>(
-        cxx::invoke(F(), *xs, *ys.make_local(), *zs.make_local(), as...));
+    auto ysl = ys.make_local();
+    auto zsl = zs.make_local();
+    return rpc::make_global_shared<R>(cxx::invoke(F(), *xs, *ysl, *zsl, as...));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap3_client_remote);
 
@@ -942,6 +945,123 @@ typename client_functor3<F, true, T, T2, T3,
     client_functor3<F, true, T, T2, T3,
                     As...>::fmap3_client_remote_finish_export =
         fmap3_client_remote_finish_export_init();
+
+// TODO: Use Monad.sequence instead, assuming T is Traversible
+template <typename F, bool is_action, typename T, typename B, std::ptrdiff_t D,
+          typename... As>
+struct client_functor_boundaries;
+
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As,
+          typename R =
+              typename cxx::invoke_of<F, T, cxx::boundaries<B, D>, As...>::type>
+rpc::client<R> fmap_boundaries(const F &f, const rpc::client<T> &xs,
+                               const cxx::boundaries<rpc::client<B>, D> &bss,
+                               const As &... as) {
+  return client_functor_boundaries<F, rpc::is_action<F>::value, T, B, D,
+                                   As...>::fmap_boundaries(f, xs, bss, as...);
+}
+
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As>
+struct client_functor_boundaries<F, false, T, B, D, As...> {
+  static_assert(!rpc::is_action<F>::value, "");
+
+  typedef typename cxx::invoke_of<F, T, cxx::boundaries<B, D>, As...>::type R;
+
+  static rpc::global_shared_ptr<R>
+  fmap_boundaries_client_local(const F &f, const rpc::client<T> &xs,
+                               const cxx::boundaries<rpc::client<B>, D> &bss,
+                               const As &... as) {
+    // Note: We could call make_local, but we don't want to for non-actions
+    auto newbss = cxx::fmap([](const auto &bs) { return *bs; }, bss);
+    return rpc::make_global_shared<R>(cxx::invoke(f, *xs, newbss, as...));
+  }
+
+  static rpc::client<R>
+  fmap_boundaries_client(const F &f, const rpc::client<T> &xs,
+                         const cxx::boundaries<rpc::client<B>, D> &bss,
+                         const As &... as) {
+    bool s = bool(xs);
+    assert(all_of(fmap([s](const auto &bs) { return bool(bs) == s; }, bss)));
+    return s == false ? rpc::client<R>()
+                      : rpc::client<R>(rpc::server->rank(),
+                                       rpc::async(fmap_boundaries_client_local,
+                                                  f, xs, bss, as...));
+  }
+
+  static rpc::client<R>
+  fmap_boundaries(const F &f, const rpc::client<T> &xs,
+                  const cxx::boundaries<rpc::client<B>, D> &bss,
+                  const As &... as) {
+    return rpc::client<R>(
+        rpc::async(fmap_boundaries_client, f, xs, bss, as...));
+  }
+};
+
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As>
+struct client_functor_boundaries<F, true, T, B, D, As...> {
+  static_assert(rpc::is_action<F>::value, "");
+
+  typedef typename cxx::invoke_of<F, T, cxx::boundaries<B, D>, As...>::type R;
+
+  static rpc::global_shared_ptr<R>
+  fmap_boundaries_client_remote(const rpc::client<T> &xs,
+                                const cxx::boundaries<rpc::client<B>, D> &bss,
+                                const As &... as) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(
+        fmap_boundaries_client_remote);
+    auto tmpbss =
+        cxx::fmap([](const auto &bs) { return bs.make_local(); }, bss);
+    auto newbss = cxx::fmap([](const auto &bs) { return *bs; }, tmpbss);
+    return rpc::make_global_shared<R>(cxx::invoke(F(), *xs, newbss, as...));
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fmap_boundaries_client_remote);
+
+  static rpc::client<R>
+  fmap_boundaries_client(const rpc::client<T> &xs,
+                         const cxx::boundaries<rpc::client<B>, D> &bss,
+                         const As &... as) {
+    bool s = bool(xs);
+    // assert(cxx::all_of(
+    //     cxx::fmap([s](const auto &bs) { return bool(bs) == s; }, bss)));
+    assert(cxx::foldMap([s](const auto &bs) { return bool(bs) == s; },
+                        std::logical_and<bool>(), true, bss));
+    return s == false ? rpc::client<R>()
+                      : rpc::client<R>(
+                            xs.get_proc(),
+                            rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                       fmap_boundaries_client_remote_action(),
+                                       xs, bss, as...));
+  }
+
+  static rpc::client<R>
+  fmap_boundaries(F, const rpc::client<T> &xs,
+                  const cxx::boundaries<rpc::client<B>, D> &bss,
+                  const As &... as) {
+    return rpc::client<R>(rpc::async(fmap_boundaries_client, xs, bss, as...));
+  }
+};
+// Define action exports
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As>
+typename client_functor_boundaries<
+    F, true, T, B, D, As...>::fmap_boundaries_client_remote_evaluate_export_t
+    client_functor_boundaries<
+        F, true, T, B, D,
+        As...>::fmap_boundaries_client_remote_evaluate_export =
+        fmap_boundaries_client_remote_evaluate_export_init();
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As>
+typename client_functor_boundaries<
+    F, true, T, B, D, As...>::fmap_boundaries_client_remote_finish_export_t
+    client_functor_boundaries<
+        F, true, T, B, D, As...>::fmap_boundaries_client_remote_finish_export =
+        fmap_boundaries_client_remote_finish_export_init();
+
+// template <typename F, typename T, typename... As>
+// auto boundary(const F &f, const rpc::client<T> &xs, std::ptrdiff_t dir,
+//               bool face, const As &... as) {
+//   typedef cxx::invoke_of_t<F, T, std::ptrdiff_t, bool, As...> R;
+//   assert(bool(xs));
+//   return fmap(f, xs, dir, face, as...);
+// }
 
 // monad
 
@@ -1030,7 +1150,6 @@ C<T> mjoin(const rpc::client<rpc::client<T> > &xss) {
 
 // iota
 
-// TODO: execute remotely?
 template <template <typename> class C, typename F, typename... As,
           typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
 typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
@@ -1042,6 +1161,21 @@ iota(const F &f, const iota_range_t &range, const As &... as) {
                 range.global.imax - range.global.imin);
   return rpc::make_remote_client<T>(dest,
                                     cxx::invoke(f, range.local.imin, as...));
+}
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = typename cxx::invoke_of<F, cxx::grid_region<D>,
+                                               cxx::index<D>, As...>::type,
+          std::enable_if_t<cxx::is_client<C<T> >::value> * = nullptr>
+auto iota(const F &f, const cxx::grid_region<D> &global_range,
+          const cxx::grid_region<D> &range, const As &... as) {
+  assert(range.size() == 1);
+  // return munit<C>(cxx::invoke(f, range.local.imin, as...));
+  int dest = div_floor(rpc::server->size() * global_range.linear(range.imin()),
+                       global_range.size());
+  return rpc::make_remote_client<T>(
+      dest, cxx::invoke(f, global_range, range.imin(), as...));
 }
 }
 

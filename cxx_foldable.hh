@@ -37,6 +37,7 @@ namespace cxx {
 
 // TODO: allow additional arguments for all types
 // TODO: introduce foldable2
+// TODO: rename "catamorphism"?
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,11 +176,11 @@ auto fold(const Op &op, const R &z, const std::set<R> &xs, const As &... as) {
 
 template <typename T> const T &head(const std::set<T> &xs) {
   assert(!xs.empty());
-  return xs.front();
+  return *xs.begin();
 }
 template <typename T> const T &last(const std::set<T> &xs) {
   assert(!xs.empty());
-  return xs.back();
+  return *xs.rbegin();
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
@@ -389,4 +390,9 @@ const T *find(const F &f, const C<T> &xs) {
 // }
 }
 
-#endif // #ifndef CXX_FOLDABLE_HH
+#define CXX_FOLDABLE_HH_DONE
+#else
+#ifndef CXX_FOLDABLE_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_FOLDABLE_HH

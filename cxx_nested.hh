@@ -69,10 +69,27 @@ template <template <typename> class C, typename F, typename... As,
           std::enable_if_t<cxx::is_nested<C<T> >::value> * = nullptr>
 auto iota(const F &f, const iota_range_t &range, const As &... as) {
   return C<T>(iota<C<T>::template outer>(
-      [&f](std::ptrdiff_t i, const As &... as) {
-        return munit<C<T>::template inner>(cxx::invoke(f, i, as...));
+      [](std::ptrdiff_t i, const F &f, const iota_range_t &range,
+         const As &... as) {
+        return iota<C<T>::template inner>(
+            f, iota_range_t(range.global, i, i + range.local.istep), as...);
       },
-      range, as...));
+      range, f, range, as...));
+}
+
+template <template <typename> class C, std::ptrdiff_t D, typename F,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_nested<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  return C<T>(iota<C<T>::template outer>(
+      [](const grid_region<D> &global_range, const index<D> &i, const F &f,
+         const As &... as) {
+        grid_region<D> range1(i, i + index<D>::set1(1));
+        return iota<C<T>::template inner>(f, global_range, range1, as...);
+      },
+      global_range, range, f, as...));
 }
 
 // Functor
@@ -83,7 +100,7 @@ auto fmap(const F &f, const nested<T, Outer, Inner> &xs, const As &... as) {
   typedef cxx::invoke_of_t<F, T, As...> R;
   return nested<R, Outer, Inner>(fmap(
       [&f](const Inner<T> &xs, const As &... as) { return fmap(f, xs, as...); },
-      xs.values));
+      xs.values, as...));
 }
 
 template <typename F, typename T, template <typename> class Outer,
@@ -121,6 +138,40 @@ auto stencil_fmap(const F &f, const G &g, const nested<T, Outer, Inner> &xs,
            const As &... as) { return fmap3(f, px, bm, bp, as...); },
       [&g](const Inner<T> &px, bool face) { return fmap(g, px, face); },
       xs.values, munit<Inner>(bm), munit<Inner>(bp), as...));
+}
+
+// TODO: This is Monad.sequence, after introducing
+// pair<T,boundaries<T,D>> as Traversable. This is also fmap7 for D=3.
+template <typename T, std::ptrdiff_t D>
+rpc::client<std::pair<T, boundaries<T, D> > >
+sequence(const rpc::client<T> &xs, const boundaries<rpc::client<T>, D> &bs) {}
+
+template <typename F, typename T, template <typename> class Outer,
+          template <typename> class Inner, typename... As>
+auto boundary(const F &f, const nested<T, Outer, Inner> &xs, std::ptrdiff_t dir,
+              bool face, const As &... as) {
+  typedef cxx::invoke_of_t<F, T, std::ptrdiff_t, bool, As...> R;
+  return nested<R, Outer, Inner>(
+      boundary([](const Inner<T> &ys, std::ptrdiff_t dir, bool face, const F &f,
+                  const As &... as) { return fmap(f, ys, dir, face, as...); },
+               xs.values, dir, face, f, as...));
+}
+
+template <typename F, typename G, typename T, template <typename> class Outer,
+          template <typename> class Inner, typename B, std::ptrdiff_t D,
+          typename... As>
+auto stencil_fmap(const F &f, const G &g, const nested<T, Outer, Inner> &xs,
+                  const boundaries<nested<B, Outer, Inner>, D> &bs,
+                  const As &... as) {
+  typedef cxx::invoke_of_t<F, T, boundaries<B, D>, As...> R;
+  static_assert(
+      std::is_same<cxx::invoke_of_t<G, T, std::ptrdiff_t, bool>, B>::value, "");
+  return nested<R, Outer, Inner>(stencil_fmap(
+      [&f, &g](const Inner<T> &px, const boundaries<Inner<B>, D> &bs,
+               const As &... as) { return fmap_boundaries(f, px, bs, as...); },
+      [&g](const Inner<T> &px, std::ptrdiff_t dir,
+           bool face) { return fmap(g, px, dir, face); },
+      xs.values, fmap([](const auto &b) { return b.values; }, bs), as...));
 }
 
 // Foldable
@@ -240,4 +291,9 @@ auto mplus(const nested<T, Outer, Inner> &xs,
 }
 }
 
-#endif // #ifndef CXX_NESTED_HH
+#define CXX_NESTED_HH_DONE
+#else
+#ifndef CXX_NESTED_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_NESTED_HH

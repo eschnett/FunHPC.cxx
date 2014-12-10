@@ -4,6 +4,7 @@
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
 #include "cxx_monad.hh"
+#include "cxx_shape.hh"
 #include "cxx_utils.hh"
 
 #include <cereal/archives/binary.hpp>
@@ -106,7 +107,7 @@ template <template <typename> class C, typename F, typename... As,
           typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
           std::enable_if_t<cxx::is_array<C<T> >::value> * = nullptr>
 auto iota(const F &f, const iota_range_t &range, const As &... as) {
-  ptrdiff_t s = range.local.size();
+  std::ptrdiff_t s = range.local.size();
   C<T> rs;
   assert(rs.size() == s);
 #pragma omp simd
@@ -120,7 +121,7 @@ template <template <typename> class C, typename F, typename... As,
           typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
           std::enable_if_t<cxx::is_function<C<T> >::value> * = nullptr>
 auto iota(const F &f, const iota_range_t &range, const As &... as) {
-  ptrdiff_t s = range.local.size();
+  std::ptrdiff_t s = range.local.size();
   assert(s == 1);
   return munit<C>(cxx::invoke(f, range.local.imin, as...));
 }
@@ -154,9 +155,20 @@ template <template <typename> class C, typename F, typename... As,
           typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
           std::enable_if_t<cxx::is_shared_ptr<C<T> >::value> * = nullptr>
 auto iota(const F &f, const iota_range_t &range, const As &... as) {
-  ptrdiff_t s = range.local.size();
+  std::ptrdiff_t s = range.local.size();
   assert(s == 1);
   return munit<C>(cxx::invoke(f, range.local.imin, as...));
+}
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_shared_ptr<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  std::ptrdiff_t s = range.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, global_range, range.imin(), as...));
 }
 
 // vector
@@ -164,13 +176,33 @@ template <template <typename> class C, typename F, typename... As,
           typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
           std::enable_if_t<cxx::is_vector<C<T> >::value> * = nullptr>
 auto iota(const F &f, const iota_range_t &range, const As &... as) {
-  ptrdiff_t s = range.local.size();
+  std::ptrdiff_t s = range.local.size();
   C<T> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, range.local.imin + i * range.local.istep, as...);
   return rs;
 }
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_vector<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  static_assert(D == 1, "");
+  std::ptrdiff_t s = range.size();
+  C<T> rs(s);
+#pragma omp simd
+  for (std::ptrdiff_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, range, range.imin() + index<D>::set1(i), as...);
+  return rs;
+}
 }
 
-#endif // #ifndef CXX_IOTA_HH
+#define CXX_IOTA_HH_DONE
+#else
+#ifndef CXX_IOTA_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_IOTA_HH

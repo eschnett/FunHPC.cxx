@@ -99,11 +99,11 @@ fold(const Op &op, const R &z, const rpc::shared_future<R> &xs,
   return xs.get();
 }
 
-template <typename T> auto head(const rpc::shared_future<T> &xs) {
+template <typename T> const T &head(const rpc::shared_future<T> &xs) {
   assert(xs.valid());
   return xs.get();
 }
-template <typename T> auto last(const rpc::shared_future<T> &xs) {
+template <typename T> const T &last(const rpc::shared_future<T> &xs) {
   assert(xs.valid());
   return xs.get();
 }
@@ -222,6 +222,14 @@ C<R> fmap3(const F &f, const rpc::shared_future<T> &xs,
              xs, ys, zs, as...).share();
 }
 
+// template <typename F, typename T, typename... As>
+// auto boundary(const F &f, const rpc::shared_future<T> &xs, std::ptrdiff_t
+// dir,
+//               bool face, const As &... as) {
+//   assert(xs.valid());
+//   return fmap(f, xs, as...);
+// }
+
 // monad
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
@@ -263,11 +271,22 @@ C<T> mjoin(const rpc::shared_future<rpc::shared_future<T> > &xss) {
 // iota
 
 template <template <typename> class C, typename F, typename... As,
-          typename T = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-iota(const F &f, const iota_range_t &range, const As &... as) {
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_shared_future<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
   assert(range.local.size() == 1);
   return munit<C>(cxx::invoke(f, range.local.imin, as...));
+}
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_shared_future<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  std::ptrdiff_t s = range.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, global_range, range.imin(), as...));
 }
 }
 

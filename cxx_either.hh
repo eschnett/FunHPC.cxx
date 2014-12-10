@@ -2,7 +2,9 @@
 #define CXX_EITHER_HH
 
 #include "cxx_invoke.hh"
+#include "cxx_iota.hh"
 #include "cxx_kinds.hh"
+#include "cxx_shape.hh"
 #include "cxx_utils.hh"
 
 #include <cereal/access.hpp>
@@ -136,6 +138,32 @@ public:
           R(cxx::invoke(g, x.right(), y.right(), std::forward<As>(as)...));
     }
   }
+  struct gmap_boundaries : std::tuple<> {};
+  template <typename F, typename G, typename L1, typename R1, typename L2,
+            typename R2, std::ptrdiff_t D, typename... As>
+  either(gmap_boundaries, const F &f, const G &g, const either<L1, R1> &x,
+         const cxx::boundaries<either<L2, R2>, D> &bss, As &&... as) {
+    typedef cxx::invoke_of_t<F, L1, cxx::boundaries<L2, D>, As...> TL;
+    typedef cxx::invoke_of_t<G, R1, cxx::boundaries<R2, D>, As...> TR;
+    static_assert(std::is_same<TL, L>::value && std::is_same<TR, R>::value, "");
+    auto l = x.is_left();
+    // assert(
+    //     all_of(fmap([l](const auto &bs) { return bs.is_left() == l; },
+    //     bss)));
+    assert(foldMap([l](const auto &bs) { return bs.is_left() == l; },
+                   std::logical_and<bool>(), true, bss));
+    if (x.is_left()) {
+      is_left_ = true;
+      auto newbss = fmap([](const auto &bs) { return bs.left(); }, bss);
+      new (&left_) L(
+          cxx::invoke(f, x.left(), std::move(newbss), std::forward<As>(as)...));
+    } else {
+      is_left_ = false;
+      auto newbss = fmap([](const auto &bs) { return bs.right(); }, bss);
+      new (&right_) R(cxx::invoke(g, x.right(), std::move(newbss),
+                                  std::forward<As>(as)...));
+    }
+  }
   // TODO: make gfoldl more uniform to foldl, with expecting a zero element
   // TODO: rename gfoldl to (g)foldMap(1)
   template <typename F, typename G, typename... As>
@@ -196,6 +224,16 @@ auto gmap2(const F &f, const G &g, const either<L1, R1> &xs,
   return either<RL, RR>(typename either<RL, RR>::gmap2(), f, g, xs, ys,
                         std::forward<As>(as)...);
 }
+template <typename F, typename G, typename L1, typename R1, typename L2,
+          typename R2, std::ptrdiff_t D, typename... As>
+auto gmap_boundaries(const F &f, const G &g, const either<L1, R1> &xs,
+                     const cxx::boundaries<either<L2, R2>, D> &bss,
+                     As &&... as) {
+  typedef cxx::invoke_of_t<F, L1, cxx::boundaries<L2, D>, As...> RL;
+  typedef cxx::invoke_of_t<G, R1, cxx::boundaries<R2, D>, As...> RR;
+  return either<RL, RR>(typename either<RL, RR>::gmap_boundaries(), f, g, xs,
+                        bss, std::forward<As>(as)...);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -210,21 +248,29 @@ struct is_either<either<L, R> > : std::true_type {};
 
 // foldable
 template <typename Op, typename R, typename L, typename... As>
-std::enable_if_t<std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, R>
-fold(const Op &op, const R &z, const either<L, R> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const either<L, R> &xs, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   bool s = xs.is_right();
   if (s == false)
     return z;
   return xs.right();
 }
 
+template <typename R, typename L> const R &head(const either<L, R> &xs) {
+  assert(xs.is_right());
+  return xs.right();
+}
+template <typename R, typename L> const R &last(const either<L, R> &xs) {
+  assert(xs.is_right());
+  return xs.right();
+}
+
 template <typename F, typename Op, typename R, typename T, typename L,
           typename... As>
-std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value &&
-                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
-                 R>
-foldMap(const F &f, const Op &op, const R &z, const either<L, T> &xs,
-        const As &... as) {
+auto foldMap(const F &f, const Op &op, const R &z, const either<L, T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.is_right();
   if (s == false)
     return z;
@@ -233,11 +279,10 @@ foldMap(const F &f, const Op &op, const R &z, const either<L, T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename L,
           typename T2, typename L2, typename... As>
-std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value &&
-                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
-                 R>
-foldMap2(const F &f, const Op &op, const R &z, const either<L, T> &xs,
-         const either<L2, T2> &ys, const As &... as) {
+auto foldMap2(const F &f, const Op &op, const R &z, const either<L, T> &xs,
+              const either<L2, T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.is_right();
   assert(ys.is_right() == s);
   if (s == false)
@@ -245,72 +290,39 @@ foldMap2(const F &f, const Op &op, const R &z, const either<L, T> &xs,
   return cxx::invoke(f, xs.right(), ys.right(), as...);
 }
 
-#if 0
-template <typename F, typename R, typename T, typename L, typename... As>
-std::enable_if_t<
-    std::is_same<cxx::invoke_of_t<F, R, T, As...>, R>::value,
-    R>
-foldl(const F &f, const R &z, const either<L, T> &xs, const As &... as) {
-  bool s = xs.is_right();
-  if (s == false)
-    return z;
-  return cxx::invoke(f, z, xs.right(), as...);
-}
-
-template <typename F, typename R, typename T, typename L, typename T2,
-          typename L2, typename... As>
-std::enable_if_t<
-    std::is_same<cxx::invoke_of_t<F, R, T, T2, As...>, R>::value,
-    R>
-foldl2(const F &f, const R &z, const either<L, T> &xs, const either<L2, T2> &ys,
-       const As &... as) {
-  bool s = xs.is_right();
-  assert(ys.is_right() == s);
-  if (s == false)
-    return z;
-  return cxx::invoke(f, z, xs.right(), ys.right(), as...);
-}
-#endif
-
 // functor
-namespace detail {
-template <typename T> struct unwrap_either {
-  typedef T type;
-  const T &operator()(const T &x) const { return x; }
-};
-template <typename T, typename L> struct unwrap_either<either<L, T> > {
-  typedef T type;
-  const T &operator()(const either<L, T> &x) const { return x.right(); }
-};
-}
-template <typename F, typename T, typename L, typename... As,
-          typename CT = cxx::either<L, T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = cxx::invoke_of_t<F, T, As...> >
-C<R> fmap(const F &f, const cxx::either<L, T> &xs, const As &... as) {
+template <typename F, typename T, typename L, typename... As>
+auto fmap(const F &f, const cxx::either<L, T> &xs, const As &... as) {
+  typedef cxx::invoke_of_t<F, T, As...> R;
   bool s = xs.is_right();
   if (s == false)
-    return C<R>(typename C<R>::left_type());
-  return C<R>(cxx::invoke(f, xs.right(), as...));
+    return either<L, R>(typename either<L, R>::left_type());
+  return either<L, R>(cxx::invoke(f, xs.right(), as...));
 }
 
-template <typename F, typename T, typename L, typename T2, typename... As,
-          typename CT = cxx::either<L, T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = cxx::invoke_of_t<F, T, T2, As...> >
-C<R> fmap2(const F &f, const cxx::either<L, T> &xs,
+template <typename F, typename T, typename L, typename T2, typename... As>
+auto fmap2(const F &f, const cxx::either<L, T> &xs,
            const cxx::either<L, T2> &ys, const As &... as) {
+  typedef cxx::invoke_of_t<F, T, T2, As...> R;
   bool s = xs.is_right();
   assert(ys.is_right() == s);
   if (s == false)
-    return C<R>(typename C<R>::left_type());
-  return C<R>(cxx::invoke(f, xs.right(), ys.right(), as...));
+    return either<L, R>(typename either<L, R>::left_type());
+  return either<L, R>(cxx::invoke(f, xs.right(), ys.right(), as...));
 }
+
+// template <typename F, typename R, typename L, typename... As>
+// auto boundary(const F &f, const either<L, R> &xs, std::ptrdiff_t dir, bool
+// face,
+//               const As &... as) {
+//   assert(xs.is_right());
+//   return fmap(f, xs, dir, face, as...);
+// }
 
 // monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1> >
+          typename T = typename std::decay_t<T1> >
 std::enable_if_t<cxx::is_either<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }
@@ -320,14 +332,12 @@ std::enable_if_t<cxx::is_either<C<T> >::value, C<T> > mmake(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
-template <typename T, typename L, typename F, typename... As,
-          typename CT = cxx::either<L, T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = cxx::invoke_of_t<F, T, As...>,
-          typename R = typename cxx::kinds<CR>::value_type>
-C<R> mbind(const cxx::either<L, T> &xs, const F &f, As &&... as) {
+template <typename T, typename L, typename F, typename... As>
+auto mbind(const cxx::either<L, T> &xs, const F &f, As &&... as) {
+  typedef cxx::invoke_of_t<F, T, As...> CR;
+  static_assert(is_either<CR>::value, "");
   if (xs.is_left())
-    return C<R>(xs.left(), std::forward<As>(as)...);
+    return CR(xs.left());
   return cxx::invoke(f, xs.right(), std::forward<As>(as)...);
 }
 
@@ -367,12 +377,29 @@ std::enable_if_t<cxx::is_either<C<T> >::value, C<T> > msome(T &&x) {
 // iota
 
 template <template <typename> class C, typename F, typename... As,
-          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...> >
-std::enable_if_t<cxx::is_either<C<T> >::value, C<T> >
-iota(const F &f, ptrdiff_t imin, ptrdiff_t imax, ptrdiff_t istep,
-     const As &... as) {
-  return munit<C>(cxx::invoke(f, imin, as...));
+          typename T = cxx::invoke_of_t<F, std::ptrdiff_t, As...>,
+          std::enable_if_t<cxx::is_either<C<T> >::value> * = nullptr>
+auto iota(const F &f, const iota_range_t &range, const As &... as) {
+  std::ptrdiff_t s = range.local.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, range.local.imin, as...));
+}
+
+template <template <typename> class C, typename F, std::ptrdiff_t D,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
+          std::enable_if_t<cxx::is_either<C<T> >::value> * = nullptr>
+auto iota(const F &f, const grid_region<D> &global_range,
+          const grid_region<D> &range, const As &... as) {
+  std::ptrdiff_t s = range.size();
+  assert(s == 1);
+  return munit<C>(cxx::invoke(f, global_range, range.imin(), as...));
 }
 }
 
-#endif // #ifndef CXX_EITHER_HH
+#define CXX_EITHER_HH_DONE
+#else
+#ifndef CXX_EITHER_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_EITHER_HH

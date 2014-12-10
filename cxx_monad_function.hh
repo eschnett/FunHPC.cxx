@@ -53,4 +53,9 @@ mjoin(const std::function<std::function<T(A)>(A)> &f) {
 }
 }
 
-#endif // #ifndef CXX_MONAD_FUNCTION_HH
+#define CXX_MONAD_FUNCTION_HH_DONE
+#else
+#ifndef CXX_MONAD_FUNCTION_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_MONAD_FUNCTION_HH

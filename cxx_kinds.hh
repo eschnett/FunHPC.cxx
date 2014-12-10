@@ -80,4 +80,9 @@ template <typename T, typename Allocator>
 struct is_vector<std::vector<T, Allocator> > : std::true_type {};
 }
 
-#endif // #ifndef CXX_KINDS_HH
+#define CXX_KINDS_HH_DONE
+#else
+#ifndef CXX_KINDS_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_KINDS_HH

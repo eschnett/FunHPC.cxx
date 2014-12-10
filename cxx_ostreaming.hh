@@ -251,7 +251,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
             << " IT=" << typeid(IT).name() << " sz=" << xs.size() << "\n";
   assert(xs.size() <= 1000);
   ostreamer ostr;
-#warning "TODO: Use foldable instead of iterators"
+  // TODO: Use foldable instead of iterators
   size_t i = 0;
   for (const T &x : xs) {
     std::cout << "ostreaming::mapM_.1 i=" << i++ << "\n";
@@ -340,4 +340,9 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 // ap :: Monad m => m (a -> b) -> m a -> m b
 }
 
-#endif // #ifndef CXX_OSTREAMING_HH
+#define CXX_OSTREAMING_HH_DONE
+#else
+#ifndef CXX_OSTREAMING_HH_DONE
+#error "Cyclic include dependency"
+#endif
+#endif // #ifdef CXX_OSTREAMING_HH

@@ -149,7 +149,7 @@ rm -f $prog.cache.$$
 ln -f $prog.cache job-$id.exe
 
 # Do we have the correct executable?
-if ! cmp $prog job-$id.exe | head -n 1 | grep -qv ''; then
+if ! cmp $prog job-$id.exe 2>/dev/null | head -n 1 | grep -qv ''; then
     # No: make temporary copy of executable, then update cache
     cp -f $prog job-$id.exe.tmp # this may be slow
 
@@ -158,7 +158,7 @@ if ! cmp $prog job-$id.exe | head -n 1 | grep -qv ''; then
 
     # Is the executable now correct (because the cache changed in the
     # mean time?)
-    if cmp $prog job-$id.exe | head -n 1 | grep -qv ''; then
+    if cmp $prog job-$id.exe 2>/dev/null | head -n 1 | grep -qv ''; then
         # Yes: delete the temporary executable
         rm job-$id.exe.tmp
     else

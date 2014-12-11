@@ -441,22 +441,19 @@ public:
     return (*data_)[layout_.linear(region_.imax() - index<D>::set1(1))];
   }
   template <typename F, typename Op, typename R, typename... As>
-  typename std::enable_if<
-      (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-       std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-      R>::type
-  foldMap(const F &f, const Op &op, const R &z, const As &... as) const {
+  auto foldMap(const F &f, const Op &op, const R &z, const As &... as) const {
+    static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+    static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
     return grid_foldMap<F, Op, D, R, T, As...>::template foldMap<D - 1>(
         f, op, z, region_, layout_,
         data_->data() + layout_.linear(region_.imin()), as...);
   }
   template <typename F, typename Op, typename R, typename T1, typename... As>
-  typename std::enable_if<
-      (std::is_same<typename cxx::invoke_of<F, T, T1, As...>::type, R>::value &&
-       std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-      R>::type
-  foldMap2(const F &f, const Op &op, const R &z, const grid<T1, D> &ys,
-           const As &... as) const {
+  auto foldMap2(const F &f, const Op &op, const R &z, const grid<T1, D> &ys,
+                const As &... as) const {
+    static_assert(std::is_same<cxx::invoke_of_t<F, T, T1, As...>, R>::value,
+                  "");
+    static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
     assert(region_.is_subregion_of(ys.region_));
     return grid_foldMap2<F, Op, D, R, T, T1, As...>::template foldMap2<D - 1>(
         f, op, z, region_, layout_,
@@ -466,12 +463,10 @@ public:
   // functor
   struct fmap : std::tuple<> {};
   template <typename F, typename T1, typename... As>
-  grid(typename std::enable_if<
-           std::is_same<typename cxx::invoke_of<F, T1, As...>::type, T>::value,
-           fmap>::type,
-       const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
+  grid(fmap, const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
        const As &... as)
       : grid(rr) {
+    static_assert(std::is_same<cxx::invoke_of_t<F, T1, As...>, T>::value, "");
     assert(rr.is_subregion_of(xs.region_));
     grid_fmap<F, D, T, T1, As...>::template fmap<D - 1>(
         f, layout_, data_->data(), xs.layout_,
@@ -479,13 +474,11 @@ public:
   }
   struct fmap2 : std::tuple<> {};
   template <typename F, typename T1, typename T2, typename... As>
-  grid(typename std::enable_if<
-           std::is_same<typename cxx::invoke_of<F, T1, T2, As...>::type,
-                        T>::value,
-           fmap2>::type,
-       const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
+  grid(fmap2, const F &f, const grid_region<D> &rr, const grid<T1, D> &xs,
        const grid<T2, D> &ys, const As &... as)
       : grid(rr) {
+    static_assert(std::is_same<cxx::invoke_of_t<F, T1, T2, As...>, T>::value,
+                  "");
     assert(rr.is_subregion_of(xs.region_));
     assert(rr.is_subregion_of(ys.region_));
     grid_fmap2<F, D, T, T1, T2, As...>::template fmap2<D - 1>(
@@ -495,17 +488,16 @@ public:
   }
   struct stencil_fmap : std::tuple<> {};
   template <typename F, typename G, typename T1, typename B, typename... As>
-  grid(typename std::enable_if<
-           (std::is_same<
-                typename cxx::invoke_of<F, T1, boundaries<B, D>, As...>::type,
-                T>::value &&
-            std::is_same<
-                typename cxx::invoke_of<G, T1, std::ptrdiff_t, bool>::type,
-                B>::value),
-           stencil_fmap>::type,
-       const F &f, const G &g, const grid_region<D> &rr, const grid<T1, D> &xs,
-       const boundaries<grid<B, D>, D> &bs, const As &... as)
+  grid(stencil_fmap, const F &f, const G &g, const grid_region<D> &rr,
+       const grid<T1, D> &xs, const boundaries<grid<B, D>, D> &bs,
+       const As &... as)
       : grid(rr) {
+    static_assert(std::is_same<cxx::invoke_of_t<F, T1, boundaries<B, D>, As...>,
+                               T>::value,
+                  "");
+    static_assert(
+        std::is_same<cxx::invoke_of_t<G, T1, std::ptrdiff_t, bool>, B>::value,
+        "");
     assert(rr.is_subregion_of(xs.region_));
 #if 0
     boundaries<grid_region<D>, D> brs(
@@ -519,9 +511,15 @@ public:
     boundaries<const B * restrict, D> bss;
     for (std::ptrdiff_t f = 0; f < 2; ++f) {
       for (std::ptrdiff_t d = 0; d < D; ++d) {
-        // TODO: also check that indices match
         assert(all_of(bs(d, f).region_.shape() ==
                       xs.region_.boundary(d, f).shape()));
+        // TODO: also check that indices match
+        // TODO: introduce function to shift a domain, so that the
+        // outer boundaries can be created from the boundary of the
+        // interior via shifting
+        // assert(all_of(bs(d, f).region_.imin() ==
+        //               xs.region_.boundary(d, f).imin() +
+        //                   std::ptrdiff_t(!f ? -1 : +1) * index<D>::dir(d)));
         brs(d, f) = bs(d, f).region_;
         bss(d, f) = bs(d, f).data_->data();
       }

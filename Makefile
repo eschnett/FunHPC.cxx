@@ -2,7 +2,7 @@
 
 # (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 bench demo grid tree wave wave-light wave-vector wave3d-grid wave3d-tree)
 
-DEBUG = 1
+DEBUG =
 
 CC  := ${CC}	# ${MPICC}
 CXX := ${CXX}   # ${MPICXX}

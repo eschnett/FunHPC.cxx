@@ -98,13 +98,13 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 1;
+constexpr ptrdiff_t dim = 3;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;
 
 struct defs_t {
-#if 0   // benchmark
+#if 1   // benchmark
   const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -117,7 +117,7 @@ struct defs_t {
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;
-#elif 1 // test
+#elif 0 // test
   const ptrdiff_t rho = 1; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -327,6 +327,7 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 // Each grid lives on a process
 
 template <typename T> using grid_ = grid<T, dim>;
+template <typename T> using boundaries_ = boundaries<T, dim>;
 
 class grid_t {
   typedef grid_<cell_t> cells_t;
@@ -386,12 +387,12 @@ public:
   // Boundary condition
   struct boundary : tuple<> {};
   grid_t(boundary, const grid_t &g, double t, ptrdiff_t dir, bool face)
-      : cells(fmap([t, dir, face](const cell_t &c) {
-                     auto vn =
-                         vdouble(ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir));
-                     return cell_t(cell_t::boundary(), t, c.x + vn * defs->dx);
-                   },
-                   cells_t(cells_t::boundary(), g.cells, dir, face))) {}
+      : cells(cxx::boundary(
+            [t](const cell_t &c, ptrdiff_t dir, bool face) {
+              auto vn = vdouble(ptrdiff_t(!face ? -1 : +1) * vindex::dir(dir));
+              return cell_t(cell_t::boundary(), t, c.x + vn * defs->dx);
+            },
+            g.cells, dir, face)) {}
 
   // Error
   struct error : tuple<> {};
@@ -448,7 +449,8 @@ auto grid_initial(const region &, const vindex &ipos, double t) {
 }
 RPC_ACTION(grid_initial);
 
-auto grid_boundary(const grid_t &g, double t, ptrdiff_t dir, bool face) {
+// Note: Arguments re-ordered
+auto grid_boundary(const grid_t &g, ptrdiff_t dir, bool face, double t) {
   return grid_t(grid_t::boundary(), g, t, dir, face);
 }
 RPC_ACTION(grid_boundary);
@@ -527,15 +529,13 @@ struct domain_t {
   // Boundary condition
   struct boundary : tuple<> {};
   domain_t(boundary, const domain_t &d, double t, ptrdiff_t dir, bool face)
-      : t(t), grids(fmap(grid_boundary_action(), d.grids, t, dir, face)) {}
+      : t(t),
+        grids(cxx::boundary(grid_boundary_action(), d.grids, dir, face, t)) {}
 
   auto all_boundaries() const {
-    boundaries<grids_t, dim> bs;
-    for (ptrdiff_t face = 0; face < 2; ++face)
-      for (ptrdiff_t dir = 0; dir < dim; ++dir)
-        bs(dir, face) =
-            domain_t(domain_t::boundary(), *this, t, dir, face).grids;
-    return bs;
+    return iota<boundaries_>([this](std::ptrdiff_t dir, bool face) {
+      return domain_t(domain_t::boundary(), *this, t, dir, face).grids;
+    });
   }
 
   // Error
@@ -552,6 +552,7 @@ struct domain_t {
                            s.grids, s.all_boundaries())) {}
   domain_t(rhs, const client<domain_t> &s) : domain_t(rhs(), *s) {}
 };
+RPC_COMPONENT(tree_<grid_t>);
 
 // Output
 auto operator<<(ostream &os, const domain_t &d) -> ostream & {

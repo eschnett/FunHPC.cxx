@@ -37,3 +37,57 @@ rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit ux4
 
 
 for f in job-n*.s*.c*.p*.t*.m*.r*.log; do grep -H 'Time:' $f | tail -n +3; done
+
+
+
+===============================================================================
+
+10   wave-vector
+20   wave
+30   wave3d-grid
+40   wave3d-tree
+
+{
+for r in 10; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave-vector& done; done; done
+for r in 20; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave& done; done; done
+for r in 30; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave3d-grid& done; done; done
+for r in 40; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave3d-tree& done; done; done
+}; wait
+
+for r in 10 20 30 40; do for t in 8; do for f in job-n*.s*.c*.p*.t$t.m*.r$r.log; do grep -H 'Time:' $f | tail -n +3 | head -n 1; done; done; done
+
+wave-vector:
+job-n1.s2.c8.p2.t8.m1.r10.log:       Time:  12.3746 sec
+job-n2.s2.c8.p4.t8.m1.r10.log:       Time:  21.3313 sec
+job-n4.s2.c8.p8.t8.m1.r10.log:       Time:  99.7892 sec
+job-n8.s2.c8.p16.t8.m1.r10.log:      Time: 229.932 sec
+
+wave:
+job-n1.s2.c8.p2.t8.m1.r20.log:       Time:   2.14479 sec
+job-n2.s2.c8.p4.t8.m1.r20.log:       Time:   1.76385 sec
+job-n4.s2.c8.p8.t8.m1.r20.log:       Time:   4.41958 sec
+job-n8.s2.c8.p16.t8.m1.r20.log:      Time:   2.95982 sec
+job-n16.s2.c8.p32.t8.m1.r20.log:     Time:   5.19773 sec
+job-n32.s2.c8.p64.t8.m1.r20.log:     Time:   8.58659 sec
+job-n64.s2.c8.p128.t8.m1.r20.log:    Time:  13.5954 sec
+job-n128.s2.c8.p256.t8.m1.r20.log:   Time:   8.20434 sec
+
+wave3d-grid:
+job-n1.s2.c8.p2.t8.m1.r30.log:       Time:   0.263105 sec
+job-n2.s2.c8.p4.t8.m1.r30.log:       Time:   0.52935 sec
+job-n4.s2.c8.p8.t8.m1.r30.log:       Time:   1.05167 sec
+job-n8.s2.c8.p16.t8.m1.r30.log:      Time:   2.11658 sec
+job-n16.s2.c8.p32.t8.m1.r30.log:     Time:   4.28292 sec
+job-n32.s2.c8.p64.t8.m1.r30.log:     Time:   8.60039 sec
+job-n64.s2.c8.p128.t8.m1.r30.log:    Time:  17.2712 sec
+job-n128.s2.c8.p256.t8.m1.r30.log:   Time:  33.7294 sec
+
+wave3d-tree:
+job-n1.s2.c8.p2.t8.m1.r40.log:       Time:   1.72825 sec
+job-n2.s2.c8.p4.t8.m1.r40.log:       Time:   1.07252 sec
+job-n4.s2.c8.p8.t8.m1.r40.log:       Time:   3.01409 sec
+job-n8.s2.c8.p16.t8.m1.r40.log:      Time:   1.42693 sec
+job-n16.s2.c8.p32.t8.m1.r40.log:     Time:   2.95823 sec
+job-n32.s2.c8.p64.t8.m1.r40.log:     Time:   7.60146 sec
+job-n64.s2.c8.p128.t8.m1.r40.log:    Time:  10.5571 sec
+job-n128.s2.c8.p256.t8.m1.r40.log:   Time:   7.69732 sec

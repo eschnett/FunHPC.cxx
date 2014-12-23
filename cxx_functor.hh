@@ -346,15 +346,19 @@ auto stencil_fmap(const F &f, const G &g, const std::vector<T> &xs,
     rs[0] = cxx::invoke(
         f, xs[0], makebnds(bs(0, false).back(), bs(0, true).front()), as...);
   } else if (s > 1) {
-    //     rs[0] = cxx::invoke(f, xs[0], bs(0, false).back(),
-    //                         cxx::invoke(g, xs[1], 0, false), as...);
-    // #pragma omp simd
-    //     for (size_t i = 1; i < s - 1; ++i)
-    //       rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], 0, true),
-    //                           cxx::invoke(g, xs[i + 1], 0, false), as...);
-    //     rs[s - 1] = cxx::invoke(f, xs[s - 1], cxx::invoke(g, xs[s - 2], 0,
-    //     true),
-    //                             bs(0, true).front(), as...);
+    rs[0] = cxx::invoke(
+        f, xs[0],
+        makebnds(bs(0, false).back(), cxx::invoke(g, xs[1], 0, false)), as...);
+#pragma omp simd
+    for (size_t i = 1; i < s - 1; ++i)
+      rs[i] =
+          cxx::invoke(f, xs[i], makebnds(cxx::invoke(g, xs[i - 1], 0, true),
+                                         cxx::invoke(g, xs[i + 1], 0, false)),
+                      as...);
+    rs[s - 1] =
+        cxx::invoke(f, xs[s - 1], makebnds(cxx::invoke(g, xs[s - 2], 0, true),
+                                           bs(0, true).front()),
+                    as...);
   }
   return rs;
 }

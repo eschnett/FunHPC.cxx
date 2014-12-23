@@ -26,9 +26,6 @@ namespace cxx {
 
 // iota: (Int -> (Int,Int,Int) -> a) -> (Int,Int,Int) -> m a
 
-// TODO: introduce iota2 (for combining containers)
-// TODO: introduce multi-dimensional iotas
-
 template <typename T> struct range_t {
   T imin, imax, istep;
   bool invariant() const {
@@ -195,7 +192,8 @@ auto iota(const F &f, const grid_region<D> &global_range,
   C<T> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(f, range, range.imin() + index<D>::set1(i), as...);
+    rs[i] =
+        cxx::invoke(f, global_range, range.imin() + i * range.istep(), as...);
   return rs;
 }
 }

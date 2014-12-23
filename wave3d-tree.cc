@@ -38,7 +38,7 @@ using cxx::foldMap;
 using cxx::grid;
 using cxx::grid_region;
 using cxx::iota;
-// using cxx::iota_range_t;
+using cxx::iota_range_t;
 // using cxx::range_t;
 using cxx::stencil_fmap;
 using cxx::tree;
@@ -98,13 +98,13 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 3;
+constexpr ptrdiff_t dim = 1;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;
 
 struct defs_t {
-#if 1   // benchmark
+#if 1                       // benchmark
   const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -326,7 +326,9 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 
 // Each grid lives on a process
 
-template <typename T> using grid_ = grid<T, dim>;
+// template <typename T> using grid_ = grid<T, dim>;
+static_assert(dim == 1, "");
+template <typename T> using grid_ = vector<T>;
 template <typename T> using boundaries_ = boundaries<T, dim>;
 
 class grid_t {
@@ -343,19 +345,21 @@ class grid_t {
 
 public:
   // only for serialization
-  grid_t()
-      : cells(cells_t::iota(),
-              [](const region &, const vindex &i) { return cell_t(); },
-              region(), region()) {}
+  // grid_t()
+  //     : cells(cells_t::iota(),
+  //             [](const region &, const vindex &i) { return cell_t(); },
+  //             region(), region()) {}
+  grid_t() {}
 
   // Wait until the grid is ready
   auto wait() const { return tuple<>(); }
 
   // Output
   auto output() const {
-    ostringstream os;
-    os << cells;
-    return os.str();
+    // ostringstream os;
+    // os << cells;
+    // return os.str();
+    return foldMap(&cell_t::output, string_mappend, string_mempty(), cells);
   }
 
   // Linear combination
@@ -368,9 +372,7 @@ public:
 
   // Norm
   auto norm() const {
-    return foldMap([](const cell_t &c) { return c.norm(); },
-                   [](const norm_t &x, const norm_t &y) { return x + y; },
-                   norm_t(), cells);
+    return foldMap(&cell_t::norm, norm_mappend, norm_mempty(), cells);
   }
 
   // Initial condition
@@ -444,9 +446,13 @@ auto grid_norm_foldMap(const grid_t &g) { return g.norm(); }
 RPC_ACTION(grid_norm_foldMap);
 
 // Note: Arguments re-ordered
+// TODO
 auto grid_initial(const region &, const vindex &ipos, double t) {
   return grid_t(grid_t::initial(), t, ipos * defs->ncells_per_grid);
 }
+// auto grid_initial(ptrdiff_t imin, double t) {
+//   return grid_t(grid_t::initial(), t, vindex::dir(0) * imin);
+// }
 RPC_ACTION(grid_initial);
 
 // Note: Arguments re-ordered
@@ -486,7 +492,7 @@ struct domain_t {
   // Wait until all grids are ready
   auto wait() const {
     return foldMap(grid_wait_foldMap_action(), tuple_mappend_action(),
-                   tuple<>(), grids);
+                   tuple_mempty(), grids);
   }
 
   // Output
@@ -494,7 +500,7 @@ struct domain_t {
     ostringstream os;
     os << "domain: t=" << t << "\n"
        << foldMap(grid_output_foldMap_action(), string_mappend_action(),
-                  string(), grids);
+                  string_mempty(), grids);
     return os.str();
   }
 
@@ -509,8 +515,8 @@ struct domain_t {
 
   // Norm
   auto norm() const {
-    return foldMap(grid_norm_foldMap_action(), norm_mappend_action(), norm_t(),
-                   grids);
+    return foldMap(grid_norm_foldMap_action(), norm_mappend_action(),
+                   norm_mempty(), grids);
   }
 
   // Initial condition
@@ -595,7 +601,6 @@ auto do_info_output(const shared_future<ostream *> &fos,
                     const shared_ptr<memoized_t> &m) -> ostream * {
   RPC_ASSERT(server->rank() == 0);
   const shared_ptr<domain_t> &s = m->state.get();
-  m->error.get();
   const norm_t &en = m->error_norm.get();
   auto cell_size = cell_t().norm().count;
   auto ncells = en.count / cell_size;
@@ -728,8 +733,6 @@ auto rpc_main(int argc, char **argv) -> int {
   if (do_this_time(m->n, defs->wait_every)) {
     // Rate limiter
     s.wait();
-    fio.wait();
-    ffo.wait();
     fio.get()->flush();
     ffo.get()->flush();
   }
@@ -755,8 +758,6 @@ auto rpc_main(int argc, char **argv) -> int {
     if (do_this_time(m->n, defs->wait_every)) {
       // Rate limiter
       s.wait();
-      fio.wait();
-      ffo.wait();
       fio.get()->flush();
       ffo.get()->flush();
     }

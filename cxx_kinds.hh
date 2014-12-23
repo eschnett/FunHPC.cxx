@@ -35,16 +35,12 @@ template <typename T, typename A>
 struct is_function<std::function<T(A)> > : std::true_type {};
 
 // list
-template <typename T, typename Allocator>
-struct kinds<std::list<T, Allocator> > {
+template <typename T> struct kinds<std::list<T> > {
   typedef T value_type;
-  template <typename U>
-  using constructor =
-      std::list<U /*TODO typename Allocator::template rebind<U>::other*/>;
+  template <typename U> using constructor = std::list<U>;
 };
 template <typename T> struct is_list : std::false_type {};
-template <typename T, typename Allocator>
-struct is_list<std::list<T, Allocator> > : std::true_type {};
+template <typename T> struct is_list<std::list<T> > : std::true_type {};
 
 // set
 template <typename T, typename Compare, typename Allocator>
@@ -68,16 +64,12 @@ template <typename T>
 struct is_shared_ptr<std::shared_ptr<T> > : std::true_type {};
 
 // vector
-template <typename T, typename Allocator>
-struct kinds<std::vector<T, Allocator> > {
+template <typename T> struct kinds<std::vector<T> > {
   typedef T value_type;
-  template <typename U>
-  using constructor =
-      std::vector<U /*TODO typename Allocator::template rebind<U>::other*/>;
+  template <typename U> using constructor = std::vector<U>;
 };
 template <typename T> struct is_vector : std::false_type {};
-template <typename T, typename Allocator>
-struct is_vector<std::vector<T, Allocator> > : std::true_type {};
+template <typename T> struct is_vector<std::vector<T> > : std::true_type {};
 }
 
 #define CXX_KINDS_HH_DONE

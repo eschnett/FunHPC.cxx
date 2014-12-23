@@ -7,6 +7,7 @@
 #include "cxx_functor.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
+#include "cxx_utils.hh"
 
 #include <cereal/access.hpp>
 #include <cereal/types/array.hpp>
@@ -46,16 +47,22 @@ public:
       r.elts[d] = 0;
     return r;
   }
-  static constexpr vect set1(T a) {
+  static constexpr vect one() {
     vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
-      r.elts[d] = a;
+      r.elts[d] = 1;
     return r;
   }
   static constexpr vect iota() {
     vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r.elts[d] = d;
+    return r;
+  }
+  static constexpr vect set1(T a) {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = a;
     return r;
   }
   static constexpr vect dir(std::ptrdiff_t d) { return zero().set(d, 1); }
@@ -120,26 +127,67 @@ public:
       elts[d] -= i.elts[d];
     return *this;
   }
+  vect &operator*=(const vect &i) {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      elts[d] *= i.elts[d];
+    return *this;
+  }
+  vect &operator/=(const vect &i) {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      elts[d] /= i.elts[d];
+    return *this;
+  }
+  vect &operator%=(const vect &i) {
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      elts[d] %= i.elts[d];
+    return *this;
+  }
   vect operator+(const vect &i) const { return vect(*this) += i; }
   vect operator-(const vect &i) const { return vect(*this) -= i; }
-  vect &operator*=(const T &a) {
+  vect operator*(const vect &i) const { return vect(*this) *= i; }
+  vect operator/(const vect &i) const { return vect(*this) /= i; }
+  vect operator%(const vect &i) const { return vect(*this) %= i; }
+  vect div_exact(const vect &i) const {
+    vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
-      elts[d] *= a;
-    return *this;
+      r.elts[d] = cxx::div_exact(elts[d], i.elts[d]);
+    return r;
   }
-  vect &operator/=(const T &a) {
+  vect div_floor(const vect &i) const {
+    vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
-      elts[d] /= a;
-    return *this;
+      r.elts[d] = cxx::div_floor(elts[d], i.elts[d]);
+    return r;
   }
-  vect &operator%=(const T &a) {
+  vect mod_floor(const vect &i) const {
+    vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
-      elts[d] %= a;
-    return *this;
+      r.elts[d] = cxx::mod_floor(elts[d], i.elts[d]);
+    return r;
   }
-  vect operator*(const T &a) const { return vect(*this) *= a; }
-  vect operator/(const T &a) const { return vect(*this) /= a; }
-  vect operator%(const T &a) const { return vect(*this) %= a; }
+  vect div_ceil(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = cxx::div_ceil(elts[d], i.elts[d]);
+    return r;
+  }
+  vect mod_ceil(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = cxx::mod_ceil(elts[d], i.elts[d]);
+    return r;
+  }
+  vect &operator*=(const T &a) { return operator*=(vect::set1(a)); }
+  vect &operator/=(const T &a) { return operator/=(vect::set1(a)); }
+  vect &operator%=(const T &a) { return operator%=(vect::set1(a)); }
+  vect operator*(const T &a) const { return operator*(vect::set1(a)); }
+  vect operator/(const T &a) const { return operator/(vect::set1(a)); }
+  vect operator%(const T &a) const { return operator%(vect::set1(a)); }
+  vect div_exact(const T &a) const { return div_exact(vect::set1(a)); }
+  vect div_floor(const T &a) const { return div_floor(vect::set1(a)); }
+  vect mod_floor(const T &a) const { return mod_floor(vect::set1(a)); }
+  vect div_ceil(const T &a) const { return div_ceil(vect::set1(a)); }
+  vect mod_ceil(const T &a) const { return mod_ceil(vect::set1(a)); }
   // Comparisons
   vect operator==(const vect &i) const {
     vect r;
@@ -280,6 +328,46 @@ public:
   }
 };
 template <typename T, std::ptrdiff_t D>
+auto div_exact(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.div_exact(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto div_floor(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.div_floor(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto mod_floor(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.mod_floor(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto div_ceil(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.div_ceil(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto mod_ceil(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.mod_ceil(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto div_exact(const vect<T, D> &i, const T &a) {
+  return i.div_exact(a);
+}
+template <typename T, std::ptrdiff_t D>
+auto div_floor(const vect<T, D> &i, const T &a) {
+  return i.div_floor(a);
+}
+template <typename T, std::ptrdiff_t D>
+auto mod_floor(const vect<T, D> &i, const T &a) {
+  return i.mod_floor(a);
+}
+template <typename T, std::ptrdiff_t D>
+auto div_ceil(const vect<T, D> &i, const T &a) {
+  return i.div_ceil(a);
+}
+template <typename T, std::ptrdiff_t D>
+auto mod_ceil(const vect<T, D> &i, const T &a) {
+  return i.mod_ceil(a);
+}
+template <typename T, std::ptrdiff_t D>
 auto operator*(const T &a, const vect<T, D> &i) {
   return i * a;
 }
@@ -365,30 +453,47 @@ template <std::ptrdiff_t D> using index = vect<std::ptrdiff_t, D>;
 // Cartesian grid shape
 
 template <std::ptrdiff_t D> class grid_region {
-  index<D> imin_, imax_;
+  index<D> imin_, imax_, istep_;
 
   friend class cereal::access;
-  template <typename Archive> void serialize(Archive &ar) { ar(imin_, imax_); }
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(imin_, imax_, istep_);
+  }
 
 public:
-  bool invariant() const { return all_of(imax_ >= imin_); }
+  bool invariant() const {
+    return all_of(imax_ >= imin_ && istep_ > index<D>::zero());
+  }
   static constexpr std::ptrdiff_t rank = D;
   // TODO: hide this function
   // grid_region() = delete;
-  grid_region() : imin_(index<D>::zero()), imax_(index<D>::zero()) {}
+  grid_region()
+      : imin_(index<D>::zero()), imax_(index<D>::zero()),
+        istep_(index<D>::one()) {
+    /*TODO*/ assert(invariant());
+  }
+  grid_region(const index<D> &imin_, const index<D> &imax_,
+              const index<D> &istep_)
+      : imin_(imin_), imax_(imax_), istep_(istep_) {}
   grid_region(const index<D> &imin_, const index<D> &imax_)
-      : imin_(imin_), imax_(imax_) {}
+      : grid_region(imin_, imax_, index<D>::one()) {}
   grid_region(const index<D> &imax_) : grid_region(index<D>::zero(), imax_) {}
   index<D> imin() const { return imin_; }
   index<D> imax() const { return imax_; }
-  index<D> shape() const { return imax_ - imin_; }
-  bool empty() const { return any_of(imax_ == imin_); }
+  index<D> istep() const { return istep_; }
+  index<D> shape() const { return div_floor(imax_ - imin_, istep_); }
+  bool empty() const { return any_of(imax_ <= imin_); }
   std::ptrdiff_t size() const { return prod(shape()); }
   bool operator==(const grid_region &r) const {
-    return all_of(imin_ == r.imin_ && imax_ == r.imax_);
+    return all_of(imin_ == r.imin_ && imax_ == r.imax_ && istep_ == r.istep_);
   }
   bool operator!=(const grid_region &r) const { return !(*this == r); }
+  bool is_compatible_with(const grid_region &r) const {
+    return all_of(istep_ == r.istep_ &&
+                  (imin_ - r.imin_) % istep_ == index<D>::zero());
+  }
   bool is_subregion_of(const grid_region &r) const {
+    assert(is_compatible_with(r));
     return empty() || all_of(imin_ >= r.imin_ && imax_ <= r.imax_);
   }
   index<D> strides() const {
@@ -396,23 +501,28 @@ public:
     std::ptrdiff_t str = 1;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
       r = r.set(d, str);
-      str *= imax_[d] - imin_[d];
+      str *= shape()[d];
     }
     return r;
   }
+  std::ptrdiff_t linear_max() const {
+    /*TODO*/ assert(all_of(shape() > index<D>::zero()));
+    return dot(strides(), shape() - index<D>::one()) + 1;
+  }
   std::ptrdiff_t linear(const index<D> &i) const {
-    // assert(all_of(i >= imin_ && i < imax_));
-    return dot(strides(), i - imin_);
+    /*TODO*/ assert(all_of(i >= imin_ && i < imax_));
+    return dot(strides(), div_exact(i - imin_, istep_));
   }
   grid_region boundary(std::ptrdiff_t dir, bool face) const {
-    return grid_region({ imin_.set(dir, !face ? imin_[dir] : imax_[dir] - 1),
-                         imax_.set(dir, !face ? imin_[dir] + 1 : imax_[dir]) });
+    return grid_region(
+        { imin_.set(dir, !face ? imin_[dir] : imax_[dir] - istep_[dir]),
+          imax_.set(dir, !face ? imin_[dir] + istep_[dir] : imax_[dir]) });
   }
 };
 
 template <std::ptrdiff_t D>
 std::ostream &operator<<(std::ostream &os, const grid_region<D> &r) {
-  return os << r.imin() << ":" << r.imax();
+  return os << r.imin() << ":" << r.imax() << ":" << r.istep();
 }
 
 template <typename T, std::ptrdiff_t D> class boundaries {

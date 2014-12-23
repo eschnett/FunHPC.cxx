@@ -16,6 +16,29 @@
 
 namespace cxx {
 
+// Integer division, no rounding
+template <typename T> T div_exact(T x, T y) {
+  assert(y != 0);
+  T r = x / y;
+  assert(r * y == x);
+  return r;
+}
+
+// Integer modulo, no rounding
+template <typename T> T mod_exact(T x, T y) {
+  T r = x - div_exact(x, y) * y;
+  assert(r == 0);
+  return r;
+}
+
+// Integer align, no rounding
+template <typename T> T align_exact(T x, T y) {
+  assert(y != 0);
+  T r = div_exact(x, y) * y;
+  assert(r == x && mod_exact(r, y) == 0);
+  return r;
+}
+
 // Integer division, rounding down
 template <typename T> T div_floor(T x, T y) {
   assert(y > 0);

@@ -586,7 +586,6 @@ auto do_info_output(const shared_future<ostream *> &fos,
                     const shared_ptr<memoized_t> &m) -> ostream * {
   RPC_ASSERT(server->rank() == 0);
   const shared_ptr<domain_t> &s = m->state.get();
-  m->error.get();
   const norm_t &en = m->error_norm.get();
   auto cell_size = cell_t().norm().count;
   auto ncells = en.count / cell_size;
@@ -719,8 +718,6 @@ auto rpc_main(int argc, char **argv) -> int {
   if (do_this_time(m->n, defs->wait_every)) {
     // Rate limiter
     s.wait();
-    fio.wait();
-    ffo.wait();
     fio.get()->flush();
     ffo.get()->flush();
   }
@@ -746,8 +743,6 @@ auto rpc_main(int argc, char **argv) -> int {
     if (do_this_time(m->n, defs->wait_every)) {
       // Rate limiter
       s.wait();
-      fio.wait();
-      ffo.wait();
       fio.get()->flush();
       ffo.get()->flush();
     }

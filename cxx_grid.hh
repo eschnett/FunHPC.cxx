@@ -438,7 +438,7 @@ public:
   // foldable
   const T &head() const { return (*data_)[layout_.linear(region_.imin())]; }
   const T &last() const {
-    return (*data_)[layout_.linear(region_.imax() - index<D>::set1(1))];
+    return (*data_)[layout_.linear(region_.imax() - region_.istep())];
   }
   template <typename F, typename Op, typename R, typename... As>
   auto foldMap(const F &f, const Op &op, const R &z, const As &... as) const {

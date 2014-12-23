@@ -85,11 +85,11 @@ auto iota(const F &f, const grid_region<D> &global_range,
           const grid_region<D> &range, const As &... as) {
   return C<T>(iota<C<T>::template outer>(
       [](const grid_region<D> &global_range, const index<D> &i, const F &f,
-         const As &... as) {
-        grid_region<D> range1(i, i + index<D>::set1(1));
+         const grid_region<D> &range, const As &... as) {
+        grid_region<D> range1(i, i + range.istep());
         return iota<C<T>::template inner>(f, global_range, range1, as...);
       },
-      global_range, range, f, as...));
+      global_range, range, f, range, as...));
 }
 
 // Functor

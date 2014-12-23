@@ -8,6 +8,8 @@
 #include <cereal/types/array.hpp>
 #include <cereal/types/string.hpp>
 
+#include <unistd.h>
+
 #include <atomic>
 #include <array>
 #include <cmath>
@@ -279,8 +281,10 @@ void set_cpu_bindings() {
     messages[1] = run_on_threads(false, true, proc_map, topology);
   }
 
-  if (do_set)
+  if (do_set) {
+    usleep(100000);
     run_on_threads(true, false, proc_map, topology);
+  }
 
   if (do_set && do_output && proc_map.node == 0) {
     messages[2] = run_on_threads(false, true, proc_map, topology);

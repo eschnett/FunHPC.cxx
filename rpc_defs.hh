@@ -9,8 +9,6 @@
 
 namespace rpc {
 
-// TODO: Implement "futurize"
-
 extern mutex io_mutex;
 
 template <typename M, typename F, typename... As>

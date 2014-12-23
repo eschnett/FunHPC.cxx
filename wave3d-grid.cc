@@ -102,7 +102,7 @@ typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;
 
 struct defs_t {
-#if 0   // benchmark
+#if 1                       // benchmark
   const ptrdiff_t rho = 64; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -115,7 +115,7 @@ struct defs_t {
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;
-#elif 1 // test
+#elif 0 // test
   const ptrdiff_t rho = 1; // resolution scale
   const ptrdiff_t ncells_per_grid = 4;
 
@@ -744,8 +744,6 @@ auto rpc_main(int argc, char **argv) -> int {
   if (do_this_time(m->n, defs->wait_every)) {
     // Rate limiter
     s.wait();
-    fio.wait();
-    ffo.wait();
     fio.get()->flush();
     ffo.get()->flush();
   }
@@ -771,8 +769,6 @@ auto rpc_main(int argc, char **argv) -> int {
     if (do_this_time(m->n, defs->wait_every)) {
       // Rate limiter
       s.wait();
-      fio.wait();
-      ffo.wait();
       fio.get()->flush();
       ffo.get()->flush();
     }

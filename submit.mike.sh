@@ -141,32 +141,26 @@ EOF
 # Note: The cache always needs to be updated atomically
 
 # Create the cache if it does not exist
-: >$prog.cache.$$
+:> $prog.cache.$$
 mv -n $prog.cache.$$ $prog.cache
 rm -f $prog.cache.$$
 
-# Try to use the cache
-ln -f $prog.cache job-$id.exe
-
-# Do we have the correct executable?
-if ! cmp $prog job-$id.exe 2>/dev/null | head -n 1 | grep -qv ''; then
-    # No: make temporary copy of executable, then update cache
-    cp -f $prog job-$id.exe.tmp # this may be slow
-
-    # Try to use the cache (again)
-    ln -f $prog.cache job-$id.exe
-
-    # Is the executable now correct (because the cache changed in the
-    # mean time?)
-    if cmp $prog job-$id.exe 2>/dev/null | head -n 1 | grep -qv ''; then
-        # Yes: delete the temporary executable
-        rm job-$id.exe.tmp
-    else
-        # No: update the cache, and use the temporary copy
-        ln job-$id.exe.tmp $prog.cache.$$
+# Update the cache if it is wrong
+if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
+    cp $prog $prog.cache.$$
+    if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
         mv -f $prog.cache.$$ $prog.cache
-        mv -f job-$id.exe.tmp job-$id.exe
+        sleep 1
     fi
+fi
+rm -f $prog.cache.$$
+
+# Try to use the cache, but ignore it if it is wrong
+ln -f $prog.cache job-$id.exe
+if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
+    echo 'WARNING: Could not update cache'
+    rm -f job-$id.exe
+    cp $prog job-$id.exe
 fi
 
 : >job-$id.out

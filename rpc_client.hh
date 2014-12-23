@@ -13,6 +13,8 @@
 
 #include <cereal/archives/binary.hpp>
 
+#include <cxxabi.h>
+
 #include <cassert>
 #include <iterator>
 #include <type_traits>
@@ -710,10 +712,10 @@ struct client_functor<F, false, T, As...> {
   static rpc::client<R> fmap_client(const F &f, const rpc::client<T> &xs,
                                     const As &... as) {
     bool s = bool(xs);
-    return s == false
-               ? rpc::client<R>()
-               : rpc::client<R>(rpc::server->rank(),
-                                rpc::async(fmap_client_local, f, xs, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(rpc::server->rank(),
+                          rpc::async(fmap_client_local, f, xs, as...));
   }
 
   static rpc::client<R> fmap(const F &f, const rpc::client<T> &xs,
@@ -738,11 +740,11 @@ struct client_functor<F, true, T, As...> {
   static rpc::client<R> fmap_client(const rpc::client<T> &xs,
                                     const As &... as) {
     bool s = bool(xs);
-    return s == false ? rpc::client<R>()
-                      : rpc::client<R>(
-                            xs.get_proc(),
-                            rpc::async(rpc::rlaunch::async, xs.get_proc(),
-                                       fmap_client_remote_action(), xs, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(xs.get_proc(),
+                          rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                     fmap_client_remote_action(), xs, as...));
   }
 
   static rpc::client<R> fmap(F, const rpc::client<T> &xs, const As &... as) {
@@ -789,10 +791,10 @@ struct client_functor2<F, false, T, T2, As...> {
                                      const As &... as) {
     bool s = bool(xs);
     assert(bool(ys) == s);
-    return s == false ? rpc::client<R>()
-                      : rpc::client<R>(
-                            rpc::server->rank(),
-                            rpc::async(fmap2_client_local, f, xs, ys, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(rpc::server->rank(),
+                          rpc::async(fmap2_client_local, f, xs, ys, as...));
   }
 
   static rpc::client<R> fmap2(const F &f, const rpc::client<T> &xs,
@@ -821,12 +823,11 @@ struct client_functor2<F, true, T, T2, As...> {
                                      const As &... as) {
     bool s = bool(xs);
     assert(bool(ys) == s);
-    return s == false
-               ? rpc::client<R>()
-               : rpc::client<R>(xs.get_proc(),
-                                rpc::async(rpc::rlaunch::async, xs.get_proc(),
-                                           fmap2_client_remote_action(), xs, ys,
-                                           as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(
+        xs.get_proc(), rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                  fmap2_client_remote_action(), xs, ys, as...));
   }
 
   static rpc::client<R> fmap2(F, const rpc::client<T> &xs,
@@ -882,10 +883,10 @@ struct client_functor3<F, false, T, T2, T3, As...> {
     bool s = bool(xs);
     assert(bool(ys) == s);
     assert(bool(zs) == s);
-    return s == false ? rpc::client<R>()
-                      : rpc::client<R>(rpc::server->rank(),
-                                       rpc::async(fmap3_client_local, f, xs, ys,
-                                                  zs, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(rpc::server->rank(),
+                          rpc::async(fmap3_client_local, f, xs, ys, zs, as...));
   }
 
   static rpc::client<R> fmap3(const F &f, const rpc::client<T> &xs,
@@ -918,12 +919,12 @@ struct client_functor3<F, true, T, T2, T3, As...> {
     bool s = bool(xs);
     assert(bool(ys) == s);
     assert(bool(zs) == s);
-    return s == false
-               ? rpc::client<R>()
-               : rpc::client<R>(xs.get_proc(),
-                                rpc::async(rpc::rlaunch::async, xs.get_proc(),
-                                           fmap3_client_remote_action(), xs, ys,
-                                           zs, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(xs.get_proc(),
+                          rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                     fmap3_client_remote_action(), xs, ys, zs,
+                                     as...));
   }
 
   static rpc::client<R> fmap3(F, const rpc::client<T> &xs,
@@ -982,10 +983,11 @@ struct client_functor_boundaries<F, false, T, B, D, As...> {
                          const As &... as) {
     bool s = bool(xs);
     assert(all_of(fmap([s](const auto &bs) { return bool(bs) == s; }, bss)));
-    return s == false ? rpc::client<R>()
-                      : rpc::client<R>(rpc::server->rank(),
-                                       rpc::async(fmap_boundaries_client_local,
-                                                  f, xs, bss, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(
+        rpc::server->rank(),
+        rpc::async(fmap_boundaries_client_local, f, xs, bss, as...));
   }
 
   static rpc::client<R>
@@ -1025,12 +1027,12 @@ struct client_functor_boundaries<F, true, T, B, D, As...> {
     //     cxx::fmap([s](const auto &bs) { return bool(bs) == s; }, bss)));
     assert(cxx::foldMap([s](const auto &bs) { return bool(bs) == s; },
                         std::logical_and<bool>(), true, bss));
-    return s == false ? rpc::client<R>()
-                      : rpc::client<R>(
-                            xs.get_proc(),
-                            rpc::async(rpc::rlaunch::async, xs.get_proc(),
-                                       fmap_boundaries_client_remote_action(),
-                                       xs, bss, as...));
+    if (s == false)
+      return rpc::client<R>();
+    return rpc::client<R>(xs.get_proc(),
+                          rpc::async(rpc::rlaunch::async, xs.get_proc(),
+                                     fmap_boundaries_client_remote_action(), xs,
+                                     bss, as...));
   }
 
   static rpc::client<R>
@@ -1172,8 +1174,9 @@ auto iota(const F &f, const cxx::grid_region<D> &global_range,
           const cxx::grid_region<D> &range, const As &... as) {
   assert(range.size() == 1);
   // return munit<C>(cxx::invoke(f, range.local.imin, as...));
-  int dest = div_floor(rpc::server->size() * global_range.linear(range.imin()),
-                       global_range.size());
+  ptrdiff_t idx = global_range.linear(range.imin());
+  ptrdiff_t idx_max = global_range.linear_max();
+  int dest = div_floor(rpc::server->size() * idx, idx_max);
   return rpc::make_remote_client<T>(
       dest, cxx::invoke(f, global_range, range.imin(), as...));
 }

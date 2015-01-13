@@ -82,10 +82,10 @@ bool output_affinity(std::ostream &os, const hwloc_topology_t &topology,
      << "N" << proc_map.node << " "
      << "L" << proc_map.local_rank << " "
      << "P" << proc_map.rank << " "
-     << "T" << this_thread::get_worker_id() << " ";
 #ifdef QTHREAD_VERSION
-  os << "(S" << qthread_shep() << ") ";
+     << "(S" << qthread_shep() << ") "
 #endif
+     << "T" << this_thread::get_worker_id() << " ";
 
   const int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
   RPC_ASSERT(pu_depth >= 0);
@@ -158,32 +158,40 @@ bool set_affinity(std::ostream &os, const hwloc_topology_t &topology,
 }
 
 bool run(bool do_set, bool do_output, const proc_map_t *proc_map_,
-         const hwloc_topology_t *topology_, std::atomic<bool> *worker_done,
-         std::vector<std::string> *infos_) {
+         const hwloc_topology_t *topology_,
+         std::atomic<bool> *all_threads_started_,
+         std::atomic<std::string *> *worker_infos) {
+  std::atomic<bool> &all_threads_started = *all_threads_started_;
   const hwloc_topology_t &topology = *topology_;
   const proc_map_t &proc_map = *proc_map_;
-  std::vector<std::string> &infos = *infos_;
+
+  while (!all_threads_started)
+    this_thread::yield();
+  this_thread::yield(); // just for good measure
 
   const int thread = this_thread::get_worker_id();
   const int nthreads = thread::hardware_concurrency();
   assert(thread >= 0 && thread < nthreads);
 
   bool have_error = false;
-  if (!worker_done[thread]) {
-    worker_done[thread] = true;
+  std::string somestr;
+  std::string *nullstrptr = nullptr;
+  bool was_nullstr =
+      worker_infos[thread].compare_exchange_strong(nullstrptr, &somestr);
+  if (was_nullstr) {
     std::stringstream os;
     if (do_set)
       have_error |= set_affinity(os, topology, proc_map);
     if (do_output)
       have_error |= output_affinity(os, topology, proc_map);
-    infos[thread] = os.str();
+    worker_infos[thread] = new std::string(os.str());
   }
 
   bool all_done = true;
   for (int t = 0; t < nthreads; ++t)
-    all_done &= worker_done[t];
+    all_done &= bool(worker_infos[t]);
   if (!all_done) {
-    // block for some time to keep the current core busy
+    // block for some time to keep the current hardware thread busy
     double x = 0.1;
     for (std::ptrdiff_t i = 0; i < 1000 * 1000; ++i)
       x = std::sqrt(x);
@@ -201,25 +209,36 @@ std::string run_on_threads(bool do_set, bool do_output,
   int nsubmit = 100 * nthreads;
   int nattempts = 10;
   for (int attempt = 0; attempt < nattempts; ++attempt) {
-    std::atomic<bool> worker_done[nthreads];
+    std::atomic<bool> all_threads_started;
+    all_threads_started = false;
+    std::atomic<std::string *> worker_infos[nthreads];
     for (int thread = 0; thread < nthreads; ++thread)
-      worker_done[thread] = false;
-    std::vector<std::string> infos(nthreads);
+      worker_infos[thread] = nullptr;
     std::vector<future<bool> > fs;
     for (int submit = 0; submit < nsubmit; ++submit)
       fs.push_back(async(run, do_set, do_output, &proc_map, &topology,
-                         &worker_done[0], &infos));
+                         &all_threads_started, &worker_infos[0]));
     // Prod the scheduler, as per advice from Dylan Stark
     // <dstark@sandia.gov> 2014-08-07
     this_thread::yield();
-    bool have_all_infos = true;
+    all_threads_started = true;
+    bool have_error = false;
     for (auto &f : fs)
-      have_all_infos &= !f.get();
+      have_error |= f.get();
+    bool have_all_infos = true;
+    for (const auto &info : worker_infos)
+      have_all_infos &= bool(info);
     if (have_all_infos) {
-      for (const auto &info : infos)
-        os << info;
-      return os.str();
+      if (have_error)
+        os << "P" << server->rank()
+           << ": ERROR: Could not get/set CPU bindings\n";
+      for (const auto &info : worker_infos)
+        os << *info;
     }
+    for (const auto &info : worker_infos)
+      delete info;
+    if (have_all_infos)
+      return os.str();
   }
   os << "P" << server->rank() << ": WARNING: Could not set CPU bindings\n";
   return os.str();

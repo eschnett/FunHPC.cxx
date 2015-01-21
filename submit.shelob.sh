@@ -59,7 +59,7 @@ cat >$HOME/src/mpi-rpc/job-$id.sub <<EOF
 #! /bin/bash
 
 #PBS -V
-#PBS -A hpc_hyrel14
+#PBS -A hpc_numrel06
 #PBS -q checkpt
 #PBS -r n
 #PBS -l walltime=0:10:00

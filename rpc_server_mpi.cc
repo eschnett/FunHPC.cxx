@@ -305,6 +305,7 @@ void server_mpi::call(int dest, const std::shared_ptr<callable_base> &func) {
   }
   // RPC_ASSERT(!we_should_terminate());
   // TODO: use atomic swaps instead of a mutex
+  //*TODO*/send_req_t<std::shared_ptr<callable_base> >(comm, dest, func);
   with_lock(send_queue_mutex, [&] { send_queue.push_back({ dest, func }); });
 }
 

@@ -79,7 +79,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
     for (const R &y : ys)
       rs.push_back(std::tuple<>());
   }
-  return std::move(rs);
+  return rs;
 }
 
 // sequence :: Monad m => [m a] -> m [a]
@@ -95,7 +95,7 @@ sequence_(const ICT &xss) {
   for (const C<T> &xs : xss)
     for (const T &x : xs)
       rs.push_back(std::tuple<>());
-  return std::move(rs);
+  return rs;
 }
 
 // mvoid :: Functor f => f a -> f ()
@@ -124,7 +124,7 @@ foldM(const F &f, const R &z, const IT &xs, const As &... as) {
     C<R> ys(cxx::invoke(f, z, x, as...));
     std::move(ys.begin(), ys.end(), std::inserter(rs, rs.end()));
   }
-  return std::move(rs);
+  return rs;
 }
 
 // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()

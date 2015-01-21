@@ -28,6 +28,10 @@ template <typename T, typename... As>
 client<T> make_remote_client(rpc::rlaunch policy, const shared_future<int> &,
                              const As &... args);
 
+template <typename F, typename... As>
+client<cxx::invoke_of_t<F, As...> > remote(rpc::rlaunch policy, int proc,
+                                           const F &f, const As &... args);
+
 template <typename T> class client {
   // gcc 4.7 thinks that shared_future::get is non-const
   mutable rpc::shared_future<int> proc;
@@ -51,6 +55,10 @@ template <typename T> class client {
   friend client<U> make_remote_client(rpc::rlaunch policy,
                                       const shared_future<int> &,
                                       const As &... args);
+
+  template <typename F, typename... As>
+  friend client<cxx::invoke_of_t<F, As...> >
+  remote(rpc::rlaunch policy, int proc, const F &f, const As &... args);
 
 public:
   typedef T element_type;
@@ -224,6 +232,9 @@ client<T> make_client(rpc::launch policy, const As &... args) {
                                           return make_global_shared<T>(args...);
                                         }));
 }
+
+template <typename F, typename... As>
+auto remote(int proc, const F &f, const As &... args);
 
 template <typename T, typename... As>
 client<T> make_remote_client(int proc, const As &... args);

@@ -280,7 +280,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
 //     for (const T &x : xs)
 //       if (!rs)
 //         rs = munit<C>(std::tuple<>());
-//   return std::move(rs);
+//   return rs;
 // }
 
 // mvoid :: Functor f => f a -> f ()
@@ -310,7 +310,7 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 //     C<R> ys = cxx::invoke(f, z, x, as...);
 //     std::move(ys.begin(), ys.end(), std::inserter(rs, rs.end()));
 //   }
-//   return std::move(rs);
+//   return rs;
 // }
 
 // // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()
@@ -330,7 +330,7 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 //       if (!rs)
 //         rs = munit<C>(std::tuple<>());
 //   }
-//   return std::move(rs);
+//   return rs;
 // }
 
 // liftM :: Monad m => (a1 -> r) -> m a1 -> m r

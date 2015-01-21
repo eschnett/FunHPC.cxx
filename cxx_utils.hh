@@ -17,7 +17,7 @@
 namespace cxx {
 
 // Integer division, no rounding
-template <typename T> T div_exact(T x, T y) {
+template <typename T> constexpr T div_exact(T x, T y) {
   assert(y != 0);
   T r = x / y;
   assert(r * y == x);
@@ -25,14 +25,14 @@ template <typename T> T div_exact(T x, T y) {
 }
 
 // Integer modulo, no rounding
-template <typename T> T mod_exact(T x, T y) {
+template <typename T> constexpr T mod_exact(T x, T y) {
   T r = x - div_exact(x, y) * y;
   assert(r == 0);
   return r;
 }
 
 // Integer align, no rounding
-template <typename T> T align_exact(T x, T y) {
+template <typename T> constexpr T align_exact(T x, T y) {
   assert(y != 0);
   T r = div_exact(x, y) * y;
   assert(r == x && mod_exact(r, y) == 0);
@@ -40,7 +40,7 @@ template <typename T> T align_exact(T x, T y) {
 }
 
 // Integer division, rounding down
-template <typename T> T div_floor(T x, T y) {
+template <typename T> constexpr T div_floor(T x, T y) {
   assert(y > 0);
   T r = (x >= 0 ? x : x - y + 1) / y;
   assert(r * y <= x && (r + 1) * y > x);
@@ -48,14 +48,14 @@ template <typename T> T div_floor(T x, T y) {
 }
 
 // Integer modulo, rounding down
-template <typename T> T mod_floor(T x, T y) {
+template <typename T> constexpr T mod_floor(T x, T y) {
   T r = x - div_floor(x, y) * y;
   assert(r >= 0 && r < y);
   return r;
 }
 
 // Integer align, rounding down
-template <typename T> T align_floor(T x, T y) {
+template <typename T> constexpr T align_floor(T x, T y) {
   assert(y > 0);
   T r = div_floor(x, y) * y;
   assert(r <= x && x - r < y && mod_floor(r, y) == 0);
@@ -63,7 +63,7 @@ template <typename T> T align_floor(T x, T y) {
 }
 
 // Integer division, rounding up
-template <typename T> T div_ceil(T x, T y) {
+template <typename T> constexpr T div_ceil(T x, T y) {
   assert(y > 0);
   T r = (x > 0 ? x + y - 1 : x) / y;
   assert(r * y >= x && (r - 1) * y < x);
@@ -71,17 +71,59 @@ template <typename T> T div_ceil(T x, T y) {
 }
 
 // Integer modulo, rounding up
-template <typename T> T mod_ceil(T x, T y) {
+template <typename T> constexpr T mod_ceil(T x, T y) {
   T r = x - div_ceil(x, y) * y;
   assert(r >= 0 && r < y);
   return r;
 }
 
 // Integer align, rounding up
-template <typename T> T align_ceil(T x, T y) {
+template <typename T> constexpr T align_ceil(T x, T y) {
   assert(y > 0);
   T r = div_ceil(x, y) * y;
   assert(r >= x && r - x < y && mod_ceil(r, y) == 0);
+  return r;
+}
+
+// Integer power x^n
+template <typename T> constexpr T ipow(T x, T n) {
+  assert(n >= 0);
+  T r = n & 1 ? x : 1;
+  while (n >>= 1) {
+    x *= x;
+    if (n & 1)
+      r *= x;
+  }
+  return r;
+}
+
+// Integer root root_n(x), rounded down
+template <class T> constexpr T iroot(T n, T x) {
+  assert(x >= 0 && n > 0);
+  if (n == 1)
+    return x;
+  T b = 1;
+  while (ipow(b, n) <= x)
+    b <<= 1;
+  T r = 0;
+  while (b >>= 1)
+    if (ipow(r + b, n) <= x)
+      r += b;
+  assert(ipow(r, n) <= x && ipow(r + 1, n) > x);
+  return r;
+}
+
+// Integer log log_b(x), rounded down
+template <class T> constexpr T ilog(T b, T x) {
+  assert(b > 1 && x > 0);
+  T n = 1;
+  while (ipow(b, n) <= x)
+    n <<= 1;
+  T r = 0;
+  while (n >>= 1)
+    if (ipow(b, r + n) <= x)
+      r += n;
+  assert(ipow(b, r) <= x && ipow(b, r + 1) > x);
   return r;
 }
 

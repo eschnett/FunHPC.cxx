@@ -62,7 +62,7 @@ else
     partition='large'
 fi
 
-cat >$HOME/src/mpi-rpc/job-$id.sub <<EOF
+cat >job-$id.sub <<EOF
 #! /bin/bash
 
 #SBATCH --verbose
@@ -106,6 +106,11 @@ echo '[END NODES]'
 echo '[BEGIN IFCONFIG]'
 /sbin/ifconfig || true
 echo '[END IFCONFIG]'
+
+echo '[BEGIN LSTOPO]'
+unset DISPLAY
+lstopo
+echo '[END LSTOPO]'
 
 ulimit -c unlimited
 
@@ -167,9 +172,9 @@ unset SLURM_TOPOLOGY_ADDR_PATTERN
     -x RPC_THREADS=$threads_per_proc                                    \\
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
-    -x QTHREAD_STACK_SIZE=524288                                        \\
-    -x QTHREAD_GUARD_PAGES=1                                            \\
-    -x QTHREAD_INFO=1                                                   \\
+    -x QTHREAD_STACK_SIZE=65536                                         \\
+    -x QTHREAD_GUARD_PAGES=0                                            \\
+    -x QTHREAD_INFO=0                                                   \\
     $prog                                                               \\
     --hpx:ini=hpx.parcel.mpi.enable=0                                   \\
     --hpx:numa-sensitive                                                \\
@@ -181,7 +186,32 @@ date
 rm -f \$hostfile
 EOF
 
-: >$HOME/src/mpi-rpc/job-$id.out
-: >$HOME/src/mpi-rpc/job-$id.err
-: >$HOME/src/mpi-rpc/job-$id.log
+# Note: The cache always needs to be updated atomically
+
+# Create the cache if it does not exist
+:> $prog.cache.$$
+mv -n $prog.cache.$$ $prog.cache
+rm -f $prog.cache.$$
+
+# Update the cache if it is wrong
+if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
+    cp $prog $prog.cache.$$
+    if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
+        mv -f $prog.cache.$$ $prog.cache
+        sleep 1
+    fi
+fi
+rm -f $prog.cache.$$
+
+# Try to use the cache, but ignore it if it is wrong
+ln -f $prog.cache job-$id.exe
+if ! cmp -b $prog job-$id.exe >/dev/null 2>&1; then
+    echo 'WARNING: Could not update cache'
+    rm -f job-$id.exe
+    cp $prog job-$id.exe
+fi
+
+: >job-$id.out
+: >job-$id.err
+: >job-$id.log
 sbatch $HOME/src/mpi-rpc/job-$id.sub

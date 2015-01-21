@@ -55,7 +55,7 @@ auto fold(const Op &op, const R &z, const std::array<R, N> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
-  return std::move(r);
+  return r;
 }
 
 template <typename T, std::size_t N> const T &head(const std::array<T, N> &xs) {
@@ -85,7 +85,7 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
-  return std::move(r);
+  return r;
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -107,17 +107,18 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
-  return std::move(r);
+  return r;
 }
 
 // list
 
 template <typename Op, typename R, typename... As>
-auto fold(const Op &op, R r, const std::list<R> &xs, const As &... as) {
+auto fold(const Op &op, const R &z, const std::list<R> &xs, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
+  R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
-  return std::move(r);
+  return r;
 }
 
 template <typename T> const T &head(const std::list<T> &xs) {
@@ -141,7 +142,7 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
-  return std::move(r);
+  return r;
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -160,7 +161,7 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::list<T> &xs,
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
-  return std::move(r);
+  return r;
 }
 
 // set
@@ -171,7 +172,7 @@ auto fold(const Op &op, const R &z, const std::set<R> &xs, const As &... as) {
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), x, as...);
-  return std::move(r);
+  return r;
 }
 
 template <typename T> const T &head(const std::set<T> &xs) {
@@ -195,7 +196,7 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
-  return std::move(r);
+  return r;
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -214,7 +215,7 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::set<T> &xs,
   while (xi != xe && yi != ye)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, *xi++, *yi++, as...));
   assert(xi == xe && yi == ye);
-  return std::move(r);
+  return r;
 }
 
 // shared_ptr
@@ -277,7 +278,7 @@ auto fold(const Op &op, const R &z, const std::vector<R> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), xs[i], as...);
-  return std::move(r);
+  return r;
 }
 
 template <typename T> const T &head(const std::vector<T> &xs) {
@@ -306,7 +307,7 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], as...));
-  return std::move(r);
+  return r;
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
@@ -328,7 +329,7 @@ auto foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
 #pragma omp simd reduction(op : r)
   for (std::size_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], as...));
-  return std::move(r);
+  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

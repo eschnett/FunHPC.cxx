@@ -50,7 +50,6 @@ using rpc::future;
 using rpc::launch;
 using rpc::make_client;
 using rpc::make_ready_future;
-using rpc::make_remote_client;
 using rpc::rlaunch;
 using rpc::server;
 using rpc::shared_future;
@@ -96,7 +95,7 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 1;
+constexpr ptrdiff_t dim = 2;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;
@@ -111,7 +110,7 @@ struct defs_t {
   const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = 8;
+  const ptrdiff_t nsteps = 0; // TODO 8;
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;

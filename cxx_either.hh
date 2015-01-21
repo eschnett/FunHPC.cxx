@@ -11,6 +11,8 @@
 
 #include <array>
 #include <cassert>
+#include <iostream>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -147,9 +149,16 @@ public:
     typedef cxx::invoke_of_t<G, R1, cxx::boundaries<R2, D>, As...> TR;
     static_assert(std::is_same<TL, L>::value && std::is_same<TR, R>::value, "");
     auto l = x.is_left();
-    // assert(
-    //     all_of(fmap([l](const auto &bs) { return bs.is_left() == l; },
-    //     bss)));
+// assert(
+//     all_of(fmap([l](const auto &bs) { return bs.is_left() == l; },
+//     bss)));
+#warning "TODO"
+    if (!(foldMap([l](const auto &bs) { return bs.is_left() == l; },
+                  std::logical_and<bool>(), true, bss))) {
+      std::ostringstream os;
+      os << "either.gmap_boundaries x=" << x << " bss=" << bss << "\n";
+      std::cerr << os.str();
+    }
     assert(foldMap([l](const auto &bs) { return bs.is_left() == l; },
                    std::logical_and<bool>(), true, bss));
     if (x.is_left()) {
@@ -188,6 +197,15 @@ public:
 };
 template <typename L, typename R> void swap(either<L, R> &a, either<L, R> &b) {
   a.swap(b);
+}
+
+template <typename L, typename R>
+std::ostream &operator<<(std::ostream &os, const either<L, R> &x) {
+  if (x.is_left())
+    os << "left(" << x.left() << ")";
+  else
+    os << "right(" << x.right() << ")";
+  return os;
 }
 
 template <typename F, typename G, typename L1, typename R1, typename... As>

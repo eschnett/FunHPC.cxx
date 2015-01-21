@@ -72,7 +72,7 @@ mapM_(const F &f, const IT &xs, const As &... as) {
       if (!rs)
         rs = munit<C>(std::tuple<>());
   }
-  return std::move(rs);
+  return rs;
 }
 
 // sequence :: Monad m => [m a] -> m [a]
@@ -89,7 +89,7 @@ sequence_(const ICT &xss) {
     for (const T &x : xs)
       if (!rs)
         rs = munit<C>(std::tuple<>());
-  return std::move(rs);
+  return rs;
 }
 
 // mvoid :: Functor f => f a -> f ()
@@ -99,7 +99,7 @@ C<std::tuple<> > mvoid(const std::shared_ptr<T> &xs) {
   C<std::tuple<> > rs;
   if (!xs.empty())
     rs = munit<C>(std::tuple<>());
-  return std::move(rs);
+  return rs;
 }
 
 // foldM :: Monad m => (a -> b -> m a) -> a -> [b] -> m a
@@ -117,7 +117,7 @@ foldM(const F &f, const R &z, const IT &xs, const As &... as) {
     C<R> ys = cxx::invoke(f, z, x, as...);
     std::move(ys.begin(), ys.end(), std::inserter(rs, rs.end()));
   }
-  return std::move(rs);
+  return rs;
 }
 
 // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()
@@ -137,7 +137,7 @@ foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
       if (!rs)
         rs = munit<C>(std::tuple<>());
   }
-  return std::move(rs);
+  return rs;
 }
 
 // liftM :: Monad m => (a1 -> r) -> m a1 -> m r

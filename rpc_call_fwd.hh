@@ -219,11 +219,18 @@ get_const_member_action_impl_t(R (T::*)(As...) const);
 
 // TODO: don't expect a wrapper, expect the function instead
 // TODO: determine the function's type automatically
+// DECAY template <typename F, typename W>
+// DECAY using member_action_impl = decltype(get_member_action_impl_t<F,
+// W>(W::value));
+// DECAY template <typename F, typename W>
+// DECAY using const_member_action_impl =
+// DECAY     decltype(get_const_member_action_impl_t<F, W>(W::value));
 template <typename F, typename W>
-using member_action_impl = decltype(get_member_action_impl_t<F, W>(W::value));
+using member_action_impl =
+    std::decay_t<decltype(get_member_action_impl_t<F, W>(W::value))>;
 template <typename F, typename W>
 using const_member_action_impl =
-    decltype(get_const_member_action_impl_t<F, W>(W::value));
+    std::decay_t<decltype(get_const_member_action_impl_t<F, W>(W::value))>;
 }
 
 #define RPC_CALL_FWD_HH_DONE

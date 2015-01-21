@@ -46,6 +46,8 @@ for f in job-n*.s*.c*.p*.t*.m*.r*.log; do grep -H 'Time:' $f | tail -n +3; done
 20   wave
 30   wave3d-grid
 40   wave3d-tree
+50   wave3d-grid 2d
+60   wave3d-tree 2d
 
 {
 for r in 10; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave-vector& done; done; done
@@ -54,7 +56,7 @@ for r in 30; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16
 for r in 40; do for n in 1 2 4 8; do for t in 8; do ./submit.mike.sh $n 2 8 $[16*$n/$t] $t 1 $r ./wave3d-tree& done; done; done
 }; wait
 
-for r in 10 20 30 40; do for t in 8; do for f in job-n*.s*.c*.p*.t$t.m*.r$r.log; do grep -H 'Time:' $f | tail -n +3 | head -n 1; done; done; done
+for r in 10 20 30 40 50 60; do for t in 8; do for n in 1 2 4 8 16 32 64 128; do for f in job-n$n.s*.c*.p*.t$t.m*.r$r.log; do grep -H 'Time:' $f | tail -n +3 | head -n 1; done; done; done; done
 
 wave-vector:
 job-n1.s2.c8.p2.t8.m1.r10.log:       Time:  12.3746 sec
@@ -91,3 +93,9 @@ job-n16.s2.c8.p32.t8.m1.r40.log:     Time:   2.95823 sec
 job-n32.s2.c8.p64.t8.m1.r40.log:     Time:   7.60146 sec
 job-n64.s2.c8.p128.t8.m1.r40.log:    Time:  10.5571 sec
 job-n128.s2.c8.p256.t8.m1.r40.log:   Time:   7.69732 sec
+
+wave3d-grid 2d:
+job-n1.s2.c8.p2.t8.m1.r50.log:       Time:   0.440844 sec
+job-n2.s2.c8.p4.t8.m1.r50.log:       Time:   0.874157 sec
+job-n4.s2.c8.p8.t8.m1.r50.log:       Time:   1.77445 sec
+job-n8.s2.c8.p16.t8.m1.r50.log:      Time:   3.63771 sec

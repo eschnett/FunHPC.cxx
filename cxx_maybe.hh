@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cassert>
+#include <iostream>
 #include <type_traits>
 #include <utility>
 
@@ -93,6 +94,15 @@ public:
   }
 };
 template <typename T> void swap(maybe<T> &a, maybe<T> &b) { a.swap(b); }
+
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const maybe<T> &x) {
+  if (x.is_just())
+    os << "just(" << x.just() << ")";
+  else
+    os << "nothing";
+  return os;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -68,12 +68,12 @@ public:
   static constexpr vect dir(std::ptrdiff_t d) { return zero().set(d, 1); }
   // Element access
   T operator[](std::ptrdiff_t d) const {
-    // assert(d >= 0 && d < D);
+    assert(d >= 0 && d < D);
     return elts[d];
   }
   // Updating
   vect set(std::ptrdiff_t d, const T &a) const {
-    // assert(d >= 0 && d < D);
+    assert(d >= 0 && d < D);
     vect r(*this);
     r.elts[d] = a;
     return r;
@@ -165,6 +165,12 @@ public:
       r.elts[d] = cxx::mod_floor(elts[d], i.elts[d]);
     return r;
   }
+  vect align_floor(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = cxx::align_floor(elts[d], i.elts[d]);
+    return r;
+  }
   vect div_ceil(const vect &i) const {
     vect r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
@@ -177,6 +183,12 @@ public:
       r.elts[d] = cxx::mod_ceil(elts[d], i.elts[d]);
     return r;
   }
+  vect align_ceil(const vect &i) const {
+    vect r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r.elts[d] = cxx::align_ceil(elts[d], i.elts[d]);
+    return r;
+  }
   vect &operator*=(const T &a) { return operator*=(vect::set1(a)); }
   vect &operator/=(const T &a) { return operator/=(vect::set1(a)); }
   vect &operator%=(const T &a) { return operator%=(vect::set1(a)); }
@@ -186,8 +198,10 @@ public:
   vect div_exact(const T &a) const { return div_exact(vect::set1(a)); }
   vect div_floor(const T &a) const { return div_floor(vect::set1(a)); }
   vect mod_floor(const T &a) const { return mod_floor(vect::set1(a)); }
+  vect align_floor(const T &a) const { return align_floor(vect::set1(a)); }
   vect div_ceil(const T &a) const { return div_ceil(vect::set1(a)); }
   vect mod_ceil(const T &a) const { return mod_ceil(vect::set1(a)); }
+  vect align_ceil(const T &a) const { return align_ceil(vect::set1(a)); }
   // Comparisons
   vect operator==(const vect &i) const {
     vect r;
@@ -340,12 +354,20 @@ auto mod_floor(const vect<T, D> &i, const vect<T, D> &j) {
   return i.mod_floor(j);
 }
 template <typename T, std::ptrdiff_t D>
+auto align_floor(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.align_floor(j);
+}
+template <typename T, std::ptrdiff_t D>
 auto div_ceil(const vect<T, D> &i, const vect<T, D> &j) {
   return i.div_ceil(j);
 }
 template <typename T, std::ptrdiff_t D>
 auto mod_ceil(const vect<T, D> &i, const vect<T, D> &j) {
   return i.mod_ceil(j);
+}
+template <typename T, std::ptrdiff_t D>
+auto align_ceil(const vect<T, D> &i, const vect<T, D> &j) {
+  return i.align_ceil(j);
 }
 template <typename T, std::ptrdiff_t D>
 auto div_exact(const vect<T, D> &i, const T &a) {
@@ -360,12 +382,20 @@ auto mod_floor(const vect<T, D> &i, const T &a) {
   return i.mod_floor(a);
 }
 template <typename T, std::ptrdiff_t D>
+auto align_floor(const vect<T, D> &i, const T &a) {
+  return i.align_floor(a);
+}
+template <typename T, std::ptrdiff_t D>
 auto div_ceil(const vect<T, D> &i, const T &a) {
   return i.div_ceil(a);
 }
 template <typename T, std::ptrdiff_t D>
 auto mod_ceil(const vect<T, D> &i, const T &a) {
   return i.mod_ceil(a);
+}
+template <typename T, std::ptrdiff_t D>
+auto align_ceil(const vect<T, D> &i, const T &a) {
+  return i.align_ceil(a);
 }
 template <typename T, std::ptrdiff_t D>
 auto operator*(const T &a, const vect<T, D> &i) {
@@ -462,7 +492,8 @@ template <std::ptrdiff_t D> class grid_region {
 
 public:
   bool invariant() const {
-    return all_of(imax_ >= imin_ && istep_ > index<D>::zero());
+    return all_of(imax_ >= imin_ && istep_ > index<D>::zero() &&
+                  (imax_ - imin_) % istep_ == index<D>::zero());
   }
   static constexpr std::ptrdiff_t rank = D;
   // TODO: hide this function
@@ -481,7 +512,7 @@ public:
   index<D> imin() const { return imin_; }
   index<D> imax() const { return imax_; }
   index<D> istep() const { return istep_; }
-  index<D> shape() const { return div_floor(imax_ - imin_, istep_); }
+  index<D> shape() const { return (imax_ - imin_) / istep_; }
   bool empty() const { return any_of(imax_ <= imin_); }
   std::ptrdiff_t size() const { return prod(shape()); }
   bool operator==(const grid_region &r) const {
@@ -516,7 +547,8 @@ public:
   grid_region boundary(std::ptrdiff_t dir, bool face) const {
     return grid_region(
         { imin_.set(dir, !face ? imin_[dir] : imax_[dir] - istep_[dir]),
-          imax_.set(dir, !face ? imin_[dir] + istep_[dir] : imax_[dir]) });
+          imax_.set(dir, !face ? imin_[dir] + istep_[dir] : imax_[dir]),
+          istep_ });
   }
 };
 
@@ -551,11 +583,11 @@ public:
       bndss_[0][dir] = bm[dir], bndss_[1][dir] = bp[dir];
   }
   T &operator()(std::ptrdiff_t dir, bool face) {
-    // assert(dir >= 0 && dir < D);
+    assert(dir >= 0 && dir < D);
     return bndss_[face][dir];
   }
   const T &operator()(std::ptrdiff_t dir, bool face) const {
-    // assert(dir >= 0 && dir < D);
+    assert(dir >= 0 && dir < D);
     return bndss_[face][dir];
   }
   template <typename F, typename... As>
@@ -584,7 +616,7 @@ public:
       for (std::ptrdiff_t dir = 0; dir < D; ++dir)
         r = cxx::invoke(op, std::move(r),
                         cxx::invoke(f, bndss_[face][dir], as...));
-    return std::move(r);
+    return r;
   }
   template <typename F, typename... As>
   auto fmap(const F &f, const As &... as) const {

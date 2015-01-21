@@ -28,6 +28,32 @@ namespace cxx {
 
 // Cartesian grid
 
+// Safe helper for foldable
+template <typename F, typename Op, std::ptrdiff_t D, typename T, typename T1,
+          typename... As>
+struct grid_foldMapSafe {
+  // Generic loop, recursing to a lower dimension
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d >= 0 && d < D), T>::type
+  foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
+          const grid_region<D> &xr, const std::vector<T1> &xs,
+          const index<D> &pos, const As &... as) {
+    T r(z);
+    for (std::ptrdiff_t a = rr.imin()[d]; a < rr.imax()[d]; a += rr.istep()[d])
+      r = cxx::invoke(op, std::move(r), foldMap<d - 1>(f, op, z, rr, xr, xs,
+                                                       pos.set(d, a), as...));
+    return r;
+  }
+  // Terminating case for single elements
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d == -1), T>::type
+  foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
+          const grid_region<D> &xr, const std::vector<T1> &xs,
+          const index<D> &pos, const As &... as) {
+    return cxx::invoke(f, xs.at(xr.linear(pos)), as...);
+  }
+};
+
 // Helper for foldable
 template <typename F, typename Op, std::ptrdiff_t D, typename T, typename T1,
           typename... As>
@@ -39,11 +65,23 @@ struct grid_foldMap {
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
     std::ptrdiff_t xstr = xr.strides()[d];
+    assert(all_of(rr.imin() >= xr.imin() && rr.imax() <= xr.imax()));
+    assert(all_of(rr.istep() == xr.istep()));
+    auto ilast = rr.imin().set(d, (rr.imax() - rr.istep())[d]);
+    assert(xr.linear(rr.imin()) + (nelts - 1) * xstr == xr.linear(ilast));
+    // T r(z);
+    // for (std::ptrdiff_t a = 0; a < nelts; ++a)
+    //   r = cxx::invoke(op, std::move(r),
+    //                   foldMap<d - 1>(f, op, z, rr, xr, xs + a * xstr,
+    //                   as...));
+    std::vector<rpc::future<T> > rs(nelts);
+    for (std::ptrdiff_t a = 0; a < nelts; ++a)
+      rs[a] =
+          rpc::async(foldMap<d - 1>, f, op, z, rr, xr, xs + a * xstr, as...);
     T r(z);
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
-      r = cxx::invoke(op, std::move(r),
-                      foldMap<d - 1>(f, op, z, rr, xr, xs + a * xstr, as...));
-    return std::move(r);
+      r = cxx::invoke(op, std::move(r), rs[a].get());
+    return r;
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
@@ -51,17 +89,29 @@ struct grid_foldMap {
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.strides()[d] == 1);
-// assert(xr.strides()[d] == 1);
+    assert(rr.strides()[d] == 1);
+    assert(xr.strides()[d] == 1);
+    assert(all_of(rr.imin() >= xr.imin() && rr.imax() <= xr.imax()));
+    assert(all_of(rr.istep() == xr.istep()));
+    auto ilast = rr.imin().set(d, (rr.imax() - rr.istep())[d]);
+    assert(xr.linear(rr.imin()) + (nelts - 1) == xr.linear(ilast));
 #pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
                                             as...))) initializer(omp_priv(z))
-    T r(z);
-#pragma omp simd reduction(op : r)
+//     T r(z);
+// #pragma omp simd reduction(op : r)
+//     for (std::ptrdiff_t a = 0; a < nelts; ++a)
+//       r = cxx::invoke(op, std::move(r),
+//                       foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
+#warning                                                                       \
+    "TODO: this is not efficient; put parallelisation into tree, via (fmap2 fold)"
+    std::vector<rpc::future<T> > rs(nelts);
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
-      r = cxx::invoke(op, std::move(r),
-                      foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
-    return std::move(r);
+      rs[a] = rpc::async(foldMap<d - 1>, f, op, z, rr, xr, xs + a, as...);
+    T r(z);
+    for (std::ptrdiff_t a = 0; a < nelts; ++a)
+      r = cxx::invoke(op, std::move(r), rs[a].get());
+    return r;
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
@@ -89,7 +139,7 @@ struct grid_foldMap2 {
       r = cxx::invoke(op, std::move(r),
                       foldMap2<d - 1>(f, op, z, rr, xr, xs + a * xstr, yr,
                                       ys + a * ystr, as...));
-    return std::move(r);
+    return r;
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
@@ -98,9 +148,9 @@ struct grid_foldMap2 {
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.strides()[d] == 1);
-// assert(xr.strides()[d] == 1);
-// assert(yr.strides()[d] == 1);
+    assert(rr.strides()[d] == 1);
+    assert(xr.strides()[d] == 1);
+    assert(yr.strides()[d] == 1);
 #pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
                                             as...))) initializer(omp_priv(z))
@@ -110,7 +160,7 @@ struct grid_foldMap2 {
       r = cxx::invoke(
           op, std::move(r),
           foldMap2<d - 1>(f, op, z, rr, xr, xs + a, yr, ys + a, as...));
-    return std::move(r);
+    return r;
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
@@ -119,6 +169,28 @@ struct grid_foldMap2 {
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     return cxx::invoke(f, *xs, *ys, as...);
+  }
+};
+
+// Safe helper for functor
+template <typename F, std::ptrdiff_t D, typename T, typename T1, typename... As>
+struct grid_fmapSafe {
+  // Generic loop, recursing to a lower dimension
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d >= 0 && d < D), void>::type
+  fmap(const F &f, const grid_region<D> &rr, std::vector<T> &rs,
+       const grid_region<D> &xr, const std::vector<T1> &xs, const index<D> &pos,
+       const As &... as) {
+    for (std::ptrdiff_t a = rr.imin()[d]; a < rr.imax()[d]; a += rr.istep()[d])
+      fmap<d - 1>(f, rr, rs, xr, xs, pos.set(d, a), as...);
+  }
+  // Terminating case for single elements
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d == -1), void>::type
+  fmap(const F &f, const grid_region<D> &rr, std::vector<T> &rs,
+       const grid_region<D> &xr, const std::vector<T1> &xs, const index<D> &pos,
+       const As &... as) {
+    rs.at(rr.linear(pos)) = cxx::invoke(f, xs.at(xr.linear(pos)), as...);
   }
 };
 
@@ -142,8 +214,8 @@ struct grid_fmap {
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.strides()[d] == 1);
-// assert(xr.strides()[d] == 1);
+    assert(rr.strides()[d] == 1);
+    assert(xr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap<d - 1>(f, rr, rs + a, xr, xs + a, as...);
@@ -181,9 +253,9 @@ struct grid_fmap2 {
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.strides()[d] == 1);
-// assert(xr.strides()[d] == 1);
-// assert(yr.strides()[d] == 1);
+    assert(rr.strides()[d] == 1);
+    assert(xr.strides()[d] == 1);
+    assert(yr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       fmap2<d - 1>(f, rr, rs + a, xr, xs + a, yr, ys + a, as...);
@@ -272,11 +344,11 @@ struct grid_stencil_fmap {
                const boundaries<grid_region<D>, D> &brs,
                const boundaries<const B * restrict, D> &bss, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[dir];
-    // assert(rr.strides()[dir] == 1);
-    // assert(xr.strides()[dir] == 1);
-    // for (std::ptrdiff_t f = 0; f < 2; ++f)
-    //   for (std::ptrdiff_t d = 0; d < D; ++d)
-    //     assert(brs(d, f).strides()[dir] == 1);
+    assert(rr.strides()[dir] == 1);
+    assert(xr.strides()[dir] == 1);
+    for (std::ptrdiff_t f = 0; f < 2; ++f)
+      for (std::ptrdiff_t d = 0; d < D; ++d)
+        assert(brs(d, f).strides()[dir] == 1);
     if (nelts == 1) {
       // both boundaries
       constexpr std::size_t newisouters =
@@ -347,6 +419,30 @@ struct grid_stencil_fmap {
   }
 };
 
+// Safe helper for iota
+template <typename F, std::ptrdiff_t D, typename T, typename... As>
+struct grid_iotaSafe {
+  // Generic loop, recursing to a lower dimension
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d >= 0 && d < D), void>::type
+  iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
+       std::vector<T> &rs, const index<D> &pos, const As &... as) {
+    for (std::ptrdiff_t a = rr.imin()[d]; a < rr.imax()[d];
+         a += rr.istep()[d]) {
+      iota<d - 1>(f, gr, rr, rs, pos.set(d, a), as...);
+    }
+  }
+  // Terminating case for single elements
+  template <std::ptrdiff_t d>
+  static typename std::enable_if<(d == -1), void>::type
+  iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
+       std::vector<T> &rs, const index<D> &pos, const As &... as) {
+    assert(all_of(pos >= rr.imin() && pos < rr.imax()));
+    assert(all_of(pos >= gr.imin() && pos < gr.imax()));
+    rs.at(rr.linear(pos)) = cxx::invoke(f, gr, pos, as...);
+  }
+};
+
 // Helper for iota
 template <typename F, std::ptrdiff_t D, typename T, typename... As>
 struct grid_iota {
@@ -354,11 +450,12 @@ struct grid_iota {
   template <std::ptrdiff_t d>
   static typename std::enable_if<(d > 0 && d < D), void>::type
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
-       T *restrict rs, index<D> imin, const As &... as) {
+       T *restrict rs, const index<D> &imin, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
     std::ptrdiff_t rstr = rr.strides()[d];
+    index<D> idir = rr.istep() * index<D>::dir(d);
     for (std::ptrdiff_t a = 0; a < nelts; ++a) {
-      index<D> i = imin + a * index<D>::dir(d);
+      index<D> i = imin + a * idir;
       iota<d - 1>(f, gr, rr, rs + a * rstr, i, as...);
     }
   }
@@ -368,10 +465,11 @@ struct grid_iota {
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        T *restrict rs, index<D> imin, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
-// assert(rr.strides()[d] == 1);
+    index<D> idir = rr.istep() * index<D>::dir(d);
+    assert(rr.strides()[d] == 1);
 #pragma omp simd
     for (std::ptrdiff_t a = 0; a < nelts; ++a) {
-      index<D> i = imin + a * index<D>::dir(d);
+      index<D> i = imin + a * idir;
       iota<d - 1>(f, gr, rr, rs + a, i, as...);
     }
   }
@@ -379,7 +477,7 @@ struct grid_iota {
   template <std::ptrdiff_t d>
   static typename std::enable_if<(d == -1), void>::type
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
-       T *restrict rs, index<D> i, const As &... as) {
+       T *restrict rs, const index<D> &i, const As &... as) {
     *rs = cxx::invoke(f, gr, i, as...);
   }
 };
@@ -388,6 +486,7 @@ template <typename T, std::ptrdiff_t D> class grid {
   template <typename T1, std::ptrdiff_t D1> friend class grid;
 
   // Data may be shared with other grids
+  // TODO: Introdce "grid" and "gridview", or "gridstorage" and "grid"
   std::shared_ptr<std::vector<T> > data_;
   grid_region<D> layout_; // data memory layout
   grid_region<D> region_; // our grid_region
@@ -399,9 +498,9 @@ template <typename T, std::ptrdiff_t D> class grid {
   friend class cereal::access;
   template <typename Archive> void save(Archive &ar) const {
     // Are we referring to all of the data?
+    // TODO: handle padding
     if (region_ == layout_) {
       // Yes: save everything
-      // TODO: handle padding
       ar(data_, layout_, region_);
     } else {
       // No: create a copy of the respective sub-grid_region, and save it
@@ -436,17 +535,25 @@ public:
   grid(boundary, const grid &xs, std::ptrdiff_t dir, bool face)
       : grid(subregion(), xs, xs.region_.boundary(dir, face)) {}
   // foldable
-  const T &head() const { return (*data_)[layout_.linear(region_.imin())]; }
+  const T &head() const {
+    // return (*data_).at(layout_.linear(region_.imin()));
+    return (*data_)[layout_.linear(region_.imin())];
+  }
   const T &last() const {
+    // return (*data_).at(layout_.linear(region_.imax() - region_.istep()));
     return (*data_)[layout_.linear(region_.imax() - region_.istep())];
   }
   template <typename F, typename Op, typename R, typename... As>
   auto foldMap(const F &f, const Op &op, const R &z, const As &... as) const {
     static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
     static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-    return grid_foldMap<F, Op, D, R, T, As...>::template foldMap<D - 1>(
-        f, op, z, region_, layout_,
-        data_->data() + layout_.linear(region_.imin()), as...);
+    return grid_foldMap<std::decay_t<F>, std::decay_t<Op>, D, R, T,
+                        As...>::template foldMap<D - 1>(f, op, z, region_,
+                                                        layout_,
+                                                        data_->data() +
+                                                            layout_.linear(
+                                                                region_.imin()),
+                                                        as...);
   }
   template <typename F, typename Op, typename R, typename T1, typename... As>
   auto foldMap2(const F &f, const Op &op, const R &z, const grid<T1, D> &ys,
@@ -471,6 +578,8 @@ public:
     grid_fmap<F, D, T, T1, As...>::template fmap<D - 1>(
         f, layout_, data_->data(), xs.layout_,
         xs.data_->data() + xs.layout_.linear(xs.region_.imin()), as...);
+    // grid_fmapSafe<F, D, T, T1, As...>::template fmap<D - 1>(
+    //     f, layout_, *data_, xs.layout_, *xs.data_, index<D>::zero(), as...);
   }
   struct fmap2 : std::tuple<> {};
   template <typename F, typename T1, typename T2, typename... As>
@@ -499,14 +608,6 @@ public:
         std::is_same<cxx::invoke_of_t<G, T1, std::ptrdiff_t, bool>, B>::value,
         "");
     assert(rr.is_subregion_of(xs.region_));
-#if 0
-    boundaries<grid_region<D>, D> brs(
-        cxx::fmap([](const grid<B, D> &g) { return g.region_; }, bs));
-    boundaries<const B * restrict, D> bss(
-        cxx::fmap([](const grid<B, D> &g) -> const B *
-                  restrict { return g.data_->data(); },
-                  bs));
-#endif
     boundaries<grid_region<D>, D> brs;
     boundaries<const B * restrict, D> bss;
     for (std::ptrdiff_t f = 0; f < 2; ++f) {
@@ -540,6 +641,8 @@ public:
         "");
     grid_iota<F, D, T, As...>::template iota<D - 1>(
         f, gr, layout_, data_->data(), region_.imin(), as...);
+    // grid_iotaSafe<F, D, T, As...>::template iota<D - 1>(
+    //     f, gr, layout_, *data_, index<D>::zero(), as...);
   }
 };
 

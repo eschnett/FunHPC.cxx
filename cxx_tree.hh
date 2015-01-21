@@ -18,6 +18,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -81,7 +82,7 @@ typename std::enable_if<
     R>::type
 foldMap(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
         const As &... as) {
-  return tree_foldable<F, Op, rpc::is_action<F>::value, R, T, C, P,
+  return tree_foldable<F, Op, rpc::is_action<Op>::value, R, T, C, P,
                        As...>::foldMap(f, op, z, xs, as...);
 }
 
@@ -99,7 +100,7 @@ typename std::enable_if<
     R>::type
 foldMap2(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
          const tree<T2, C, P> &ys, const As &... as) {
-  return tree_foldable2<F, Op, rpc::is_action<F>::value, R, T, C, P, T2,
+  return tree_foldable2<F, Op, rpc::is_action<Op>::value, R, T, C, P, T2,
                         As...>::foldMap2(f, op, z, xs, ys, as...);
 }
 
@@ -289,8 +290,10 @@ public:
   explicit leaf() {}
   explicit leaf(const C<P<T> > &vs) : values(vs) {}
   explicit leaf(C<P<T> > &&vs) : values(std::move(vs)) {}
-  explicit leaf(const P<T> &v) : leaf(cxx::munit<C>(v)) {}
-  explicit leaf(P<T> &&v) : leaf(cxx::munit<C>(std::move(v))) {}
+  explicit leaf(const P<T> &pv) : leaf(cxx::munit<C>(pv)) {}
+  explicit leaf(P<T> &&pv) : leaf(cxx::munit<C>(std::move(pv))) {}
+  explicit leaf(const T &v) : leaf(cxx::munit<P>(v)) {}
+  explicit leaf(T &&v) : leaf(cxx::munit<P>(std::move(v))) {}
   leaf(const leaf &l) : values(l.values) {}
   leaf(leaf &&l) : values(std::move(l.values)) {}
 
@@ -389,9 +392,11 @@ public:
   explicit branch() {}
   explicit branch(const C<P<tree<T, C, P> > > &ts) : trees(ts) {}
   explicit branch(C<P<tree<T, C, P> > > &&ts) : trees(std::move(ts)) {}
-  explicit branch(const P<tree<T, C, P> > &t) : branch(cxx::munit<C>(t)) {}
-  explicit branch(P<tree<T, C, P> > &&t)
-      : branch(cxx::munit<C>(std::move(t))) {}
+  explicit branch(const P<tree<T, C, P> > &pt) : branch(cxx::munit<C>(pt)) {}
+  explicit branch(P<tree<T, C, P> > &&pt)
+      : branch(cxx::munit<C>(std::move(pt))) {}
+  explicit branch(const tree<T, C, P> &t) : branch(cxx::munit<P>(t)) {}
+  explicit branch(tree<T, C, P> &&t) : branch(cxx::munit<P>(std::move(t))) {}
   branch(const branch &b) : trees(b.trees) {}
   branch(branch &&b) : trees(std::move(b.trees)) {}
 
@@ -593,6 +598,24 @@ public:
   }
 };
 
+template <typename T, template <typename> class C, template <typename> class P>
+std::ostream &operator<<(std::ostream &os, const leaf<T, C, P> &l) {
+  // return os << "leaf";
+  return os << l.output();
+}
+
+template <typename T, template <typename> class C, template <typename> class P>
+std::ostream &operator<<(std::ostream &os, const branch<T, C, P> &b) {
+  // return os << "branch";
+  return os << b.output();
+}
+
+template <typename T, template <typename> class C, template <typename> class P>
+std::ostream &operator<<(std::ostream &os, const tree<T, C, P> &t) {
+  // return os << "tree";
+  return os << t.output();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // output
@@ -666,7 +689,6 @@ template <typename F, typename Op, typename R, typename T,
           template <typename> class C, template <typename> class P,
           typename... As>
 struct tree_foldable<F, Op, false, R, T, C, P, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
   static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
       std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
@@ -770,7 +792,6 @@ template <typename F, typename Op, typename R, typename T,
           template <typename> class C, template <typename> class P, typename T2,
           typename... As>
 struct tree_foldable2<F, Op, false, R, T, C, P, T2, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
   static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
       std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
@@ -882,6 +903,7 @@ typename tree_foldable2<F, Op, true, R, T, C, P, T2,
                    As...>::foldMap2_tree_finish_export =
         foldMap2_tree_finish_export_init();
 
+// TODO: use same identity as in rpc_client
 template <typename T> struct tree_fold<false, T> {
   static T identity(const T &x) { return x; }
   static auto get_identity() { return identity; }
@@ -1071,7 +1093,6 @@ template <typename F, std::ptrdiff_t D, template <typename> class tree,
           typename... As>
 struct tree_iota_grid<F, D, false, tree, As...> {
   static_assert(!rpc::is_action<F>::value, "");
-
   typedef cxx::invoke_of_t<F, grid_region<D>, index<D>, As...> R;
 
   template <typename U> using leaf = typename tree<U>::leaf_t;
@@ -1080,66 +1101,82 @@ struct tree_iota_grid<F, D, false, tree, As...> {
   template <typename U> using C = typename tree<U>::template container<U>;
   template <typename U> using P = typename tree<U>::template pointer<U>;
 
-  static constexpr std::ptrdiff_t max_node_size = 10;
+  static constexpr std::ptrdiff_t approximate_max_node_size = 10;
+  static_assert(approximate_max_node_size > 1, "");
+  static constexpr std::ptrdiff_t max_linear_node_size =
+      iroot(D, approximate_max_node_size);
+  static_assert(max_linear_node_size > 1, "");
+  static constexpr std::ptrdiff_t max_node_size = ipow(max_linear_node_size, D);
+  static_assert(max_node_size > 1, "");
 
-  static P<R> iota_pvalue(const iota_range_t &global_range, const index<D> &i,
-                          const F &f, const As &... as) {
-    grid_region<D> range1(i, i + index<D>::set1(1));
+  static P<R> iota_pvalue(const grid_region<D> &global_range, const index<D> &i,
+                          const F &f, const grid_region<D> &range,
+                          const As &... as) {
+    grid_region<D> range1(i, i + range.istep(), range.istep());
     assert(range1.size() == 1);
     return cxx::iota<P>(f, global_range, range1, as...);
   }
 
   static leaf<R> iota_leaf(const F &f, const grid_region<D> &global_range,
-                           const grid_region<D> &range, const As &... as) {
-    // TODO: handle empty case
+                           const grid_region<D> &range, std::ptrdiff_t level,
+                           const As &... as) {
+    assert(level == 0);
     assert(!range.empty() && range.size() <= max_node_size);
-    return leaf<R>(cxx::iota<C>(iota_pvalue, global_range, range, f, as...));
+    return leaf<R>(
+        cxx::iota<C>(iota_pvalue, global_range, range, f, range, as...));
   }
 
-  static tree<R> iota_tree(const grid_region<D> &coarse_global_range,
+  static tree<R> iota_tree(const grid_region<D> &global_range,
                            const index<D> &i, const F &f,
-                           const grid_region<D> &global_range,
-                           const grid_region<D> &range, const As &... as) {
-    std::ptrdiff_t fact = std::llrint(
-        std::floor(std::pow(double(max_node_size), 1.0 / double(D))));
-    grid_region<D> fine_range(
-        range.imin() + (i - range.imin()) * fact,
-        min(range.imax(),
-            range.imin() + (i - range.imin() + index<D>::set1(1)) * fact));
-    return iota(f, global_range, fine_range, as...);
+                           const grid_region<D> &coarse_range,
+                           const grid_region<D> &range, std::ptrdiff_t level,
+                           const As &... as) {
+    grid_region<D> fine_range(i, min(range.imax(), i + coarse_range.istep()),
+                              range.istep());
+    return iota_level(f, global_range, fine_range, level, as...);
   }
 
-  static P<tree<R> > iota_ptree(const grid_region<D> &coarse_global_range,
-                                index<D> i, const F &f,
-                                const grid_region<D> &global_range,
-                                const grid_region<D> &range, const As &... as) {
-    grid_region<D> coarse_range1(i, i + index<D>::set1(1));
+  static P<tree<R> > iota_ptree(const grid_region<D> &global_range, index<D> i,
+                                const F &f, const grid_region<D> &coarse_range,
+                                const grid_region<D> &range,
+                                std::ptrdiff_t level, const As &... as) {
+    grid_region<D> coarse_range1(i, i + coarse_range.istep(),
+                                 coarse_range.istep());
     assert(coarse_range1.size() == 1);
-    return cxx::iota<P>(iota_tree, coarse_global_range, coarse_range1, f,
-                        global_range, range, as...);
+    return cxx::iota<P>(iota_tree, global_range, coarse_range1, f, coarse_range,
+                        range, level, as...);
   }
 
   static branch<R> iota_branch(const F &f, const grid_region<D> &global_range,
-                               const grid_region<D> &range, const As &... as) {
-    assert(range.size() > max_node_size);
-    std::ptrdiff_t fact = std::llrint(
-        std::floor(std::pow(double(max_node_size), 1.0 / double(D))));
+                               const grid_region<D> &range,
+                               std::ptrdiff_t level, const As &... as) {
+    assert(level >= 0);
+    std::ptrdiff_t fact = ipow(max_linear_node_size, level + 1);
+    index<D> coarse_step = range.istep() * fact;
     grid_region<D> coarse_range(
-        range.imin(),
-        range.imin() +
-            (range.imax() - range.imin() + index<D>::set1(fact - 1)) / fact);
-    assert(!coarse_range.empty());
-    return branch<R>(cxx::iota<C>(iota_ptree, coarse_range, coarse_range, f,
-                                  global_range, range, as...));
+        range.imin(), align_ceil(range.imax(), coarse_step), coarse_step);
+    assert(coarse_range.size() >= 1 && coarse_range.size() <= max_node_size);
+    return branch<R>(cxx::iota<C>(iota_ptree, global_range, coarse_range, f,
+                                  coarse_range, range, level, as...));
+  }
+
+  static tree<R> iota_level(const F &f, const grid_region<D> &global_range,
+                            const grid_region<D> &range, std::ptrdiff_t level,
+                            const As &... as) {
+    if (level == 0)
+      return tree<R>(iota_leaf(f, global_range, range, level, as...));
+    return tree<R>(iota_branch(f, global_range, range, level - 1, as...));
   }
 
   static tree<R> iota(const F &f, const grid_region<D> &global_range,
                       const grid_region<D> &range, const As &... as) {
-#warning "TODO"
-    assert(0);
-    if (range.size() <= max_node_size)
-      return tree<R>(iota_leaf(f, global_range, range, as...));
-    return tree<R>(iota_branch(f, global_range, range, as...));
+    if (range.empty())
+      return tree<R>();
+    std::ptrdiff_t levels =
+        range.size() == 1 ? 0 : ilog(max_linear_node_size,
+                                     maxval(range.shape()) - 1);
+    assert(ipow(max_node_size, levels + 1) > range.size());
+    return iota_level(f, global_range, range, levels, as...);
   }
 };
 
@@ -1156,7 +1193,13 @@ struct tree_iota_grid<F, D, true, tree, As...> {
   template <typename U> using C = typename tree<U>::template container<U>;
   template <typename U> using P = typename tree<U>::template pointer<U>;
 
-  static constexpr std::ptrdiff_t max_node_size = 10;
+  static constexpr std::ptrdiff_t approximate_max_node_size = 10;
+  static_assert(approximate_max_node_size > 1, "");
+  static constexpr std::ptrdiff_t max_linear_node_size =
+      iroot(D, approximate_max_node_size);
+  static_assert(max_linear_node_size > 1, "");
+  static constexpr std::ptrdiff_t max_node_size = ipow(max_linear_node_size, D);
+  static_assert(max_node_size > 1, "");
 
   static P<R> iota_pvalue(const grid_region<D> &global_range, const index<D> &i,
                           const F &f, const grid_region<D> &range,
@@ -1167,7 +1210,9 @@ struct tree_iota_grid<F, D, true, tree, As...> {
   }
 
   static leaf<R> iota_leaf(const F &f, const grid_region<D> &global_range,
-                           const grid_region<D> &range, const As &... as) {
+                           const grid_region<D> &range, std::ptrdiff_t level,
+                           const As &... as) {
+    assert(level == 0);
     assert(!range.empty() && range.size() <= max_node_size);
     return leaf<R>(
         cxx::iota<C>(iota_pvalue, global_range, range, f, range, as...));
@@ -1176,49 +1221,56 @@ struct tree_iota_grid<F, D, true, tree, As...> {
   static tree<R> iota_tree(const grid_region<D> &global_range,
                            const index<D> &i, const F &f,
                            const grid_region<D> &coarse_range,
-                           const grid_region<D> &range, const As &... as) {
+                           const grid_region<D> &range, std::ptrdiff_t level,
+                           const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(iota_tree);
     grid_region<D> fine_range(i, min(range.imax(), i + coarse_range.istep()),
                               range.istep());
-    return iota(f, global_range, fine_range, as...);
+    return iota_level(f, global_range, fine_range, level, as...);
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(iota_tree);
 
   static P<tree<R> > iota_ptree(const grid_region<D> &global_range, index<D> i,
                                 const F &f, const grid_region<D> &coarse_range,
-                                const grid_region<D> &range, const As &... as) {
+                                const grid_region<D> &range,
+                                std::ptrdiff_t level, const As &... as) {
     grid_region<D> coarse_range1(i, i + coarse_range.istep(),
                                  coarse_range.istep());
     assert(coarse_range1.size() == 1);
     return cxx::iota<P>(iota_tree_action(), global_range, coarse_range1, f,
-                        coarse_range, range, as...);
+                        coarse_range, range, level, as...);
   }
 
   static branch<R> iota_branch(const F &f, const grid_region<D> &global_range,
-                               const grid_region<D> &range, const As &... as) {
-    assert(range.size() > max_node_size);
-    std::ptrdiff_t node_size =
-        std::llrint(std::pow(double(max_node_size), 1.0 / double(D)));
-    assert(node_size > 1);
-    // Find power of node_size that create a branch of the right size
-    // TODO: Take non-cubic shapes into account
-    std::ptrdiff_t fact = node_size;
-    while (pow(double(fact * node_size), D) < range.size())
-      fact *= node_size;
-    grid_region<D> coarse_range(range.imin(), range.imax(),
-                                range.istep() * fact);
-    assert(coarse_range.size() > 1 && coarse_range.size() <= max_node_size);
+                               const grid_region<D> &range,
+                               std::ptrdiff_t level, const As &... as) {
+    assert(level >= 0);
+    std::ptrdiff_t fact = ipow(max_linear_node_size, level + 1);
+    index<D> coarse_step = range.istep() * fact;
+    grid_region<D> coarse_range(
+        range.imin(), align_ceil(range.imax(), coarse_step), coarse_step);
+    assert(coarse_range.size() >= 1 && coarse_range.size() <= max_node_size);
     return branch<R>(cxx::iota<C>(iota_ptree, global_range, coarse_range, f,
-                                  coarse_range, range, as...));
+                                  coarse_range, range, level, as...));
+  }
+
+  static tree<R> iota_level(const F &f, const grid_region<D> &global_range,
+                            const grid_region<D> &range, std::ptrdiff_t level,
+                            const As &... as) {
+    if (level == 0)
+      return tree<R>(iota_leaf(f, global_range, range, level, as...));
+    return tree<R>(iota_branch(f, global_range, range, level - 1, as...));
   }
 
   static tree<R> iota(const F &f, const grid_region<D> &global_range,
                       const grid_region<D> &range, const As &... as) {
-    if (range.empty()) {
+    if (range.empty())
       return tree<R>();
-    } else if (range.size() <= max_node_size)
-      return tree<R>(iota_leaf(f, global_range, range, as...));
-    return tree<R>(iota_branch(f, global_range, range, as...));
+    std::ptrdiff_t levels =
+        range.size() == 1 ? 0 : ilog(max_linear_node_size,
+                                     maxval(range.shape()) - 1);
+    assert(ipow(max_node_size, levels + 1) > range.size());
+    return iota_level(f, global_range, range, levels, as...);
   }
 };
 // Define action exports
@@ -1621,31 +1673,9 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
   template <typename U> using branch = branch<U, C, P>;
   template <typename U> using tree = tree<U, C, P>;
 
-#if 0
-  // temporary
   static leaf<R> stencil_fmap_leaf(const leaf<T> &l,
                                    const cxx::boundaries<leaf<B>, D> &bs) {
-    static_assert(D==1,"");
-    std::size_t s = l.values.size();
-    C<P<R> > values(s);
-    assert(s > 0);
-    if (s == 1) {
-      values[0] = cxx::fmap3(F(), l.values[0], bm, bp);
-    } else if (s > 1) {
-      values[0] =
-          cxx::fmap3(F(), l.values[0], bm, cxx::fmap(G(), l.values[1], false));
-#pragma omp simd
-      for (std::size_t i = 1; i < s - 1; ++i) {
-        values[i] =
-            cxx::fmap3(F(), l.values[i], cxx::fmap(G(), l.values[i - 1], true),
-                       cxx::fmap(G(), l.values[i + 1], false));
-      }
-      values[s - 1] = cxx::fmap3(F(), l.values[s - 1],
-                                 cxx::fmap(G(), l.values[s - 2], true), bp);
-    }
-    return leaf<R>(std::move(values));
-
-
+    // std::cerr << "stencil_fmap_leaf l=" << l << " bs=" << bs << "\n";
     return leaf<R>(cxx::stencil_fmap(
         [](const P<T> &pv, const boundaries<P<B>, D> &pbs) {
           return cxx::fmap_boundaries(F(), pv, pbs);
@@ -1658,6 +1688,7 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
   static branch<R>
   stencil_fmap_branch(const branch<T> &b,
                       const cxx::boundaries<branch<B>, D> &bs) {
+    // std::cerr << "stencil_fmap_branch b=" << b << " bs=" << bs << "\n";
     return branch<R>(cxx::stencil_fmap(
         [](const P<tree<T> > &pt, const boundaries<P<tree<B> >, D> &pbs) {
           return cxx::fmap_boundaries(stencil_fmap_tree_action(), pt, pbs);
@@ -1669,11 +1700,12 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
   }
 
   static tree<R> stencil_fmap_tree(const tree<T> &t,
-                                   const cxx::boundaries<tree<B>, D> &bss) {
+                                   const cxx::boundaries<tree<B>, D> &bs) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(stencil_fmap_tree);
-    return tree<R>(cxx::gmap_boundaries(
-        stencil_fmap_leaf, stencil_fmap_branch, t.node,
-        fmap([](const auto &bs) { return bs.node; }, bss)));
+    // std::cerr << "stencil_fmap_tree t=" << t << " bs=" << bs << "\n";
+    return tree<R>(
+        cxx::gmap_boundaries(stencil_fmap_leaf, stencil_fmap_branch, t.node,
+                             fmap([](const auto &bt) { return bt.node; }, bs)));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(stencil_fmap_tree);
 
@@ -1685,6 +1717,8 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
   // TODO: use tree_boundary's routines instead of the ones below
   static leaf<B> get_boundary_leaf(const leaf<T> &l, std::ptrdiff_t dir,
                                    bool face) {
+    // std::cerr << "get_boundary_leaf l=" << l << " dir==" << dir
+    //           << " face=" << face << "\n";
     return leaf<B>(boundary([](const P<T> &pv, std::ptrdiff_t dir,
                                bool face) { return fmap(G(), pv, dir, face); },
                             l.values, dir, face));
@@ -1692,6 +1726,8 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
 
   static branch<B> get_boundary_branch(const branch<T> &b, std::ptrdiff_t dir,
                                        bool face) {
+    // std::cerr << "get_boundary_branch b=" << b << " dir==" << dir
+    //           << " face=" << face << "\n";
     return branch<B>(
         boundary([](const P<tree<T> > &pt, std::ptrdiff_t dir, bool face) {
                    return fmap(get_boundary_tree_action(), pt, dir, face);
@@ -1702,77 +1738,12 @@ struct tree_stencil_functor_boundaries<F, G, true, T, C, P, B, D> {
   static tree<B> get_boundary_tree(const tree<T> &t, std::ptrdiff_t dir,
                                    bool face) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(get_boundary_tree);
+    // std::cerr << "get_boundary_tree t=" << t << " dir==" << dir
+    //           << " face=" << face << "\n";
     return tree<B>(
         cxx::gmap(get_boundary_leaf, get_boundary_branch, t.node, dir, face));
   }
   RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(get_boundary_tree);
-#endif
-
-#if 1
-  // good
-  static leaf<R> stencil_fmap_leaf(const leaf<T> &l,
-                                   const cxx::boundaries<leaf<B>, D> &bs) {
-    return leaf<R>(cxx::stencil_fmap(
-        [](const P<T> &pv, const boundaries<P<B>, D> &pbs) {
-          return cxx::fmap_boundaries(F(), pv, pbs);
-        },
-        [](const P<T> &pv, std::ptrdiff_t dir,
-           bool face) { return cxx::fmap(G(), pv, dir, face); },
-        l.values, fmap([](const auto &b) { return b.values; }, bs)));
-  }
-
-  static branch<R>
-  stencil_fmap_branch(const branch<T> &b,
-                      const cxx::boundaries<branch<B>, D> &bs) {
-    return branch<R>(cxx::stencil_fmap(
-        [](const P<tree<T> > &pt, const boundaries<P<tree<B> >, D> &pbs) {
-          return cxx::fmap_boundaries(stencil_fmap_tree_action(), pt, pbs);
-        },
-        [](const P<tree<T> > &pt, std::ptrdiff_t dir, bool face) {
-          return cxx::fmap(get_boundary_tree_action(), pt, dir, face);
-        },
-        b.trees, fmap([](const auto &b) { return b.trees; }, bs)));
-  }
-
-  static tree<R> stencil_fmap_tree(const tree<T> &t,
-                                   const cxx::boundaries<tree<B>, D> &bss) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(stencil_fmap_tree);
-    return tree<R>(cxx::gmap_boundaries(
-        stencil_fmap_leaf, stencil_fmap_branch, t.node,
-        fmap([](const auto &bs) { return bs.node; }, bss)));
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(stencil_fmap_tree);
-
-  static tree<R> stencil_fmap(F, G, const tree<T> &xs,
-                              const cxx::boundaries<tree<B>, D> &bss) {
-    return stencil_fmap_tree(xs, bss);
-  }
-
-  // TODO: use tree_boundary's routines instead of the ones below
-  static leaf<B> get_boundary_leaf(const leaf<T> &l, std::ptrdiff_t dir,
-                                   bool face) {
-    return leaf<B>(boundary([](const P<T> &pv, std::ptrdiff_t dir,
-                               bool face) { return fmap(G(), pv, dir, face); },
-                            l.values, dir, face));
-  }
-
-  static branch<B> get_boundary_branch(const branch<T> &b, std::ptrdiff_t dir,
-                                       bool face) {
-    return branch<B>(
-        boundary([](const P<tree<T> > &pt, std::ptrdiff_t dir, bool face) {
-                   return fmap(get_boundary_tree_action(), pt, dir, face);
-                 },
-                 b.trees, dir, face));
-  }
-
-  static tree<B> get_boundary_tree(const tree<T> &t, std::ptrdiff_t dir,
-                                   bool face) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(get_boundary_tree);
-    return tree<B>(
-        cxx::gmap(get_boundary_leaf, get_boundary_branch, t.node, dir, face));
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(get_boundary_tree);
-#endif
 };
 // Define action exports
 template <typename F, typename G, typename T, template <typename> class C,

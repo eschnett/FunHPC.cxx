@@ -33,7 +33,6 @@ using rpc::future;
 using rpc::launch;
 using rpc::make_client;
 using rpc::make_ready_future;
-using rpc::make_remote_client;
 using rpc::rlaunch;
 using rpc::server;
 using rpc::shared_future;

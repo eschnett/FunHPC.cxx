@@ -38,9 +38,14 @@ public:
   future_state() : m_is_deferred(false), has_exception(false) {
     m_ready.empty();
   }
-  future_state(const std::function<T()> &deferred) : future_state() {
-    m_is_deferred = true;
-    m_deferred = deferred;
+  future_state(const std::function<T()> &deferred)
+      : m_is_deferred(true), m_deferred(deferred), has_exception(false) {
+    m_ready.empty();
+  }
+  future_state(std::function<T()> &&deferred)
+      : m_is_deferred(true), m_deferred(std::move(deferred)),
+        has_exception(false) {
+    m_ready.empty();
   }
   ~future_state() { m_ready.fill(); }
   future_state(const future_state &) = delete;
@@ -92,9 +97,14 @@ public:
   future_state() : m_is_deferred(false), has_exception(false) {
     m_ready.empty();
   }
-  future_state(const std::function<void()> &deferred) : future_state() {
-    m_is_deferred = true;
-    m_deferred = deferred;
+  future_state(const std::function<void()> &deferred)
+      : m_is_deferred(true), m_deferred(deferred), has_exception(false) {
+    m_ready.empty();
+  }
+  future_state(std::function<void()> &&deferred)
+      : m_is_deferred(true), m_deferred(std::move(deferred)),
+        has_exception(false) {
+    m_ready.empty();
   }
   ~future_state() { m_ready.fill(); }
   future_state(const future_state &) = delete;
@@ -154,9 +164,15 @@ public:
     swap(other);
     return *this;
   }
-  const value_type &get() const { return state->get_value(); };
+  const value_type &get() const {
+    assert(state);
+    return state->get_value();
+  };
   bool valid() const { return bool(state); }
-  void wait() const { state->wait(); }
+  void wait() const {
+    assert(state);
+    state->wait();
+  }
   template <typename F>
   auto then(const F &func) const
       -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
@@ -184,9 +200,13 @@ public:
     // TODO: optimize this
     return then([](const shared_future &f) { return f.get().get(); });
   }
-  bool is_ready() const { return state->is_ready(); }
+  bool is_ready() const {
+    assert(state);
+    return state->is_ready();
+  }
 };
 
+#if 0
 template <typename T> class shared_future<T &> {
   typedef T &value_type;
   std::shared_ptr<future_state<T> > state;
@@ -195,7 +215,7 @@ template <typename T> class shared_future<T &> {
       : state(state) {}
   friend class future<value_type>;
   friend class promise<value_type>;
-  friend class deferred<value_type>;
+   friend class deferred<value_type>;
 
 public:
   shared_future() : state(nullptr) {}
@@ -212,9 +232,9 @@ public:
     swap(other);
     return *this;
   }
-  value_type &get() const { return state->get_value(); };
+  value_type &get() const { assert(state);return state->get_value(); };
   bool valid() const { return bool(state); }
-  void wait() const { state->wait(); }
+  void wait() const { assert(state);state->wait(); }
   template <typename F>
   auto then(const F &func) const
       -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
@@ -230,8 +250,9 @@ public:
                    *this);
     }
   }
-  bool is_ready() const { return state->is_ready(); }
+  bool is_ready() const { assert(state);return state->is_ready(); }
 };
+#endif
 
 template <> class shared_future<void> {
   typedef void value_type;
@@ -258,9 +279,15 @@ public:
     swap(other);
     return *this;
   }
-  value_type get() const { return state->get_value(); };
+  value_type get() const {
+    assert(state);
+    return state->get_value();
+  };
   bool valid() const { return bool(state); }
-  void wait() const { state->wait(); }
+  void wait() const {
+    assert(state);
+    state->wait();
+  }
   template <typename F>
   auto then(const F &func) const
       -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
@@ -276,8 +303,15 @@ public:
                    *this);
     }
   }
-  bool is_ready() const { return state->is_ready(); }
+  bool is_ready() const {
+    assert(state);
+    return state->is_ready();
+  }
 };
+
+template <typename T> void swap(shared_future<T> &lhs, shared_future<T> &rhs) {
+  lhs.swap(rhs);
+}
 
 template <typename T> class future {
   typedef T value_type;
@@ -337,6 +371,7 @@ public:
   bool is_ready() const { return state->is_ready(); }
 };
 
+#if 0
 template <typename T> class future<T &> {
   typedef T &value_type;
   std::shared_ptr<future_state<value_type> > state;
@@ -344,7 +379,7 @@ template <typename T> class future<T &> {
   future(const std::shared_ptr<future_state<T> > &state) : state(state) {}
   friend class shared_future<value_type>;
   friend class promise<value_type>;
-  friend class deferred<value_type>;
+   friend class deferred<value_type>;
 
 public:
   future() : state(nullptr) {}
@@ -380,6 +415,7 @@ public:
   }
   bool is_ready() const { return state->is_ready(); }
 };
+#endif
 
 template <> class future<void> {
   typedef void value_type;
@@ -425,9 +461,13 @@ public:
   bool is_ready() const { return state->is_ready(); }
 };
 
+template <typename T> void swap(future<T> &lhs, future<T> &rhs) {
+  lhs.swap(rhs);
+}
+
 template <typename T>
 shared_future<T>::shared_future(future<T> &&other)
-    : state(nullptr) {
+    : shared_future() {
   std::swap(state, other.state);
 }
 
@@ -459,10 +499,11 @@ public:
     return future<T>(state);
   }
   void set_value(const T &value) { state->set_value(value); }
-  void set_value(T &&value) { state->set_value(std::forward<T>(value)); }
+  void set_value(T &&value) { state->set_value(std::move(value)); }
   void set_exception() { state->set_exception(); }
 };
 
+#if 0
 template <typename T> class promise<T &> {
   std::shared_ptr<future_state<T> > state;
 
@@ -471,8 +512,12 @@ public:
   promise(promise &&other) : state(nullptr) { swap(other); }
   promise(const promise &other) = delete;
   ~promise() {
-    if (state && !state->is_ready())
-      set_exception();
+    if (!state)
+      return;
+    if (state.unique())
+      return;
+    if (!state->is_ready())
+      set_exception(); // cannot handle this yet
   }
   promise &operator=(promise &&other) {
     state = nullptr;
@@ -489,6 +534,7 @@ public:
   void set_value(T &value) { state->set_value(value); }
   void set_exception() { state->set_exception(); }
 };
+#endif
 
 template <> class promise<void> {
   std::shared_ptr<future_state<void> > state;
@@ -512,6 +558,7 @@ public:
   }
   promise &operator=(const promise &rhs) = delete;
   void swap(promise &other) { std::swap(state, other.state); }
+  // TODO: allow only one call to get_future
   future<void> get_future() { return future<void>(state); }
   void set_value() { state->set_value(); }
   void set_exception() { state->set_exception(); }
@@ -525,12 +572,15 @@ template <typename T> class deferred {
   std::shared_ptr<future_state<T> > state;
 
 public:
-  deferred() {}
-  deferred(const std::function<T()> func)
+  deferred() : state(nullptr) {}
+  deferred(const std::function<T()> &func)
       : state(std::make_shared<future_state<T> >(func)) {}
+  deferred(std::function<T()> &&func)
+      : state(std::make_shared<future_state<T> >(std::move(func))) {}
   deferred(deferred &&other) : deferred() { swap(other); }
   deferred(const deferred &other) = delete;
   deferred &operator=(deferred &&other) {
+    state = nullptr;
     std::swap(*this, other);
     return *this;
   }
@@ -571,13 +621,13 @@ template <typename T> inline bool future_is_ready(const future<T> &f) {
 template <typename T, typename F>
 inline auto future_then(const shared_future<T> &f, F &&func)
     -> future<typename cxx::invoke_of<F, const shared_future<T> &>::type> {
-  return f.then(func);
+  return f.then(std::forward<F>(func));
 }
 
 template <typename T, typename F>
 inline auto future_then(future<T> &&f, F &&func)
     -> future<typename cxx::invoke_of<F, future<T> &&>::type> {
-  return std::move(f).then(func);
+  return std::move(f).then(std::forward<F>(func));
 }
 }
 

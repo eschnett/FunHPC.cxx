@@ -3,6 +3,7 @@
 
 #include "rpc_client_fwd.hh"
 
+#include "rpc_action.hh"
 #include "rpc_call.hh"
 #include "rpc_future.hh"
 #include "rpc_global_shared_ptr.hh"
@@ -49,6 +50,40 @@ template <typename T, typename... As>
 client<T> make_remote_client(rlaunch policy, const shared_future<int> &proc,
                              const As &... args) {
   return async(policy, proc, make_global_shared_action<T, As...>(), args...);
+}
+
+template <typename F, typename... As>
+auto remote(int proc, const F &f, const As &... args) {
+  return remote(rlaunch::async, proc, f, args...);
+}
+
+template <typename F, typename... As> struct call_and_make_client {
+  typedef cxx::invoke_of_t<F, As...> R;
+  static client<R> call(const F &f, const As &... args) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(call);
+    return make_client<R>(cxx::invoke(f, args...));
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(call);
+};
+// Define action exports
+template <typename F, typename... As>
+typename call_and_make_client<F, As...>::call_evaluate_export_t
+    call_and_make_client<F, As...>::call_evaluate_export =
+        call_evaluate_export_init();
+template <typename F, typename... As>
+typename call_and_make_client<F, As...>::call_finish_export_t
+    call_and_make_client<F, As...>::call_finish_export =
+        call_finish_export_init();
+
+template <typename F, typename... As>
+client<cxx::invoke_of_t<F, As...> > remote(rpc::rlaunch policy, int proc,
+                                           const F &f, const As &... args) {
+  static_assert(rpc::is_action<F>::value, "");
+  typedef cxx::invoke_of_t<F, As...> R;
+  return client<R>(proc,
+                   async(policy, proc,
+                         typename call_and_make_client<F, As...>::call_action(),
+                         f, args...));
 }
 }
 
@@ -140,7 +175,7 @@ template <typename T> struct const_client_iterator {
   const_client_iterator(const client<T> &c, std::ptrdiff_t i = 0)
       : c(c), i(i) {}
   reference_type operator*() const {
-    // TODO: We don't like the call to make_Local here, but iterators
+    // TODO: We don't like the call to make_local here, but iterators
     // are process-local
     assert(i == 0);
     // return (&*c)[i];
@@ -331,63 +366,6 @@ template <typename T> struct is_async<rpc::client<T> > : std::true_type {};
 
 // foldable
 
-// TODO: Allow additional arguments for fold?
-// TODO: Implement fold in terms of foldMap?
-template <typename Op, bool is_action, typename R> struct client_fold;
-
-template <typename Op, typename R>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value, R>::type
-fold(const Op &op, R z, const rpc::client<R> &xs) {
-  return client_fold<Op, rpc::is_action<Op>::value, R>::fold(op, z, xs);
-}
-
-template <typename Op, typename R> struct client_fold<Op, false, R> {
-  static_assert(!rpc::is_action<Op>::value, "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
-
-  static R fold_client(const Op &op, const R &z, const rpc::client<R> &xs) {
-    return *xs;
-  }
-
-  static R fold(const Op &op, const R &z, const rpc::client<R> &xs) {
-    bool s = bool(xs);
-    return s == false ? z : fold_client(op, z, xs);
-  }
-};
-
-template <typename Op, typename R> struct client_fold<Op, true, R> {
-  static_assert(rpc::is_action<Op>::value, "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
-
-  static R fold_client(const R &z, const rpc::client<R> &xs) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(fold_client);
-    return *xs;
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(fold_client);
-
-  static R fold(Op, const R &z, const rpc::client<R> &xs) {
-    bool s = bool(xs);
-    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
-                                      fold_client_action(), z, xs);
-  }
-};
-// Define action exports
-template <typename Op, typename R>
-typename client_fold<Op, true, R>::fold_client_evaluate_export_t
-    client_fold<Op, true, R>::fold_client_evaluate_export =
-        fold_client_evaluate_export_init();
-template <typename Op, typename R>
-typename client_fold<Op, true, R>::fold_client_finish_export_t
-    client_fold<Op, true, R>::fold_client_finish_export =
-        fold_client_finish_export_init();
-
-template <typename F, typename Op, bool is_action, typename R, typename T,
-          typename... As>
-struct client_foldable;
-
 template <typename T> const T &head(const rpc::client<T> &xs) {
   assert(bool(xs));
   return *xs;
@@ -397,20 +375,23 @@ template <typename T> const T &last(const rpc::client<T> &xs) {
   return *xs;
 }
 
+template <typename F, typename Op, bool is_action, typename R, typename T,
+          typename... As>
+struct client_foldable;
+
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, R z, const rpc::client<T> &xs,
-        const As &... as) {
+R foldMap(const F &f, const Op &op, const R &z, const rpc::client<T> &xs,
+          const As &... as) {
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
   return client_foldable<F, Op, rpc::is_action<Op>::value, R, T,
                          As...>::foldMap(f, op, z, xs, as...);
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
 struct client_foldable<F, Op, false, R, T, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
   static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
       std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
@@ -470,12 +451,13 @@ struct client_foldable2;
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, R z, const rpc::client<T> &xs,
-         const rpc::client<T2> &ys, const As &... as) {
+R foldMap2(const F &f, const Op &op, const R &z, const rpc::client<T> &xs,
+           const rpc::client<T2> &ys, const As &... as) {
+  static_assert(
+      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
+      "");
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
   return client_foldable2<F, Op, rpc::is_action<Op>::value, R, T, T2,
                           As...>::foldMap2(f, op, z, xs, ys, as...);
 }
@@ -483,7 +465,6 @@ foldMap2(const F &f, const Op &op, R z, const rpc::client<T> &xs,
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
 struct client_foldable2<F, Op, false, R, T, T2, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
   static_assert(!rpc::is_action<Op>::value, "");
   static_assert(
       std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
@@ -549,141 +530,17 @@ typename client_foldable2<F, Op, true, R, T, T2,
                      As...>::foldMap2_client_finish_export =
         foldMap2_client_finish_export_init();
 
-#if 0
-template <typename F, bool is_action, typename R, typename T, typename... As>
-struct client_foldable;
+template <typename T>
+struct identity_action
+    : rpc::action_impl<identity_action<T>,
+                       rpc::wrap<decltype(&identity<T>), &identity<T> > > {};
 
-template <typename F, typename R, typename T, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-    R>::type
-foldl(const F &f, const R &z, const rpc::client<T> &xs, const As &... as) {
-  return client_foldable<F, rpc::is_action<F>::value, R, T, As...>::foldl(
-      f, z, xs, as...);
+template <typename Op, typename R, typename... As>
+R fold(const Op &op, const R &z, const rpc::client<R> &xs, const As &... args) {
+  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
+                "");
+  return foldMap(identity_action<R>(), op, z, xs, args...);
 }
-
-template <typename F, typename R, typename T, typename... As>
-struct client_foldable<F, false, R, T, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-      "");
-
-  static R foldl_client(const F &f, const R &z, const rpc::client<T> &xs,
-                        const As &... as) {
-    return cxx::invoke(f, z, *xs, as...);
-  }
-
-  static R foldl(const F &f, const R &z, const rpc::client<T> &xs,
-                 const As &... as) {
-    bool s = bool(xs);
-    return s == false ? z : foldl_client(f, z, xs, as...);
-  }
-};
-
-template <typename F, typename R, typename T, typename... As>
-struct client_foldable<F, true, R, T, As...> {
-  static_assert(rpc::is_action<F>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-      "");
-
-  static R foldl_client(const R &z, const rpc::client<T> &xs,
-                        const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
-    return cxx::invoke(F(), z, *xs, as...);
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl_client);
-
-  static R foldl(F, const R &z, const rpc::client<T> &xs, const As &... as) {
-    bool s = bool(xs);
-    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
-                                      foldl_client_action(), z, xs, as...);
-  }
-};
-// Define action exports
-template <typename F, typename R, typename T, typename... As>
-typename client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export_t
-    client_foldable<F, true, R, T, As...>::foldl_client_evaluate_export =
-        foldl_client_evaluate_export_init();
-template <typename F, typename R, typename T, typename... As>
-typename client_foldable<F, true, R, T, As...>::foldl_client_finish_export_t
-    client_foldable<F, true, R, T, As...>::foldl_client_finish_export =
-        foldl_client_finish_export_init();
-
-template <typename F, bool is_action, typename R, typename T, typename T2,
-          typename... As>
-struct client_foldable2;
-
-template <typename F, typename R, typename T, typename T2, typename... As,
-          typename CT = rpc::client<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-    R>::type
-foldl2(const F &f, const R &z, const rpc::client<T> &xs,
-       const rpc::client<T2> &ys, const As &... as) {
-  return client_foldable2<F, rpc::is_action<F>::value, R, T, T2, As...>::foldl2(
-      f, z, xs, ys, as...);
-}
-
-template <typename F, typename R, typename T, typename T2, typename... As>
-struct client_foldable2<F, false, R, T, T2, As...> {
-  static_assert(!rpc::is_action<F>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-      "");
-
-  static R foldl2_client(const F &f, const R &z, const rpc::client<T> &xs,
-                         const rpc::client<T2> &ys, const As &... as) {
-    // Note: We could call make_local, but we don't want to for non-actions
-    return cxx::invoke(f, z, *xs, *ys, as...);
-  }
-
-  static R foldl2(const F &f, const R &z, const rpc::client<T> &xs,
-                  const rpc::client<T2> &ys, const As &... as) {
-    // Note: operator bool waits for the client to be ready
-    bool s = bool(xs);
-    assert(bool(ys) == s);
-    return s == false ? z : foldl2_client(f, z, xs, ys, as...);
-  }
-};
-
-template <typename F, typename R, typename T, typename T2, typename... As>
-struct client_foldable2<F, true, R, T, T2, As...> {
-  static_assert(rpc::is_action<F>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-      "");
-
-  static R foldl2_client(const R &z, const rpc::client<T> &xs,
-                         const rpc::client<T2> &ys, const As &... as) {
-    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_client);
-    auto ysl = ys.make_local();
-    return cxx::invoke(F(), z, *xs, *ysl, as...);
-  }
-  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(foldl2_client);
-
-  static R foldl2(F, const R &z, const rpc::client<T> &xs,
-                  const rpc::client<T2> &ys, const As &... as) {
-    bool s = bool(xs);
-    assert(bool(ys) == s);
-    return s == false ? z : rpc::sync(rpc::rlaunch::sync, xs.get_proc(),
-                                      foldl2_client_action(), z, xs, ys, as...);
-  }
-};
-// Define action exports
-template <typename F, typename R, typename T, typename T2, typename... As>
-typename client_foldable2<F, true, R, T, T2,
-                          As...>::foldl2_client_evaluate_export_t
-    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_evaluate_export =
-        foldl2_client_evaluate_export_init();
-template <typename F, typename R, typename T, typename T2, typename... As>
-typename client_foldable2<F, true, R, T, T2,
-                          As...>::foldl2_client_finish_export_t
-    client_foldable2<F, true, R, T, T2, As...>::foldl2_client_finish_export =
-        foldl2_client_finish_export_init();
-#endif
 
 // functor
 
@@ -1157,12 +1014,10 @@ template <template <typename> class C, typename F, typename... As,
 typename std::enable_if<cxx::is_client<C<T> >::value, C<T> >::type
 iota(const F &f, const iota_range_t &range, const As &... as) {
   assert(range.local.size() == 1);
-  // return munit<C>(cxx::invoke(f, range.local.imin, as...));
   int dest =
       div_floor(rpc::server->size() * (range.local.imin - range.global.imin),
                 range.global.imax - range.global.imin);
-  return rpc::make_remote_client<T>(dest,
-                                    cxx::invoke(f, range.local.imin, as...));
+  return rpc::remote(dest, f, range.local.imin, as...);
 }
 
 template <template <typename> class C, typename F, std::ptrdiff_t D,
@@ -1173,12 +1028,13 @@ template <template <typename> class C, typename F, std::ptrdiff_t D,
 auto iota(const F &f, const cxx::grid_region<D> &global_range,
           const cxx::grid_region<D> &range, const As &... as) {
   assert(range.size() == 1);
-  // return munit<C>(cxx::invoke(f, range.local.imin, as...));
-  ptrdiff_t idx = global_range.linear(range.imin());
-  ptrdiff_t idx_max = global_range.linear_max();
+  cxx::grid_region<D> coarse_range(
+      global_range.imin(), align_ceil(global_range.imax(), range.istep()),
+      range.istep());
+  ptrdiff_t idx = coarse_range.linear(range.imin());
+  ptrdiff_t idx_max = coarse_range.linear_max();
   int dest = div_floor(rpc::server->size() * idx, idx_max);
-  return rpc::make_remote_client<T>(
-      dest, cxx::invoke(f, global_range, range.imin(), as...));
+  return rpc::remote(dest, f, global_range, range.imin(), as...);
 }
 }
 

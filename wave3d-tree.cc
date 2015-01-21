@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -52,7 +53,6 @@ using rpc::future;
 using rpc::launch;
 using rpc::make_client;
 using rpc::make_ready_future;
-using rpc::make_remote_client;
 using rpc::rlaunch;
 using rpc::server;
 using rpc::shared_future;
@@ -98,7 +98,7 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 1;
+constexpr ptrdiff_t dim = 2;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;
@@ -326,9 +326,7 @@ auto operator<<(ostream &os, const cell_t &c) -> ostream & {
 
 // Each grid lives on a process
 
-// template <typename T> using grid_ = grid<T, dim>;
-static_assert(dim == 1, "");
-template <typename T> using grid_ = vector<T>;
+template <typename T> using grid_ = grid<T, dim>;
 template <typename T> using boundaries_ = boundaries<T, dim>;
 
 class grid_t {
@@ -726,6 +724,7 @@ auto rpc_main(int argc, char **argv) -> int {
   stats_t istats;
 
   auto s = make_client<domain_t>(domain_t::initial(), defs->tmin);
+  // cout << "III\n" << cxx::tree_output1(s->grids) << "\n";
   auto m = make_shared<memoized_t>(0, s);
   fio = info_output(fio, m);
   ffo = file_output(ffo, m);

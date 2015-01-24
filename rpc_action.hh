@@ -99,6 +99,27 @@
   RPC_DECLARE_COMPONENT(c);                                                    \
   RPC_IMPLEMENT_COMPONENT(c)
 
+namespace rpc {
+
+template <typename T> struct identity_helper {
+  static T identity(const T &x) {
+    RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(identity);
+    return x;
+  }
+  RPC_DECLARE_TEMPLATE_STATIC_MEMBER_ACTION(identity);
+};
+template <typename T>
+typename identity_helper<T>::identity_evaluate_export_t
+    identity_helper<T>::identity_evaluate_export =
+        identity_evaluate_export_init();
+template <typename T>
+typename identity_helper<T>::identity_finish_export_t
+    identity_helper<T>::identity_finish_export = identity_finish_export_init();
+
+template <typename T>
+using identity_action = typename identity_helper<T>::identity_action;
+}
+
 #define RPC_ACTION_HH_DONE
 #else
 #ifndef RPC_ACTION_HH_DONE

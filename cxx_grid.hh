@@ -1,6 +1,8 @@
 #ifndef CXX_GRID_HH
 #define CXX_GRID_HH
 
+#include "rpc_action.hh"
+
 #include "cxx_foldable.hh"
 #include "cxx_functor.hh"
 #include "cxx_invoke.hh"
@@ -28,13 +30,15 @@ namespace cxx {
 
 // Cartesian grid
 
+#if 0
+
 // Safe helper for foldable
 template <typename F, typename Op, std::ptrdiff_t D, typename T, typename T1,
           typename... As>
-struct grid_foldMapSafe {
+struct grid_foldMap {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d >= 0 && d < D), T>::type
+  static std::enable_if_t<(d >= 0 && d < D), T>
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const std::vector<T1> &xs,
           const index<D> &pos, const As &... as) {
@@ -46,7 +50,7 @@ struct grid_foldMapSafe {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), T>::type
+  static std::enable_if_t<(d == -1), T>
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const std::vector<T1> &xs,
           const index<D> &pos, const As &... as) {
@@ -54,26 +58,27 @@ struct grid_foldMapSafe {
   }
 };
 
+#else
+
 // Helper for foldable
 template <typename F, typename Op, std::ptrdiff_t D, typename T, typename T1,
           typename... As>
 struct grid_foldMap {
+  static const bool is_async =
+      cxx::is_async<T>::value || cxx::is_async<T1>::value;
+
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d > 0 && d < D), T>::type
+  static std::enable_if_t<(is_async && (d >= 0 && d < D)), T>
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
+    // if(d==1)std::cerr<<"async:"<<typeid(T).name()<<"\n";
     std::ptrdiff_t nelts = rr.shape()[d];
     std::ptrdiff_t xstr = xr.strides()[d];
     assert(all_of(rr.imin() >= xr.imin() && rr.imax() <= xr.imax()));
     assert(all_of(rr.istep() == xr.istep()));
     auto ilast = rr.imin().set(d, (rr.imax() - rr.istep())[d]);
     assert(xr.linear(rr.imin()) + (nelts - 1) * xstr == xr.linear(ilast));
-    // T r(z);
-    // for (std::ptrdiff_t a = 0; a < nelts; ++a)
-    //   r = cxx::invoke(op, std::move(r),
-    //                   foldMap<d - 1>(f, op, z, rr, xr, xs + a * xstr,
-    //                   as...));
     std::vector<rpc::future<T> > rs(nelts);
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
       rs[a] =
@@ -83,9 +88,29 @@ struct grid_foldMap {
       r = cxx::invoke(op, std::move(r), rs[a].get());
     return r;
   }
+
+  // Generic loop, recursing to a lower dimension
+  template <std::ptrdiff_t d>
+  static std::enable_if_t<(!is_async && (d > 0 && d < D)), T>
+  foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
+          const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
+    // if(d==1)std::cerr<<"@async:"<<typeid(T).name()<<"\n";
+    std::ptrdiff_t nelts = rr.shape()[d];
+    std::ptrdiff_t xstr = xr.strides()[d];
+    assert(all_of(rr.imin() >= xr.imin() && rr.imax() <= xr.imax()));
+    assert(all_of(rr.istep() == xr.istep()));
+    auto ilast = rr.imin().set(d, (rr.imax() - rr.istep())[d]);
+    assert(xr.linear(rr.imin()) + (nelts - 1) * xstr == xr.linear(ilast));
+    T r(z);
+    for (std::ptrdiff_t a = 0; a < nelts; ++a)
+      r = cxx::invoke(op, std::move(r),
+                      foldMap<d - 1>(f, op, z, rr, xr, xs + a * xstr, as...));
+    std::vector<rpc::future<T> > rs(nelts);
+    return r;
+  }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == 0 && d < D), T>::type
+  static std::enable_if_t<(!is_async && (d == 0 && d < D)), T>
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
@@ -98,36 +123,54 @@ struct grid_foldMap {
 #pragma omp declare reduction(op : T : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
                                             as...))) initializer(omp_priv(z))
-//     T r(z);
-// #pragma omp simd reduction(op : r)
-//     for (std::ptrdiff_t a = 0; a < nelts; ++a)
-//       r = cxx::invoke(op, std::move(r),
-//                       foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
-#warning                                                                       \
-    "TODO: this is not efficient; put parallelisation into tree, via (fmap2 fold)"
-    std::vector<rpc::future<T> > rs(nelts);
-    for (std::ptrdiff_t a = 0; a < nelts; ++a)
-      rs[a] = rpc::async(foldMap<d - 1>, f, op, z, rr, xr, xs + a, as...);
     T r(z);
+#pragma omp simd reduction(op : r)
     for (std::ptrdiff_t a = 0; a < nelts; ++a)
-      r = cxx::invoke(op, std::move(r), rs[a].get());
+      r = cxx::invoke(op, std::move(r),
+                      foldMap<d - 1>(f, op, z, rr, xr, xs + a, as...));
     return r;
   }
+
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), T>::type
+  static std::enable_if_t<(d == -1), T>
   foldMap(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
           const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     return cxx::invoke(f, *xs, as...);
   }
 };
 
+#endif
+
 template <typename F, typename Op, std::ptrdiff_t D, typename T, typename T1,
           typename T2, typename... As>
 struct grid_foldMap2 {
+  static const bool is_async = cxx::is_async<T>::value ||
+                               cxx::is_async<T1>::value ||
+                               cxx::is_async<T2>::value;
+
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d > 0 && d < D), T>::type
+  static std::enable_if_t<(is_async && (d >= 0 && d < D)), T>
+  foldMap2(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
+           const grid_region<D> &xr, const T1 *restrict xs,
+           const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
+    std::ptrdiff_t nelts = rr.shape()[d];
+    std::ptrdiff_t xstr = xr.strides()[d];
+    std::ptrdiff_t ystr = yr.strides()[d];
+    std::vector<rpc::future<T> > rs(nelts);
+    for (std::ptrdiff_t a = 0; a < nelts; ++a)
+      rs[a] = rpc::async(foldMap<d - 1>, f, op, z, rr, xr, xs + a * xstr, yr,
+                         ys + a * ystr, as...);
+    T r(z);
+    for (std::ptrdiff_t a = 0; a < nelts; ++a)
+      r = cxx::invoke(op, std::move(r), rs[a].get());
+    return r;
+  }
+
+  // Generic loop, recursing to a lower dimension
+  template <std::ptrdiff_t d>
+  static std::enable_if_t<(!is_async && (d > 0 && d < D)), T>
   foldMap2(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -143,7 +186,7 @@ struct grid_foldMap2 {
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == 0 && d < D), T>::type
+  static std::enable_if_t<(!is_async && (d == 0 && d < D)), T>
   foldMap2(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -162,9 +205,10 @@ struct grid_foldMap2 {
           foldMap2<d - 1>(f, op, z, rr, xr, xs + a, yr, ys + a, as...));
     return r;
   }
+
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), T>::type
+  static std::enable_if_t<(d == -1), T>
   foldMap2(const F &f, const Op &op, const T &z, const grid_region<D> &rr,
            const grid_region<D> &xr, const T1 *restrict xs,
            const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -172,12 +216,14 @@ struct grid_foldMap2 {
   }
 };
 
+#if 0
+
 // Safe helper for functor
 template <typename F, std::ptrdiff_t D, typename T, typename T1, typename... As>
-struct grid_fmapSafe {
+struct grid_fmap {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d >= 0 && d < D), void>::type
+  static std::enable_if_t<(d >= 0 && d < D), void>
   fmap(const F &f, const grid_region<D> &rr, std::vector<T> &rs,
        const grid_region<D> &xr, const std::vector<T1> &xs, const index<D> &pos,
        const As &... as) {
@@ -186,7 +232,7 @@ struct grid_fmapSafe {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), void>::type
+  static std::enable_if_t<(d == -1), void>
   fmap(const F &f, const grid_region<D> &rr, std::vector<T> &rs,
        const grid_region<D> &xr, const std::vector<T1> &xs, const index<D> &pos,
        const As &... as) {
@@ -194,12 +240,14 @@ struct grid_fmapSafe {
   }
 };
 
+#else
+
 // Helper for functor
 template <typename F, std::ptrdiff_t D, typename T, typename T1, typename... As>
 struct grid_fmap {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d > 0 && d < D), void>::type
+  static std::enable_if_t<(d > 0 && d < D), void>
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
@@ -210,7 +258,7 @@ struct grid_fmap {
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == 0 && d < D), void>::type
+  static std::enable_if_t<(d == 0 && d < D), void>
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
@@ -222,19 +270,21 @@ struct grid_fmap {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), void>::type
+  static std::enable_if_t<(d == -1), void>
   fmap(const F &f, const grid_region<D> &rr, T *restrict rs,
        const grid_region<D> &xr, const T1 *restrict xs, const As &... as) {
     *rs = cxx::invoke(f, *xs, as...);
   }
 };
 
+#endif
+
 template <typename F, std::ptrdiff_t D, typename T, typename T1, typename T2,
           typename... As>
 struct grid_fmap2 {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d > 0 && d < D), void>::type
+  static std::enable_if_t<(d > 0 && d < D), void>
   fmap2(const F &f, const grid_region<D> &rr, T *restrict rs,
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -248,7 +298,7 @@ struct grid_fmap2 {
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == 0 && d < D), void>::type
+  static std::enable_if_t<(d == 0 && d < D), void>
   fmap2(const F &f, const grid_region<D> &rr, T *restrict rs,
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -262,7 +312,7 @@ struct grid_fmap2 {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), void>::type
+  static std::enable_if_t<(d == -1), void>
   fmap2(const F &f, const grid_region<D> &rr, T *restrict rs,
         const grid_region<D> &xr, const T1 *restrict xs,
         const grid_region<D> &yr, const T2 *restrict ys, const As &... as) {
@@ -278,7 +328,7 @@ struct grid_stencil_fmap {
   }
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t dir, std::size_t isouters = 0>
-  static typename std::enable_if<(dir > 0 && dir < D), void>::type
+  static std::enable_if_t<(dir > 0 && dir < D), void>
   stencil_fmap(const F &f, const G &g, const grid_region<D> &rr, T *restrict rs,
                const grid_region<D> &xr, const T1 *restrict xs,
                const boundaries<grid_region<D>, D> &brs,
@@ -338,7 +388,7 @@ struct grid_stencil_fmap {
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t dir, std::size_t isouters = 0>
-  static typename std::enable_if<(dir == 0 && dir < D), void>::type
+  static std::enable_if_t<(dir == 0 && dir < D), void>
   stencil_fmap(const F &f, const G &g, const grid_region<D> &rr, T *restrict rs,
                const grid_region<D> &xr, const T1 *restrict xs,
                const boundaries<grid_region<D>, D> &brs,
@@ -402,7 +452,7 @@ struct grid_stencil_fmap {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t dir, std::size_t isouters>
-  static typename std::enable_if<(dir == -1), void>::type
+  static std::enable_if_t<(dir == -1), void>
   stencil_fmap(const F &f, const G &g, const grid_region<D> &rr, T *restrict rs,
                const grid_region<D> &xr, const T1 *restrict xs,
                const boundaries<grid_region<D>, D> &brs,
@@ -419,12 +469,14 @@ struct grid_stencil_fmap {
   }
 };
 
+#if 0
+
 // Safe helper for iota
 template <typename F, std::ptrdiff_t D, typename T, typename... As>
 struct grid_iotaSafe {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d >= 0 && d < D), void>::type
+  static std::enable_if_t<(d >= 0 && d < D), void>
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        std::vector<T> &rs, const index<D> &pos, const As &... as) {
     for (std::ptrdiff_t a = rr.imin()[d]; a < rr.imax()[d];
@@ -434,7 +486,7 @@ struct grid_iotaSafe {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), void>::type
+  static std::enable_if_t<(d == -1), void>
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        std::vector<T> &rs, const index<D> &pos, const As &... as) {
     assert(all_of(pos >= rr.imin() && pos < rr.imax()));
@@ -443,12 +495,14 @@ struct grid_iotaSafe {
   }
 };
 
+#else
+
 // Helper for iota
 template <typename F, std::ptrdiff_t D, typename T, typename... As>
 struct grid_iota {
   // Generic loop, recursing to a lower dimension
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d > 0 && d < D), void>::type
+  static std::enable_if_t<(d > 0 && d < D), void>
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        T *restrict rs, const index<D> &imin, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
@@ -461,7 +515,7 @@ struct grid_iota {
   }
   // Special case for dir==0 where the stride is known to be 1
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == 0 && d < D), void>::type
+  static std::enable_if_t<(d == 0 && d < D), void>
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        T *restrict rs, index<D> imin, const As &... as) {
     std::ptrdiff_t nelts = rr.shape()[d];
@@ -475,12 +529,14 @@ struct grid_iota {
   }
   // Terminating case for single elements
   template <std::ptrdiff_t d>
-  static typename std::enable_if<(d == -1), void>::type
+  static std::enable_if_t<(d == -1), void>
   iota(const F &f, const grid_region<D> &gr, const grid_region<D> &rr,
        T *restrict rs, const index<D> &i, const As &... as) {
     *rs = cxx::invoke(f, gr, i, as...);
   }
 };
+
+#endif
 
 template <typename T, std::ptrdiff_t D> class grid {
   template <typename T1, std::ptrdiff_t D1> friend class grid;
@@ -547,13 +603,11 @@ public:
   auto foldMap(const F &f, const Op &op, const R &z, const As &... as) const {
     static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
     static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-    return grid_foldMap<std::decay_t<F>, std::decay_t<Op>, D, R, T,
-                        As...>::template foldMap<D - 1>(f, op, z, region_,
-                                                        layout_,
-                                                        data_->data() +
-                                                            layout_.linear(
-                                                                region_.imin()),
-                                                        as...);
+    typedef grid_foldMap<std::decay_t<F>, std::decay_t<Op>, D, R, T, As...>
+        helper;
+    return helper::template foldMap<D - 1>(
+        f, op, z, region_, layout_,
+        data_->data() + layout_.linear(region_.imin()), as...);
   }
   template <typename F, typename Op, typename R, typename T1, typename... As>
   auto foldMap2(const F &f, const Op &op, const R &z, const grid<T1, D> &ys,
@@ -562,7 +616,9 @@ public:
                   "");
     static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
     assert(region_.is_subregion_of(ys.region_));
-    return grid_foldMap2<F, Op, D, R, T, T1, As...>::template foldMap2<D - 1>(
+    typedef grid_foldMap2<std::decay_t<F>, std::decay_t<Op>, D, R, T, T1, As...>
+        helper;
+    return helper::template foldMap2<D - 1>(
         f, op, z, region_, layout_,
         data_->data() + layout_.linear(region_.imin()), ys.layout_,
         ys.data_->data() + ys.layout_.linear(ys.region_.imin()), as...);
@@ -575,11 +631,10 @@ public:
       : grid(rr) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, As...>, T>::value, "");
     assert(rr.is_subregion_of(xs.region_));
-    grid_fmap<F, D, T, T1, As...>::template fmap<D - 1>(
+    typedef grid_fmap<std::decay_t<F>, D, T, T1, As...> helper;
+    helper::template fmap<D - 1>(
         f, layout_, data_->data(), xs.layout_,
         xs.data_->data() + xs.layout_.linear(xs.region_.imin()), as...);
-    // grid_fmapSafe<F, D, T, T1, As...>::template fmap<D - 1>(
-    //     f, layout_, *data_, xs.layout_, *xs.data_, index<D>::zero(), as...);
   }
   struct fmap2 : std::tuple<> {};
   template <typename F, typename T1, typename T2, typename... As>
@@ -590,7 +645,8 @@ public:
                   "");
     assert(rr.is_subregion_of(xs.region_));
     assert(rr.is_subregion_of(ys.region_));
-    grid_fmap2<F, D, T, T1, T2, As...>::template fmap2<D - 1>(
+    typedef grid_fmap2<std::decay_t<F>, D, T, T1, T2, As...> helper;
+    helper::template fmap2<D - 1>(
         f, layout_, data_->data(), xs.layout_,
         xs.data_->data() + xs.layout_.linear(xs.region_.imin()), ys.layout_,
         ys.data_->data() + ys.layout_.linear(ys.region_.imin()), as...);
@@ -625,9 +681,11 @@ public:
         bss(d, f) = bs(d, f).data_->data();
       }
     }
-    grid_stencil_fmap<F, G, D, T, T1, B, As...>::template stencil_fmap<D - 1>(
-        f, g, layout_, data_->data(), xs.layout_, xs.data_->data(), brs, bss,
-        as...);
+    typedef grid_stencil_fmap<std::decay_t<F>, std::decay_t<G>, D, T, T1, B,
+                              As...> helper;
+    helper::template stencil_fmap<D - 1>(f, g, layout_, data_->data(),
+                                         xs.layout_, xs.data_->data(), brs, bss,
+                                         as...);
   }
   // iota
   struct iota : std::tuple<> {};
@@ -639,10 +697,9 @@ public:
         std::is_same<cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
                      T>::value,
         "");
-    grid_iota<F, D, T, As...>::template iota<D - 1>(
-        f, gr, layout_, data_->data(), region_.imin(), as...);
-    // grid_iotaSafe<F, D, T, As...>::template iota<D - 1>(
-    //     f, gr, layout_, *data_, index<D>::zero(), as...);
+    typedef grid_iota<std::decay_t<F>, D, T, As...> helper;
+    helper::template iota<D - 1>(f, gr, layout_, data_->data(), region_.imin(),
+                                 as...);
   }
 };
 
@@ -659,11 +716,9 @@ struct is_grid<grid<T, D> > : std::true_type {};
 // foldable
 
 template <typename Op, typename T, std::ptrdiff_t D, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, T, T, As...>::type, T>::value,
-    T>::type
+std::enable_if_t<std::is_same<cxx::invoke_of_t<Op, T, T, As...>, T>::value, T>
 fold(const Op &op, const T &z, const grid<T, D> &xs, const As &... as) {
-  return xs.foldMap([](const T &x) { return x; }, op, z, as...);
+  return xs.foldMap(rpc::identity_action<T>(), op, z, as...);
 }
 
 template <typename T, std::ptrdiff_t D> const T &head(const grid<T, D> &xs) {
@@ -675,10 +730,9 @@ template <typename T, std::ptrdiff_t D> const T &last(const grid<T, D> &xs) {
 
 template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
+std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value &&
+                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
+                 R>
 foldMap(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
         const As &... as) {
   return xs.foldMap(f, op, z, as...);
@@ -686,10 +740,9 @@ foldMap(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
 
 template <typename F, typename Op, typename R, typename T, std::ptrdiff_t D,
           typename T2, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
+std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value &&
+                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
+                 R>
 foldMap2(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
          const grid<T2, D> &ys, const As &... as) {
   return xs.foldMap2(f, op, z, ys, as...);
@@ -700,7 +753,7 @@ foldMap2(const F &f, const Op &op, const R &z, const grid<T, D> &xs,
 template <typename F, typename T, std::ptrdiff_t D, typename... As,
           typename CT = grid<T, D>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, As...> >
 auto fmap(const F &f, const grid<T, D> &xs, const As &... as) {
   return C<R>(typename C<R>::fmap(), f, xs.region(), xs, as...);
 }
@@ -708,7 +761,7 @@ auto fmap(const F &f, const grid<T, D> &xs, const As &... as) {
 template <typename F, typename T, std::ptrdiff_t D, typename T2, typename... As,
           typename CT = grid<T, D>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, T2, As...> >
 auto fmap2(const F &f, const grid<T, D> &xs, const grid<T2, D> &ys,
            const As &... as) {
   return C<R>(typename C<R>::fmap2(), f, xs.region(), xs, ys, as...);
@@ -719,7 +772,7 @@ template <
     typename F, typename T, std::ptrdiff_t D, typename T2, typename... As,
     typename CT = grid<T, D>,
     template <typename> class C = cxx::kinds<CT>::template constructor,
-    typename R = typename cxx::invoke_of<F, T, boundaries<T2, D>, As...>::type>
+    typename R = cxx::invoke_of_t<F, T, boundaries<T2, D>, As...>>
 auto fmap_boundaries(const F &f, const grid<T, D> &xs,
                      const boundaries<grid<T2, D>, D> &yss, const As &... as) {
   static_assert(all_of([&xs](const auto &xs, const auto &ys) {
@@ -771,8 +824,8 @@ auto stencil_fmap(const F &f, const G &g, const grid<T, D> &xs, const B &bm,
 // iota
 
 template <template <typename> class C, typename F, std::ptrdiff_t D,
-          typename... As, typename T = typename cxx::invoke_of<
-                              F, grid_region<D>, index<D>, As...>::type,
+          typename... As,
+          typename T = cxx::invoke_of_t<F, grid_region<D>, index<D>, As...>,
           std::enable_if_t<cxx::is_grid<C<T> >::value> * = nullptr>
 auto iota(const F &f, const grid_region<D> &global_range,
           const grid_region<D> &range, const As &... as) {

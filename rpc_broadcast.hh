@@ -21,11 +21,9 @@ std::vector<int> find_all_threads();
 // Broadcast to all processes
 template <typename C, typename F, typename... As>
 auto broadcast(const C &dests, const F &func, const As &... args)
-    -> typename std::enable_if<
-          is_action<F>::value,
-          std::vector<
-              future<typename cxx::invoke_of<F, As...>::type> > >::type {
-  std::vector<future<typename cxx::invoke_of<F, As...>::type> > fs;
+    -> std::enable_if_t<is_action<F>::value,
+                        std::vector<future<cxx::invoke_of_t<F, As...> > > > {
+  std::vector<future<cxx::invoke_of_t<F, As...> > > fs;
   // TODO: use tree
   for (const int dest : dests) {
     fs.push_back(async(rlaunch::async, dest, func, args...));
@@ -35,7 +33,7 @@ auto broadcast(const C &dests, const F &func, const As &... args)
 
 template <typename C, typename F, typename... As>
 auto broadcast_detached(const C &dests, const F &func, const As &... args)
-    -> typename std::enable_if<is_action<F>::value, void>::type {
+    -> std::enable_if_t<is_action<F>::value, void> {
   // TODO: use tree
   for (const int dest : dests) {
     detached(rlaunch::detached, dest, func, args...);
@@ -45,7 +43,7 @@ auto broadcast_detached(const C &dests, const F &func, const As &... args)
 // TODO: Use container instead of b and e?
 template <typename F, typename... As>
 auto broadcast_barrier(F func, const As &... args, int b = 0, int e = -1)
-    -> typename std::enable_if<is_action<F>::value, future<void> >::type {
+    -> std::enable_if_t<is_action<F>::value, future<void> > {
   if (e == -1)
     e = server->size();
   const auto sz = e - b;
@@ -71,10 +69,9 @@ RPC_DECLARE_ACTION(async_broadcast);
 
 template <typename F, typename... As>
 auto async_broadcast(int b, int e, const F &func, As &&... args)
-    -> typename std::enable_if<
-          ((is_action<F>::value) &&
-           (std::is_void<typename cxx::invoke_of<F, As &&...>::type>::value)),
-          future<void> >::type {
+    -> std::enable_if_t<((is_action<F>::value) &&
+                         (std::is_void<cxx::invoke_of_t<F, As &&...> >::value)),
+                        future<void> > {
   promise<void> *p = nullptr;
   auto evalptr =
       std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
@@ -84,10 +81,9 @@ auto async_broadcast(int b, int e, const F &func, As &&... args)
 
 template <typename F, typename... As>
 auto async_broadcast(const F &func, As &&... args)
-    -> typename std::enable_if<
-          ((is_action<F>::value) &&
-           (std::is_void<typename cxx::invoke_of<F, As &&...>::type>::value)),
-          future<void> >::type {
+    -> std::enable_if_t<((is_action<F>::value) &&
+                         (std::is_void<cxx::invoke_of_t<F, As &&...> >::value)),
+                        future<void> > {
   return async_broadcast(0, rpc::server->size(), func,
                          std::forward<As>(args)...);
 }
@@ -166,11 +162,9 @@ struct map_reduce_impl {
   }
 
   // Assert the type relationships above
-  static_assert(std::is_same<typename cxx::invoke_of<F, A>::type, B>::value,
-                "");
-  static_assert(std::is_same<typename cxx::invoke_of<R, B, B>::type, B>::value,
-                "");
-  static_assert(std::is_same<typename cxx::invoke_of<Z>::type, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<F, A>, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<R, B, B>, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Z>, B>::value, "");
   static_assert(std::is_same<typename C::value_type, A>::value, "");
   static_assert(
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");
@@ -201,33 +195,31 @@ struct map_reduce_impl {
 
 template <typename F, typename R, typename C, typename I>
 auto map_reduce1(const F &f, const R &r, const client<C> &c, const I &b,
-                 const I &e)
-    -> typename cxx::invoke_of<F, typename C::value_type>::type {
+                 const I &e) -> cxx::invoke_of_t<F, typename C::value_type> {
   typedef typename C::value_type A;
-  typedef typename cxx::invoke_of<F, A>::type B;
+  typedef cxx::invoke_of_t<F, A> B;
   auto z = []() -> B { std::terminate(); };
-  typedef typename std::decay<decltype(z)>::type Z;
+  typedef std::decay_t<decltype(z)> Z;
   return map_reduce_impl<A, B, F, R, Z, C, I>(f, r, z, c).map_reduce1(b, e);
 }
 
 template <typename F, typename R, typename C>
 auto map_reduce1(const F &f, const R &r, const client<C> &c)
-    -> typename cxx::invoke_of<F, typename C::value_type>::type {
+    -> cxx::invoke_of_t<F, typename C::value_type> {
   return map_reduce1(f, r, c, c->cbegin(), c->cend());
 }
 
 template <typename F, typename R, typename Z, typename C, typename I>
 auto map_reduce(const F &f, const R &r, const Z &z, const client<C> &c,
-                const I &b, const I &e)
-    -> typename std::decay<decltype(f(*b))>::type {
+                const I &b, const I &e) -> std::decay_t<decltype(f(*b))> {
   typedef typename C::value_type A;
-  typedef typename cxx::invoke_of<F, A>::type B;
+  typedef cxx::invoke_of_t<F, A> B;
   return map_reduce_impl<A, B, F, R, Z, C, I>(f, r, z, c).map_reduce(b, e);
 }
 
 template <typename F, typename R, typename Z, typename C>
 auto map_reduce(const F &f, const R &r, const Z &z, const C &c)
-    -> typename std::decay<decltype(f(*c -> cbegin()))>::type {
+    -> std::decay_t<decltype(f(*c -> cbegin()))> {
   return map_reduce(f, r, z, c, c->cbegin(), c->cend());
 }
 
@@ -243,9 +235,8 @@ struct reduce_impl {
 
   // Assert the type relationships above
   static_assert(std::is_same<A, B>::value, "");
-  static_assert(std::is_same<typename cxx::invoke_of<R, B, B>::type, B>::value,
-                "");
-  static_assert(std::is_same<typename cxx::invoke_of<Z>::type, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<R, B, B>, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Z>, B>::value, "");
   static_assert(std::is_same<typename C::value_type, A>::value, "");
   static_assert(
       std::is_same<typename std::iterator_traits<I>::value_type, A>::value, "");
@@ -280,7 +271,7 @@ auto reduce1(const R &r, const client<C> &c, const I &b, const I &e)
   typedef typename C::value_type A;
   typedef A B;
   auto z = []() -> B { std::terminate(); };
-  typedef typename std::decay<decltype(z)>::type Z;
+  typedef std::decay_t<decltype(z)> Z;
   return reduce_impl<A, B, R, Z, C, I>(r, z, c).reduce1(b, e);
 }
 

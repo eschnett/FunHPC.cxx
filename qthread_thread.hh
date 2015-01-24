@@ -60,12 +60,11 @@ public:
 
   template <typename F, typename... As>
   explicit thread(const F &func, As &&... args) {
-    // std::function<void()> funcbnd =
-    //   std::bind<void>(func, std::forward<As>(args)...);
-    auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
-    auto argsptr =
-        std::make_shared<std::tuple<typename std::decay<As>::type...> >(
-            std::forward<As>(args)...);
+    // std::function<void()> funcbnd = std::bind<void>(func,
+    // std::forward<As>(args)...);
+    auto funcptr = std::make_shared<std::decay_t<F> >(func);
+    auto argsptr = std::make_shared<std::tuple<std::decay_t<As>...> >(
+        std::forward<As>(args)...);
     std::function<void()> funcbnd =
         [funcptr, argsptr]() { cxx::tuple_apply(*funcptr, *argsptr); };
     handle = start_thread(funcbnd);
@@ -123,16 +122,14 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
-    -> typename std::enable_if<
-          !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<!std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
-  auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
-  auto argsptr =
-      std::make_shared<std::tuple<typename std::decay<As>::type...> >(
-          std::forward<As>(args)...);
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  auto funcptr = std::make_shared<std::decay_t<F> >(func);
+  auto argsptr = std::make_shared<std::tuple<std::decay_t<As>...> >(
+      std::forward<As>(args)...);
+  typedef cxx::invoke_of_t<F, As...> R;
   if (is_deferred) {
     auto funcbnd = [funcptr, argsptr]() -> R {
       return cxx::tuple_apply(*funcptr, *argsptr);
@@ -156,15 +153,13 @@ auto async(launch policy, const F &func, As &&... args)
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
-    -> typename std::enable_if<
-          std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   bool is_deferred = policy == launch::deferred;
   bool is_sync = (policy & launch::sync) == launch::sync;
-  auto funcptr = std::make_shared<typename std::decay<F>::type>(func);
-  auto argsptr =
-      std::make_shared<std::tuple<typename std::decay<As>::type...> >(
-          std::forward<As>(args)...);
+  auto funcptr = std::make_shared<std::decay_t<F> >(func);
+  auto argsptr = std::make_shared<std::tuple<std::decay_t<As>...> >(
+      std::forward<As>(args)...);
   if (is_deferred) {
     auto funcbnd =
         [funcptr, argsptr]() { cxx::tuple_apply(*funcptr, *argsptr); };
@@ -187,11 +182,8 @@ auto async(launch policy, const F &func, As &&... args)
 }
 
 template <typename F, typename... As>
-auto async(const F &func, As &&... args) ->
-    // typename std::enable_if<!std::is_same<F, launch>::value,
-    //                         future<typename cxx::invoke_of<F, As...>::type>
-    //                         >::type
-    future<typename cxx::invoke_of<F, As...>::type> {
+auto async(const F &func, As &&... args)
+    -> future<cxx::invoke_of_t<F, As...> > {
   return async(launch::async | launch::deferred, func,
                std::forward<As>(args)...);
 }
@@ -203,10 +195,10 @@ auto async(const F &func, As &&... args) ->
   
   
   template<typename Iter>
-  typename std::enable_if<
+   std::enable_if_t<
     !std::is_void<typename detail::future_traits<typename std::iterator_traits<Iter>::value_type>::value_type>::value,
     future<std::vector<typename detail::future_traits<typename std::iterator_traits<Iter>::value_type>::value_type> >
-    >::type
+    >
   when_all(const Iter& begin, const Iter& end)
   {
     return async([begin, end]() {
@@ -219,10 +211,10 @@ auto async(const F &func, As &&... args) ->
   }
   
   template<typename Iter>
-  typename std::enable_if<
+   std::enable_if_t<
     std::is_void<typename detail::future_traits<typename std::iterator_traits<Iter>::value_type>::value_type>::value,
     future<void>
-    >::type
+    >
   when_all(const Iter& begin, const Iter& end)
   {
     return async([begin, end]() {
@@ -277,10 +269,10 @@ auto async(const F &func, As &&... args) ->
   };
   
   template<typename... As>
-  typename std::enable_if<
+   std::enable_if_t<
     detail::all<std::integral_constant<bool, !std::is_void<typename detail::future_traits<As>::value_type>::value>...>::value,
     future<std::tuple<typename detail::future_traits<As>::value_type...> >
-    >::type
+    >
   when_all(As&&... args)
   {
     return async(when_all_impl<As...>::apply_get, std::forward<As>(args)...);
@@ -306,10 +298,10 @@ auto async(const F &func, As &&... args) ->
   };
   
   template<typename... As>
-  typename std::enable_if<
+   std::enable_if_t<
     (sizeof...(As)>0) && detail::all<std::integral_constant<bool, std::is_void<typename detail::future_traits<As>::value_type>::value>...>::value,
     future<void>
-    >::type
+    >
   when_all(As&&... args)
   {
     return async(when_all_void_impl<As...>::apply_get, std::forward<As>(args)...);
@@ -332,10 +324,10 @@ auto async(const F &func, As &&... args) ->
   }
   
   template<typename... As>
-  typename std::enable_if<
+   std::enable_if_t<
     (sizeof...(As)>0) && detail::all<std::integral_constant<bool, std::is_void<typename detail::future_traits<As>::value_type>::value>...>::value,
     future<void>
-    >::type
+    >
   when_all(As&&... args)
   {
     return detail::when_all_impl(std::forward<As>(args)...);

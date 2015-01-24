@@ -79,16 +79,14 @@ public:
   // const T& operator*() const { return just(); }
   // T& operator*() { return just(); }
   template <typename F, typename... As,
-            typename R = typename cxx::invoke_of<F, T, As &&...>::type>
+            typename R = cxx::invoke_of_t<F, T, As &&...> >
   maybe<R> fmap(const F &f, As &&... as) const {
     return is_nothing()
                ? maybe<R>()
                : maybe<R>(cxx::invoke(f, just(), std::forward<As>(as)...));
   }
   template <typename F, typename R, typename... As>
-  typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<F, T, As &&...>::type, R>::value,
-      R>::type
+  std::enable_if_t<std::is_same<cxx::invoke_of_t<F, T, As &&...>, R>::value, R>
   fold(const F &f, const R &z, As &&... as) const {
     return is_nothing() ? z : cxx::invoke(f, just(), std::forward<As>(as)...);
   }
@@ -116,9 +114,7 @@ template <typename T> struct is_maybe<cxx::maybe<T> > : std::true_type {};
 
 // foldable
 template <typename Op, typename R, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
+std::enable_if_t<std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, R>
 fold(const Op &op, const R &z, const maybe<R> &xs, const As &... as) {
   bool s = xs.is_just();
   if (s == false)
@@ -136,10 +132,9 @@ template <typename T> const T &last(const maybe<T> &xs) {
 }
 
 template <typename F, typename Op, typename R, typename T, typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
+std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value &&
+                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
+                 R>
 foldMap(const F &f, const Op &op, const R &z, const maybe<T> &xs,
         const As &... as) {
   bool s = xs.is_just();
@@ -150,10 +145,9 @@ foldMap(const F &f, const Op &op, const R &z, const maybe<T> &xs,
 
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
+std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value &&
+                  std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
+                 R>
 foldMap2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
          const As &... as) {
   bool s = xs.is_just();
@@ -165,9 +159,9 @@ foldMap2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
 
 #if 0
 template <typename F, typename R, typename T, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-    R>::type
+std::enable_if_t<
+    std::is_same<cxx::invoke_of_t<F, R, T, As...>, R>::value,
+    R>
 foldl(const F &f, const R &z, const maybe<T> &xs, const As &... as) {
   bool s = xs.is_just();
   if (s == false)
@@ -176,9 +170,9 @@ foldl(const F &f, const R &z, const maybe<T> &xs, const As &... as) {
 }
 
 template <typename F, typename R, typename T, typename T2, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-    R>::type
+std::enable_if_t<
+    std::is_same<cxx::invoke_of_t<F, R, T, T2, As...>, R>::value,
+    R>
 foldl2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
        const As &... as) {
   bool s = xs.is_just();
@@ -192,7 +186,7 @@ foldl2(const F &f, const R &z, const maybe<T> &xs, const maybe<T2> &ys,
 // functor
 template <typename F, typename T, typename... As, typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, As...> >
 C<R> fmap(const F &f, const cxx::maybe<T> &xs, const As &... as) {
   bool s = xs.is_just();
   if (s == false)
@@ -203,7 +197,7 @@ C<R> fmap(const F &f, const cxx::maybe<T> &xs, const As &... as) {
 template <typename F, typename T, typename T2, typename... As,
           typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, T2, As...> >
 C<R> fmap2(const F &f, const cxx::maybe<T> &xs, const cxx::maybe<T2> &ys,
            const As &... as) {
   bool s = xs.is_just();
@@ -213,11 +207,10 @@ C<R> fmap2(const F &f, const cxx::maybe<T> &xs, const cxx::maybe<T2> &ys,
   return C<R>(cxx::invoke(f, xs.just(), ys.just(), as...));
 }
 
-template <
-    typename F, typename T, typename B, std::ptrdiff_t D, typename... As,
-    typename CT = cxx::maybe<T>,
-    template <typename> class C = cxx::kinds<CT>::template constructor,
-    typename R = typename cxx::invoke_of<F, T, boundaries<B, D>, As...>::type>
+template <typename F, typename T, typename B, std::ptrdiff_t D, typename... As,
+          typename CT = cxx::maybe<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = cxx::invoke_of_t<F, T, boundaries<B, D>, As...> >
 C<R> fmap_boundaries(const F &f, const cxx::maybe<T> &xs,
                      const boundaries<cxx::maybe<B>, D> &bss,
                      const As &... as) {
@@ -241,21 +234,19 @@ C<R> fmap_boundaries(const F &f, const cxx::maybe<T> &xs,
 // monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type
-munit(T1 &&x) {
+          typename T = std::decay_t<T1> >
+std::enable_if_t<cxx::is_maybe<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+std::enable_if_t<cxx::is_maybe<C<T> >::value, C<T> > mmake(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
 template <typename T, typename F, typename... As, typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           typename R = typename cxx::kinds<CR>::value_type>
 C<R> mbind(const cxx::maybe<T> &xs, const F &f, As &&... as) {
   if (xs.is_nothing())
@@ -274,14 +265,13 @@ C<T> mjoin(const cxx::maybe<cxx::maybe<T> > &xss) {
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type mzero() {
+std::enable_if_t<cxx::is_maybe<C<T> >::value, C<T> > mzero() {
   return C<T>();
 }
 
 template <typename T, typename... As, typename CT = cxx::maybe<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
+std::enable_if_t<cxx::all<std::is_same<As, C<T> >::value...>::value, C<T> >
 mplus(const cxx::maybe<T> &xs, const As &... as) {
   std::array<const C<T> *, sizeof...(As)> xss{ { &as... } };
   for (size_t i = 0; i < xss.size(); ++i)
@@ -291,7 +281,7 @@ mplus(const cxx::maybe<T> &xs, const As &... as) {
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_maybe<C<T> >::value, C<T> >::type msome(T &&x) {
+std::enable_if_t<cxx::is_maybe<C<T> >::value, C<T> > msome(T &&x) {
   return munit<T>(std::forward<T>(x));
 }
 

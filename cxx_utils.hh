@@ -130,22 +130,18 @@ template <class T> constexpr T ilog(T b, T x) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // special_decay, decay with special handling of reference_wrapper
-template <typename T> struct special_decay {
-  using type = typename std::decay<T>::type;
-};
+template <typename T> struct special_decay { using type = std::decay_t<T>; };
 template <typename T> struct special_decay<std::reference_wrapper<T> > {
   using type = T &;
 };
 
 // decay_copy, taken from libc++ 3.4
-template <typename T> inline typename std::decay<T>::type decay_copy(T &&t) {
+template <typename T> inline std::decay_t<T> decay_copy(T &&t) {
   return std::forward<T>(t);
 }
 
 // Convert a type into a constant reference (const&)
-template <typename T> struct const_ref {
-  typedef const typename std::decay<T>::type &type;
-};
+template <typename T> struct const_ref { typedef const std::decay_t<T> &type; };
 
 // Assert wrapper
 inline void rpc_assert(bool cond) {
@@ -159,8 +155,8 @@ inline void rpc_assert(bool cond) {
 // make_ptr
 template <typename T>
 auto make_ptr(T &&value)
-    -> decltype(new typename std::decay<T>::type(std::forward<T>(value))) {
-  return new typename std::decay<T>::type(std::forward<T>(value));
+    -> decltype(new std::decay_t<T>(std::forward<T>(value))) {
+  return new std::decay_t<T>(std::forward<T>(value));
 }
 
 // make_unique

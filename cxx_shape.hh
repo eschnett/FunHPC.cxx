@@ -301,40 +301,37 @@ public:
   // (TODO)
   // Higher order
   template <typename Op>
-  typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<Op, T, T>::type, T>::value, T>::type
+  std::enable_if_t<std::is_same<cxx::invoke_of_t<Op, T, T>, T>::value, T>
   fold(const Op &op, T r) const {
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r = cxx::invoke(op, r, elts[d]);
     return r;
   }
   template <typename F, typename Op, typename R>
-  typename std::enable_if<
-      (std::is_same<typename cxx::invoke_of<F, T>::type, R>::value &&
-       std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-      R>::type
+  std::enable_if_t<(std::is_same<cxx::invoke_of_t<F, T>, R>::value &&
+                    std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value),
+                   R>
   foldMap(const F &f, const Op &op, R r) const {
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r = cxx::invoke(op, r, cxx::invoke(f, elts[d]));
     return r;
   }
   template <typename Op, typename R>
-  typename std::enable_if<
-      std::is_same<typename cxx::invoke_of<Op, R, T>::type, R>::value, R>::type
+  std::enable_if_t<std::is_same<cxx::invoke_of_t<Op, R, T>, R>::value, R>
   foldl(const Op &op, R r) const {
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r = cxx::invoke(op, r, elts[d]);
     return r;
   }
   template <typename F> auto fmap(const F &f) const {
-    typedef typename cxx::invoke_of<F, T>::type R;
+    typedef cxx::invoke_of_t<F, T> R;
     vect<R, D> r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r.elts[d] = cxx::invoke(f, elts[d]);
     return r;
   }
   template <typename F> auto fmap2(const F &f, const vect &i) const {
-    typedef typename cxx::invoke_of<F, T, T>::type R;
+    typedef cxx::invoke_of_t<F, T, T> R;
     vect<R, D> r;
     for (std::ptrdiff_t d = 0; d < D; ++d)
       r.elts[d] = cxx::invoke(f, elts[d], i.elts[d]);

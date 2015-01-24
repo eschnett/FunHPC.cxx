@@ -98,7 +98,7 @@ RPC_ACTION(string_mappend);
 
 // Global definitions, a poor man's parameter file
 
-constexpr ptrdiff_t dim = 2;
+constexpr ptrdiff_t dim = 3;
 typedef cxx::index<dim> vindex;
 typedef vect<double, dim> vdouble;
 typedef grid_region<dim> region;

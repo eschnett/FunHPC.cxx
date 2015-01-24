@@ -76,12 +76,10 @@ struct tree_foldable;
 template <typename F, typename Op, typename R, typename T,
           template <typename> class C, template <typename> class P,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
-        const As &... as) {
+R foldMap(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
+          const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return tree_foldable<F, Op, rpc::is_action<Op>::value, R, T, C, P,
                        As...>::foldMap(f, op, z, xs, as...);
 }
@@ -94,12 +92,10 @@ struct tree_foldable2;
 template <typename F, typename Op, typename R, typename T,
           template <typename> class C, template <typename> class P, typename T2,
           typename... As>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
-         const tree<T2, C, P> &ys, const As &... as) {
+R foldMap2(const F &f, const Op &op, const R &z, const tree<T, C, P> &xs,
+           const tree<T2, C, P> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return tree_foldable2<F, Op, rpc::is_action<Op>::value, R, T, C, P, T2,
                         As...>::foldMap2(f, op, z, xs, ys, as...);
 }
@@ -108,10 +104,8 @@ template <bool is_action, typename T> struct tree_fold;
 
 template <typename Op, typename R, template <typename> class C,
           template <typename> class P, typename... As>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, const R &z, const tree<R, C, P> &xs, const As &... as) {
+R fold(const Op &op, const R &z, const tree<R, C, P> &xs, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, As...>, R>::value, "");
   return foldMap(tree_fold<rpc::is_action<Op>::value, R>::get_identity(), op, z,
                  xs);
 }
@@ -132,8 +126,8 @@ template <typename F, bool is_action, template <typename> class tree_,
 struct tree_iota;
 
 template <template <typename> class tree_, typename F, typename... As,
-          typename R = typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type>
-typename std::enable_if<cxx::is_tree<tree_<R> >::value, tree_<R> >::type
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, As...> >
+std::enable_if_t<cxx::is_tree<tree_<R> >::value, tree_<R> >
 iota(const F &f, const iota_range_t &range, const As &... as) {
   return tree_iota<F, rpc::is_action<F>::value, tree_, As...>::iota(f, range,
                                                                     as...);
@@ -161,7 +155,7 @@ struct tree_functor;
 
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename... As,
-          typename R = typename cxx::invoke_of<F, T, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, As...> >
 tree<R, C, P> fmap(const F &f, const tree<T, C, P> &xs, const As &... as) {
   return tree_functor<F, rpc::is_action<F>::value, T, C, P, As...>::fmap(f, xs,
                                                                          as...);
@@ -173,7 +167,7 @@ struct tree_functor2;
 
 template <typename F, typename T, template <typename> class C,
           template <typename> class P, typename T2, typename... As,
-          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
+          typename R = cxx::invoke_of_t<F, T, T2, As...> >
 tree<R, C, P> fmap2(const F &f, const tree<T, C, P> &xs,
                     const tree<T2, C, P> &ys, const As &... as) {
   return tree_functor2<F, rpc::is_action<F>::value, T, C, P, T2, As...>::fmap2(
@@ -186,12 +180,10 @@ struct tree_stencil_functor;
 
 template <typename F, typename G, typename T, template <typename> class C,
           template <typename> class P, typename B,
-          typename R = typename cxx::invoke_of<F, T, B, B>::type>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value,
-    tree<R, C, P> >::type
-stencil_fmap(const F &f, const G &g, const tree<T, C, P> &xs, const B &bm,
-             const B &bp) {
+          typename R = cxx::invoke_of_t<F, T, B, B> >
+tree<R, C, P> stencil_fmap(const F &f, const G &g, const tree<T, C, P> &xs,
+                           const B &bm, const B &bp) {
+  static_assert(std::is_same<cxx::invoke_of_t<G, T, bool>, B>::value, "");
   return tree_stencil_functor<F, G, rpc::is_action<F>::value, T, C, P,
                               B>::stencil_fmap(f, g, xs, munit<P>(bm),
                                                munit<P>(bp));
@@ -319,8 +311,7 @@ public:
 
   // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
-  typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
-                          branch<R, C, P> >::type
+  std::enable_if_t<std::is_same<T, tree<R, C, P> >::value, branch<R, C, P> >
   mjoin() const {
     return branch<R, C, P>(values);
   }
@@ -442,8 +433,7 @@ public:
 
   // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
-  typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
-                          branch<R, C, P> >::type
+  std::enable_if_t<std::is_same<T, tree<R, C, P> >::value, branch<R, C, P> >
   mjoin() const {
     return branch<R, C, P>(
         cxx::fmap([](const P<tree<T, C, P> > &pt) {
@@ -573,8 +563,7 @@ public:
 
   // monad: mjoin
   template <typename U = T, typename R = typename cxx::kinds<U>::value_type>
-  typename std::enable_if<std::is_same<T, tree<R, C, P> >::value,
-                          tree<R, C, P> >::type
+  std::enable_if_t<std::is_same<T, tree<R, C, P> >::value, tree<R, C, P> >
   mjoin() const {
     return tree<R, C, P>(node.is_left() ? node.left().mjoin()
                                         : node.right().mjoin());
@@ -690,10 +679,8 @@ template <typename F, typename Op, typename R, typename T,
           typename... As>
 struct tree_foldable<F, Op, false, R, T, C, P, As...> {
   static_assert(!rpc::is_action<Op>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -736,10 +723,8 @@ template <typename F, typename Op, typename R, typename T,
 struct tree_foldable<F, Op, true, R, T, C, P, As...> {
   static_assert(rpc::is_action<F>::value, "");
   static_assert(rpc::is_action<Op>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value, "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -750,6 +735,9 @@ struct tree_foldable<F, Op, true, R, T, C, P, As...> {
   }
 
   static R foldMap_leaf(const leaf<T> &l, const R &z, const As &... as) {
+    //     if (cxx::is_async<P<T> >::value)
+    //       return cxx::fold(Op(), z, cxx::fmap(foldMap_pvalue, l.values, z,
+    //       as...));
     return cxx::foldMap(foldMap_pvalue, Op(), z, l.values, z, as...);
   }
 
@@ -758,6 +746,9 @@ struct tree_foldable<F, Op, true, R, T, C, P, As...> {
   }
 
   static R foldMap_branch(const branch<T> &b, const R &z, const As &... as) {
+    //     if (cxx::is_async<P<T> >::value)
+    //       return cxx::fold(Op(), z, cxx::fmap(foldMap_ptree, b.trees, z,
+    //       as...));
     return cxx::foldMap(foldMap_ptree, Op(), z, b.trees, z, as...);
   }
 
@@ -793,11 +784,8 @@ template <typename F, typename Op, typename R, typename T,
           typename... As>
 struct tree_foldable2<F, Op, false, R, T, C, P, T2, As...> {
   static_assert(!rpc::is_action<Op>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
-      "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -842,11 +830,8 @@ template <typename F, typename Op, typename R, typename T,
 struct tree_foldable2<F, Op, true, R, T, C, P, T2, As...> {
   static_assert(rpc::is_action<F>::value, "");
   static_assert(rpc::is_action<Op>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value,
-      "");
-  static_assert(std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value,
-                "");
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -927,9 +912,8 @@ typename tree_fold<true, T>::identity_finish_export_t
 
 template <typename Op, typename R, template <typename> class C,
           template <typename> class P>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value, R>::type
-fold(const Op &op, const R &z, const tree<R, C, P> &xs) {
+R fold(const Op &op, const R &z, const tree<R, C, P> &xs) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return foldMap(tree_fold<rpc::is_action<Op>::value, R>::get_identity(), op, z,
                  xs);
 }
@@ -940,7 +924,7 @@ template <typename F, template <typename> class tree, typename... As>
 struct tree_iota<F, false, tree, As...> {
   static_assert(!rpc::is_action<F>::value, "");
 
-  typedef typename cxx::invoke_of<F, std::ptrdiff_t, As...>::type R;
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, As...> R;
 
   template <typename U> using leaf = typename tree<U>::leaf_t;
   template <typename U> using branch = typename tree<U>::branch_t;
@@ -1292,7 +1276,7 @@ template <typename F, typename T, template <typename> class C,
 struct tree_functor<F, false, T, C, P, As...> {
   static_assert(!rpc::is_action<F>::value, "");
 
-  typedef typename cxx::invoke_of<F, T, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, As...> R;
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -1330,7 +1314,7 @@ template <typename F, typename T, template <typename> class C,
 struct tree_functor<F, true, T, C, P, As...> {
   static_assert(rpc::is_action<F>::value, "");
 
-  typedef typename cxx::invoke_of<F, T, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, As...> R;
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -1379,7 +1363,7 @@ template <typename F, typename T, template <typename> class C,
 struct tree_functor2<F, false, T, C, P, T2, As...> {
   static_assert(!rpc::is_action<F>::value, "");
 
-  typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, T2, As...> R;
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -1422,7 +1406,7 @@ template <typename F, typename T, template <typename> class C,
 struct tree_functor2<F, true, T, C, P, T2, As...> {
   static_assert(rpc::is_action<F>::value, "");
 
-  typedef typename cxx::invoke_of<F, T, T2, As...>::type R;
+  typedef cxx::invoke_of_t<F, T, T2, As...> R;
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -1478,10 +1462,9 @@ template <typename F, typename G, typename T, template <typename> class C,
 struct tree_stencil_functor<F, G, true, T, C, P, B> {
   static_assert(rpc::is_action<F>::value, "");
   static_assert(rpc::is_action<G>::value, "");
-  static_assert(
-      std::is_same<typename cxx::invoke_of<G, T, bool>::type, B>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<G, T, bool>, B>::value, "");
 
-  typedef typename cxx::invoke_of<F, T, B, B>::type R;
+  typedef cxx::invoke_of_t<F, T, B, B> R;
 
   template <typename U> using leaf = leaf<U, C, P>;
   template <typename U> using branch = branch<U, C, P>;
@@ -1778,14 +1761,13 @@ typename tree_stencil_functor_boundaries<F, G, true, T, C, P, B,
 // monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type munit(T1 &&x) {
+          typename T = std::decay_t<T1> >
+std::enable_if_t<cxx::is_tree<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+std::enable_if_t<cxx::is_tree<C<T> >::value, C<T> > mmake(As &&... as) {
   return C<T>(T(std::forward<As>(as)...));
 }
 
@@ -1806,24 +1788,21 @@ auto mbind(const cxx::tree<T, C, P> &xs, const F &f, const As &... as) {
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_tree<C<T> >::value, C<T> >::type mzero() {
+std::enable_if_t<cxx::is_tree<C<T> >::value, C<T> > mzero() {
   return C<T>();
 }
 
 template <typename T, template <typename> class C1, template <typename> class P,
           typename... As, typename CT = cxx::tree<T, C1, P>,
           template <typename> class C = cxx::kinds<CT>::template constructor>
-typename std::enable_if<cxx::all<std::is_same<As, C<T> >::value...>::value,
-                        C<T> >::type
-mplus(const cxx::tree<T, C1, P> &xs, const As &... as) {
+C<T> mplus(const cxx::tree<T, C1, P> &xs, const As &... as) {
+  static_assert(cxx::all<std::is_same<As, C<T> >::value...>::value, "");
   return C<T>(typename C<T>::mplus(), xs, as...);
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<((cxx::is_tree<C<T> >::value) &&
-                         (cxx::all<std::is_same<As, T>::value...>::value)),
-                        C<T> >::type
-msome(T &&x, As &&... as) {
+std::enable_if_t<cxx::is_tree<C<T> >::value, C<T> > msome(T &&x, As &&... as) {
+  static_assert(cxx::all<std::is_same<As, T>::value...>::value, "");
   // TODO: Implement directly
   return mplus(munit<C>(std::forward<T>(x)), munit<C>(std::forward<As>(as))...);
 }

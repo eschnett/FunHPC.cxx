@@ -40,7 +40,7 @@ namespace cxx {
 #if 0
   template <template <typename> class C> struct monad {
 
-    template <typename T1, typename T = typename std::decay<T1>::type> C<T> munit(T1 &&x);
+    template <typename T1, typename T = std::decay_t<T1>> C<T> munit(T1 &&x);
 
 template <template <typename> class C, typename T, typename... As>
 C<T> mmake(As &&... as);

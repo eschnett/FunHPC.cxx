@@ -32,15 +32,14 @@ namespace rpc {
 
 template <typename F, typename... As>
 auto sync(rlaunch policy, int dest, F, As &&... args)
-    -> typename std::enable_if<is_action<F>::value,
-                               typename cxx::invoke_of<F, As...>::type>::type {
+    -> std::enable_if_t<is_action<F>::value, cxx::invoke_of_t<F, As...> > {
   RPC_ASSERT(policy == rlaunch::sync);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
   if (dest == server->rank()) {
     return F()(std::forward<As>(args)...);
   }
 #endif
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  typedef cxx::invoke_of_t<F, As...> R;
   auto p = new promise<R>;
   auto f = p->get_future();
   server->call(dest, std::make_shared<typename F::evaluate>(
@@ -50,14 +49,13 @@ auto sync(rlaunch policy, int dest, F, As &&... args)
 
 template <typename F, typename... As>
 auto sync(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
-    -> typename std::enable_if<is_action<F>::value,
-                               typename cxx::invoke_of<F, As...>::type>::type {
+    -> std::enable_if_t<is_action<F>::value, cxx::invoke_of_t<F, As...> > {
   return sync(policy, dest.get(), F(), std::forward<As>(args)...);
 }
 
 template <typename F, typename... As>
 auto detached(rlaunch policy, int dest, F, As &&... args)
-    -> typename std::enable_if<is_action<F>::value, void>::type {
+    -> std::enable_if_t<is_action<F>::value, void> {
   RPC_ASSERT(policy == rlaunch::detached);
 #ifndef RPC_DISABLE_CALL_SHORTCUT
   if (dest == server->rank()) {
@@ -65,7 +63,7 @@ auto detached(rlaunch policy, int dest, F, As &&... args)
     return;
   }
 #endif
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  typedef cxx::invoke_of_t<F, As...> R;
   promise<R> *p = nullptr;
   server->call(dest, std::make_shared<typename F::evaluate>(
                          p, std::forward<As>(args)...));
@@ -73,12 +71,12 @@ auto detached(rlaunch policy, int dest, F, As &&... args)
 
 template <typename F, typename... As>
 auto detached(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
-    -> typename std::enable_if<is_action<F>::value, void>::type {
+    -> std::enable_if_t<is_action<F>::value, void> {
   RPC_ASSERT(policy == rlaunch::detached);
   if (future_is_ready(dest)) {
     return detached(policy, dest.get(), F(), std::forward<As>(args)...);
   }
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  typedef cxx::invoke_of_t<F, As...> R;
   promise<R> *p = nullptr;
   auto evalptr =
       std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
@@ -95,32 +93,29 @@ auto detached(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
 namespace detail {
 template <typename F, typename... As>
 auto make_ready_future(F, As &&... args)
-    -> typename std::enable_if<
-          !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<!std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   return rpc::make_ready_future(F()(std::forward<As>(args)...));
 }
 template <typename F, typename... As>
 auto make_ready_future(F, As &&... args)
-    -> typename std::enable_if<
-          std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   return F()(std::forward<As>(args)...), rpc::make_ready_future();
 }
 }
 
 template <typename F, typename... As>
 auto async(rlaunch policy, int dest, F, As &&... args)
-    -> typename std::enable_if<
-          is_action<F>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<is_action<F>::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   RPC_ASSERT((policy & (rlaunch::async | rlaunch::deferred | rlaunch::sync)) !=
              rlaunch(0));
   RPC_ASSERT((policy & ~(rlaunch::async | rlaunch::deferred | rlaunch::sync)) ==
              rlaunch(0));
   bool is_deferred = policy == rlaunch::deferred;
   bool is_sync = (policy & rlaunch::sync) == rlaunch::sync;
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  typedef cxx::invoke_of_t<F, As...> R;
 #ifndef RPC_DISABLE_CALL_SHORTCUT
   if (dest == server->rank()) {
     if (is_sync) {
@@ -155,9 +150,8 @@ auto async(rlaunch policy, int dest, F, As &&... args)
 
 template <typename F, typename... As>
 auto async(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
-    -> typename std::enable_if<
-          is_action<F>::value,
-          future<typename cxx::invoke_of<F, As...>::type> >::type {
+    -> std::enable_if_t<is_action<F>::value,
+                        future<cxx::invoke_of_t<F, As...> > > {
   RPC_ASSERT((policy & (rlaunch::async | rlaunch::deferred | rlaunch::sync)) !=
              rlaunch(0));
   RPC_ASSERT((policy & ~(rlaunch::async | rlaunch::deferred | rlaunch::sync)) ==
@@ -167,7 +161,7 @@ auto async(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
   if (is_sync || future_is_ready(dest)) {
     return async(policy, dest.get(), F(), std::forward<As>(args)...);
   }
-  typedef typename cxx::invoke_of<F, As...>::type R;
+  typedef cxx::invoke_of_t<F, As...> R;
   auto p = new promise<R>;
   auto evalptr =
       std::make_shared<typename F::evaluate>(p, std::forward<As>(args)...);
@@ -204,26 +198,32 @@ auto async(rlaunch policy, const shared_future<int> &dest, F, As &&... args)
 
 template <typename F, typename G, typename... As>
 auto sync(rlaunch policy, F, G &&global, As &&... args)
-    -> typename std::enable_if<
-          (is_action<F>::value && is_global<G>::value),
-          typename cxx::invoke_of<F, G, As...>::type>::type {
+    -> std::enable_if_t<(is_action<F>::value && is_global<G>::value),
+                        cxx::invoke_of_t<F, G, As...> > {
+  if (global.proc_is_ready())
+    return sync(policy, global.get_proc(), F(), std::forward<G>(global),
+                std::forward<As>(args)...);
   return sync(policy, global.get_proc_future(), F(), std::forward<G>(global),
               std::forward<As>(args)...);
 }
 
 template <typename F, typename G, typename... As>
 auto detached(rlaunch policy, F, G &&global, As &&... args)
-    -> typename std::enable_if<(is_action<F>::value && is_global<G>::value),
-                               void>::type {
+    -> std::enable_if_t<(is_action<F>::value && is_global<G>::value), void> {
+  if (global.proc_is_ready())
+    return detached(policy, global.get_proc(), F(), std::forward<G>(global),
+                    std::forward<As>(args)...);
   return detached(policy, global.get_proc_future(), F(),
                   std::forward<G>(global), std::forward<As>(args)...);
 }
 
 template <typename F, typename G, typename... As>
 auto async(rlaunch policy, F, G &&global, As &&... args)
-    -> typename std::enable_if<
-          (is_action<F>::value && is_global<G>::value),
-          future<typename cxx::invoke_of<F, G, As...>::type> >::type {
+    -> std::enable_if_t<(is_action<F>::value && is_global<G>::value),
+                        future<cxx::invoke_of_t<F, G, As...> > > {
+  if (global.proc_is_ready())
+    return async(policy, global.get_proc(), F(), std::forward<G>(global),
+                 std::forward<As>(args)...);
   return async(policy, global.get_proc_future(), F(), std::forward<G>(global),
                std::forward<As>(args)...);
 }

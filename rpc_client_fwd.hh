@@ -29,8 +29,12 @@ client<T> make_remote_client(rpc::rlaunch policy, const shared_future<int> &,
                              const As &... args);
 
 template <typename F, typename... As>
-client<cxx::invoke_of_t<F, As...> > remote(rpc::rlaunch policy, int proc,
-                                           const F &f, const As &... args);
+client<cxx::invoke_of_t<F, As...> > local_client(rpc::launch policy, const F &f,
+                                                 const As &... args);
+
+template <typename F, typename... As>
+client<cxx::invoke_of_t<F, As...> >
+remote_client(rpc::rlaunch policy, int proc, const F &f, const As &... args);
 
 template <typename T> class client {
   // gcc 4.7 thinks that shared_future::get is non-const
@@ -58,7 +62,11 @@ template <typename T> class client {
 
   template <typename F, typename... As>
   friend client<cxx::invoke_of_t<F, As...> >
-  remote(rpc::rlaunch policy, int proc, const F &f, const As &... args);
+  local_client(rpc::launch policy, const F &f, const As &... args);
+
+  template <typename F, typename... As>
+  friend client<cxx::invoke_of_t<F, As...> >
+  remote_client(rpc::rlaunch policy, int proc, const F &f, const As &... args);
 
 public:
   typedef T element_type;
@@ -201,8 +209,8 @@ public:
   }
 
   // template <typename U = T>
-  // auto unwrap() const -> typename std::enable_if<is_client<U>::value,
-  // U>::type {
+  // auto unwrap() const -> std::enable_if_t<is_client<U>::value,
+  // U> {
   //   return U(-2, async([=]() { return *make_local().get(); }));
   // }
 
@@ -234,7 +242,7 @@ client<T> make_client(rpc::launch policy, const As &... args) {
 }
 
 template <typename F, typename... As>
-auto remote(int proc, const F &f, const As &... args);
+auto remote_client(int proc, const F &f, const As &... args);
 
 template <typename T, typename... As>
 client<T> make_remote_client(int proc, const As &... args);

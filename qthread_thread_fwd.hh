@@ -33,23 +33,16 @@ inline launch &operator^=(launch &a, launch b) { return a = a ^ b; }
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
-    -> typename std::enable_if<
-        !std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-        future<typename cxx::invoke_of<F, As...>::type> >::type;
+    -> std::enable_if_t<!std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > >;
 
 template <typename F, typename... As>
 auto async(launch policy, const F &func, As &&... args)
-    -> typename std::enable_if<
-        std::is_void<typename cxx::invoke_of<F, As...>::type>::value,
-        future<typename cxx::invoke_of<F, As...>::type> >::type;
-
-// template<typename F, typename... As>
-// auto async(launch policy, const F& func, As&&... args) ->
-//   future<typename cxx::invoke_of<F, As...>::type>;
+    -> std::enable_if_t<std::is_void<cxx::invoke_of_t<F, As...> >::value,
+                        future<cxx::invoke_of_t<F, As...> > >;
 
 template <typename F, typename... As>
-auto async(const F &func, As &&... args)
-    -> future<typename cxx::invoke_of<F, As...>::type>;
+auto async(const F &func, As &&... args) -> future<cxx::invoke_of_t<F, As...> >;
 }
 
 #define QTHREAD_THREAD_FWD_HH_DONE

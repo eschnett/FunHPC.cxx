@@ -340,7 +340,7 @@ auto fmap2(const F &f, const cxx::either<L, T> &xs,
 // monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay_t<T1> >
+          typename T = std::decay_t<T1> >
 std::enable_if_t<cxx::is_either<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>(std::forward<T1>(x));
 }

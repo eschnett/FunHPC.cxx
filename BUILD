@@ -12,6 +12,8 @@ mosh --server=\$HOME/trestles/SIMFACTORY/mosh-1.2.4/install/bin/mosh-server ux45
 
 
 
+rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit eschnett@h2ologin.ncsa.illinois.edu:/mnt/a/u/sciteam/eschnett/src/cc/FunHPC/
+
 rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit eschnett@login-damiana.aei.mpg.de:datura/src/mpi-rpc/
 
 rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit ux452368@gordon.sdsc.edu:gordon/src/mpi-rpc/
@@ -33,6 +35,8 @@ rsync -Paz BUILD README Makefile .clang-format *.cc *.hh *.rst *.sh *.submit ux4
 (source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 wave)
 
 (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.3/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 wave)
+
+(source $HOME/SIMFACTORY/cereal-1.1.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.1/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.4/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 wave)
 
 
 

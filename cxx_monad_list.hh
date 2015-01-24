@@ -12,14 +12,13 @@
 namespace cxx {
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_list<C<T> >::value, C<T> >::type munit(T1 &&x) {
+          typename T = std::decay_t<T1> >
+std::enable_if_t<cxx::is_list<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>{ std::forward<T1>(x) };
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_list<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+std::enable_if_t<cxx::is_list<C<T> >::value, C<T> > mmake(As &&... as) {
   C<T> rs;
   rs.emplace_back(std::forward<As>(as)...);
   return rs;
@@ -27,7 +26,7 @@ mmake(As &&... as) {
 
 template <typename T, typename F, typename... As, typename CT = std::list<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           typename R = typename cxx::kinds<CR>::value_type>
 C<R> mbind(const std::list<T> &xs, const F &f, const As &... as) {
   C<R> rs;
@@ -48,7 +47,7 @@ C<T> mjoin(const std::list<std::list<T> > &xss) {
 }
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_list<C<T> >::value, C<T> >::type mzero() {
+std::enable_if_t<cxx::is_list<C<T> >::value, C<T> > mzero() {
   return C<T>();
 }
 

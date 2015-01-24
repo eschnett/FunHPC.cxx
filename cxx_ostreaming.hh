@@ -132,7 +132,7 @@ struct is_ostreaming<cxx::ostreaming<T> > : std::true_type {};
 template <typename F, typename T, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T>::type>
+          typename R = cxx::invoke_of_t<F, T> >
 C<R> fmap(const F &f, const cxx::ostreaming<T> &ostr, As &&... as) {
   auto result = cxx::invoke(f, ostr.value, std::forward<As>(as)...);
   return { ostr.ostr, std::move(result) };
@@ -140,7 +140,7 @@ C<R> fmap(const F &f, const cxx::ostreaming<T> &ostr, As &&... as) {
 template <typename F, typename T, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T>::type>
+          typename R = cxx::invoke_of_t<F, T> >
 C<R> fmap(const F &f, cxx::ostreaming<T> &&ostr, As &&... as) {
   auto result = cxx::invoke(f, std::move(ostr.value), std::forward<As>(as)...);
   return { std::move(ostr.ostr), std::move(result) };
@@ -149,15 +149,13 @@ C<R> fmap(const F &f, cxx::ostreaming<T> &&ostr, As &&... as) {
 // monad: munit
 // Turn a regular function in a function that is ostreaming (outputting nothing)
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_ostreaming<C<T> >::value, C<T> >::type
-munit(T1 &&x) {
+          typename T = std::decay_t<T1> >
+std::enable_if_t<cxx::is_ostreaming<C<T> >::value, C<T> > munit(T1 &&x) {
   return { ostreamer(), std::forward<T1>(x) };
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_ostreaming<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+std::enable_if_t<cxx::is_ostreaming<C<T> >::value, C<T> > mmake(As &&... as) {
   return { ostreamer(), T(std::forward<As>(as)...) };
 }
 
@@ -167,9 +165,9 @@ mmake(As &&... as) {
 template <typename T, typename F, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
+std::enable_if_t<cxx::is_ostreaming<CR>::value, C<R> >
 mbind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
   const T &value = xs.value;
   ostreaming<R> result = cxx::invoke(f, value, as...);
@@ -180,7 +178,7 @@ mbind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
 }
 // template <typename T, typename F, typename CT = cxx::ostreaming<T>,
 //           template <typename> class C = cxx::kinds<CT>::template constructor,
-//           typename CR = typename cxx::invoke_of<F, T &&>::type,
+//           typename CR = cxx::invoke_of_t<F, T &&>,
 //           typename R = typename cxx::kinds<CR>::value_type>
 // C<R> mbind(cxx::ostreaming<T> &&xs, const F &f) {
 //   T &value = xs.value;
@@ -193,9 +191,9 @@ mbind(const cxx::ostreaming<T> &xs, const F &f, const As &... as) {
 template <typename T, typename F, typename... As,
           typename CT = cxx::ostreaming<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_ostreaming<CR>::value, C<R> >::type
+std::enable_if_t<cxx::is_ostreaming<CR>::value, C<R> >
 operator>>=(const cxx::ostreaming<T> &xs, const F &f) {
   return cxx::mbind(xs, f);
 }
@@ -242,10 +240,10 @@ C<T> mjoin(const ostreaming<ostreaming<T> > &xss) {
 // mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
 template <typename F, typename IT, typename... As,
           typename T = typename IT::value_type,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           template <typename> class C = cxx::kinds<CR>::template constructor,
           typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_ostreaming<CR>::value, C<std::tuple<> > >::type
+std::enable_if_t<cxx::is_ostreaming<CR>::value, C<std::tuple<> > >
 mapM_(const F &f, const IT &xs, const As &... as) {
   std::cout << "ostreaming::mapM_.0 F=" << typeid(F).name()
             << " IT=" << typeid(IT).name() << " sz=" << xs.size() << "\n";
@@ -272,8 +270,8 @@ mapM_(const F &f, const IT &xs, const As &... as) {
 //           typename CT = typename cxx::kinds<ICT>::value_type,
 //           template <typename> class C = cxx::kinds<CT>::template constructor,
 //           typename T = typename cxx::kinds<CT>::value_type>
-// typename std::enable_if<cxx::is_ostreaming<CT>::value, C<std::tuple<> >
-// >::type
+// std::enable_if_t<cxx::is_ostreaming<CT>::value, C<std::tuple<> >
+// >
 // sequence_(const ICT &xss) {
 //   C<std::tuple<> > rs;
 //   for (const C<T> &xs : xss)
@@ -298,12 +296,12 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 // // foldM :: Monad m => (a -> b -> m a) -> a -> [b] -> m a
 // template <typename F, typename R, typename IT, typename... As,
 //           typename T = typename cxx::kinds<IT>::value_type,
-//           typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+//           typename CR = cxx::invoke_of_t<F, R, T, As...>,
 //           template <typename> class C = cxx::kinds<CR>::template constructor,
 //           typename R1 = typename cxx::kinds<CR>::value_type,
 //           template <typename> class I = cxx::kinds<IT>::template constructor>
-// typename std::enable_if<
-//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >::type
+// std::enable_if_t<
+//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >
 // foldM(const F &f, const R &z, const IT &xs, const As &... as) {
 //   C<R> rs;
 //   for (const T &x : xs) {
@@ -316,12 +314,12 @@ C<std::tuple<> > mvoid(cxx::ostreaming<T> &&xs) {
 // // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()
 // template <typename F, typename R, typename IT, typename... As,
 //           typename T = typename cxx::kinds<IT>::value_type,
-//           typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+//           typename CR = cxx::invoke_of_t<F, R, T, As...>,
 //           template <typename> class C = cxx::kinds<CR>::template constructor,
 //           typename R1 = typename cxx::kinds<CR>::value_type,
 //           template <typename> class I = cxx::kinds<IT>::template constructor>
-// typename std::enable_if<
-//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >::type
+// std::enable_if_t<
+//     cxx::is_ostreaming<CR>::value && std::is_same<R1, R>::value, C<R> >
 // foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
 //   C<std::tuple<> > rs;
 //   for (const T &x : xs) {

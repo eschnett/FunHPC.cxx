@@ -189,13 +189,13 @@ client<T> make_remote_client(const id_type &loc, As &&... args) {
 // template <typename T>
 // auto extract_gid(T &&x)
 //     -> typename enable_if<!is_client<T>::value,
-// decltype(forward<T>(x))>::type {
+// decltype(forward<T>(x))> {
 //   return forward<T>(x);
 // }
 // template <typename T>
 // auto extract_gid(T &&x)
 //     -> typename enable_if<is_client<T>::value,
-//                           decltype(forward<T>(x).get_gid())>::type {
+//                           decltype(forward<T>(x).get_gid())> {
 //   return forward<T>(x).get_gid();
 // }
 // }

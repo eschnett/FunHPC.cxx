@@ -27,9 +27,9 @@ namespace rpc {
 
 template <typename T, typename... As>
 struct make_global_action
-    : public action_impl<make_global_action<T, As...>,
-                         wrap<decltype(&make_global<T, As...>),
-                              &make_global<T, As::type...> > > {};
+    : public action_impl<
+          make_global_action<T, As...>,
+          wrap<decltype(&make_global<T, As...>), &make_global<T, As...> > > {};
 }
 
 #define RPC_GLOBAL_PTR_HH_DONE

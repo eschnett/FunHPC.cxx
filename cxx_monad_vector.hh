@@ -15,15 +15,13 @@
 namespace cxx {
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-munit(T1 &&x) {
+          typename T = std::decay_t<T1> >
+std::enable_if_t<cxx::is_vector<C<T> >::value, C<T> > munit(T1 &&x) {
   return C<T>{ std::forward<T1>(x) };
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
+std::enable_if_t<cxx::is_vector<C<T> >::value, C<T> > mmake(As &&... as) {
   C<T> rs;
   rs.emplace_back(std::forward<As>(as)...);
   return rs;
@@ -31,7 +29,7 @@ mmake(As &&... as) {
 
 template <typename T, typename F, typename... As>
 auto mbind(const std::vector<T> &xs, const F &f, const As &... as) {
-  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  typedef cxx::invoke_of_t<F, T, As...> CR;
   static_assert(cxx::is_vector<CR>::value, "");
   CR rs;
   for (const auto &x : xs) {
@@ -42,7 +40,7 @@ auto mbind(const std::vector<T> &xs, const F &f, const As &... as) {
 }
 template <typename T, typename F, typename... As>
 auto operator>>=(const std::vector<T> &xs, const F &f) {
-  typedef typename cxx::invoke_of<F, T, As...>::type CR;
+  typedef cxx::invoke_of_t<F, T, As...> CR;
   static_assert(cxx::is_vector<CR>::value, "");
   return cxx::mbind(xs, f);
 }
@@ -68,10 +66,10 @@ template <typename T> auto mjoin(const std::vector<std::vector<T> > &xss) {
 // mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
 template <typename F, typename IT, typename... As,
           typename T = typename IT::value_type,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           template <typename> class C = cxx::kinds<CR>::template constructor,
           typename R = typename cxx::kinds<CR>::value_type>
-typename std::enable_if<cxx::is_vector<CR>::value, C<std::tuple<> > >::type
+std::enable_if_t<cxx::is_vector<CR>::value, C<std::tuple<> > >
 mapM_(const F &f, const IT &xs, const As &... as) {
   C<std::tuple<> > rs;
   for (const T &x : xs) {
@@ -89,7 +87,7 @@ template <typename ICT,
           typename CT = typename cxx::kinds<ICT>::value_type,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename T = typename cxx::kinds<CT>::value_type>
-typename std::enable_if<cxx::is_vector<CT>::value, C<std::tuple<> > >::type
+std::enable_if_t<cxx::is_vector<CT>::value, C<std::tuple<> > >
 sequence_(const ICT &xss) {
   C<std::tuple<> > rs;
   for (const C<T> &xs : xss)
@@ -112,12 +110,11 @@ C<std::tuple<> > mvoid(const std::vector<T> &xs) {
 // foldM :: Monad m => (a -> b -> m a) -> a -> [b] -> m a
 template <typename F, typename R, typename IT, typename... As,
           typename T = typename cxx::kinds<IT>::value_type,
-          typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, R, T, As...>,
           template <typename> class C = cxx::kinds<CR>::template constructor,
           typename R1 = typename cxx::kinds<CR>::value_type,
           template <typename> class I = cxx::kinds<IT>::template constructor>
-typename std::enable_if<cxx::is_vector<CR>::value && std::is_same<R1, R>::value,
-                        C<R> >::type
+std::enable_if_t<cxx::is_vector<CR>::value && std::is_same<R1, R>::value, C<R> >
 foldM(const F &f, const R &z, const IT &xs, const As &... as) {
   C<R> rs;
   for (const T &x : xs) {
@@ -130,12 +127,11 @@ foldM(const F &f, const R &z, const IT &xs, const As &... as) {
 // foldM_ :: Monad m => (a -> b -> m a) -> a -> [b] -> m ()
 template <typename F, typename R, typename IT, typename... As,
           typename T = typename cxx::kinds<IT>::value_type,
-          typename CR = typename cxx::invoke_of<F, R, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, R, T, As...>,
           template <typename> class C = cxx::kinds<CR>::template constructor,
           typename R1 = typename cxx::kinds<CR>::value_type,
           template <typename> class I = cxx::kinds<IT>::template constructor>
-typename std::enable_if<cxx::is_vector<CR>::value && std::is_same<R1, R>::value,
-                        C<R> >::type
+std::enable_if_t<cxx::is_vector<CR>::value && std::is_same<R1, R>::value, C<R> >
 foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
   C<std::tuple<> > rs;
   for (const T &x : xs) {
@@ -155,7 +151,7 @@ foldM_(const F &f, const R &z, const IT &xs, const As &... as) {
 // MonadPlus
 
 template <template <typename> class C, typename T>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type mzero() {
+std::enable_if_t<cxx::is_vector<C<T> >::value, C<T> > mzero() {
   return C<T>();
 }
 
@@ -180,8 +176,7 @@ template <typename FCT,
           typename CT = typename cxx::kinds<FCT>::value_type,
           template <typename> class C = cxx::kinds<CT>::template constructor,
           typename T = typename cxx::kinds<CT>::value_type>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-msum(const FCT &xss) {
+std::enable_if_t<cxx::is_vector<C<T> >::value, C<T> > msum(const FCT &xss) {
   // msum = foldr mmplus mmzero
   return cxx::fold(mplus<T>, mzero<C, T>);
 }
@@ -189,8 +184,7 @@ msum(const FCT &xss) {
 template <template <typename> class C, typename IT,
           template <typename> class I = cxx::kinds<IT>::template constructor,
           typename T = typename cxx::kinds<IT>::value_type>
-typename std::enable_if<cxx::is_vector<C<T> >::value, C<T> >::type
-mfold(const IT &xs) {
+std::enable_if_t<cxx::is_vector<C<T> >::value, C<T> > mfold(const IT &xs) {
   // mfold = mfromList . Foldable.toList
   C<T> rs;
   for (const T &x : xs)

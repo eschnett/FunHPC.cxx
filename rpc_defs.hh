@@ -12,16 +12,15 @@ namespace rpc {
 extern mutex io_mutex;
 
 template <typename M, typename F, typename... As>
-auto with_lock(M &m, const F &f, As &&... args)
-    -> typename cxx::invoke_of<F, As...>::type {
+auto with_lock(M &m, const F &f, As &&... args) -> cxx::invoke_of_t<F, As...> {
   lock_guard<decltype(m)> g(m);
   return cxx::invoke(f, std::forward<As>(args)...);
 }
 
 template <typename T, typename... As, typename F>
-typename cxx::invoke_of<F, T &>::type
-as_transaction(std::atomic<T> &var, const F &func, const As &... args) {
-  typedef typename cxx::invoke_of<F, T &, As...>::type R;
+cxx::invoke_of_t<F, T &> as_transaction(std::atomic<T> &var, const F &func,
+                                        const As &... args) {
+  typedef cxx::invoke_of_t<F, T &, As...> R;
   T current = var.load();
   for (;;) {
     T desired = current;

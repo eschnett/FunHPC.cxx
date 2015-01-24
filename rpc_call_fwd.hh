@@ -76,7 +76,7 @@ private:
 template <typename F, typename R, typename... As>
 struct action_evaluate : public callable_base {
   global_ptr<promise<R> > p;
-  std::tuple<typename std::decay<As>::type...> args;
+  std::tuple<std::decay_t<As>...> args;
   action_evaluate() {} // only for cereal::serialize
   action_evaluate(const global_ptr<promise<R> > &p, const As &... args)
       : p(p), args(args...) {}
@@ -103,7 +103,7 @@ private:
 template <typename F, typename... As>
 struct action_evaluate<F, void, As...> : public callable_base {
   global_ptr<promise<void> > p;
-  std::tuple<typename std::decay<As>::type...> args;
+  std::tuple<std::decay_t<As>...> args;
   action_evaluate() {} // only for cereal::serialize
   action_evaluate(const global_ptr<promise<void> > &p, const As &... args)
       : p(p), args(args...) {}
@@ -192,9 +192,7 @@ struct is_global_helper<global_ptr<T> > : std::true_type {};
 template <typename T>
 struct is_global_helper<global_shared_ptr<T> > : std::true_type {};
 template <typename T> struct is_global_helper<client<T> > : std::true_type {};
-template <typename T>
-struct is_global : is_global_helper<typename std::remove_cv<
-                       typename std::remove_reference<T>::type>::type> {};
+template <typename T> struct is_global : is_global_helper<std::decay_t<T> > {};
 
 // Template for a member action
 template <typename F, typename W, typename R, typename T, typename... As>

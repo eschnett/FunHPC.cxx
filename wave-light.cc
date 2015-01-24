@@ -73,9 +73,8 @@ template <typename T> T div_ceil(T x, T y) {
 }
 
 // Create a ready future
-template <typename T>
-future<typename std::decay<T>::type> make_ready_future(T &&value) {
-  promise<typename std::decay<T>::type> p;
+template <typename T> future<std::decay_t<T> > make_ready_future(T &&value) {
+  promise<std::decay_t<T> > p;
   p.set_value(std::forward<T>(value));
   return p.get_future();
 }

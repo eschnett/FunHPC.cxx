@@ -223,7 +223,7 @@ const T &last(const nested<T, Outer, Inner> &xs) {
 // Monad
 
 template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type,
+          typename T = std::decay_t<T1>,
           std::enable_if_t<is_nested<C<T> >::value> * = nullptr>
 auto munit(T1 &&x) {
   return C<T>{ std::forward<T1>(x) };

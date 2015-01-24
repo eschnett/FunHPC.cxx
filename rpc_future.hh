@@ -84,15 +84,62 @@ struct is_shared_future<rpc::shared_future<T> > : std::true_type {};
 template <typename T>
 struct is_async<rpc::shared_future<T> > : std::true_type {};
 
+// functor
+
+template <typename F, typename T, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = cxx::invoke_of_t<F, T, As...> >
+C<R> fmap(const F &f, const rpc::shared_future<T> &xs, const As &... as) {
+  bool s = xs.valid();
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async([f, xs, as...]() {
+                      return cxx::invoke(f, xs.get(), as...);
+                    }).share();
+}
+
+template <typename F, typename T, typename T2, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = cxx::invoke_of_t<F, T, T2, As...> >
+C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
+           const rpc::shared_future<T2> &ys, const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async([f, xs, ys, as...]() {
+                      return cxx::invoke(f, xs.get(), ys.get(), as...);
+                    }).share();
+}
+
+template <typename F, typename T, typename T2, typename T3, typename... As,
+          typename CT = rpc::shared_future<T>,
+          template <typename> class C = cxx::kinds<CT>::template constructor,
+          typename R = cxx::invoke_of_t<F, T, T2, T3, As...> >
+C<R> fmap3(const F &f, const rpc::shared_future<T> &xs,
+           const rpc::shared_future<T2> &ys, const rpc::shared_future<T3> &zs,
+           const As &... as) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  assert(zs.valid() == s);
+  if (s == false)
+    return rpc::shared_future<R>();
+  return rpc::async([f, xs, ys, zs, as...]() {
+                      return cxx::invoke(f, xs.get(), ys.get(), zs.get(),
+                                         as...);
+                    }).share();
+}
+
 // foldable
+
 template <typename Op, typename R, typename... As,
           typename CR = rpc::shared_future<R>,
           template <typename> class C = kinds<CR>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<Op, R, R, As...>::type, R>::value,
-    R>::type
-fold(const Op &op, const R &z, const rpc::shared_future<R> &xs,
-     const As &... as) {
+R fold(const Op &op, const R &z, const rpc::shared_future<R> &xs,
+       const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R, As...>, R>::value, "");
   bool s = xs.valid();
   if (s == false)
     return z;
@@ -111,12 +158,10 @@ template <typename T> const T &last(const rpc::shared_future<T> &xs) {
 template <typename F, typename Op, typename R, typename T, typename... As,
           typename CT = rpc::shared_future<T>,
           template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
-        const As &... as) {
+R foldMap(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
+          const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
   if (s == false)
     return z;
@@ -126,12 +171,11 @@ foldMap(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
 template <typename F, typename Op, typename R, typename T, typename T2,
           typename... As, typename CT = rpc::shared_future<T>,
           template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    (std::is_same<typename cxx::invoke_of<F, T, T2, As...>::type, R>::value &&
-     std::is_same<typename cxx::invoke_of<Op, R, R>::type, R>::value),
-    R>::type
-foldMap2(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
-         const rpc::shared_future<T2> &ys, const As &... as) {
+R foldMap2(const F &f, const Op &op, const R &z,
+           const rpc::shared_future<T> &xs, const rpc::shared_future<T2> &ys,
+           const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
   assert(ys.valid() == s);
   if (s == false)
@@ -139,125 +183,31 @@ foldMap2(const F &f, const Op &op, const R &z, const rpc::shared_future<T> &xs,
   return cxx::invoke(f, xs.get(), ys.get(), as...);
 }
 
-#if 0
-template <typename F, typename R, typename T, typename... As,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, As...>::type, R>::value,
-    R>::type
-foldl(const F &f, const R &z, const rpc::shared_future<T> &xs,
-      const As &... as) {
-  bool s = xs.valid();
-  if (s == false)
-    return z;
-  return cxx::invoke(f, z, xs.get(), as...);
-}
-
-template <typename F, typename R, typename T, typename T2, typename... As,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = kinds<CT>::template constructor>
-typename std::enable_if<
-    std::is_same<typename cxx::invoke_of<F, R, T, T2, As...>::type, R>::value,
-    R>::type
-foldl2(const F &f, const R &z, const rpc::shared_future<T> &xs,
-       const rpc::shared_future<T2> &ys, const As &... as) {
-  bool s = xs.valid();
-  assert(ys.valid() == s);
-  if (s == false)
-    return z;
-  return cxx::invoke(f, z, xs.get(), ys.get(), as...);
-}
-#endif
-
-// functor
-template <typename F, typename T, typename... As,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, As...>::type>
-C<R> fmap(const F &f, const rpc::shared_future<T> &xs, const As &... as) {
-  bool s = xs.valid();
-  if (s == false)
-    return rpc::shared_future<R>();
-  return rpc::async([f](const rpc::shared_future<T> &xs, const As &... as)
-                        -> R { return cxx::invoke(f, xs.get(), as...); },
-                    xs, as...).share();
-}
-
-template <typename F, typename T, typename T2, typename... As,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, T2, As...>::type>
-C<R> fmap2(const F &f, const rpc::shared_future<T> &xs,
-           const rpc::shared_future<T2> &ys, const As &... as) {
-  bool s = xs.valid();
-  assert(ys.valid() == s);
-  if (s == false)
-    return rpc::shared_future<R>();
-  return rpc::async(
-             [f](const rpc::shared_future<T> xs,
-                 const rpc::shared_future<T2> ys, const As &... as)
-                 -> R { return cxx::invoke(f, xs.get(), ys.get(), as...); },
-             xs, ys, as...).share();
-}
-
-template <typename F, typename T, typename T2, typename T3, typename... As,
-          typename CT = rpc::shared_future<T>,
-          template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename R = typename cxx::invoke_of<F, T, T2, T3, As...>::type>
-C<R> fmap3(const F &f, const rpc::shared_future<T> &xs,
-           const rpc::shared_future<T2> &ys, const rpc::shared_future<T3> &zs,
-           const As &... as) {
-  bool s = xs.valid();
-  assert(ys.valid() == s);
-  assert(zs.valid() == s);
-  if (s == false)
-    return rpc::shared_future<R>();
-  return rpc::async(
-             [f](const rpc::shared_future<T> xs,
-                 const rpc::shared_future<T2> ys,
-                 const rpc::shared_future<T3> zs, const As &... as) -> R {
-               return cxx::invoke(f, xs.get(), ys.get(), zs.get(), as...);
-             },
-             xs, ys, zs, as...).share();
-}
-
-// template <typename F, typename T, typename... As>
-// auto boundary(const F &f, const rpc::shared_future<T> &xs, std::ptrdiff_t
-// dir,
-//               bool face, const As &... as) {
-//   assert(xs.valid());
-//   return fmap(f, xs, as...);
-// }
-
 // monad
 
 // Note: We cannot unwrap a future where the inner future is invalid. Thus we
 // cannot handle invalid futures as monads.
 
-template <template <typename> class C, typename T1,
-          typename T = typename std::decay<T1>::type>
-typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-munit(T1 &&x) {
-  return rpc::make_ready_future(std::forward<T1>(x));
+template <template <typename> class C, typename T>
+std::enable_if_t<cxx::is_shared_future<C<T> >::value, C<T> > munit(const T &x) {
+  return rpc::make_ready_future(x);
 }
 
 template <template <typename> class C, typename T, typename... As>
-typename std::enable_if<cxx::is_shared_future<C<T> >::value, C<T> >::type
-mmake(As &&... as) {
-  return rpc::make_ready_future(T(std::forward<As>(as)...));
+std::enable_if_t<cxx::is_shared_future<C<T> >::value, C<T> >
+mmake(const As &... as) {
+  return rpc::make_ready_future(T(as...));
 }
 
 template <typename T, typename F, typename... As,
           typename CT = rpc::shared_future<T>,
           template <typename> class C = cxx::kinds<CT>::template constructor,
-          typename CR = typename cxx::invoke_of<F, T, As...>::type,
+          typename CR = cxx::invoke_of_t<F, T, As...>,
           typename R = typename cxx::kinds<CR>::value_type>
 C<R> mbind(const rpc::shared_future<T> &xs, const F &f, const As &... as) {
-  return rpc::future_then(
-      xs, [f](const rpc::shared_future<T> &xs, const As &... as) {
-        return cxx::invoke(f, xs.get(), as...).get();
-      });
+  return rpc::future_then(xs, [f, as...](const rpc::shared_future<T> &xs) {
+    return cxx::invoke(f, xs.get(), as...).get();
+  });
 }
 
 template <typename T, typename CCT = rpc::shared_future<rpc::shared_future<T> >,

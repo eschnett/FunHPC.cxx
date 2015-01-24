@@ -1,6 +1,8 @@
 #ifndef CXX_FOLDABLE_HH
 #define CXX_FOLDABLE_HH
 
+#include "rpc_future_fwd.hh"
+
 #include "cxx_functor.hh"
 #include "cxx_invoke.hh"
 #include "cxx_kinds.hh"
@@ -68,15 +70,28 @@ template <typename T, std::size_t N> const T &last(const std::array<T, N> &xs) {
 }
 
 template <typename F, typename Op, typename R, typename T, std::size_t N,
-          typename... As>
+          typename... As, std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap(f, xs, as...));
+  std::size_t s = xs.size();
+  std::array<rpc::future<R>, N> rs;
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = rpc::async(f, xs[i], as...);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(op, std::move(r), rs[i].get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, std::size_t N,
+          typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -89,15 +104,30 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
-          std::size_t N, typename... As>
+          std::size_t N, typename... As,
+          std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
               const std::array<T2, N> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap2(f, xs, ys, as...));
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  std::array<rpc::future<R>, N> rs;
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = rpc::async(f, xs[i], ys[i], as...);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(op, std::move(r), rs[i].get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          std::size_t N, typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap2(const F &f, const Op &op, const R &z, const std::array<T, N> &xs,
+              const std::array<T2, N> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
@@ -130,15 +160,27 @@ template <typename T> const T &last(const std::list<T> &xs) {
   return xs.back();
 }
 
-template <typename F, typename Op, typename R, typename T, typename... As>
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap(f, xs, as...));
+  std::list<rpc::future<R> > rs;
+  for (const auto &x : xs)
+    rs.push_back(async(f, x, as...));
+  R r(z);
+  for (auto &ri : rs)
+    r = cxx::invoke(op, std::move(r), ri.get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
@@ -146,15 +188,30 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::list<T> &xs,
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... As>
+          typename... As, std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap2(const F &f, const Op &op, const R &z, const std::list<T> &xs,
               const std::list<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap2(f, xs, ys, as...));
+  typename std::list<T>::const_iterator xi = xs.begin, xe = xs.end();
+  typename std::list<T2>::const_iterator yi = ys.begin, ye = ys.end();
+  std::list<rpc::future<R> > rs;
+  while (xi != xe && yi != ye)
+    rs.push_back(async(f, *xi++, *yi++, as...));
+  assert(xi == xe && yi == ye);
+  R r(z);
+  for (auto &ri : rs)
+    r = cxx::invoke(op, std::move(r), ri.get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap2(const F &f, const Op &op, const R &z, const std::list<T> &xs,
+              const std::list<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   typename std::list<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::list<T2>::const_iterator yi = ys.begin, ye = ys.end();
   R r(z);
@@ -184,15 +241,27 @@ template <typename T> const T &last(const std::set<T> &xs) {
   return *xs.rbegin();
 }
 
-template <typename F, typename Op, typename R, typename T, typename... As>
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap(f, xs, as...));
+  std::set<rpc::future<R> > rs;
+  for (const auto &x : xs)
+    rs.insert(async(f, x, as...));
+  R r(z);
+  for (auto &ri : rs)
+    r = cxx::invoke(op, std::move(r), ri.get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   R r(z);
   for (const auto &x : xs)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, x, as...));
@@ -200,15 +269,30 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::set<T> &xs,
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... As>
+          typename... As, std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap2(const F &f, const Op &op, const R &z, const std::set<T> &xs,
               const std::set<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap2(f, xs, ys, as...));
+  typename std::set<T>::const_iterator xi = xs.begin, xe = xs.end();
+  typename std::set<T2>::const_iterator yi = ys.begin, ye = ys.end();
+  std::set<rpc::future<R> > rs;
+  while (xi != xe && yi != ye)
+    rs.insert(async(f, *xi++, *yi++, as...));
+  assert(xi == xe && yi == ye);
+  R r(z);
+  for (auto &ri : rs)
+    r = cxx::invoke(op, std::move(r), ri.get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap2(const F &f, const Op &op, const R &z, const std::set<T> &xs,
+              const std::set<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   typename std::set<T>::const_iterator xi = xs.begin, xe = xs.end();
   typename std::set<T2>::const_iterator yi = ys.begin, ye = ys.end();
   R r(z);
@@ -290,15 +374,28 @@ template <typename T> const T &last(const std::vector<T> &xs) {
   return xs.back();
 }
 
-template <typename F, typename Op, typename R, typename T, typename... As>
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
              const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap(f, xs, as...));
+  std::size_t s = xs.size();
+  std::vector<rpc::future<R> > rs(s);
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = rpc::async(f, xs[i], as...);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(op, std::move(r), rs[i].get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
+             const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
                                             op, std::move(omp_out), omp_in,    \
@@ -311,15 +408,29 @@ auto foldMap(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
 }
 
 template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... As>
+          typename... As, std::enable_if_t<cxx::is_async<T>::value> * = nullptr>
 auto foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
               const std::vector<T2> &ys, const As &... as) {
   static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  // If T is an asynchronous type, then call fmap on all elements
-  // first to expose parallelism
-  if (cxx::is_async<T>::value)
-    return fold(op, z, fmap2(f, xs, ys, as...));
+  std::size_t s = xs.size();
+  assert(ys.size() == s);
+  std::vector<rpc::future<R> > rs(s);
+  for (std::size_t i = 0; i < s; ++i)
+    rs[i] = rpc::async(f, xs[i], ys[i], as...);
+  R r(z);
+  for (std::size_t i = 0; i < s; ++i)
+    r = cxx::invoke(op, std::move(r), rs[i].get());
+  return r;
+}
+
+template <typename F, typename Op, typename R, typename T, typename T2,
+          typename... As,
+          std::enable_if_t<!cxx::is_async<T>::value> * = nullptr>
+auto foldMap2(const F &f, const Op &op, const R &z, const std::vector<T> &xs,
+              const std::vector<T2> &ys, const As &... as) {
+  static_assert(std::is_same<cxx::invoke_of_t<F, T, T2, As...>, R>::value, "");
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::size_t s = xs.size();
   assert(ys.size() == s);
 #pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \

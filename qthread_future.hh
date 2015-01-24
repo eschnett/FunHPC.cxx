@@ -18,8 +18,7 @@
 
 namespace qthread {
 
-template <typename T>
-future<typename std::decay<T>::type> make_ready_future(T &&value);
+template <typename T> future<std::decay_t<T> > make_ready_future(T &&value);
 
 namespace detail {
 template <typename T> struct is_future : std::false_type {};
@@ -175,7 +174,7 @@ public:
   }
   template <typename F>
   auto then(const F &func) const
-      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+      -> future<cxx::invoke_of_t<F, const shared_future &> > {
     RPC_ASSERT(valid());
     // TODO: move func instead of copying it
     if (is_ready()) {
@@ -192,9 +191,9 @@ public:
     }
   }
   template <typename U = T>
-  typename std::enable_if<
+  std::enable_if_t<
       ((std::is_same<U, T>::value) && (detail::is_future<T>::value)),
-      shared_future<typename U::value_type> >::type
+      shared_future<typename U::value_type> >
   unwrap() const {
     RPC_ASSERT(valid());
     // TODO: optimize this
@@ -237,7 +236,7 @@ public:
   void wait() const { assert(state);state->wait(); }
   template <typename F>
   auto then(const F &func) const
-      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+      -> future<cxx::invoke_of_t<F, const shared_future &>> {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, *this));
@@ -290,7 +289,7 @@ public:
   }
   template <typename F>
   auto then(const F &func) const
-      -> future<typename cxx::invoke_of<F, const shared_future &>::type> {
+      -> future<cxx::invoke_of_t<F, const shared_future &> > {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, *this));
@@ -345,8 +344,7 @@ public:
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(const F &func)
-      -> future<typename cxx::invoke_of<F, future &&>::type> {
+  auto then(const F &func) -> future<cxx::invoke_of_t<F, future &&> > {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, std::move(*this)));
@@ -360,9 +358,9 @@ public:
     }
   }
   template <typename U = T>
-  typename std::enable_if<
+  std::enable_if_t<
       ((std::is_same<U, T>::value) && (detail::is_future<T>::value)),
-      future<typename U::value_type> >::type
+      future<typename U::value_type> >
   unwrap() {
     RPC_ASSERT(valid());
     // TODO: optimize this
@@ -400,7 +398,7 @@ public:
   void wait() const { state->wait(); }
   template <typename F>
   auto then(const F &func)
-      -> future<typename cxx::invoke_of<F, future &&>::type> {
+      -> future<cxx::invoke_of_t<F, future &&>> {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, std::move(*this)));
@@ -445,7 +443,7 @@ public:
   bool valid() const { return bool(state); }
   void wait() const { state->wait(); }
   template <typename F>
-  auto then(F &&func) -> future<typename cxx::invoke_of<F, future &&>::type> {
+  auto then(F &&func) -> future<cxx::invoke_of_t<F, future &&> > {
     RPC_ASSERT(valid());
     if (is_ready()) {
       return make_ready_future(cxx::invoke(func, std::move(*this)));
@@ -597,9 +595,8 @@ template <typename T> void swap(deferred<T> &lhs, deferred<T> &rhs) {
   lhs.swap(rhs);
 }
 
-template <typename T>
-future<typename std::decay<T>::type> make_ready_future(T &&value) {
-  promise<typename std::decay<T>::type> p;
+template <typename T> future<std::decay_t<T> > make_ready_future(T &&value) {
+  promise<std::decay_t<T> > p;
   p.set_value(std::forward<T>(value));
   return p.get_future();
 }
@@ -620,13 +617,13 @@ template <typename T> inline bool future_is_ready(const future<T> &f) {
 
 template <typename T, typename F>
 inline auto future_then(const shared_future<T> &f, F &&func)
-    -> future<typename cxx::invoke_of<F, const shared_future<T> &>::type> {
+    -> future<cxx::invoke_of_t<F, const shared_future<T> &> > {
   return f.then(std::forward<F>(func));
 }
 
 template <typename T, typename F>
 inline auto future_then(future<T> &&f, F &&func)
-    -> future<typename cxx::invoke_of<F, future<T> &&>::type> {
+    -> future<cxx::invoke_of_t<F, future<T> &&> > {
   return std::move(f).then(std::forward<F>(func));
 }
 }

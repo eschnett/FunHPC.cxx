@@ -110,7 +110,7 @@ struct defs_t {
   const double cfl = 0.25;
   const double tmin = 0.0;
   const double tmax = 1.0;
-  const ptrdiff_t nsteps = 0; // TODO 8;
+  const ptrdiff_t nsteps = 8;
   const ptrdiff_t wait_every = 0;
   const ptrdiff_t info_every = 0;
   const ptrdiff_t file_every = -1;

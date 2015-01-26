@@ -1050,6 +1050,9 @@ struct tree_iota<F, true, tree, As...> {
   static tree<R> iota_tree(std::ptrdiff_t i, const iota_range_t &range,
                            const As &... as) {
     RPC_INSTANTIATE_TEMPLATE_STATIC_MEMBER_ACTION(iota_tree);
+#warning "TODO"
+    if (!(i == range.local.imin))
+      std::cerr << "iota_tree i=" << i << " range=" << range << "\n";
     assert(i == range.local.imin);
     if (range.local.size() <= max_node_size) {
       return tree<R>(iota_leaf(range, as...));

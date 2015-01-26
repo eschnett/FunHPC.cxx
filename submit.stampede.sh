@@ -22,6 +22,10 @@ prog="$*"
 echo "   nodes=$nodes sockets/node=$sockets_per_node cores/socket=$cores_per_socket proc=$procs threads/proc=$threads_per_proc smts/thread=$smts_per_thread"
 echo "   program: $prog"
 
+SIMFACTORY_DIR="$HOME/SIMFACTORY"
+SIMFACTORY_SIM="$HOME/Cbeta/simfactory3/sim"
+FUNHPC_DIR="/work/00507/eschnett/src/cc/mpi-rpc"
+
 # Automatically calculated quantities
 echo "Automatically calculated quantities:"
 sockets=$[$sockets_per_node*$nodes]
@@ -73,8 +77,8 @@ cat >job-$id.sub <<EOF
 #SBATCH --job-name=job-$id
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=schnetter@gmail.com
-#SBATCH --output=$HOME/src/mpi-rpc/job-$id.out
-#SBATCH --error=$HOME/src/mpi-rpc/job-$id.err
+#SBATCH --output=$FUNHPC_DIR/job-$id.out
+#SBATCH --error=$FUNHPC_DIR/job-$id.err
 
 # nodes:   $nodes
 # sockets: $sockets   sockets/node: $[$sockets/$nodes]
@@ -89,9 +93,14 @@ cat >job-$id.sub <<EOF
 set -e
 set -u
 set -x
-cd $HOME/src/mpi-rpc
-export SIMFACTORY_SIM=$HOME/work/Cbeta/simfactory3/sim
-source $HOME/SIMFACTORY/all-all/env.sh
+cd $FUNHPC_DIR
+export SIMFACTORY_SIM=$SIMFACTORY_SIM
+source $SIMFACTORY_DIR/cereal-1.1.0/env.sh
+source $SIMFACTORY_DIR/hwloc-1.10.0/env.sh
+source $SIMFACTORY_DIR/jemalloc-3.6.0/env.sh
+source $SIMFACTORY_DIR/llvm-3.5.1/env.sh
+source $SIMFACTORY_DIR/openmpi-1.8.4/env.sh
+source $SIMFACTORY_DIR/qthreads-1.10/env.sh
 
 echo '[BEGIN ENV]'
 env | sort
@@ -214,4 +223,4 @@ fi
 : >job-$id.out
 : >job-$id.err
 : >job-$id.log
-sbatch $HOME/src/mpi-rpc/job-$id.sub
+sbatch $FUNHPC_DIR/job-$id.sub

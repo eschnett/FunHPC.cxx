@@ -1,10 +1,9 @@
-#include <qthread/future>
-#include <qthread/thread>
-
 #include <gtest/gtest.h>
-#include <qthread.h>
 
-using namespace qthread;
+#include <future>
+#include <thread>
+
+using namespace std;
 
 namespace {
 int fi(int x) { return x; }
@@ -22,7 +21,7 @@ template <typename T> void test_future(T value) {
   p2.set_value(value);
   auto f2 = p2.get_future();
   EXPECT_TRUE(f2.valid());
-  EXPECT_TRUE(f2.is_ready());
+  EXPECT_TRUE(f2.wait_for(std::chrono::seconds(0)) == future_status::ready);
   f0 = std::move(f2);
   swap(f0, f2);
   f2.wait();
@@ -32,14 +31,12 @@ template <typename T> void test_future(T value) {
   promise<T> p3;
   p3.set_value(value);
   auto f3 = p3.get_future();
-  EXPECT_TRUE(f3.is_ready());
+  EXPECT_TRUE(f3.wait_for(std::chrono::seconds(0)) == future_status::ready);
   f3.share();
 }
 }
 
-TEST(qthread_future, future) {
-  qthread_initialize();
-
+TEST(std_future, future) {
   int i{};
   test_future<int>(i);
   test_future<int &>(i);
@@ -48,18 +45,18 @@ TEST(qthread_future, future) {
   test_future<int(&)(int)>(fi);
 }
 
-TEST(qthread_future, make_ready_future) {
-  int i{};
-  const int ci{};
-  auto f1 = make_ready_future(1);
-  EXPECT_EQ(f1.get(), 1);
-  auto fi = make_ready_future(i);
-  EXPECT_EQ(fi.get(), i);
-  auto fci = make_ready_future(ci);
-  EXPECT_EQ(fci.get(), ci);
-  auto f4 = make_ready_future();
-  static_assert(std::is_same<decltype(f4), future<void>>::value, "");
-}
+// TEST(std_future, make_ready_future) {
+//   int i{};
+//   const int ci{};
+//   auto f1 = make_ready_future(1);
+//   EXPECT_EQ(f1.get(), 1);
+//   auto fi = make_ready_future(i);
+//   EXPECT_EQ(fi.get(), i);
+//   auto fci = make_ready_future(ci);
+//   EXPECT_EQ(fci.get(), ci);
+//   auto f4 = make_ready_future();
+//   static_assert(std::is_same<decltype(f4), future<void>>::value, "");
+// }
 
 namespace {
 template <typename T> void test_shared_future(T value) {
@@ -80,7 +77,7 @@ template <typename T> void test_shared_future(T value) {
   p4.set_value(value);
   auto f4 = p4.get_future().share();
   EXPECT_TRUE(f4.valid());
-  EXPECT_TRUE(f4.is_ready());
+  EXPECT_TRUE(f4.wait_for(std::chrono::seconds(0)) == future_status::ready);
   f4.wait();
   typedef std::decay_t<T> decay_T; // avoid function references
   EXPECT_EQ(decay_T(f4.get()), decay_T(value));
@@ -88,7 +85,7 @@ template <typename T> void test_shared_future(T value) {
 }
 }
 
-TEST(qthread_future, shared_future) {
+TEST(std_future, shared_future) {
   int i{};
   test_shared_future<int>(i);
   test_shared_future<int &>(i);
@@ -109,7 +106,7 @@ template <typename T> void test_promise(T value) {
 }
 }
 
-TEST(qthread_future, promise) {
+TEST(std_future, promise) {
   int i{};
   test_promise<int>(i);
   test_promise<int &>(i);
@@ -134,10 +131,10 @@ void test_packaged_task(F &&f, Args... args) {
 
   auto f0 = t0.get_future();
   EXPECT_TRUE(f0.valid());
-  EXPECT_FALSE(f0.is_ready());
+  EXPECT_FALSE(f0.wait_for(std::chrono::seconds(0)) == future_status::ready);
   t0(args...);
   EXPECT_TRUE(t0.valid());
-  EXPECT_TRUE(f0.is_ready());
+  // EXPECT_TRUE(f0.wait_for(std::chrono::seconds(0)) == future_status::ready);
   // EXPECT_EQ(f0.get(), 1);
   f0.get();
 
@@ -145,13 +142,13 @@ void test_packaged_task(F &&f, Args... args) {
   EXPECT_TRUE(t0.valid());
   t0(std::forward<Args>(args)...);
   auto f1 = t0.get_future();
-  EXPECT_TRUE(f1.is_ready());
+  EXPECT_TRUE(f1.wait_for(std::chrono::seconds(0)) == future_status::ready);
   // EXPECT_EQ(f1.get(), 1);
   f1.get();
 }
 }
 
-TEST(qthread_future, packaged_task) {
+TEST(std_future, packaged_task) {
   test_packaged_task<int, int>(fi, 0);
   test_packaged_task<int, int>(&fi, 0);
   test_packaged_task<int, int>(std::function<int(int)>(fi), 0);
@@ -162,7 +159,7 @@ TEST(qthread_future, packaged_task) {
   test_packaged_task<void, int>([](int) {}, 0);
 }
 
-TEST(qthread_future, async) {
+TEST(std_future, async) {
   auto ffi = async(fi, 1);
   EXPECT_EQ(ffi.get(), 1);
   auto ffv = async(fv, 1);
@@ -173,17 +170,18 @@ TEST(qthread_future, async) {
 
   auto fa = async(launch::async, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE(fa.is_ready()); // this is unreliable
+  EXPECT_TRUE(fa.wait_for(std::chrono::seconds(0)) ==
+              future_status::ready); // this is unreliable
   EXPECT_EQ(fa.get(), 1);
   auto fd = async(launch::deferred, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_FALSE(fd.is_ready());
+  EXPECT_FALSE(fd.wait_for(std::chrono::seconds(0)) == future_status::ready);
   EXPECT_EQ(fd.get(), 1);
-  auto fs = async(launch::sync, fi, 1);
-  EXPECT_TRUE(fs.is_ready());
-  EXPECT_EQ(fs.get(), 1);
-  auto fe = async(launch::detached, fi, 1);
-  EXPECT_FALSE(fe.valid());
+  // auto fs = async(launch::sync, fi, 1);
+  // EXPECT_TRUE(fs.wait_for(std::chrono::seconds(0)) == future_status::ready);
+  // EXPECT_EQ(fs.get(), 1);
+  // auto fe = async(launch::detached, fi, 1);
+  // EXPECT_FALSE(fe.valid());
 }
 
 namespace {
@@ -196,45 +194,48 @@ int recurse(int count) {
 }
 }
 
-TEST(qthread_future, async_many) {
-  int maxcount = 100000;
+TEST(std_future, async_many) {
+  int maxcount = 1000;
   auto res = recurse(maxcount);
   EXPECT_EQ(res, maxcount);
 }
 
 namespace {
 future<int> recurse2(int count) {
-  if (count <= 1)
-    return make_ready_future(count);
+  if (count <= 1) {
+    promise<int> p;
+    p.set_value(count);
+    return p.get_future();
+  }
   auto t0 = recurse2(count / 2).share();
   auto t1 = recurse2(count - count / 2).share();
   return async([=]() { return t0.get() + t1.get(); });
 }
 }
 
-TEST(qthread_future, async_many2) {
-  int maxcount = 100000;
+TEST(std_future, async_many2) {
+  int maxcount = 10000;
   auto res = recurse2(maxcount);
   EXPECT_EQ(res.get(), maxcount);
 }
 
-// namespace {
-// future<int> recurse3(int count) {
-//   if (count <= 1) {
-//     promise<int> p;
-//     p.set_value(count);
-//     return p.get_future();
-//   }
-//   auto t0 = recurse2(count / 2);
-//   auto t1 = recurse2(count - count / 2);
-//   return async([ t0 = std::move(t0), t1 = std::move(t1) ]() mutable {
-//     return t0.get() + t1.get();
-//   });
-// }
-// }
+namespace {
+future<int> recurse3(int count) {
+  if (count <= 1) {
+    promise<int> p;
+    p.set_value(count);
+    return p.get_future();
+  }
+  auto t0 = recurse2(count / 2);
+  auto t1 = recurse2(count - count / 2);
+  return async([ t0 = std::move(t0), t1 = std::move(t1) ]() mutable {
+    return t0.get() + t1.get();
+  });
+}
+}
 
-// TEST(qthread_future, async_many3) {
-//   int maxcount = 10000;
-//   auto res = recurse3(maxcount);
-//   EXPECT_EQ(res.get(), maxcount);
-// }
+TEST(std_future, async_many3) {
+  int maxcount = 10000;
+  auto res = recurse3(maxcount);
+  EXPECT_EQ(res.get(), maxcount);
+}

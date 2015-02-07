@@ -1,14 +1,14 @@
 # Makefile for FunHPC
 
 GTEST_NAME    = gtest-1.7.0
-GTEST_URL     = https://googletest.googlecode.com/files/$(GTEST_NAME).zip
+GTEST_URL     = https://googletest.googlecode.com/files/gtest-1.7.0.zip
 GTEST_DIR     = $(abspath ./$(GTEST_NAME))
 GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
 GTEST_LIBDIRS = $(GTEST_DIR)/src
-GTEST_LIBS    = gtest
+GTEST_LIBS    =
 
 HWLOC_NAME    = hwloc-1.10.0
-HWLOC_URL     =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/$(HWLOC_NAME).tar.bz2
+HWLOC_URL     =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
 HWLOC_DIR     = $(abspath ./$(HWLOC_NAME))
 HWLOC_INCDIRS = $(HWLOC_DIR)/include
 HWLOC_LIBDIRS = $(HWLOC_DIR)/lib
@@ -22,15 +22,15 @@ JEMALLOC_LIBDIRS = $(JEMALLOC_DIR)/lib
 JEMALLOC_LIBS    = jemalloc pthread # this must come last
 
 QTHREADS_NAME    = qthread-1.10
-QTHREADS_URL     = https://qthreads.googlecode.com/files/$(QTHREADS_NAME).tar.bz2
+QTHREADS_URL     = https://qthreads.googlecode.com/files/qthread-1.10.tar.bz2
 QTHREADS_DIR     = $(abspath ./$(QTHREADS_NAME))
 QTHREADS_INCDIRS = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
 QTHREADS_LIBDIRS = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
 QTHREADS_LIBS    = qthread pthread $(HWLOC_LIBS)
 
-INCDIRS = $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(QTHREADS_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .)
-LIBDIRS = $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(QTHREADS_LIBDIRS) $(JEMALLOC_LIBDIRS)
-LIBS    = $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
+INCDIRS = $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
+LIBDIRS = $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
+LIBS    = $(JEMALLOC_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
 # Can also use gcc
 CC       = clang
@@ -41,11 +41,19 @@ CXXFLAGS = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 OPTFLAGS = -O3
 LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
-HDRS =	cxx/apply cxx/invoke				\
-	qthread/future qthread/mutex qthread/thread
-SRCS =	cxx/apply_test.cc cxx/invoke_test.cc		\
-	qthread/future_test.cc qthread/mutex_test.cc	\
-	qthread/thread_test.cc
+HDRS =	cxx/apply				\
+	cxx/invoke				\
+	qthread/future				\
+	qthread/mutex				\
+	qthread/thread
+SRCS =	cxx/apply_test.cc			\
+	cxx/invoke_test.cc			\
+	qthread/future_test.cc			\
+	qthread/future_test_std.cc		\
+	qthread/mutex_test.cc			\
+	qthread/mutex_test_std.cc		\
+	qthread/thread_test.cc			\
+	qthread/thread_test_std.cc
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
@@ -84,13 +92,13 @@ $(SRCS:%.cc=%.o): | format gtest jemalloc qthreads
 ### check ###
 
 check: selftest
-	env								\
-		"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+	env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
 		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		"QTHREAD_STACK_SIZE=65536"				\
 		./selftest
 .PHONY: check
-selftest: $(SRCS:%.cc=%.o) $(GTEST_DIR)/src/gtest_main.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
+selftest: $(SRCS:%.cc=%.o)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)
 
 ### external ###
 

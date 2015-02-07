@@ -2,11 +2,10 @@
 
 GTEST_NAME    = gtest-1.7.0
 GTEST_URL     = https://googletest.googlecode.com/files/$(GTEST_NAME).zip
-GTEST_SRCS    = $(GTEST_DIR)/src/gtest-all.cc $(GTEST_DIR)/src/gtest_main.cc
 GTEST_DIR     = $(abspath ./$(GTEST_NAME))
 GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
-GTEST_LIBDIRS =
-GTEST_LIBS    =
+GTEST_LIBDIRS = $(GTEST_DIR)/src
+GTEST_LIBS    = gtest
 
 HWLOC_NAME    = hwloc-1.10.0
 HWLOC_URL     =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/$(HWLOC_NAME).tar.bz2
@@ -75,8 +74,7 @@ $(SRCS:%.cc=%.o): | format gtest qthreads
 check: selftest
 	./selftest
 .PHONY: check
-$(GTEST_SRCS:%.cc=%.o): | gtest
-selftest: $(SRCS:%.cc=%.o) $(GTEST_SRCS:%.cc=%.o)
+selftest: $(SRCS:%.cc=%.o) $(GTEST_DIR)/src/gtest_main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
 
 ### external ###
@@ -96,7 +94,12 @@ external/gtest.unpacked: external/gtest.downloaded
 	rm -rf $(GTEST_NAME) &&				\
 	unzip external/$(notdir $(GTEST_URL)) &&	\
 	: > $@
-external/gtest.done: external/gtest.unpacked
+$(GTEST_DIR)/src/gtest-all.o: | external/gtest.unpacked
+$(GTEST_DIR)/src/libgtest.a: $(GTEST_DIR)/src/gtest-all.o
+	$(AR) -r -c $@ $^
+external/gtest.built: $(GTEST_DIR)/src/libgtest.a
+	: > $@
+external/gtest.done: external/gtest.built
 	: > $@
 
 ### hwloc ###
@@ -171,7 +174,6 @@ external/qthreads.done: external/qthreads.installed
 clean:
 	$(RM) $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
 	$(RM) $(SRCS:%.cc=%.o) $(SRCS:%.cc=%.d)
-	$(RM) $(GTEST_SRCS:%.cc=%.o) $(GTEST_SRCS:%.cc=%.d)
 	$(RM) selftest
 .PHONY: clean
 

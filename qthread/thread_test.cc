@@ -1,6 +1,7 @@
 #include <qthread/thread>
 
 #include <gtest/gtest.h>
+#include <qthread.h>
 
 using namespace qthread;
 
@@ -11,6 +12,8 @@ void fv(int) {}
 }
 
 TEST(qthread_thread, basic) {
+  qthread_initialize();
+
   thread t0;
   thread t1(fi, 1);
   thread t2(fv, 1);

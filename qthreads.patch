@@ -1,0 +1,32 @@
+--- configure
++++ configure
+@@ -40456,7 +40456,7 @@
+   hwloc_saved_LDFLAGS="$LDFLAGS"
+   if test "x$with_hwloc" != x; then
+   CPPFLAGS="-I$with_hwloc/include $CPPFLAGS"
+-		 LDFLAGS="-L$with_hwloc/lib $CPPFLAGS"
++		 LDFLAGS="-L$with_hwloc/lib $LDFLAGS"
+ fi
+ 
+ 
+--- include/qthread/common.h.in
++++ include/qthread/common.h.in
+@@ -84,7 +84,6 @@
+ /* Define to the equivalent of the C99 'restrict' keyword, or to
+    nothing if this is not supported.  Do not define if restrict is
+    supported directly.  */
+-#undef restrict
+ /* Work around a bug in Sun C++: it does not support _Restrict or
+    __restrict__, even though the corresponding Sun C compiler ends up with
+    "#define restrict _Restrict" or "#define restrict __restrict__" in the
+--- include/qthread/qthread.hpp
++++ include/qthread/qthread.hpp
+@@ -236,7 +236,7 @@
+             return qthread_incr64((uint64_t *)operand, incr);
+ 
+         default:
+-            *(int *)(0) = 0;
++            __builtin_trap();
+     }
+     return T(0);                       // never hit - keep compiler happy
+ }

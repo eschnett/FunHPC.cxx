@@ -9,7 +9,6 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
-#include <iostream>/*TODO*/
 #include <memory>
 #include <utility>
 #include <tuple>
@@ -55,15 +54,11 @@ public:
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value> * = nullptr>
   shared_state(const id_t<U> &value)
-      : has_trigger(false), value(value) {
-    std::cerr << "shared_state.constT&.0\n";
-  }
+      : has_trigger(false), value(value) {}
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value> * = nullptr>
   shared_state(id_t<U> &&value)
-      : has_trigger(false), value(std::move(value)) {
-    std::cerr << "shared_state.T&&.0\n";
-  }
+      : has_trigger(false), value(std::move(value)) {}
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   shared_state(std::tuple<>)
@@ -90,7 +85,6 @@ public:
       run_trigger();
       trigger = {};
     }
-    std::cerr << "shared_state.wait.readFF\n";
     ready.readFF();
   }
 
@@ -167,8 +161,14 @@ template <typename T> class future;
 template <typename T> class shared_future;
 template <typename T> class promise;
 
+enum class launch : unsigned;
+
 template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
 inline future<void> make_ready_future();
+
+template <typename F, typename... Args>
+future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+async(launch policy, F &&f, Args &&... args);
 
 template <typename T> class future {
   template <typename U> friend class shared_future;
@@ -178,16 +178,16 @@ template <typename T> class future {
   friend future<std::decay_t<U>> make_ready_future(U &&value);
   friend inline future<void> make_ready_future();
 
+  template <typename F, typename... Args>
+  friend future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+  async(launch policy, F &&f, Args &&... args);
+
   std::shared_ptr<detail::shared_state<T>> shared_state;
 
   future(const std::shared_ptr<detail::shared_state<T>> &shared_state)
-      : shared_state(shared_state) {
-    std::cerr << "future.constT&.0\n";
-  }
+      : shared_state(shared_state) {}
   future(std::shared_ptr<detail::shared_state<T>> &&shared_state)
-      : shared_state(std::move(shared_state)) {
-    std::cerr << "future.T&&.0\n";
-  }
+      : shared_state(std::move(shared_state)) {}
 
 public:
   future() noexcept : shared_state() {}
@@ -224,7 +224,9 @@ public:
             std::enable_if_t<std::is_reference<U>::value> * = nullptr>
   U &get() {
     assert(valid());
-    return shared_state->get();
+    decltype(auto) res(shared_state->get());
+    shared_state = {};
+    return res;
   }
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
@@ -251,7 +253,6 @@ template <typename T> void swap(future<T> &lhs, future<T> &rhs) noexcept {
 }
 
 template <typename T> future<std::decay_t<T>> make_ready_future(T &&value) {
-  std::cerr << "make_ready_future.0\n";
   return future<std::decay_t<T>>(
       std::make_shared<detail::shared_state<std::decay_t<T>>>(
           std::forward<T>(value)));
@@ -341,7 +342,7 @@ public:
   promise(const promise &other) = delete;
 
   ~promise() {
-    if (shared_state && !shared_state->is_ready())
+    if (shared_state && !shared_state.unique() && !shared_state->is_ready())
       shared_state->set_exception();
   }
 
@@ -438,7 +439,6 @@ public:
   void operator()(Args... args) {
     assert(bool(task));
     result.set_value(task(std::forward<Args>(args)...));
-    task = {};
   }
   template <typename U = R,
             typename std::enable_if<std::is_same<U, R>::value &&
@@ -447,7 +447,6 @@ public:
     assert(bool(task));
     task(std::forward<Args>(args)...);
     result.set_value();
-    task = {};
   }
 
   void reset() {
@@ -472,7 +471,7 @@ template <typename R> class async_thread {
     packaged_task<R()> task;
   };
   static aligned_t run_thread(void *args_) {
-    thread_args_t *thread_args = (thread_args_t *)args_;
+    auto thread_args = (thread_args_t *)args_;
     thread_args->task();
     delete thread_args;
     return 1;
@@ -495,9 +494,9 @@ public:
                                            std::forward<Args>(args)...)]() {
           return R(fr());
         });
+    result = thread_args->task.get_future();
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     assert(!ierr);
-    result = thread_args->task.get_future();
   }
 
   async_thread(const async_thread &) = delete;
@@ -517,14 +516,15 @@ public:
     swap(result, other.result);
   }
 
-  bool joinable() const noexcept { return result.valid() && result.is_ready(); }
+  bool joinable() const noexcept { return result.valid(); }
 
   void join() {
     assert(result.valid());
     result.wait();
+    result = {};
   }
 
-  void detach() { result = future<R>(); }
+  void detach() { result = {}; }
 
   // non-standard
   future<R> detach_get_future() { return std::move(result); }
@@ -601,16 +601,20 @@ async_make_ready_future(F &&f, Args &&... args) {
   return make_ready_future();
 }
 }
-template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-future<R> async(launch policy, F &&f, Args &&... args) {
+
+template <typename F, typename... Args>
+future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+async(launch policy, F &&f, Args &&... args) {
+  typedef cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...> R;
   switch (detail::decode_policy(policy)) {
   case launch::async:
     return detail::async_thread<R>(std::forward<F>(f),
                                    std::forward<Args>(args)...)
         .detach_get_future();
   case launch::deferred:
-  // TODO
+    return future<R>(
+        std::make_shared<detail::shared_state<R>>(std::function<R()>(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...))));
   case launch::sync:
     return detail::async_make_ready_future(std::forward<F>(f),
                                            std::forward<Args>(args)...);
@@ -621,9 +625,9 @@ future<R> async(launch policy, F &&f, Args &&... args) {
   }
 }
 
-template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-future<R> async(F &&f, Args &&... args) {
+template <typename F, typename... Args>
+future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+async(F &&f, Args &&... args) {
   return async(launch::async | launch::deferred, std::forward<F>(f),
                std::forward<Args>(args)...);
 }

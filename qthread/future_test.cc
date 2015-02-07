@@ -1,8 +1,8 @@
-#include <qthread.h>
-
 #include <qthread/future>
+#include <qthread/thread>
 
 #include <gtest/gtest.h>
+#include <qthread.h>
 
 using namespace qthread;
 
@@ -11,92 +11,130 @@ namespace {
 int fi(int x) { return x; }
 void fv(int) {}
 
-template <typename T> void test_future() {
-  std::cerr << "test_future.0\n";
-  qthread_initialize();
-  std::cerr << "test_future.1\n";
+template <typename T> void test_future(T value) {
   future<T> f0;
   future<T> f1(std::move(f0));
   f0 = std::move(f1);
   swap(f0, f1);
   EXPECT_FALSE(f0.valid());
   EXPECT_FALSE(f1.valid());
-  // std::cerr << "test_future.f2.0\n";
-  // auto f2 = make_ready_future(1);
-  // std::cerr << "test_future.f2.9\n";
-  // EXPECT_TRUE(f2.is_ready());
-  // f0 = std::move(f2);
-  // swap(f0,f2);
-  // f2.wait();
-  // EXPECT_EQ(f2.get(), 1);
-  // f0.share();
-  // f2.share();
-  std::cerr << "test_future.8\n";
-  qthread_finalize();
-  std::cerr << "test_future.9\n";
+
+  promise<T> p2;
+  p2.set_value(value);
+  auto f2 = p2.get_future();
+  EXPECT_TRUE(f2.valid());
+  EXPECT_TRUE(f2.is_ready());
+  f0 = std::move(f2);
+  swap(f0, f2);
+  f2.wait();
+  typedef std::decay_t<T> decay_T; // avoid function references
+  EXPECT_EQ(decay_T(f2.get()), decay_T(value));
+
+  promise<T> p3;
+  p3.set_value(value);
+  auto f3 = p3.get_future();
+  EXPECT_TRUE(f3.is_ready());
+  f3.share();
 }
 
-template <typename T> void test_shared_future() {
-  shared_future<T> f;
-  shared_future<T> f1(std::move(f));
+template <typename T> void test_shared_future(T value) {
+  shared_future<T> f0;
+  shared_future<T> f1(std::move(f0));
   shared_future<T> f2(f1);
   shared_future<T> f3((future<T>()));
-  f = std::move(f1);
-  f = future<T>();
-  f = f1;
-  swap(f, f1);
-  f.valid();
-  f.is_ready();
-  f.wait();
-  f.get();
+  f0 = std::move(f1);
+  f0 = future<T>();
+  f0 = f1;
+  swap(f0, f1);
+  EXPECT_FALSE(f0.valid());
+  EXPECT_FALSE(f1.valid());
+  EXPECT_FALSE(f2.valid());
+  EXPECT_FALSE(f3.valid());
+
+  promise<T> p4;
+  p4.set_value(value);
+  auto f4 = p4.get_future().share();
+  EXPECT_TRUE(f4.valid());
+  EXPECT_TRUE(f4.is_ready());
+  f4.wait();
+  typedef std::decay_t<T> decay_T; // avoid function references
+  EXPECT_EQ(decay_T(f4.get()), decay_T(value));
+  EXPECT_EQ(decay_T(f4.get()), decay_T(value));
 }
 
 template <typename T> void test_promise(T value) {
-  promise<T> p;
-  promise<T> p1(std::move(p));
-  p = std::move(p1);
-  swap(p, p1);
-  p.set_value(value);
-  p.get_future();
+  promise<T> p0;
+  promise<T> p1(std::move(p0));
+  p0 = std::move(p1);
+  swap(p0, p1);
+  p1.set_value(value);
+  typedef std::decay_t<T> decay_T; // avoid function references
+  EXPECT_EQ(decay_T(p1.get_future().get()), decay_T(value));
 }
 
 template <typename R, typename... Args, typename F>
 void test_packaged_task(F &&f, Args... args) {
-  packaged_task<R(Args...)> t;
+  (packaged_task<R(Args...)>(f));
+
+  packaged_task<R(Args...)> t0;
   packaged_task<R(Args...)> t1(std::forward<F>(f));
-  packaged_task<R(Args...)> t2(std::move(t));
-  t = std::move(t1);
-  t.valid();
-  swap(t, t1);
-  t.get_future();
-  t(args...);
-  t.reset();
+  packaged_task<R(Args...)> t2(std::move(t0));
+  t0 = std::move(t2);
+  swap(t0, t1);
+  EXPECT_TRUE(t0.valid());
+  EXPECT_FALSE(t1.valid());
+  EXPECT_FALSE(t2.valid());
+
+  auto f0 = t0.get_future();
+  EXPECT_TRUE(f0.valid());
+  EXPECT_FALSE(f0.is_ready());
+  t0(args...);
+  EXPECT_TRUE(t0.valid());
+  EXPECT_TRUE(f0.is_ready());
+  // EXPECT_EQ(f0.get(), 1);
+  f0.get();
+
+  t0.reset();
+  EXPECT_TRUE(t0.valid());
+  t0(std::forward<Args>(args)...);
+  auto f1 = t0.get_future();
+  EXPECT_TRUE(f1.is_ready());
+  // EXPECT_EQ(f1.get(), 1);
+  f1.get();
 }
 }
 
 TEST(qthread_future, future) {
-  test_future<int>();
-  test_future<int &>();
-  test_future<const int &>();
-  test_future<int (*)(int)>();
-  test_future<int(&)(int)>();
+  qthread_initialize();
+
+  int i{};
+  test_future<int>(i);
+  test_future<int &>(i);
+  test_future<const int &>(i);
+  test_future<int (*)(int)>(fi);
+  test_future<int(&)(int)>(fi);
 }
 
 TEST(qthread_future, make_ready_future) {
   int i{};
   const int ci{};
-  make_ready_future(1);
-  make_ready_future(i);
-  make_ready_future(ci);
-  make_ready_future();
+  auto f1 = make_ready_future(1);
+  EXPECT_EQ(f1.get(), 1);
+  auto fi = make_ready_future(i);
+  EXPECT_EQ(fi.get(), i);
+  auto fci = make_ready_future(ci);
+  EXPECT_EQ(fci.get(), ci);
+  auto f4 = make_ready_future();
+  static_assert(std::is_same<decltype(f4), future<void>>::value, "");
 }
 
 TEST(qthread_future, shared_future) {
-  test_shared_future<int>();
-  test_shared_future<int &>();
-  test_shared_future<const int &>();
-  test_shared_future<int (*)(int)>();
-  test_shared_future<int(&)(int)>();
+  int i{};
+  test_shared_future<int>(i);
+  test_shared_future<int &>(i);
+  test_shared_future<const int &>(i);
+  test_shared_future<int (*)(int)>(fi);
+  test_shared_future<int(&)(int)>(fi);
 }
 
 TEST(qthread_future, promise) {
@@ -120,14 +158,25 @@ TEST(qthread_future, packaged_task) {
 }
 
 TEST(qthread_future, async) {
-  async(fi, 1);
-  async(fv, 1);
-  async([]() {});
-  async([](int x) { return x; }, 1);
-  async([](int) {}, 1);
+  auto ffi = async(fi, 1);
+  EXPECT_EQ(ffi.get(), 1);
+  auto ffv = async(fv, 1);
+  auto flvv = async([]() {});
+  auto flii = async([](int x) { return x; }, 1);
+  EXPECT_EQ(flii.get(), 1);
+  auto fliv = async([](int) {}, 1);
 
-  async(launch::async, fi, 1);
-  async(launch::deferred, fi, 1);
-  async(launch::sync, fi, 1);
-  async(launch::detached, fi, 1);
+  auto fa = async(launch::async, fi, 1);
+  this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE(fa.is_ready()); // this is unreliable
+  EXPECT_EQ(fa.get(), 1);
+  auto fd = async(launch::deferred, fi, 1);
+  this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_FALSE(fd.is_ready());
+  EXPECT_EQ(fd.get(), 1);
+  auto fs = async(launch::sync, fi, 1);
+  EXPECT_TRUE(fs.is_ready());
+  EXPECT_EQ(fs.get(), 1);
+  auto fe = async(launch::detached, fi, 1);
+  EXPECT_FALSE(fe.valid());
 }

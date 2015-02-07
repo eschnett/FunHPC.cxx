@@ -2,12 +2,8 @@
 *.dSYM
 *.fmt
 *.o
+external
 gtest-1.7.0
-gtest-1.7.0.src
-gtest-1.7.0.zip
+hwloc-1.10.0
 qthread-1.10
-qthread-1.10-build
-qthread-1.10-install
-qthread-1.10.installed
-qthread-1.10.tar.bz2
 selftest

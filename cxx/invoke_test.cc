@@ -88,6 +88,12 @@ TEST(cxx_invoke, invoke) {
   EXPECT_EQ(invoke(std::bind(f0, std::placeholders::_1), 1), 1);
   EXPECT_EQ(invoke(std::bind(f0, 1)), 1);
 
+  ffo1c(o1{});
+  ffo0m(o0{});
+  ffo1m(o1{});
+  ffo0nc(o0nc{});
+  ffo1nc(o1nc{});
+  ffo1nm(o1nm{});
   EXPECT_EQ(invoke(std::bind(fo0, 1)), 1);
   EXPECT_EQ(invoke(std::bind(fo1, 1)), 1);
   // std::bind(fo0nm, 1);

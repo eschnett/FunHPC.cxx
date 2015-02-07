@@ -31,6 +31,7 @@ CXX      = clang++
 CPPFLAGS = -Drestrict=__restrict__ $(INCDIRS:%=-I%)
 CFLAGS   = -std=c99 -march=native -Wall -g
 CXXFLAGS = -std=c++1y -march=native -Wall -g
+OPTFLAGS = -O3
 LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
 HDRS =	cxx/apply cxx/invoke				\
@@ -95,10 +96,11 @@ external/gtest.unpacked: external/gtest.downloaded
 	unzip external/$(notdir $(GTEST_URL)) &&	\
 	: > $@
 external/gtest.built: external/gtest.unpacked
-	(cd external &&							\
-		cd $(GTEST_DIR)/src &&					\
-		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c gtest-all.cc &&	\
-		$(AR) -r -c libgtest.a gtest-all.o) &&			\
+	(cd external &&							       \
+		cd $(GTEST_DIR)/src &&					       \
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest-all.cc &&  \
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest_main.cc && \
+		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	       \
 	: > $@
 external/gtest.done: external/gtest.built
 	: > $@
@@ -122,8 +124,10 @@ external/hwloc.built: external/hwloc.unpacked
 		mkdir $(HWLOC_NAME)-build &&			\
 		cd $(HWLOC_NAME)-build &&			\
 		"$(abspath external/$(HWLOC_NAME)/configure)"	\
-			    --prefix="$(HWLOC_DIR)"		\
-			    --disable-libxml2 &&		\
+			--prefix="$(HWLOC_DIR)"			\
+			--disable-libxml2			\
+			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"		\
+			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&	\
 		$(MAKE)) &&					\
 	: > $@
 external/hwloc.installed: external/hwloc.built
@@ -158,7 +162,9 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 		"$(abspath external/$(QTHREADS_NAME)/configure)"	\
 			--prefix="$(QTHREADS_DIR)"			\
 			--enable-guard-pages --enable-debug=yes		\
-			--with-hwloc="$(HWLOC_DIR)" &&			\
+			--with-hwloc="$(HWLOC_DIR)"			\
+			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
+			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
 		$(MAKE)) &&						\
 	: > $@
 external/qthreads.installed: external/qthreads.built

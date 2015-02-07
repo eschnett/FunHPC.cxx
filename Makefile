@@ -14,6 +14,13 @@ HWLOC_INCDIRS = $(HWLOC_DIR)/include
 HWLOC_LIBDIRS = $(HWLOC_DIR)/lib
 HWLOC_LIBS    = hwloc
 
+JEMALLOC_NAME    = jemalloc-3.6.0
+JEMALLOC_URL     = http://www.canonware.com/download/jemalloc/jemalloc-3.6.0.tar.bz2
+JEMALLOC_DIR     = $(abspath ./$(JEMALLOC_NAME))
+JEMALLOC_INCDIRS = $(JEMALLOC_DIR)/include
+JEMALLOC_LIBDIRS = $(JEMALLOC_DIR)/lib
+JEMALLOC_LIBS    = jemalloc pthread # this must come last
+
 QTHREADS_NAME    = qthread-1.10
 QTHREADS_URL     = https://qthreads.googlecode.com/files/$(QTHREADS_NAME).tar.bz2
 QTHREADS_DIR     = $(abspath ./$(QTHREADS_NAME))
@@ -21,16 +28,16 @@ QTHREADS_INCDIRS = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
 QTHREADS_LIBDIRS = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
 QTHREADS_LIBS    = qthread pthread $(HWLOC_LIBS)
 
-INCDIRS = $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(QTHREADS_INCDIRS) $(abspath .)
-LIBDIRS = $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
-LIBS    = $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS)
+INCDIRS = $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(QTHREADS_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .)
+LIBDIRS = $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(QTHREADS_LIBDIRS) $(JEMALLOC_LIBDIRS)
+LIBS    = $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
 # Can also use gcc
 CC       = clang
 CXX      = clang++
-CPPFLAGS = -Drestrict=__restrict__ $(INCDIRS:%=-I%)
-CFLAGS   = -std=c99 -march=native -Wall -g
-CXXFLAGS = -std=c++1y -march=native -Wall -g
+CPPFLAGS = $(INCDIRS:%=-I%)
+CFLAGS   = -march=native -Wall -g -std=c99 -Dasm=__asm__
+CXXFLAGS = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 OPTFLAGS = -O3
 LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
@@ -50,6 +57,10 @@ PROCESS_DEPENDENCIES =							      \
 	} > $*.d &&							      \
 	rm -f $*.o.d
 
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
 all: format objs
 .PHONY: all
 
@@ -64,7 +75,7 @@ format: $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
 
 objs: $(SRCS:%.cc=%.o)
 .PHONY: objs
-$(SRCS:%.cc=%.o): | format gtest qthreads
+$(SRCS:%.cc=%.o): | format gtest jemalloc qthreads
 %.o: %.cc $(HDRS) Makefile
 	$(CXX) -MD $(CPPFLAGS) $(CXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
@@ -73,7 +84,10 @@ $(SRCS:%.cc=%.o): | format gtest qthreads
 ### check ###
 
 check: selftest
-	./selftest
+	env								\
+		"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		./selftest
 .PHONY: check
 selftest: $(SRCS:%.cc=%.o) $(GTEST_DIR)/src/gtest_main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
@@ -126,6 +140,8 @@ external/hwloc.built: external/hwloc.unpacked
 		"$(abspath external/$(HWLOC_NAME)/configure)"	\
 			--prefix="$(HWLOC_DIR)"			\
 			--disable-libxml2			\
+			"CC=$(CC)"				\
+			"CXX=$(CXX)"				\
 			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"		\
 			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&	\
 		$(MAKE)) &&					\
@@ -137,6 +153,41 @@ external/hwloc.installed: external/hwloc.built
 		$(MAKE) install) &&		\
 	: > $@
 external/hwloc.done: external/hwloc.installed
+	: > $@
+
+### jemalloc ###
+
+jemalloc: external/jemalloc.done
+.PHONY: jemalloc
+external/jemalloc.downloaded: | external
+	(cd external &&				\
+		wget $(JEMALLOC_URL)) &&	\
+	: > $@
+external/jemalloc.unpacked: external/jemalloc.downloaded
+	(cd external &&					\
+		rm -rf $(JEMALLOC_NAME) &&		\
+		tar xjf $(notdir $(JEMALLOC_URL))) &&	\
+	: > $@
+external/jemalloc.built: external/jemalloc.unpacked
+	+(cd external &&						\
+		rm -rf $(JEMALLOC_NAME)-build &&			\
+		mkdir $(JEMALLOC_NAME)-build &&				\
+		cd $(JEMALLOC_NAME)-build &&				\
+		"$(abspath external/$(JEMALLOC_NAME)/configure)"	\
+			--prefix="$(JEMALLOC_DIR)"			\
+			"CC=$(CC)"					\
+			"CXX=$(CXX)"					\
+			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
+			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
+		$(MAKE)) &&						\
+	: > $@
+external/jemalloc.installed: external/jemalloc.built
+	+(cd external &&			\
+		rm -rf $(JEMALLOC_DIR) &&	\
+		cd $(JEMALLOC_NAME)-build &&	\
+		$(MAKE) install) &&		\
+	: > $@
+external/jemalloc.done: external/jemalloc.installed
 	: > $@
 
 ### Qthreads ###
@@ -163,6 +214,8 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 			--prefix="$(QTHREADS_DIR)"			\
 			--enable-guard-pages --enable-debug=yes		\
 			--with-hwloc="$(HWLOC_DIR)"			\
+			"CC=$(CC)"				\
+			"CXX=$(CXX)"				\
 			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
 			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
 		$(MAKE)) &&						\

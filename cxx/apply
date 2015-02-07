@@ -1,0 +1,29 @@
+// -*-C++-*-
+#ifndef CXX_APPLY
+#define CXX_APPLY
+
+#include <tuple>
+#include <utility>
+
+namespace cxx {
+
+namespace detail {
+template <typename F, typename Tuple, size_t... I>
+decltype(auto) apply_impl(F &&f, Tuple &&t, std::index_sequence<I...>) {
+  return std::forward<F>(f)(std::get<I>(std::forward<Tuple>(t))...);
+}
+}
+
+template <typename F, typename Tuple> decltype(auto) apply(F &&f, Tuple &&t) {
+  using Indices =
+      std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>;
+  return detail::apply_impl(std::forward<F>(f), std::forward<Tuple>(t),
+                            Indices{});
+}
+}
+
+#define CXX_APPLY_DONE
+#endif // #ifdef CXX_APPLY
+#ifndef CXX_APPLY_DONE
+#error "Cyclic include dependency"
+#endif

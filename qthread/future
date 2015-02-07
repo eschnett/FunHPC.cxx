@@ -1,0 +1,636 @@
+// -*-C++-*-
+#ifndef QTHREAD_FUTURE
+#define QTHREAD_FUTURE
+
+#include <qthread/qthread.hpp>
+
+#include <cxx/invoke>
+
+#include <atomic>
+#include <cassert>
+#include <functional>
+#include <iostream>/*TODO*/
+#include <memory>
+#include <utility>
+#include <tuple>
+
+namespace qthread {
+
+// shared_state ////////////////////////////////////////////////////////////////
+
+namespace detail {
+template <typename T> class shared_state {
+  // id_t<T> is T, but if used in a function template, the compiler
+  // cannot deduce T from it
+  template <typename U> struct id { typedef U type; };
+  template <typename U> using id_t = typename id<U>::type;
+
+  mutable syncvar ready;
+
+  // if present, needs to be called once when waiting
+  std::atomic<bool> has_trigger;
+  std::function<T()> trigger;
+
+  // void is stored as empty tuple, references are stored as pointers
+  std::conditional_t<std::is_void<T>::value, std::tuple<>,
+                     std::conditional_t<std::is_reference<T>::value,
+                                        std::remove_reference_t<T> *, T>> value;
+
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+  void run_trigger() {
+    set_value(trigger());
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_void<U>::value> * = nullptr>
+  void run_trigger() {
+    trigger();
+    set_value();
+  }
+
+public:
+  shared_state() : has_trigger(false) { ready.empty(); }
+  ~shared_state() { ready.fill(); }
+
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+  shared_state(const id_t<U> &value)
+      : has_trigger(false), value(value) {
+    std::cerr << "shared_state.constT&.0\n";
+  }
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+  shared_state(id_t<U> &&value)
+      : has_trigger(false), value(std::move(value)) {
+    std::cerr << "shared_state.T&&.0\n";
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_void<U>::value> * = nullptr>
+  shared_state(std::tuple<>)
+      : has_trigger(false), value(std::tuple<>()) {}
+
+  shared_state(const std::function<T()> &trigger) : shared_state() {
+    has_trigger = true;
+    this->trigger = trigger;
+  }
+  shared_state(std::function<T()> &&trigger) : shared_state() {
+    has_trigger = true;
+    this->trigger = std::move(trigger);
+  }
+
+  shared_state(const shared_state &) = delete;
+  shared_state(shared_state &&) = delete;
+  shared_state &operator=(const shared_state &) = delete;
+  shared_state &operator=(shared_state &&) = delete;
+
+  bool is_ready() const noexcept { return ready.status(); }
+
+  void wait() {
+    if (bool(has_trigger) && has_trigger.exchange(false)) {
+      run_trigger();
+      trigger = {};
+    }
+    std::cerr << "shared_state.wait.readFF\n";
+    ready.readFF();
+  }
+
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value &&
+                             !std::is_reference<U>::value> * = nullptr>
+  void set_value(id_t<U> &&value_) {
+    assert(!is_ready());
+    value = std::move(value_); /*TODO: memory order */
+    ready.fill();
+  }
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value &&
+                             !std::is_reference<U>::value> * = nullptr>
+  void set_value(const id_t<U> &value_) {
+    static_assert(!std::is_reference<T>::value, "");
+    assert(!is_ready());
+    value = value_; /*TODO: memory order */
+    ready.fill();
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_reference<U>::value> * = nullptr>
+  void set_value(id_t<U> &value_) {
+    assert(!is_ready());
+    value = &value_; /*TODO: memory order */
+    ready.fill();
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_void<U>::value> * = nullptr>
+  void set_value() {
+    assert(!is_ready());
+    ready.fill();
+  }
+
+  void set_exception() { throw("not implemented"); }
+
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             !std::is_void<T>::value> * = nullptr>
+  const U &get() const {
+    wait();
+    return value;
+  }
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
+                       !std::is_reference<T>::value> * = nullptr>
+  U &get() {
+    wait();
+    return value;
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             std::is_reference<T>::value> * = nullptr>
+  U get() {
+    wait();
+    return *value;
+  }
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
+                       !std::is_reference<T>::value> * = nullptr>
+  U move() {
+    wait();
+    return std::move(value);
+    // Note: The value is now not available any more
+  }
+};
+}
+
+// future //////////////////////////////////////////////////////////////////////
+
+template <typename T> class future;
+template <typename T> class shared_future;
+template <typename T> class promise;
+
+template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
+inline future<void> make_ready_future();
+
+template <typename T> class future {
+  template <typename U> friend class shared_future;
+  template <typename U> friend class promise;
+
+  template <typename U>
+  friend future<std::decay_t<U>> make_ready_future(U &&value);
+  friend inline future<void> make_ready_future();
+
+  std::shared_ptr<detail::shared_state<T>> shared_state;
+
+  future(const std::shared_ptr<detail::shared_state<T>> &shared_state)
+      : shared_state(shared_state) {
+    std::cerr << "future.constT&.0\n";
+  }
+  future(std::shared_ptr<detail::shared_state<T>> &&shared_state)
+      : shared_state(std::move(shared_state)) {
+    std::cerr << "future.T&&.0\n";
+  }
+
+public:
+  future() noexcept : shared_state() {}
+  future(future &&other) noexcept : future() { swap(other); }
+  future(const future &other) = delete;
+
+  future &operator=(future &&other) noexcept {
+    shared_state = {};
+    swap(other);
+    return *this;
+  }
+  future &operator=(const future &other) = delete;
+
+  void swap(future &other) noexcept {
+    using std::swap;
+    swap(shared_state, other.shared_state);
+  }
+
+  shared_future<T> share() {
+    assert(valid());
+    return shared_future<T>(std::move(*this));
+  }
+
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value &&
+                             !std::is_reference<U>::value> * = nullptr>
+  U get() {
+    assert(valid());
+    decltype(auto) res(shared_state->move());
+    shared_state = {};
+    return res;
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_reference<U>::value> * = nullptr>
+  U &get() {
+    assert(valid());
+    return shared_state->get();
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_void<U>::value> * = nullptr>
+  void get() {
+    assert(valid());
+    shared_state->wait();
+    shared_state = {};
+  }
+
+  bool valid() const noexcept { return bool(shared_state); }
+
+  bool is_ready() const noexcept {
+    assert(valid());
+    return shared_state->is_ready();
+  }
+
+  void wait() const {
+    assert(valid());
+    shared_state->wait();
+  }
+};
+template <typename T> void swap(future<T> &lhs, future<T> &rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+template <typename T> future<std::decay_t<T>> make_ready_future(T &&value) {
+  std::cerr << "make_ready_future.0\n";
+  return future<std::decay_t<T>>(
+      std::make_shared<detail::shared_state<std::decay_t<T>>>(
+          std::forward<T>(value)));
+}
+inline future<void> make_ready_future() {
+  return future<void>(
+      std::make_shared<detail::shared_state<void>>(std::tuple<>()));
+}
+
+// shared_future ///////////////////////////////////////////////////////////////
+
+template <typename T> class shared_future {
+  std::shared_ptr<detail::shared_state<T>> shared_state;
+
+public:
+  shared_future() noexcept : shared_state() {}
+  shared_future(const shared_future &other)
+      : shared_state(other.shared_state) {}
+  shared_future(future<T> &&other)
+      : shared_state(std::move(other.shared_state)) {}
+  shared_future(shared_future &&other) noexcept : shared_future() {
+    swap(other);
+  }
+
+  shared_future &operator=(const shared_future &other) {
+    shared_state = other.shared_state;
+    return *this;
+  }
+  shared_future &operator=(shared_future &&other) noexcept {
+    shared_state = std::move(other.shared_state);
+    return *this;
+  }
+  shared_future &operator=(future<T> &&other) {
+    shared_state = std::move(other.shared_state);
+    return *this;
+  }
+
+  void swap(shared_future &other) noexcept {
+    using std::swap;
+    swap(shared_state, other.shared_state);
+  }
+
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+  const U &get() const {
+    assert(valid());
+    return shared_state->get();
+  }
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+  U &get() {
+    assert(valid());
+    return shared_state->get();
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_void<U>::value> * = nullptr>
+  void get() const {
+    assert(valid());
+    shared_state->wait();
+  }
+
+  bool valid() const noexcept { return bool(shared_state); }
+
+  bool is_ready() const noexcept {
+    assert(valid());
+    return shared_state->is_ready();
+  }
+
+  void wait() const {
+    assert(valid());
+    shared_state->wait();
+  }
+};
+template <typename T>
+void swap(shared_future<T> &lhs, shared_future<T> &rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+// promise /////////////////////////////////////////////////////////////////////
+
+template <typename T> class promise {
+  std::shared_ptr<detail::shared_state<T>> shared_state;
+
+public:
+  promise() : shared_state(std::make_shared<detail::shared_state<T>>()) {}
+  promise(promise &&other) noexcept { swap(other); }
+  promise(const promise &other) = delete;
+
+  ~promise() {
+    if (shared_state && !shared_state->is_ready())
+      shared_state->set_exception();
+  }
+
+  promise &operator=(promise &&other) {
+    shared_state = {};
+    swap(other);
+    return *this;
+  }
+  promise &operator=(const promise &other) = delete;
+
+  void swap(promise &other) noexcept {
+    using std::swap;
+    swap(shared_state, other.shared_state);
+  }
+
+  future<T> get_future() { return future<T>(shared_state); }
+
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
+                       !std::is_reference<T>::value> * = nullptr>
+  void set_value(const U &value) {
+    shared_state->set_value(value);
+  }
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
+                       !std::is_reference<T>::value> * = nullptr>
+  void set_value(U &&value) {
+    shared_state->set_value(std::move(value));
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_same<T, U &>::value &&
+                             std::is_reference<T>::value> * = nullptr>
+  void set_value(U &value) {
+    shared_state->set_value(value);
+  }
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             std::is_void<T>::value> * = nullptr>
+  void set_value() {
+    shared_state->set_value();
+  }
+};
+template <typename T> void swap(promise<T> &lhs, promise<T> &rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+// packaged_task ///////////////////////////////////////////////////////////////
+
+template <typename> class packaged_task;
+template <typename R, typename... Args> class packaged_task<R(Args...)> {
+  std::function<R(Args...)> task;
+  promise<R> result;
+
+public:
+  packaged_task() noexcept {}
+  template <
+      class F,
+      std::enable_if_t<
+          !std::is_same<std::decay_t<F>, packaged_task<R(Args...)>>::value> * =
+          nullptr>
+  explicit packaged_task(F &&f)
+      : task(std::forward<F>(f)) {}
+  packaged_task(const packaged_task &) = delete;
+  packaged_task(packaged_task &&other) noexcept : packaged_task() {
+    swap(other);
+  }
+
+  packaged_task &operator=(packaged_task &&other) noexcept {
+    task = {};
+    result = {};
+    swap(other);
+    return *this;
+  }
+  packaged_task &operator=(const packaged_task &) = delete;
+
+  bool valid() const noexcept { return bool(task); }
+
+  void swap(packaged_task &other) noexcept {
+    using std::swap;
+    swap(task, other.task);
+    swap(result, other.result);
+  }
+
+  future<R> get_future() {
+    assert(bool(task));
+    return result.get_future();
+  }
+
+  template <typename U = R,
+            typename std::enable_if<std::is_same<U, R>::value &&
+                                    !std::is_void<R>::value>::type * = nullptr>
+  void operator()(Args... args) {
+    assert(bool(task));
+    result.set_value(task(std::forward<Args>(args)...));
+    task = {};
+  }
+  template <typename U = R,
+            typename std::enable_if<std::is_same<U, R>::value &&
+                                    std::is_void<R>::value>::type * = nullptr>
+  void operator()(Args... args) {
+    assert(bool(task));
+    task(std::forward<Args>(args)...);
+    result.set_value();
+    task = {};
+  }
+
+  void reset() {
+    assert(valid());
+    result = {};
+  }
+};
+template <typename R, typename... Args>
+void swap(packaged_task<R(Args...)> &lhs,
+          packaged_task<R(Args...)> &rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+// async_thread ////////////////////////////////////////////////////////////////
+
+namespace detail {
+template <typename R> class async_thread {
+
+  future<R> result;
+
+  struct thread_args_t {
+    packaged_task<R()> task;
+  };
+  static aligned_t run_thread(void *args_) {
+    thread_args_t *thread_args = (thread_args_t *)args_;
+    thread_args->task();
+    delete thread_args;
+    return 1;
+  }
+
+public:
+  async_thread() noexcept {}
+  async_thread(async_thread &&other) noexcept : async_thread() { swap(other); }
+
+  template <
+      class F, class... Args,
+      std::enable_if_t<!std::is_same<std::decay_t<F>, async_thread>::value> * =
+          nullptr>
+  explicit async_thread(F &&f, Args &&... args) {
+    auto thread_args = new thread_args_t;
+    // The return type is forced to be R. This mostly makes sense if R is
+    // void.
+    thread_args->task =
+        packaged_task<R()>([fr = std::bind(std::forward<F>(f),
+                                           std::forward<Args>(args)...)]() {
+          return R(fr());
+        });
+    auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
+    assert(!ierr);
+    result = thread_args->task.get_future();
+  }
+
+  async_thread(const async_thread &) = delete;
+
+  ~async_thread() { assert(!joinable()); }
+
+  async_thread &operator=(async_thread &&other) {
+    assert(!joinable());
+    result = future<R>();
+    swap(other);
+    return *this;
+  }
+  async_thread &operator=(const async_thread &other) = delete;
+
+  void swap(async_thread &other) noexcept {
+    using std::swap;
+    swap(result, other.result);
+  }
+
+  bool joinable() const noexcept { return result.valid() && result.is_ready(); }
+
+  void join() {
+    assert(result.valid());
+    result.wait();
+  }
+
+  void detach() { result = future<R>(); }
+
+  // non-standard
+  future<R> detach_get_future() { return std::move(result); }
+};
+template <typename R>
+void swap(async_thread<R> &lhs, async_thread<R> &rhs) noexcept {
+  lhs.swap(rhs);
+}
+}
+
+// launch //////////////////////////////////////////////////////////////////////
+
+enum class launch : unsigned {
+  async = 1,
+  deferred = 2,
+  sync = 4,
+  detached = 8,
+};
+
+inline constexpr launch operator~(launch a) {
+  return static_cast<launch>(~static_cast<unsigned>(a));
+}
+
+inline constexpr launch operator&(launch a, launch b) {
+  return static_cast<launch>(static_cast<unsigned>(a) &
+                             static_cast<unsigned>(b));
+}
+inline constexpr launch operator|(launch a, launch b) {
+  return static_cast<launch>(static_cast<unsigned>(a) |
+                             static_cast<unsigned>(b));
+}
+inline constexpr launch operator^(launch a, launch b) {
+  return static_cast<launch>(static_cast<unsigned>(a) ^
+                             static_cast<unsigned>(b));
+}
+
+inline launch &
+operator&=(launch &a, launch b) {
+  return a = a & b;
+}
+inline launch &operator|=(launch &a, launch b) { return a = a | b; }
+inline launch &operator^=(launch &a, launch b) { return a = a ^ b; }
+
+namespace detail {
+// Convert bitmask to a specific policy
+constexpr launch decode_policy(launch policy) {
+  if ((policy | launch::async) == launch::async)
+    return launch::async;
+  if ((policy | launch::deferred) == launch::deferred)
+    return launch::deferred;
+  if ((policy | launch::sync) == launch::sync)
+    return launch::sync;
+  if ((policy | launch::detached) == launch::detached)
+    return launch::detached;
+  return launch::async;
+}
+}
+
+// async ///////////////////////////////////////////////////////////////////////
+
+namespace detail {
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<F, Args...>>
+std::enable_if_t<!std::is_void<R>::value, future<R>>
+async_make_ready_future(F &&f, Args &&... args) {
+  return make_ready_future(
+      cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
+}
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<F, Args...>>
+std::enable_if_t<std::is_void<R>::value, future<R>>
+async_make_ready_future(F &&f, Args &&... args) {
+  cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+  return make_ready_future();
+}
+}
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+future<R> async(launch policy, F &&f, Args &&... args) {
+  switch (detail::decode_policy(policy)) {
+  case launch::async:
+    return detail::async_thread<R>(std::forward<F>(f),
+                                   std::forward<Args>(args)...)
+        .detach_get_future();
+  case launch::deferred:
+  // TODO
+  case launch::sync:
+    return detail::async_make_ready_future(std::forward<F>(f),
+                                           std::forward<Args>(args)...);
+  case launch::detached:
+    detail::async_thread<R>(std::forward<F>(f), std::forward<Args>(args)...)
+        .detach();
+    return future<R>();
+  }
+}
+
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+future<R> async(F &&f, Args &&... args) {
+  return async(launch::async | launch::deferred, std::forward<F>(f),
+               std::forward<Args>(args)...);
+}
+}
+
+#define QTHREAD_FUTURE_DONE
+#endif // #ifndef QTHREAD_FUTURE
+#ifndef QTHREAD_FUTURE_DONE
+#error "Cyclic include dependency"
+#endif

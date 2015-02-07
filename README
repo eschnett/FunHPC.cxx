@@ -1,5 +1,0 @@
-This is FunHPC.cxx, a C++ library that provides fine-grained
-multi-threading for distributed-memory systems in a functional
-programming style.
-
-Documentation is in the file index.rst.

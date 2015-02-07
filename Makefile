@@ -1,245 +1,100 @@
-# source $HOME/SIMFACTORY/all-all/env.sh
+# Makefile for FunHPC
 
-# (export SIMFACTORY_SIM=$HOME/Cbeta/simfactory3/sim && source $HOME/SIMFACTORY/cereal-1.0.0/env.sh && source $HOME/SIMFACTORY/hwloc-1.10.0/env.sh && source $HOME/SIMFACTORY/jemalloc-3.6.0/env.sh && source $HOME/SIMFACTORY/llvm-3.5.0/env.sh && source $HOME/SIMFACTORY/openmpi-1.8.4/env.sh && source $HOME/SIMFACTORY/qthreads-1.10/env.sh && make -j8 format && make -j8 bench demo grid tree wave wave-light wave-vector wave3d-grid wave3d-tree)
+GTEST_NAME    = gtest-1.7.0
+GTEST_URL     = https://googletest.googlecode.com/files/$(GTEST_NAME).zip
+GTEST_SRCS    = $(GTEST_DIR)/src/gtest-all.cc $(GTEST_DIR)/src/gtest_main.cc
+GTEST_DIR     = $(GTEST_NAME)
+GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
+GTEST_LIBDIRS =
+GTEST_LIBS    =
 
-DEBUG =
+QTHREADS_NAME    = qthread-1.10
+QTHREADS_URL     =							\
+	https://qthreads.googlecode.com/files/$(QTHREADS_NAME).tar.bz2
+QTHREADS_DIR     = $(QTHREADS_NAME)
+QTHREADS_INCDIRS = $(QTHREADS_DIR)-install/include
+QTHREADS_LIBDIRS = $(QTHREADS_DIR)-install/lib
+QTHREADS_LIBS    = qthread
 
-CC  := ${CC}	# ${MPICC}
-CXX := ${CXX}   # ${MPICXX}
-FC  := ${FC}    # ${MPIFC}
+INCDIRS = $(GTEST_INCDIRS) $(QTHREADS_INCDIRS) .
+LIBDIRS = $(GTEST_LIBDIRS) $(QTHREADS_LIBDIRS)
+LIBS    = $(GTEST_LIBS) $(QTHREADS_LIBS)
 
-# -DRPC_DISABLE_CALL_SHORTCUT
-# -DRPC_HPX -DRPC_QTHREADS -DRPC_STL
-CPPFLAGS :=					\
-	-DHPX_LIMIT=10				\
-	-DRPC_QTHREADS				\
-	-DBLAS
-CFLAGS   := -g -Wall ${CFLAGS}   ${MPI_CFLAGS}   ${C11FLAGS}   -march=native -fmacro-backtrace-limit=0
-CXXFLAGS := -g -Wall ${CXXFLAGS} ${MPI_CXXFLAGS} ${CXX14FLAGS} -march=native -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
-FFLAGS   := -g -Wall ${FFLAGS}   ${MPI_FFLAGS}                 -march=native
+# Can also use g++
+CXX      = clang++
+CPPFLAGS = -Drestrict=__restrict__ $(INCDIRS:%=-I%)
+CXXFLAGS = -std=c++14 -march=native -Wall -g
+LDFLAGS  = $(LIBDIRS:%=-L%)
 
-ifneq (${strip ${DEBUG}},)
-  # CFLAGS   += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-  # CXXFLAGS += -fsanitize=local-bounds -fstack-protector-all -ftrapv
-  # Enable runtime instrumentation for bug detection: address (memory errors) | thread (race detection) | undefined (miscellaneous undefined behavior)
-  CFLAGS   += -fstack-protector-all -ftrapv
-  CXXFLAGS += -fstack-protector-all -ftrapv
-  FFLAGS   += -fcheck=bounds,do,mem,pointer,recursion -finit-character=65 -finit-integer=42424242 -finit-real=nan -fstack-protector-all -ftrapv
-else
-  CFLAGS   += -Ofast -DNDEBUG
-  CXXFLAGS += -Ofast -DNDEBUG
-  FFLAGS   += -Ofast -DNDEBUG
-endif
-
-LDFLAGS  := ${LDFLAGS} ${MPI_LDFLAGS}
-LIBS     := ${MPI_LIBS} ${LIBS}
-
-
-
-# hpx_test
-EXES = bench boost_bw_lat cereal_bw_lat demo grid hpx_bw_lat hpx_wave hwloc_test la_demo matbench mattest mpi_bw_lat ostreaming qthread_test rpc_bw_lat tree wave wave-light wave-vector wave3d-grid wave3d-tree
-
-QTHREAD_SRCS = qthread_thread.cc
-HPX_SRCS     = hpx.cc
-HWLOC_SRCS   = hwloc.cc
-LA_SRCS      = la_blocked.cc la_dense.cc
-# ${HPX_SRCS} ${HWLOC_SRCS}
-RPC_SRCS     = rpc_action.cc rpc_broadcast.cc rpc_client.cc rpc_defs.cc	\
-	rpc_global_shared_ptr.cc rpc_hwloc.cc rpc_main.cc rpc_server.cc	\
-	rpc_server_mpi.cc						\
-	${QTHREAD_SRCS}
-MATRIX_SRCS  = algorithms.cc block_matrix.cc matrix.cc
-
-BENCH_SRCS         = bench.cc ${RPC_SRCS}
-BOOST_BW_LAT_SRCS  = boost_bw_lat.cc
-CEREAL_BW_LAT_SRCS = cereal_bw_lat.cc
-DEMO_SRCS          = demo.cc ${RPC_SRCS}
-GRID_SRCS          = grid.cc ${RPC_SRCS}
-HPX_BW_LAT_SRCS    = hpx_bw_lat.cc
-HPX_TEST_SRCS      = hpx_test.cc
-HPX_WAVE_SRCS      = hpx_wave.cc
-HWLOC_TEST_SRCS	   = hwloc_main.cc ${HWLOC_SRCS} ${RPC_SRCS}
-LA_DEMO_SRCS       = la_demo.cc ${LA_SRCS} ${RPC_SRCS}
-MATBENCH_SRCS      = matbench.cc ${HWLOC_SRCS} ${MATRIX_SRCS} ${RPC_SRCS}
-MATTEST_SRCS       = mattest.cc ${RPC_SRCS} ${MATRIX_SRCS}
-MPI_BW_LAT_SRCS    = mpi_bw_lat.cc
-OSTREAMING_SRCS    = ostreaming.cc ${RPC_SRCS}
-QTHREAD_TEST_SRCS  = qthread_test.cc ${QTHREAD_SRCS}
-RPC_BW_LAT_SRCS    = rpc_bw_lat.cc ${RPC_SRCS}
-TREE_SRCS          = tree.cc ${RPC_SRCS}
-WAVE_SRCS          = wave.cc ${RPC_SRCS}
-WAVE_LIGHT_SRCS    = wave-light.cc
-WAVE_VECTOR_SRCS   = wave-vector.cc ${RPC_SRCS}
-WAVE3D_GRID_SRCS   = wave3d-grid.cc ${RPC_SRCS}
-WAVE3D_TREE_SRCS   = wave3d-tree.cc ${RPC_SRCS}
-
-BENCH_OBJS         = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BENCH_SRCS}}}}}
-BOOST_BW_LAT_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${BOOST_BW_LAT_SRCS}}}}}
-CEREAL_BW_LAT_OBJS = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${CEREAL_BW_LAT_SRCS}}}}}
-RPC_BW_LAT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${RPC_BW_LAT_SRCS}}}}}
-DEMO_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${DEMO_SRCS}}}}}
-GRID_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${GRID_SRCS}}}}}
-HPX_BW_LAT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_BW_LAT_SRCS}}}}}
-HPX_TEST_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_TEST_SRCS}}}}}
-HPX_WAVE_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HPX_WAVE_SRCS}}}}}
-HWLOC_TEST_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${HWLOC_TEST_SRCS}}}}}
-LA_DEMO_OBJS       = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${LA_DEMO_SRCS}}}}}
-MATBENCH_OBJS      = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATBENCH_SRCS}}}}}
-MATTEST_OBJS       = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MATTEST_SRCS}}}}}
-MPI_BW_LAT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${MPI_BW_LAT_SRCS}}}}}
-OSTREAMING_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${OSTREAMING_SRCS}}}}}
-QTHREAD_TEST_OBJS  = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${QTHREAD_TEST_SRCS}}}}}
-TREE_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${TREE_SRCS}}}}}
-WAVE_OBJS          = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_SRCS}}}}}
-WAVE_LIGHT_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_LIGHT_SRCS}}}}}
-WAVE_VECTOR_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE_VECTOR_SRCS}}}}}
-WAVE3D_GRID_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE3D_GRID_SRCS}}}}}
-WAVE3D_TREE_OBJS    = ${patsubst %.c, %.o, ${patsubst %.cc, %.o, ${patsubst %.f, %.o,  ${patsubst %.f90, %.o, ${WAVE3D_TREE_SRCS}}}}}
-
-BENCH_DEPS         = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BENCH_SRCS}}}}}
-BOOST_BW_LAT_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${BOOST_BW_LAT_SRCS}}}}}
-CEREAL_BW_LAT_DEPS = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${CEREAL_BW_LAT_SRCS}}}}}
-DEMO_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${DEMO_SRCS}}}}}
-GRID_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${GRID_SRCS}}}}}
-HPX_BW_LAT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_BW_LAT_SRCS}}}}}
-HPX_TEST_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_TEST_SRCS}}}}}
-HPX_WAVE_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HPX_WAVE_SRCS}}}}}
-HWLOC_TEST_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${HWLOC_TEST_SRCS}}}}}
-LA_DEMO_DEPS       = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${LA_DEMO_SRCS}}}}}
-MATBENCH_DEPS      = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATBENCH_SRCS}}}}}
-MATTEST_DEPS       = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MATTEST_SRCS}}}}}
-MPI_BW_LAT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${MPI_BW_LAT_SRCS}}}}}
-OSTREAMING_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${OSTREAMING_SRCS}}}}}
-QTHREAD_TEST_DEPS  = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${QTHREAD_TEST_SRCS}}}}}
-RPC_BW_LAT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${RPC_BW_LAT_SRCS}}}}}
-TREE_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${TREE_SRCS}}}}}
-WAVE_DEPS          = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_SRCS}}}}}
-WAVE_LIGHT_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_LIGHT_SRCS}}}}}
-WAVE_VECTOR_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE_VECTOR_SRCS}}}}}
-WAVE3D_GRID_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE3D_GRID_SRCS}}}}}
-WAVE3D_TREE_DEPS    = ${patsubst %.c, %.d, ${patsubst %.cc, %.d, ${patsubst %.f, , ${patsubst %.f90, , ${WAVE3D_TREE_SRCS}}}}}
-
-OBJS = ${BENCH_OBJS} ${BOOST_BW_LAT_OBJS} ${CEREAL_BW_LAT_OBJS} ${DEMO_OBJS} ${GRID_OBJS} ${HPX_BW_LAT_OBJS} ${HPX_TEST_OBJS} ${HPX_WAVE_OBJS} ${HWLOC_TEST_OBJS} ${LA_DEMO_OBJS} ${MATBENCH_OBJS} ${MATTEST_OBJS} ${MPI_BW_LAT_OBJS} ${OSTREAMING_OBJS} ${QTHREAD_TEST_OBJS} ${RPC_BW_LAT_OBJS} ${TREE_OBJS} ${WAVE_OBJS} ${WAVE_LIGHT_OBJS} ${WAVE_VECTOR_OBJS} ${WAVE3D_GRID_OBJS} ${WAVE3D_TREE_OBJS}
-DEPS = ${BENCH_DEPS} ${BOOST_BW_LAT_DEPS} ${CEREAL_BW_LAT_DEPS} ${DEMO_DEPS} ${GRID_DEPS} ${HPX_BW_LAT_DEPS} ${HPX_TEST_DEPS} ${HPX_WAVE_DEPS} ${HWLOC_TEST_DEPS} ${LA_DEMO_DEPS} ${MATBENCH_DEPS} ${MATTEST_DEPS} ${MPI_BW_LAT_DEPS} ${OSTREAMING_DEPS} ${QTHREAD_TEST_DEPS} ${RPC_BW_LAT_DEPS} ${TREE_DEPS} ${WAVE_DEPS} ${WAVE_LIGHT_DEPS} ${WAVE_VECTOR_DEPS} ${WAVE3D_GRID_DEPS} ${WAVE3D_TREE_DEPS}
-
-
+HDRS =	cxx/apply cxx/invoke \
+	qthread/future qthread/mutex qthread/thread
+SRCS =	cxx/apply_test.cc cxx/invoke_test.cc \
+	qthread/future_test.cc qthread/mutex_test.cc \
+	qthread/thread_test.cc
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
 # Tromey <tromey@cygnus.com>
-PROCESS_DEPENDENCIES =					\
-	sed -e 's/$@.tmp/$@/g' < $*.o.d > $*.d &&	\
-	sed -e 's/\#.*//'				\
-		-e 's/^[^:]*: *//'			\
-		-e 's/ *\\$$//'				\
-		-e '/^$$/ d'				\
-		-e 's/$$/ :/' < $*.o.d >> $*.d &&	\
+PROCESS_DEPENDENCIES =							      \
+	{								      \
+	perl -p -e 's{$*.o.tmp}{$*.o}g' < $*.o.d &&			      \
+	perl -p -e 's{\#.*}{};s{^[^:]*: *}{};s{ *\\$$}{};s{$$}{ :}' < $*.o.d; \
+	} > $*.d &&							      \
 	rm -f $*.o.d
 
+all: format objs
+.PHONY: all
 
+format: $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
+.PHONY: format
 
-all: ${EXES}
+%.fmt: % Makefile 
+	clang-format -style=llvm -i $* && : > $*.fmt
 
-bench: ${BENCH_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-boost_bw_lat: ${BOOST_BW_LAT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-cereal_bw_lat: ${CEREAL_BW_LAT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-demo: ${DEMO_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-grid: ${GRID_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-hpx_bw_lat: ${HPX_BW_LAT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-hpx_test: ${HPX_TEST_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-hpx_wave: ${HPX_WAVE_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-hwloc_test: ${HWLOC_TEST_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-la_demo: ${LA_DEMO_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-matbench: ${MATBENCH_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-mattest: ${MATTEST_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-mpi_bw_lat: ${MPI_BW_LAT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-ostreaming: ${OSTREAMING_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-qthread_test: ${QTHREAD_TEST_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-rpc_bw_lat: ${RPC_BW_LAT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-tree: ${TREE_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-wave: ${WAVE_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-wave-light: ${WAVE_LIGHT_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-wave-vector: ${WAVE_VECTOR_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-wave3d-grid: ${WAVE3D_GRID_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
-wave3d-tree: ${WAVE3D_TREE_OBJS}
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+objs: $(SRCS:%.cc=%.o)
+.PHONY: objs
+%.o: %.cc $(HDRS) Makefile | format $(GTEST_DIR).src $(QTHREADS_DIR).installed
+	$(CXX) -MD $(CPPFLAGS) $(CXXFLAGS) -c -o $*.o.tmp $*.cc
+	@$(PROCESS_DEPENDENCIES)
+	@mv $*.o.tmp $*.o
 
-%.h.pch: %.h
-	${CC} ${CPPFLAGS} ${CFLAGS} -x c-header -o $@ $*.h
+check: selftest
+	./selftest
+.PHONY: check
+selftest: $(SRCS:%.cc=%.o) $(GTEST_SRCS:%.cc=%.o)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
 
-%.hh.pch: %.hh
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} -x c++-header -o $@ $*.hh
+### gtest ###
 
-%.o: %.c
-	${CC} -MD ${CPPFLAGS} ${CFLAGS} -o $@.tmp -c $*.c
-	@${PROCESS_DEPENDENCIES}
-	@mv $@.tmp $@
+$(GTEST_NAME).zip:
+	wget -O $@.tmp $(GTEST_URL) && mv $@.tmp $@
+$(GTEST_DIR).src: $(GTEST_NAME).zip
+	$(RM) -r $(GTEST_DIR)
+	unzip $^ && : > $@
 
-%.o: %.cc
-	${CXX} -MD ${CPPFLAGS} ${CXXFLAGS} -o $@.tmp -c $*.cc
-	@${PROCESS_DEPENDENCIES}
-	@mv $@.tmp $@
+### Qthreads ###
 
-%.s: %.cc
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} -S $*.cc
-
-%.o: %.f
-	${FC} ${FFLAGS} -c $*.f
-
-%.o: %.f90
-	${FC} ${FFLAGS} -c $*.f90
-
-${OBJS}: Makefile
-
-
-
-doc: index.html mpi-rpc.pdf
-
-index.html: index.rst
-	rst2html-2.7.py index.rst > $@
-
-mpi-rpc.pdf: index.rst
-	rst2latex-2.7.py index.rst > mpi-rpc.tex
-	pdflatex mpi-rpc.tex
-	pdflatex mpi-rpc.tex
-
-
-
-format: $(addprefix format-, $(wildcard *.hh *.cc))
-format-%:
-	@clang-format -i $*
-
-
+$(QTHREADS_NAME).tar.bz2:
+	wget -O $@.tmp $(QTHREADS_URL) && mv $@.tmp $@
+$(QTHREADS_DIR).installed: $(QTHREADS_NAME).tar.bz2
+	+env "MAKE=$(MAKE)"				\
+		"CXX=$(CXX)"				\
+		"CXXFLAGS=$(CXXFLAGS)"			\
+		"QTHREADS_NAME=$(QTHREADS_NAME)"	\
+		"QTHREADS_DIR=$(QTHREADS_DIR)"		\
+		./build-qthreads.sh &&			\
+	: > $@
 
 clean:
-	${RM} hpx_hpx.hh.pch rpc.hh.pch
-	${RM} ${DEPS} ${OBJS} ${EXES}
-	${RM} index.html
-	${RM} mpi-rpc.aux mpi-rpc.log mpi-rpc.out mpi-rpc.pdf mpi-rpc.tex
+	$(RM) $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
+	$(RM) $(SRCS:%.cc=%.o) $(SRCS:%.cc=%.d)
+	$(RM) $(GTEST_SRCS:%.cc=%.o) $(GTEST_SRCS:%.cc=%.d)
+	$(RM) selftest
+.PHONY: clean
 
-.PHONY: all clean doc format
+distclean: clean
+	$(RM) $(GTEST_NAME).zip
+	$(RM) -r $(GTEST_DIR) $(GTEST_DIR).src
+.PHONY: distclean
 
-.SUFFIXES:
-
--include ${DEPS}
+-include $(SRCS:%.cc=%.d)

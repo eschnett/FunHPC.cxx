@@ -489,11 +489,11 @@ public:
     auto thread_args = new thread_args_t;
     // The return type is forced to be R. This mostly makes sense if R is
     // void.
-    thread_args->task =
-        packaged_task<R()>([fr = std::bind(std::forward<F>(f),
-                                           std::forward<Args>(args)...)]() {
-          return R(fr());
-        });
+    thread_args->task = packaged_task<
+        R()>([fr = std::bind(std::forward<F>(f),
+                             std::forward<Args>(args)...)]() mutable {
+      return R(fr());
+    });
     result = thread_args->task.get_future();
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     assert(!ierr);

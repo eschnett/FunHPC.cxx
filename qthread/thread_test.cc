@@ -3,10 +3,11 @@
 #include <gtest/gtest.h>
 #include <qthread.h>
 
+#include <atomic>
+
 using namespace qthread;
 
 namespace {
-
 int fi(int x) { return x; }
 void fv(int) {}
 }
@@ -42,4 +43,25 @@ TEST(qthread_thread, basic) {
   EXPECT_TRUE(t2.joinable());
   t2.detach();
   EXPECT_FALSE(t2.joinable());
+}
+
+namespace {
+void recurse(int count, std::atomic<int> *pcounter) {
+  if (count == 0)
+    return;
+  pcounter->fetch_add(1, std::memory_order_relaxed);
+  --count;
+  thread(recurse, count / 2, pcounter).detach();
+  thread(recurse, count - count / 2, pcounter).detach();
+}
+}
+
+TEST(qthread_thread, many) {
+  int maxcount{10};
+  std::atomic<int> counter{0};
+  recurse(maxcount, &counter);
+  while (counter < maxcount)
+    this_thread::yield();
+  this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_EQ(counter, maxcount);
 }

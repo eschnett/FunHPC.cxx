@@ -94,10 +94,11 @@ external/gtest.unpacked: external/gtest.downloaded
 	rm -rf $(GTEST_NAME) &&				\
 	unzip external/$(notdir $(GTEST_URL)) &&	\
 	: > $@
-$(GTEST_DIR)/src/gtest-all.o: | external/gtest.unpacked
-$(GTEST_DIR)/src/libgtest.a: $(GTEST_DIR)/src/gtest-all.o
-	$(AR) -r -c $@ $^
-external/gtest.built: $(GTEST_DIR)/src/libgtest.a
+external/gtest.built: external/gtest.unpacked
+	(cd external &&							\
+		cd $(GTEST_DIR)/src &&					\
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c gtest-all.cc &&	\
+		$(AR) -r -c libgtest.a gtest-all.o) &&			\
 	: > $@
 external/gtest.done: external/gtest.built
 	: > $@

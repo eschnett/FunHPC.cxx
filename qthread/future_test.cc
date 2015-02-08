@@ -218,23 +218,23 @@ TEST(qthread_future, async_many2) {
   EXPECT_EQ(res.get(), maxcount);
 }
 
-// namespace {
-// future<int> recurse3(int count) {
-//   if (count <= 1) {
-//     promise<int> p;
-//     p.set_value(count);
-//     return p.get_future();
-//   }
-//   auto t0 = recurse2(count / 2);
-//   auto t1 = recurse2(count - count / 2);
-//   return async([ t0 = std::move(t0), t1 = std::move(t1) ]() mutable {
-//     return t0.get() + t1.get();
-//   });
-// }
-// }
+namespace {
+future<int> recurse3(int count) {
+  if (count <= 1) {
+    promise<int> p;
+    p.set_value(count);
+    return p.get_future();
+  }
+  auto t0 = recurse2(count / 2);
+  auto t1 = recurse2(count - count / 2);
+  return async([ t0 = std::move(t0), t1 = std::move(t1) ]() mutable {
+    return t0.get() + t1.get();
+  });
+}
+}
 
-// TEST(qthread_future, async_many3) {
-//   int maxcount = 10000;
-//   auto res = recurse3(maxcount);
-//   EXPECT_EQ(res.get(), maxcount);
-// }
+TEST(qthread_future, async_many3) {
+  int maxcount = 10000;
+  auto res = recurse3(maxcount);
+  EXPECT_EQ(res.get(), maxcount);
+}

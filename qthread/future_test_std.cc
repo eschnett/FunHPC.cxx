@@ -157,6 +157,10 @@ TEST(std_future, packaged_task) {
   test_packaged_task<void, int>(&fv, 0);
   test_packaged_task<void, int>(std::function<void(int)>(fv), 0);
   test_packaged_task<void, int>([](int) {}, 0);
+  test_packaged_task<void, int>([](int)mutable {}, 0);
+  // test_packaged_task<void, int>([f = future<void>()](int)mutable {}, 0);
+  test_packaged_task<void, int>([f = shared_future<void>()](int){}, 0);
+  test_packaged_task<void, int>([f = shared_future<void>()](int)mutable {}, 0);
 }
 
 TEST(std_future, async) {

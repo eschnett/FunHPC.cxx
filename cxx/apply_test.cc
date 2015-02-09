@@ -41,32 +41,32 @@ template <typename F, typename... Args> auto make_task(F &&f, Args &&... args) {
 TEST(cxx_apply, apply) {
   std::tuple<int> t(1);
   std::tuple<int, double> t2(1, 2.0);
-  EXPECT_EQ(apply(f, t), 1);
-  EXPECT_EQ(apply(f2, t2), 1);
+  EXPECT_EQ(1, apply(f, t));
+  EXPECT_EQ(1, apply(f2, t2));
   apply(fv, t);
   std::tuple<int (*)(int), int> tp(&f, 1);
   std::tuple<int(&)(int), int> tr(f, 1);
-  EXPECT_EQ(apply(fp, tp), 1);
-  EXPECT_EQ(apply(fr, tr), 1);
+  EXPECT_EQ(1, apply(fp, tp));
+  EXPECT_EQ(1, apply(fr, tr));
 }
 
 TEST(cxx_apply, make_task) {
   make_task([] {})();
-  EXPECT_EQ(make_task(f, 1)(), 1);
-  EXPECT_EQ(make_task(f2, 1, 2.0)(), 1);
+  EXPECT_EQ(1, make_task(f, 1)());
+  EXPECT_EQ(1, make_task(f2, 1, 2.0)());
   make_task(fv, 1)();
-  EXPECT_EQ(make_task(fp, f, 1)(), 1);
-  EXPECT_EQ(make_task(fp, &f, 1)(), 1);
+  EXPECT_EQ(1, make_task(fp, f, 1)());
+  EXPECT_EQ(1, make_task(fp, &f, 1)());
 }
 
 TEST(cxx_apply, make_task_fancy) {
-  EXPECT_EQ((make_task<int (*)(int), int>(f, 1)()), 1);
+  EXPECT_EQ(1, (make_task<int (*)(int), int>(f, 1)()));
   // make_task(make_task<int (*const &)(int), const int &>, f, 1)();
-  EXPECT_EQ(make_task(make_task(f, 1))(), 1);
+  EXPECT_EQ(1, make_task(make_task(f, 1))());
   auto rfp =
       make_task([](int (*f)(int), int x) { return make_task(f, x); }, f, 1)()();
-  EXPECT_EQ(rfp, 1);
+  EXPECT_EQ(1, rfp);
   auto rfr = make_task([](int (*f)(int), int x) { return make_task(f, x); }, &f,
                        1)()();
-  EXPECT_EQ(rfr, 1);
+  EXPECT_EQ(1, rfr);
 }

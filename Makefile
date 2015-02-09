@@ -43,11 +43,17 @@ LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
 HDRS =	cxx/apply				\
 	cxx/invoke				\
+	fun/shared_future			\
+	fun/shared_ptr				\
+	fun/vector				\
 	qthread/future				\
 	qthread/mutex				\
 	qthread/thread
 SRCS =	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
+	fun/shared_future_test.cc		\
+	fun/shared_ptr_test.cc			\
+	fun/vector_test.cc			\
 	qthread/future_test.cc			\
 	qthread/future_test_std.cc		\
 	qthread/mutex_test.cc			\

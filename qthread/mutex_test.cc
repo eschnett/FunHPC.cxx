@@ -30,5 +30,5 @@ TEST(qthreads_mutex, two_threads) {
   value += 1;
   m.unlock();
   t.join();
-  EXPECT_EQ(value, 2);
+  EXPECT_EQ(2, value);
 }

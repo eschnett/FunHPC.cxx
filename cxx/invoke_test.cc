@@ -54,23 +54,23 @@ int ffo1nm(const o1nm &fo1nm) { return fo1nm(1); }
 }
 
 TEST(cxx_invoke, invoke) {
-  EXPECT_EQ(invoke(f0, 1), 1);
-  EXPECT_EQ(invoke(&f0, 1), 1);
+  EXPECT_EQ(1, invoke(f0, 1));
+  EXPECT_EQ(1, invoke(&f0, 1));
 
   s s0{};
   const s s1{};
-  EXPECT_EQ(invoke(&s::m0, s0, 1), 1);
-  EXPECT_EQ(invoke(&s::m1, s0, 1), 1);
-  EXPECT_EQ(invoke(&s::m1, s1, 1), 1);
-  EXPECT_EQ(invoke(&s::m0, &s0, 1), 1);
-  EXPECT_EQ(invoke(&s::m1, &s0, 1), 1);
-  EXPECT_EQ(invoke(&s::m1, &s1, 1), 1);
+  EXPECT_EQ(1, invoke(&s::m0, s0, 1));
+  EXPECT_EQ(1, invoke(&s::m1, s0, 1));
+  EXPECT_EQ(1, invoke(&s::m1, s1, 1));
+  EXPECT_EQ(1, invoke(&s::m0, &s0, 1));
+  EXPECT_EQ(1, invoke(&s::m1, &s0, 1));
+  EXPECT_EQ(1, invoke(&s::m1, &s1, 1));
 
-  EXPECT_EQ(invoke(&s::d0, s0), 1);
-  EXPECT_EQ(invoke(&s::d1, s0), 2);
-  EXPECT_EQ(invoke(&s::d0, s1), 1);
-  EXPECT_EQ(invoke(&s::d1, s1), 2);
-  EXPECT_EQ(invoke(&s::d0, s0) = 3, 3);
+  EXPECT_EQ(1, invoke(&s::d0, s0));
+  EXPECT_EQ(2, invoke(&s::d1, s0));
+  EXPECT_EQ(1, invoke(&s::d0, s1));
+  EXPECT_EQ(2, invoke(&s::d1, s1));
+  EXPECT_EQ(3, invoke(&s::d0, s0) = 3);
 
   o0 fo0{};
   o1 fo1{};
@@ -78,15 +78,15 @@ TEST(cxx_invoke, invoke) {
   o1nc fo1nc{};
   o0nm fo0nm{};
   o1nm fo1nm{};
-  EXPECT_EQ(invoke(fo0, 1), 1);
-  EXPECT_EQ(invoke(fo1, 1), 1);
-  EXPECT_EQ(invoke(fo0nc, 1), 1);
-  EXPECT_EQ(invoke(fo1nc, 1), 1);
-  EXPECT_EQ(invoke(fo0nm, 1), 1);
-  EXPECT_EQ(invoke(fo1nm, 1), 1);
+  EXPECT_EQ(1, invoke(fo0, 1));
+  EXPECT_EQ(1, invoke(fo1, 1));
+  EXPECT_EQ(1, invoke(fo0nc, 1));
+  EXPECT_EQ(1, invoke(fo1nc, 1));
+  EXPECT_EQ(1, invoke(fo0nm, 1));
+  EXPECT_EQ(1, invoke(fo1nm, 1));
 
-  EXPECT_EQ(invoke(std::bind(f0, std::placeholders::_1), 1), 1);
-  EXPECT_EQ(invoke(std::bind(f0, 1)), 1);
+  EXPECT_EQ(1, invoke(std::bind(f0, std::placeholders::_1), 1));
+  EXPECT_EQ(1, invoke(std::bind(f0, 1)));
 
   ffo1c(o1{});
   ffo0m(o0{});
@@ -94,28 +94,28 @@ TEST(cxx_invoke, invoke) {
   ffo0nc(o0nc{});
   ffo1nc(o1nc{});
   ffo1nm(o1nm{});
-  EXPECT_EQ(invoke(std::bind(fo0, 1)), 1);
-  EXPECT_EQ(invoke(std::bind(fo1, 1)), 1);
+  EXPECT_EQ(1, invoke(std::bind(fo0, 1)));
+  EXPECT_EQ(1, invoke(std::bind(fo1, 1)));
   // std::bind(fo0nm, 1);
   // std::bind(fo1nm, 1);
   // std::bind(fo0nc, 1);
   // std::bind(fo1nc, 1);
-  // EXPECT_EQ(invoke(std::bind(fo0nm, 1)), 1);
-  // EXPECT_EQ(invoke(std::bind(fo1nm, 1)), 1);
-  // EXPECT_EQ(invoke(std::bind(fo0nc, 1)), 1);
-  // EXPECT_EQ(invoke(std::bind(fo1nc, 1)), 1);
+  // EXPECT_EQ(1,invoke(std::bind(fo0nm, 1)));
+  // EXPECT_EQ(1,invoke(std::bind(fo1nm, 1)));
+  // EXPECT_EQ(1,invoke(std::bind(fo0nc, 1)));
+  // EXPECT_EQ(1,invoke(std::bind(fo1nc, 1)));
 
   std::bind(ffo1c, o1());
   std::bind(ffo0m, o0());
   std::bind(ffo1m, o1());
-  EXPECT_EQ(std::bind(ffo1c, o1())(), 1);
-  // EXPECT_EQ(std::bind(ffo0m, o0())(), 1);
-  // EXPECT_EQ(std::bind(ffo1m, o1())(), 1);
+  EXPECT_EQ(1, std::bind(ffo1c, o1())());
+  // EXPECT_EQ(1,std::bind(ffo0m, o0())());
+  // EXPECT_EQ(1,std::bind(ffo1m, o1())());
 
   auto rl = invoke([](int x) { return x; }, 1);
-  EXPECT_EQ(rl, 1);
+  EXPECT_EQ(1, rl);
   auto rml = invoke([](int x) mutable { return x; }, 1);
-  EXPECT_EQ(rml, 1);
+  EXPECT_EQ(1, rml);
 }
 
 TEST(cxx_invoke, invoke_of_t) {

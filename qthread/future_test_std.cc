@@ -26,7 +26,7 @@ template <typename T> void test_future(T value) {
   swap(f0, f2);
   f2.wait();
   typedef std::decay_t<T> decay_T; // avoid function references
-  EXPECT_EQ(decay_T(f2.get()), decay_T(value));
+  EXPECT_EQ(decay_T(value), decay_T(f2.get()));
 
   promise<T> p3;
   p3.set_value(value);
@@ -49,11 +49,11 @@ TEST(std_future, future) {
 //   int i{};
 //   const int ci{};
 //   auto f1 = make_ready_future(1);
-//   EXPECT_EQ(f1.get(), 1);
+//   EXPECT_EQ(1,f1.get());
 //   auto fi = make_ready_future(i);
-//   EXPECT_EQ(fi.get(), i);
+//   EXPECT_EQ(1,fi.get());
 //   auto fci = make_ready_future(ci);
-//   EXPECT_EQ(fci.get(), ci);
+//   EXPECT_EQ(ci,fci.get());
 //   auto f4 = make_ready_future();
 //   static_assert(std::is_same<decltype(f4), future<void>>::value, "");
 // }
@@ -80,8 +80,8 @@ template <typename T> void test_shared_future(T value) {
   EXPECT_TRUE(f4.wait_for(std::chrono::seconds(0)) == future_status::ready);
   f4.wait();
   typedef std::decay_t<T> decay_T; // avoid function references
-  EXPECT_EQ(decay_T(f4.get()), decay_T(value));
-  EXPECT_EQ(decay_T(f4.get()), decay_T(value));
+  EXPECT_EQ(decay_T(value), decay_T(f4.get()));
+  EXPECT_EQ(decay_T(value), decay_T(f4.get()));
 }
 }
 
@@ -102,7 +102,7 @@ template <typename T> void test_promise(T value) {
   swap(p0, p1);
   p1.set_value(value);
   typedef std::decay_t<T> decay_T; // avoid function references
-  EXPECT_EQ(decay_T(p1.get_future().get()), decay_T(value));
+  EXPECT_EQ(decay_T(value), decay_T(p1.get_future().get()));
 }
 }
 
@@ -135,7 +135,7 @@ void test_packaged_task(F &&f, Args... args) {
   t0(args...);
   EXPECT_TRUE(t0.valid());
   // EXPECT_TRUE(f0.wait_for(std::chrono::seconds(0)) == future_status::ready);
-  // EXPECT_EQ(f0.get(), 1);
+  // EXPECT_EQ(1,f0.get());
   f0.get();
 
   t0.reset();
@@ -143,7 +143,7 @@ void test_packaged_task(F &&f, Args... args) {
   t0(std::forward<Args>(args)...);
   auto f1 = t0.get_future();
   EXPECT_TRUE(f1.wait_for(std::chrono::seconds(0)) == future_status::ready);
-  // EXPECT_EQ(f1.get(), 1);
+  // EXPECT_EQ(1,f1.get());
   f1.get();
 }
 }
@@ -165,25 +165,25 @@ TEST(std_future, packaged_task) {
 
 TEST(std_future, async) {
   auto ffi = async(fi, 1);
-  EXPECT_EQ(ffi.get(), 1);
+  EXPECT_EQ(1, ffi.get());
   auto ffv = async(fv, 1);
   auto flvv = async([]() {});
   auto flii = async([](int x) { return x; }, 1);
-  EXPECT_EQ(flii.get(), 1);
+  EXPECT_EQ(1, flii.get());
   auto fliv = async([](int) {}, 1);
 
   auto fa = async(launch::async, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
   EXPECT_TRUE(fa.wait_for(std::chrono::seconds(0)) ==
               future_status::ready); // this is unreliable
-  EXPECT_EQ(fa.get(), 1);
+  EXPECT_EQ(1, fa.get());
   auto fd = async(launch::deferred, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
   EXPECT_FALSE(fd.wait_for(std::chrono::seconds(0)) == future_status::ready);
-  EXPECT_EQ(fd.get(), 1);
+  EXPECT_EQ(1, fd.get());
   // auto fs = async(launch::sync, fi, 1);
   // EXPECT_TRUE(fs.wait_for(std::chrono::seconds(0)) == future_status::ready);
-  // EXPECT_EQ(fs.get(), 1);
+  // EXPECT_EQ(1,fs.get());
   // auto fe = async(launch::detached, fi, 1);
   // EXPECT_FALSE(fe.valid());
 }
@@ -201,7 +201,7 @@ int recurse(int count) {
 TEST(std_future, async_many) {
   int maxcount = 1000;
   auto res = recurse(maxcount);
-  EXPECT_EQ(res, maxcount);
+  EXPECT_EQ(maxcount, res);
 }
 
 namespace {
@@ -218,9 +218,9 @@ future<int> recurse2(int count) {
 }
 
 TEST(std_future, async_many2) {
-  int maxcount = 10000;
+  int maxcount = 1000;
   auto res = recurse2(maxcount);
-  EXPECT_EQ(res.get(), maxcount);
+  EXPECT_EQ(maxcount, res.get());
 }
 
 namespace {
@@ -239,7 +239,7 @@ future<int> recurse3(int count) {
 }
 
 TEST(std_future, async_many3) {
-  int maxcount = 10000;
+  int maxcount = 1000;
   auto res = recurse3(maxcount);
-  EXPECT_EQ(res.get(), maxcount);
+  EXPECT_EQ(maxcount, res.get());
 }

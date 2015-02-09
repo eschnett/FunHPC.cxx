@@ -59,5 +59,5 @@ TEST(std_thread, many) {
   while (counter < maxcount)
     this_thread::yield();
   this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_EQ(counter, maxcount);
+  EXPECT_EQ(maxcount, counter);
 }

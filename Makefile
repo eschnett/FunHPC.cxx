@@ -1,10 +1,17 @@
 # Makefile for FunHPC
 
+CEREAL_NAME    = cereal-1.10.0
+CEREAL_URL     = https://github.com/USCiLab/cereal/archive/v1.1.0.tar.gz
+CEREAL_DIR     = $(abspath ./$(CEREAL_NAME))
+CEREAL_INCDIRS = $(CEREAL_DIR)/include
+CEREAL_LIBDIRS =
+CEREAL_LIBS    =
+
 GTEST_NAME    = gtest-1.7.0
 GTEST_URL     = https://googletest.googlecode.com/files/gtest-1.7.0.zip
 GTEST_DIR     = $(abspath ./$(GTEST_NAME))
 GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
-GTEST_LIBDIRS = $(GTEST_DIR)/src
+GTEST_LIBDIRS =
 GTEST_LIBS    =
 
 HWLOC_NAME    = hwloc-1.10.0
@@ -19,7 +26,7 @@ JEMALLOC_URL     = http://www.canonware.com/download/jemalloc/jemalloc-3.6.0.tar
 JEMALLOC_DIR     = $(abspath ./$(JEMALLOC_NAME))
 JEMALLOC_INCDIRS = $(JEMALLOC_DIR)/include
 JEMALLOC_LIBDIRS = $(JEMALLOC_DIR)/lib
-JEMALLOC_LIBS    = jemalloc pthread # this must come last
+JEMALLOC_LIBS    = jemalloc pthread # Note: JEMALLOC_LIBS must come last
 
 QTHREADS_NAME    = qthread-1.10
 QTHREADS_URL     = https://qthreads.googlecode.com/files/qthread-1.10.tar.bz2
@@ -28,9 +35,9 @@ QTHREADS_INCDIRS = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
 QTHREADS_LIBDIRS = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
 QTHREADS_LIBS    = qthread pthread $(HWLOC_LIBS)
 
-INCDIRS = $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
-LIBDIRS = $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
-LIBS    = $(JEMALLOC_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
+INCDIRS = $(CEREAL_INCDIRS) $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
+LIBDIRS = $(CEREAL_LIBDIRS) $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
+LIBS    = $(CEREAL_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
 # Can also use gcc
 CC       = clang
@@ -89,11 +96,26 @@ format: $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
 
 objs: $(SRCS:%.cc=%.o)
 .PHONY: objs
-$(SRCS:%.cc=%.o): | format gtest jemalloc qthreads
+$(SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc $(HDRS) Makefile
 	$(CXX) -MD $(CPPFLAGS) $(CXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
+
+### examples ###
+
+examples: $(EXAMPLE_SRCS:examples/%.cc=%)
+	for example in $(EXAMPLE_SRCS:examples/%.cc=%); do		\
+	env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		"QTHREAD_STACK_SIZE=65536"				\
+		./$$example;						\
+	done
+.PHONY: examples
+hello: $(MAIN_SRCS:%.cc=%.o) examples/hello.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
+million: $(MAIN_SRCS:%.cc=%.o) examples/million.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
 
 ### check ###
 
@@ -110,6 +132,21 @@ selftest: $(SRCS:%.cc=%.o)
 
 external:
 	mkdir external
+
+### cereal ###
+
+cereal: external/cereal.done
+.PHONY: cereal
+external/cereal.downloaded: | external
+	(cd external &&				\
+		wget $(CEREAL_URL)) &&		\
+	: > $@
+external/cereal.unpacked: external/cereal.downloaded
+	rm -rf $(CEREAL_NAME) &&			\
+	tar xzf external/$(notdir $(CEREAL_URL)) &&	\
+	: > $@
+external/cereal.done: external/cereal.unpacked
+	: > $@
 
 ### gtest ###
 

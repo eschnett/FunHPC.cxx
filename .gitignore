@@ -2,6 +2,7 @@
 *.dSYM
 *.fmt
 *.o
+cereal-1.1.0
 external
 gtest-1.7.0
 hwloc-1.10.0

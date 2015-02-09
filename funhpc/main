@@ -1,0 +1,11 @@
+// -*-C++-*-
+#ifndef FUNHPC_MAIN
+#define FUNHPC_MAIN
+
+extern "C" int funhpc_main(int argc, char **argv);
+
+#define FUNHPC_MAIN_DONE
+#endif // #ifdef FUNHPC_MAIN
+#ifndef FUNHPC_MAIN_DONE
+#error "Cyclic include dependency"
+#endif

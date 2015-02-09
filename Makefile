@@ -1,6 +1,6 @@
 # Makefile for FunHPC
 
-CEREAL_NAME    = cereal-1.10.0
+CEREAL_NAME    = cereal-1.1.0
 CEREAL_URL     = https://github.com/USCiLab/cereal/archive/v1.1.0.tar.gz
 CEREAL_DIR     = $(abspath ./$(CEREAL_NAME))
 CEREAL_INCDIRS = $(CEREAL_DIR)/include
@@ -11,7 +11,7 @@ GTEST_NAME    = gtest-1.7.0
 GTEST_URL     = https://googletest.googlecode.com/files/gtest-1.7.0.zip
 GTEST_DIR     = $(abspath ./$(GTEST_NAME))
 GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
-GTEST_LIBDIRS =
+GTEST_LIBDIRS = $(GTEST_DIR)/src
 GTEST_LIBS    =
 
 HWLOC_NAME    = hwloc-1.10.0
@@ -50,14 +50,23 @@ LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
 HDRS =	cxx/apply				\
 	cxx/invoke				\
+	cxx/task				\
 	fun/shared_future			\
 	fun/shared_ptr				\
 	fun/vector				\
+	funhpc/rexec				\
 	qthread/future				\
 	qthread/mutex				\
 	qthread/thread
-SRCS =	cxx/apply_test.cc			\
+MAIN_SRCS =					\
+	funhpc/mainloop.cc
+EXAMPLE_SRCS =					\
+	examples/hello.cc			\
+	examples/million.cc
+TEST_SRCS =					\
+	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
+	cxx/task_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\
@@ -67,6 +76,7 @@ SRCS =	cxx/apply_test.cc			\
 	qthread/mutex_test_std.cc		\
 	qthread/thread_test.cc			\
 	qthread/thread_test_std.cc
+SRCS = $(EXAMPLE_SRCS) $(MAIN_SRCS) $(TEST_SRCS)
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
@@ -125,7 +135,7 @@ check: selftest
 		"QTHREAD_STACK_SIZE=65536"				\
 		./selftest
 .PHONY: check
-selftest: $(SRCS:%.cc=%.o)
+selftest: $(TEST_SRCS:%.cc=%.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)
 
 ### external ###
@@ -285,11 +295,13 @@ external/qthreads.done: external/qthreads.installed
 clean:
 	$(RM) $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
 	$(RM) $(SRCS:%.cc=%.o) $(SRCS:%.cc=%.d)
+	$(RM) $(EXAMPLE_SRCS:examples/%.cc=%)
 	$(RM) selftest
 .PHONY: clean
 
 distclean: clean
-	$(RM) -r external $(GTEST_DIR) $(HWLOC_DIR) $(QTHREADS_DIR)
+	$(RM) -r external $(CEREAL_DIR) $(GTEST_DIR) $(HWLOC_DIR)	\
+		$(JEMALLOC_DIR) $(QTHREADS_DIR)
 .PHONY: distclean
 
 -include $(SRCS:%.cc=%.d)

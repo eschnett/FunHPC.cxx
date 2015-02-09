@@ -6,6 +6,7 @@
 
 #include <cxx/apply>
 #include <cxx/invoke>
+#include <cxx/task>
 
 #include <atomic>
 #include <cassert>
@@ -15,66 +16,6 @@
 #include <tuple>
 
 namespace qthread {
-
-// task ////////////////////////////////////////////////////////////////////////
-
-namespace detail {
-// A task is similar to std::bind, except that it does not support
-// placeholders. It is also similar to unique_function, except that
-// the argument list is always empty. It is also similar to
-// packaged_task, except that the return value is returned and not
-// stored in a promise. In addition to the above, it explicitly
-// converts the return type to the requested type R. (R may be void).
-template <typename R> class abstract_task {
-public:
-  virtual ~abstract_task() {}
-  virtual R operator()() = 0;
-};
-
-template <typename R, typename F, typename... Args>
-class concrete_task : public abstract_task<R> {
-  static_assert(std::is_same<F, std::decay_t<F>>::value, "");
-  static_assert(std::is_same<std::tuple<Args...>,
-                             std::tuple<std::decay_t<Args>...>>::value,
-                "");
-  F f;
-  std::tuple<Args...> args;
-
-public:
-  template <typename F1, typename... Args1>
-  concrete_task(F1 &&f, Args1 &&... args)
-      : f(std::forward<F1>(f)),
-        args(std::make_tuple(std::forward<Args1>(args)...)) {}
-  virtual ~concrete_task() {}
-  virtual R operator()() { return R(cxx::apply(f, args)); }
-};
-
-template <typename R> class task {
-  std::unique_ptr<abstract_task<R>> ptask;
-
-public:
-  task() noexcept {}
-  task(task &&other) noexcept : ptask() { swap(other); }
-  task(const task &other) = delete;
-  template <typename F, typename... Args>
-  task(F &&f, Args &&... args)
-      : ptask(std::make_unique<
-            concrete_task<R, std::decay_t<F>, std::decay_t<Args>...>>(
-            std::forward<F>(f), std::forward<Args>(args)...)) {}
-  task &operator=(task &&other) {
-    ptask = {};
-    swap(other);
-    return *this;
-  }
-  task &operator=(const task &other) = delete;
-  void swap(task &other) {
-    using std::swap;
-    swap(ptask, other.ptask);
-  }
-  R operator()() { return (*ptask)(); }
-};
-template <typename R> void swap(task<R> &lhs, task<R> &rhs) { lhs.swap(rhs); }
-}
 
 // shared_state ////////////////////////////////////////////////////////////////
 
@@ -89,7 +30,7 @@ template <typename T> class shared_state {
 
   // if present, needs to be called once when waiting
   std::atomic<bool> has_trigger;
-  detail::task<T> trigger;
+  cxx::task<T> trigger;
 
   // void is stored as empty tuple, references are stored as pointers
   std::conditional_t<std::is_void<T>::value, std::tuple<>,
@@ -125,11 +66,11 @@ public:
   shared_state(std::tuple<>)
       : has_trigger(false), value(std::tuple<>()) {}
 
-  shared_state(const detail::task<T> &trigger) : shared_state() {
+  shared_state(const cxx::task<T> &trigger) : shared_state() {
     has_trigger = true;
     this->trigger = trigger;
   }
-  shared_state(detail::task<T> &&trigger) : shared_state() {
+  shared_state(cxx::task<T> &&trigger) : shared_state() {
     has_trigger = true;
     this->trigger = std::move(trigger);
   }
@@ -529,7 +470,7 @@ template <typename R> class async_thread {
   future<R> result;
 
   struct thread_args_t {
-    detail::task<R> task;
+    cxx::task<R> task;
     promise<R> result;
     template <typename U = R,
               std::enable_if_t<!std::is_void<U>::value> * = nullptr>
@@ -561,7 +502,7 @@ public:
   explicit async_thread(F &&f, Args &&... args) {
     auto thread_args = new thread_args_t;
     thread_args->task =
-        task<R>(std::forward<F>(f), std::forward<Args>(args)...);
+        cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...);
     result = thread_args->result.get_future();
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     assert(!ierr);
@@ -681,7 +622,7 @@ async(launch policy, F &&f, Args &&... args) {
         .detach_get_future();
   case launch::deferred:
     return future<R>(std::make_shared<detail::shared_state<R>>(
-        detail::task<R>(std::forward<F>(f), std::forward<Args>(args)...)));
+        cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...)));
   case launch::sync:
     return detail::async_make_ready_future(std::forward<F>(f),
                                            std::forward<Args>(args)...);

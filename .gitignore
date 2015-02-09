@@ -5,7 +5,9 @@
 cereal-1.1.0
 external
 gtest-1.7.0
+hello
 hwloc-1.10.0
 jemalloc-3.6.0
+million
 qthread-1.10
 selftest

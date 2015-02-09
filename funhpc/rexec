@@ -1,0 +1,21 @@
+// -*-C++-*-
+#ifndef FUNHPC_REXEC
+#define FUNHPC_REXEC
+
+#include <cxx/task>
+
+namespace funhpc {
+typedef cxx::task<void> task_t;
+
+void send_task(task_t &&t);
+
+template <typename F, typename... Args> void rexec(F &&f, Args &&... args) {
+  send_task(task_t(std::forward<F>(f), std::forward<Args>(args)...));
+}
+}
+
+#define FUNHPC_REXEC_DONE
+#endif // #ifdef FUNHPC_REXEC
+#ifndef FUNHPC_REXEC_DONE
+#error "Cyclic include dependency"
+#endif

@@ -4,13 +4,20 @@
 
 #include <cxx/task>
 
+#include <cereal/archives/binary.hpp>
+
 namespace funhpc {
 typedef cxx::task<void> task_t;
 
-void send_task(task_t &&t);
+std::size_t rank();
+std::size_t size();
 
-template <typename F, typename... Args> void rexec(F &&f, Args &&... args) {
-  send_task(task_t(std::forward<F>(f), std::forward<Args>(args)...));
+void enqueue_task(std::size_t dest, task_t &&t);
+
+template <typename F, typename... Args>
+void rexec(std::size_t dest, F &&f, Args &&... args) {
+  task_t::register_type<F, Args...>();
+  enqueue_task(dest, task_t(std::forward<F>(f), std::forward<Args>(args)...));
 }
 }
 

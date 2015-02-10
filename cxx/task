@@ -4,6 +4,7 @@
 
 #include <cxx/apply>
 
+#include <cereal/access.hpp>
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/polymorphic.hpp>
@@ -11,6 +12,7 @@
 
 #include <memory>
 #include <tuple>
+#include <typeinfo>
 #include <utility>
 
 namespace cxx {
@@ -38,6 +40,9 @@ template <typename T> cereal_register_t<T> cereal_register_init() {
 
 namespace detail {
 template <typename R> class abstract_task {
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) {}
+
 public:
   virtual ~abstract_task() {}
   virtual R operator()() = 0;
@@ -54,18 +59,19 @@ class concrete_task : public abstract_task<R> {
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
-    ar(f, args);
-    (void)cereal_register;
+    ar(cereal::base_class<abstract_task<R>>(this), f, args);
   }
   static cereal_register_t<concrete_task> cereal_register;
 
 public:
+  concrete_task() {} // only for serialization
   template <typename F1, typename... Args1>
   concrete_task(F1 &&f, Args1 &&... args)
       : f(std::forward<F1>(f)),
         args(std::make_tuple(std::forward<Args1>(args)...)) {}
   virtual ~concrete_task() {}
   virtual R operator()() { return R(cxx::apply(f, args)); }
+  static void register_type() { (void)cereal_register; }
 };
 template <typename R, typename F, typename... Args>
 cereal_register_t<concrete_task<R, F, Args...>>
@@ -99,8 +105,29 @@ public:
     swap(ptask, other.ptask);
   }
   R operator()() { return (*ptask)(); }
+  template <typename F, typename... Args> static void register_type() {
+    detail::concrete_task<R, std::decay_t<F>,
+                          std::decay_t<Args>...>::register_type();
+  }
 };
 template <typename R> void swap(task<R> &lhs, task<R> &rhs) { lhs.swap(rhs); }
+}
+
+namespace cereal {
+namespace detail {
+template <typename R> struct binding_name<::cxx::detail::abstract_task<R>> {
+  static constexpr char const *name() {
+    return typeid(::cxx::detail::abstract_task<R>).name();
+  }
+};
+
+template <typename R, typename F, typename... Args>
+struct binding_name<::cxx::detail::concrete_task<R, F, Args...>> {
+  static constexpr char const *name() {
+    return typeid(::cxx::detail::concrete_task<R, F, Args...>).name();
+  }
+};
+}
 }
 
 #define CXX_TASK_DONE

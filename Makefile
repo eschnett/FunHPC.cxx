@@ -40,13 +40,22 @@ LIBDIRS = $(CEREAL_LIBDIRS) $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS
 LIBS    = $(CEREAL_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
 # Can also use gcc
-CC       = clang
-CXX      = clang++
-CPPFLAGS = $(INCDIRS:%=-I%)
-CFLAGS   = -march=native -Wall -g -std=c99 -Dasm=__asm__
-CXXFLAGS = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
-OPTFLAGS = -O3
-LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+CC          = clang
+CXX         = clang++
+CPPFLAGS    = $(INCDIRS:%=-I%)
+CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
+CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
+OPTFLAGS    = -O3
+LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+
+MPICC       = env "OMPI_CC=$(CC)" mpicc
+MPICXX      = env "OMPI_CXX=$(CXX)" mpicxx
+MPICPPFLAGS = $(CPPFLAGS)
+MPICFLAGS   = $(CFLAGS)
+MPICXXFLAGS = $(CXXFLAGS)
+MPILDFLAGS  = $(LDFLAGS)
+MPILIBS     = $(LIBS)
+MPIRUN      = mpirun
 
 HDRS =	cxx/apply				\
 	cxx/invoke				\
@@ -62,7 +71,8 @@ MAIN_SRCS =					\
 	funhpc/mainloop.cc
 EXAMPLE_SRCS =					\
 	examples/hello.cc			\
-	examples/million.cc
+	examples/million.cc			\
+	examples/pingpong.cc
 TEST_SRCS =					\
 	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
@@ -108,7 +118,7 @@ objs: $(SRCS:%.cc=%.o)
 .PHONY: objs
 $(SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc $(HDRS) Makefile
-	$(CXX) -MD $(CPPFLAGS) $(CXXFLAGS) -c -o $*.o.tmp $*.cc
+	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 
@@ -121,11 +131,23 @@ examples: $(EXAMPLE_SRCS:examples/%.cc=%)
 		"QTHREAD_STACK_SIZE=65536"				\
 		./$$example;						\
 	done
+	for example in $(EXAMPLE_SRCS:examples/%.cc=%); do		\
+	$(MPIRUN) -np 2							\
+		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "QTHREAD_STACK_SIZE=65536"				\
+		./$$example;						\
+	done
 .PHONY: examples
 hello: $(MAIN_SRCS:%.cc=%.o) examples/hello.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+		$(MPILIBS:%=-l%)
 million: $(MAIN_SRCS:%.cc=%.o) examples/million.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:%=-l%)
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+		$(MPILIBS:%=-l%)
+pingpong: $(MAIN_SRCS:%.cc=%.o) examples/pingpong.o
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+		$(MPILIBS:%=-l%)
 
 ### check ###
 

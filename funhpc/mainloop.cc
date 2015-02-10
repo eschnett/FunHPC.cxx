@@ -44,7 +44,6 @@ struct mpi_req_t {
 
   std::size_t proc;
   std::string buf;
-  // std::vector<char> buf;
   MPI_Request req;
 };
 
@@ -63,8 +62,6 @@ void enqueue_task(std::size_t dest, task_t &&t) {
   std::stringstream buf;
   { (cereal::BinaryOutputArchive(buf))(std::move(t)); }
   reqp->buf = buf.str();
-  // auto str = buf.str();
-  // reqp->buf = std::vector<char>(str.begin(), str.end());
   {
     qthread::lock_guard<qthread::mutex> g(send_queue_mutex);
     send_queue.push_back(std::move(reqp));
@@ -112,7 +109,6 @@ void run_task(std::unique_ptr<mpi_req_t> &reqp) {
   task_t t;
   {
     std::stringstream buf(std::move(reqp->buf));
-    // std::stringstream buf(std::string(reqp->buf.begin(), reqp->buf.end()));
     (cereal::BinaryInputArchive(buf))(t);
   }
   reqp = {}; // free memory

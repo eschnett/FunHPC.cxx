@@ -3,6 +3,7 @@
 #define CXX_TASK
 
 #include <cxx/apply>
+#include <cxx/serialize>
 
 #include <cereal/access.hpp>
 #include <cereal/archives/binary.hpp>

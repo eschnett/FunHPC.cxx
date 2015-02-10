@@ -1,15 +1,13 @@
 // -*-C++-*-
-#ifndef FUNHPC_SERIALIZE
-#define FUNHPC_SERIALIZE
-
-#include <cxx/task>
+#ifndef CXX_SERIALIZE
+#define CXX_SERIALIZE
 
 #include <cereal/archives/binary.hpp>
 
 #include <cstring>
 #include <type_traits>
 
-namespace funhpc {
+namespace cxx {
 namespace detail {
 template <typename T> void serialize_anchor_f() {}
 static_assert(sizeof &serialize_anchor_f<void> <= sizeof(uintptr_t), "");
@@ -32,7 +30,7 @@ std::enable_if_t<!std::is_function<T>::value, void> serialize(Archive &, T *&) {
 template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
-  uintptr_t offset = uintptr_t(f) - funhpc::detail::serialize_anchor;
+  uintptr_t offset = uintptr_t(f) - cxx::detail::serialize_anchor;
   ar(offset);
 }
 template <class Archive, typename F,
@@ -40,7 +38,7 @@ template <class Archive, typename F,
 void load(Archive &ar, F *&f) {
   uintptr_t offset;
   ar(offset);
-  f = (F *)(offset + funhpc::detail::serialize_anchor);
+  f = (F *)(offset + cxx::detail::serialize_anchor);
 }
 
 // member pointers (both member functions and member objects)
@@ -61,8 +59,8 @@ void load(Archive &ar, T &m) {
 }
 }
 
-#define FUNHPC_SERIALIZE_DONE
-#endif // #ifdef FUNHPC_SERIALIZE
-#ifndef FUNHPC_SERIALIZE_DONE
+#define CXX_SERIALIZE_DONE
+#endif // #ifdef CXX_SERIALIZE
+#ifndef CXX_SERIALIZE_DONE
 #error "Cyclic include dependency"
 #endif

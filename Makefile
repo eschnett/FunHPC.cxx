@@ -64,12 +64,12 @@ MPIRUN      = mpirun
 
 HDRS =	cxx/apply				\
 	cxx/invoke				\
+	cxx/serialize				\
 	cxx/task				\
 	fun/shared_future			\
 	fun/shared_ptr				\
 	fun/vector				\
 	funhpc/rexec				\
-	funhpc/serialize			\
 	qthread/future				\
 	qthread/mutex				\
 	qthread/thread
@@ -82,11 +82,11 @@ EXAMPLE_SRCS =					\
 TEST_SRCS =					\
 	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
+	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\
-	funhpc/serialize_test.cc		\
 	qthread/future_test.cc			\
 	qthread/future_test_std.cc		\
 	qthread/mutex_test.cc			\

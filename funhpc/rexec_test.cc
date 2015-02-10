@@ -72,3 +72,16 @@ TEST(funhpc_rexec, member_function_pointer1) {
   p->get_future().wait();
   p.reset();
 }
+
+void daisy_chain(std::size_t ttl) {
+  if (ttl == 0)
+    return reflect();
+  funhpc::rexec((funhpc::rank() + 1) % funhpc::size(), daisy_chain, ttl - 1);
+}
+
+TEST(funhpc_rexec, daisy_chaining) {
+  p = std::make_unique<qthread::promise<void>>();
+  daisy_chain(1000);
+  p->get_future().wait();
+  p.reset();
+}

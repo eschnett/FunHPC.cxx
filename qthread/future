@@ -54,13 +54,19 @@ public:
   ~shared_state() { ready.fill(); }
 
   template <typename U = T,
-            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
+            std::enable_if_t<!std::is_void<U>::value &&
+                             !std::is_reference<U>::value> * = nullptr>
+  shared_state(id_t<U> &&value)
+      : has_trigger(false), value(std::move(value)) {}
+  template <typename U = T,
+            std::enable_if_t<!std::is_void<U>::value &&
+                             !std::is_reference<U>::value> * = nullptr>
   shared_state(const id_t<U> &value)
       : has_trigger(false), value(value) {}
   template <typename U = T,
-            std::enable_if_t<!std::is_void<U>::value> * = nullptr>
-  shared_state(id_t<U> &&value)
-      : has_trigger(false), value(std::move(value)) {}
+            std::enable_if_t<std::is_reference<U>::value> * = nullptr>
+  shared_state(id_t<U> &value)
+      : has_trigger(false), value(&value) {}
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   shared_state(std::tuple<>)
@@ -197,7 +203,7 @@ public:
   future(const future &other) = delete;
 
   future &operator=(future &&other) noexcept {
-    shared_state = {};
+    shared_state.reset();
     swap(other);
     return *this;
   }
@@ -218,8 +224,8 @@ public:
                              !std::is_reference<U>::value> * = nullptr>
   U get() {
     assert(valid());
-    decltype(auto) res(shared_state->move());
-    shared_state = {};
+    auto res(shared_state->move());
+    shared_state.reset();
     return res;
   }
   template <typename U = T,
@@ -227,7 +233,7 @@ public:
   U &get() {
     assert(valid());
     decltype(auto) res(shared_state->get());
-    shared_state = {};
+    shared_state.reset();
     return res;
   }
   template <typename U = T,
@@ -235,7 +241,7 @@ public:
   void get() {
     assert(valid());
     shared_state->wait();
-    shared_state = {};
+    shared_state.reset();
   }
 
   bool valid() const noexcept { return bool(shared_state); }
@@ -339,7 +345,8 @@ template <typename T> class promise {
   std::shared_ptr<detail::shared_state<T>> shared_state;
 
 public:
-  promise() : shared_state(std::make_shared<detail::shared_state<T>>()) {}
+  // promise() : shared_state(std::make_shared<detail::shared_state<T>>()) {}
+  promise() {}
   promise(promise &&other) noexcept { swap(other); }
   promise(const promise &other) = delete;
 
@@ -349,7 +356,7 @@ public:
   }
 
   promise &operator=(promise &&other) {
-    shared_state = {};
+    shared_state.reset();
     swap(other);
     return *this;
   }
@@ -360,33 +367,50 @@ public:
     swap(shared_state, other.shared_state);
   }
 
-  future<T> get_future() { return future<T>(shared_state); }
+  future<T> get_future() {
+    if (!shared_state)
+      shared_state = std::make_shared<detail::shared_state<T>>();
+    return future<T>(shared_state);
+  }
 
   template <
       typename U = T,
       std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
                        !std::is_reference<T>::value> * = nullptr>
   void set_value(const U &value) {
-    shared_state->set_value(value);
+    if (shared_state)
+      shared_state->set_value(value);
+    else
+      shared_state = std::make_shared<detail::shared_state<T>>(value);
   }
   template <
       typename U = T,
       std::enable_if_t<std::is_same<U, T>::value && !std::is_void<T>::value &&
                        !std::is_reference<T>::value> * = nullptr>
   void set_value(U &&value) {
-    shared_state->set_value(std::move(value));
+    if (shared_state)
+      shared_state->set_value(std::move(value));
+    else
+      shared_state =
+          std::make_shared<detail::shared_state<T>>(std::move(value));
   }
   template <typename U = T,
             std::enable_if_t<std::is_same<T, U &>::value &&
                              std::is_reference<T>::value> * = nullptr>
   void set_value(U &value) {
-    shared_state->set_value(value);
+    if (shared_state)
+      shared_state->set_value(value);
+    else
+      shared_state = std::make_shared<detail::shared_state<T>>(value);
   }
   template <typename U = T,
             std::enable_if_t<std::is_same<U, T>::value &&
                              std::is_void<T>::value> * = nullptr>
   void set_value() {
-    shared_state->set_value();
+    if (shared_state)
+      shared_state->set_value();
+    else
+      shared_state = std::make_shared<detail::shared_state<T>>(std::tuple<>());
   }
 };
 template <typename T> void swap(promise<T> &lhs, promise<T> &rhs) noexcept {

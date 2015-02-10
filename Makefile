@@ -8,16 +8,16 @@ CEREAL_INCDIRS  = $(CEREAL_DIR)/include
 CEREAL_LIBDIRS  =
 CEREAL_LIBS     =
 
-GTEST_NAME     = gtest-1.7.0
-GTEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
-GTEST_DIR      = $(abspath ./$(GTEST_NAME))
-GTEST_CPPFLAGS =
-GTEST_INCDIRS  = $(GTEST_DIR)/include $(GTEST_DIR)
-GTEST_LIBDIRS  = $(GTEST_DIR)/src
-GTEST_LIBS     =
+GOOGLETEST_NAME     = gtest-1.7.0
+GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
+GOOGLETEST_DIR      = $(abspath ./$(GOOGLETEST_NAME))
+GOOGLETEST_CPPFLAGS =
+GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
+GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
+GOOGLETEST_LIBS     =
 
 HWLOC_NAME     = hwloc-1.10.0
-HWLOC_URL      =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
+HWLOC_URL      = http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
 HWLOC_DIR      = $(abspath ./$(HWLOC_NAME))
 HWLOC_CPPFLAGS =
 HWLOC_INCDIRS  = $(HWLOC_DIR)/include
@@ -40,14 +40,14 @@ QTHREADS_INCDIRS  = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
 QTHREADS_LIBDIRS  = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
 QTHREADS_LIBS     = qthread pthread $(HWLOC_LIBS)
 
-INCDIRS = $(CEREAL_INCDIRS) $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
-LIBDIRS = $(CEREAL_LIBDIRS) $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
-LIBS    = $(CEREAL_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
+INCDIRS = $(CEREAL_INCDIRS) $(GOOGLETEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
+LIBDIRS = $(CEREAL_LIBDIRS) $(GOOGLETEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
+LIBS    = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
 # Can also use gcc
 CC          = clang
 CXX         = clang++
-CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GTEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
+CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 OPTFLAGS    = -O3
@@ -69,16 +69,15 @@ HDRS =	cxx/apply				\
 	fun/shared_future			\
 	fun/shared_ptr				\
 	fun/vector				\
+	funhpc/main				\
 	funhpc/rexec				\
+	funhpc/server				\
 	qthread/future				\
 	qthread/mutex				\
 	qthread/thread
-MAIN_SRCS =					\
-	funhpc/mainloop.cc
-EXAMPLE_SRCS =					\
-	examples/hello.cc			\
-	examples/million.cc			\
-	examples/pingpong.cc
+FUNHPC_SRCS =					\
+	funhpc/main_impl.cc			\
+	funhpc/server_impl.cc
 TEST_SRCS =					\
 	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
@@ -93,7 +92,14 @@ TEST_SRCS =					\
 	qthread/mutex_test_std.cc		\
 	qthread/thread_test.cc			\
 	qthread/thread_test_std.cc
-SRCS = $(EXAMPLE_SRCS) $(MAIN_SRCS) $(TEST_SRCS)
+FUNHPC_TEST_SRCS =				\
+	funhpc/rexec_test.cc			\
+	funhpc/test_main.cc
+FUNHPC_EXAMPLE_SRCS =				\
+	examples/hello.cc			\
+	examples/million.cc			\
+	examples/pingpong.cc
+ALL_SRCS = $(SRCS) $(FUNHPC_SRCS) $(TEST_SRCS) $(FUNHPC_TEST_SRCS) $(FUNHPC_EXAMPLE_SRCS)
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
@@ -114,16 +120,16 @@ all: format objs
 
 ### format ###
 
-format: $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
+format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 .PHONY: format
 %.fmt: % Makefile 
 	-clang-format -style=llvm -i $* && : > $*.fmt
 
 ### compile ###
 
-objs: $(SRCS:%.cc=%.o)
+objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
-$(SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
+$(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc $(HDRS) Makefile
 	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
@@ -131,48 +137,55 @@ $(SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 
 ### examples ###
 
-examples: $(EXAMPLE_SRCS:examples/%.cc=%)
-	for example in $(EXAMPLE_SRCS:examples/%.cc=%); do		\
-	env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		"QTHREAD_STACK_SIZE=65536"				\
-		./$$example;						\
+examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
+	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	   \
+		env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"   \
+			"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))" \
+			"QTHREAD_STACK_SIZE=65536"			   \
+			./$$example;					   \
 	done
-	for example in $(EXAMPLE_SRCS:examples/%.cc=%); do		\
-	$(MPIRUN) -np 2							\
-		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "QTHREAD_STACK_SIZE=65536"				\
-		./$$example;						\
+	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	      \
+		$(MPIRUN) -np 2						      \
+			-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"   \
+			-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))" \
+			-x "QTHREAD_STACK_SIZE=65536"			      \
+			./$$example;					      \
 	done
 .PHONY: examples
-hello: $(MAIN_SRCS:%.cc=%.o) examples/hello.o
+hello: $(FUNHPC_SRCS:%.cc=%.o) examples/hello.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
-million: $(MAIN_SRCS:%.cc=%.o) examples/million.o
+million: $(FUNHPC_SRCS:%.cc=%.o) examples/million.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
-pingpong: $(MAIN_SRCS:%.cc=%.o) examples/pingpong.o
+pingpong: $(FUNHPC_SRCS:%.cc=%.o) examples/pingpong.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
 
 ### check ###
 
-check: selftest
+check: selftest selftest-funhpc
 	env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
 		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
 		"QTHREAD_STACK_SIZE=65536"				\
 		./selftest
+	$(MPIRUN) -np 2							\
+		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "QTHREAD_STACK_SIZE=65536"				\
+		./selftest-funhpc
 .PHONY: check
 selftest: $(TEST_SRCS:%.cc=%.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)
+selftest-funhpc: $(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^ -lgtest $(MPILIBS:%=-l%)
 
 ### external ###
 
 external:
 	mkdir external
 
-### cereal ###
+### Cereal ###
 
 cereal: external/cereal.done
 .PHONY: cereal
@@ -190,22 +203,22 @@ external/cereal.unpacked: external/cereal.downloaded
 external/cereal.done: external/cereal.unpacked
 	: > $@
 
-### gtest ###
+### Google Test ###
 
 gtest: external/gtest.done
 .PHONY: gtest
 external/gtest.downloaded: | external
 	(cd external &&				\
-		$(RM) $(notdir $(GTEST_URL)) &&	\
-		wget $(GTEST_URL)) &&		\
+		$(RM) $(notdir $(GOOGLETEST_URL)) &&	\
+		wget $(GOOGLETEST_URL)) &&		\
 	: > $@
 external/gtest.unpacked: external/gtest.downloaded
-	rm -rf $(GTEST_NAME) &&				\
-	unzip external/$(notdir $(GTEST_URL)) &&	\
+	rm -rf $(GOOGLETEST_NAME) &&				\
+	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: > $@
 external/gtest.built: external/gtest.unpacked
 	(cd external &&							       \
-		cd $(GTEST_DIR)/src &&					       \
+		cd $(GOOGLETEST_DIR)/src &&					       \
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest-all.cc &&  \
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest_main.cc && \
 		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	       \
@@ -311,8 +324,8 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 			--prefix="$(QTHREADS_DIR)"			\
 			--enable-guard-pages --enable-debug=yes		\
 			--with-hwloc="$(HWLOC_DIR)"			\
-			"CC=$(CC)"				\
-			"CXX=$(CXX)"				\
+			"CC=$(CC)"					\
+			"CXX=$(CXX)"					\
 			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
 			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
 		$(MAKE)) &&						\
@@ -329,15 +342,15 @@ external/qthreads.done: external/qthreads.installed
 ### clean ###
 
 clean:
-	$(RM) $(HDRS:%=%.fmt) $(SRCS:%=%.fmt)
-	$(RM) $(SRCS:%.cc=%.o) $(SRCS:%.cc=%.d)
-	$(RM) $(EXAMPLE_SRCS:examples/%.cc=%)
+	$(RM) $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
+	$(RM) $(ALL_SRCS:%.cc=%.o) $(ALL_SRCS:%.cc=%.d)
+	$(RM) $(FUNHPC_gEXAMPLE_SRCS:examples/%.cc=%)
 	$(RM) selftest
 .PHONY: clean
 
 distclean: clean
-	$(RM) -r external $(CEREAL_DIR) $(GTEST_DIR) $(HWLOC_DIR)	\
+	$(RM) -r external $(CEREAL_DIR) $(GOOGLETEST_DIR) $(HWLOC_DIR)	\
 		$(JEMALLOC_DIR) $(QTHREADS_DIR)
 .PHONY: distclean
 
--include $(SRCS:%.cc=%.d)
+-include $(ALL_SRCS:%.cc=%.d)

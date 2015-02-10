@@ -18,7 +18,8 @@ void enqueue_task(std::size_t dest, task_t &&t);
 template <typename F, typename... Args>
 void rexec(std::size_t dest, F &&f, Args &&... args) {
   if (dest == rank())
-    qthread::thread(std::forward<F>(f), std::forward<Args>(args)...).detach();
+    return qthread::thread(std::forward<F>(f), std::forward<Args>(args)...)
+        .detach();
   task_t::register_type<F, Args...>();
   enqueue_task(dest, task_t(std::forward<F>(f), std::forward<Args>(args)...));
 }

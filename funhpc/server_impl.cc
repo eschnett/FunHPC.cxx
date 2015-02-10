@@ -1,5 +1,5 @@
 #include <cxx/task>
-#include <funhpc/main>
+#include <funhpc/server>
 #include <funhpc/rexec>
 #include <qthread/future>
 #include <qthread/mutex>
@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <memory>
 #include <sstream>
+// #include <stdlib.h>
 #include <string>
 #include <vector>
 
@@ -49,7 +50,7 @@ struct mpi_req_t {
 
 // Send queue, to communicate between threads
 std::vector<std::unique_ptr<mpi_req_t>> send_queue;
-qthread::mutex send_queue_mutex;
+std::unique_ptr<qthread::mutex> send_queue_mutex;
 
 // Send requests, to communicate with MPI
 std::vector<std::unique_ptr<mpi_req_t>> send_reqs;
@@ -63,7 +64,7 @@ void enqueue_task(std::size_t dest, task_t &&t) {
   { (cereal::BinaryOutputArchive(buf))(std::move(t)); }
   reqp->buf = buf.str();
   {
-    qthread::lock_guard<qthread::mutex> g(send_queue_mutex);
+    qthread::lock_guard<qthread::mutex> g(*send_queue_mutex);
     send_queue.push_back(std::move(reqp));
   }
 }
@@ -73,7 +74,7 @@ void send_tasks() {
   // Obtain send queue
   std::vector<std::unique_ptr<mpi_req_t>> reqps;
   {
-    qthread::lock_guard<qthread::mutex> g(send_queue_mutex);
+    qthread::lock_guard<qthread::mutex> g(*send_queue_mutex);
     using std::swap;
     swap(send_queue, reqps);
   }
@@ -111,7 +112,7 @@ void run_task(std::unique_ptr<mpi_req_t> &reqp) {
     std::stringstream buf(std::move(reqp->buf));
     (cereal::BinaryInputArchive(buf))(t);
   }
-  reqp = {}; // free memory
+  reqp.reset(); // free memory
 
   // Run task
   t();
@@ -158,34 +159,34 @@ bool terminate_check(bool ready_to_terminate) {
   return flag;
 }
 
-// Main loop
-int event_loop(int &argc, char **&argv) {
-  // Initialize
+void initialize(int &argc, char **&argv) {
   MPI_Init(&argc, &argv);
+  // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
-  // Main loop
-  int res;
-  {
-    qthread::future<int> fres;
-    if (rank() == mpi_root)
-      fres = qthread::async(funhpc_main, argc, argv);
+}
 
-    for (;;) {
-      send_tasks();
-      recv_tasks();
-      if (terminate_check(!fres.valid() || fres.is_ready()))
-        break;
-      qthread::this_thread::yield();
-    }
-    cancel_sends();
+int eventloop(mainfunc_t *user_main, int argc, char **argv) {
+  send_queue_mutex = std::make_unique<qthread::mutex>();
 
-    res = fres.valid() ? fres.get() : 0;
+  qthread::future<int> fres;
+  if (rank() == mpi_root)
+    fres = qthread::async(user_main, argc, argv);
+
+  for (;;) {
+    send_tasks();
+    recv_tasks();
+    if (terminate_check(!fres.valid() || fres.is_ready()))
+      break;
+    qthread::this_thread::yield();
   }
-  // Shut down
+  cancel_sends();
+
+  send_queue_mutex.reset();
+  return fres.valid() ? fres.get() : 0;
+}
+
+void finalize() {
   qthread_finalize();
   MPI_Finalize();
-  return res;
 }
 }
-
-int main(int argc, char **argv) { return funhpc::event_loop(argc, argv); }

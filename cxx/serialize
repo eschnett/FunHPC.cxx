@@ -27,6 +27,9 @@ std::enable_if_t<!std::is_function<T>::value, void> serialize(Archive &, T *&) {
 
 // function pointers
 
+// Note: We subtract an "anchor address" to handle ASLR (address space
+// layout randomization)
+
 template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
@@ -41,21 +44,57 @@ void load(Archive &ar, F *&f) {
   f = (F *)(offset + cxx::detail::serialize_anchor);
 }
 
-// member pointers (both member functions and member objects)
+// member function pointers
+
+// Note: This follows the Itanium C++ ABI
+// <http://refspecs.linuxbase.org/cxxabi-1.86.html>
+
+template <
+    typename Archive, typename F,
+    std::enable_if_t<std::is_member_function_pointer<F>::value> * = nullptr>
+void save(Archive &ar, F const &f) {
+  struct {
+    uintptr_t fptr;
+    ptrdiff_t off;
+  } buf;
+  static_assert(sizeof f == sizeof buf, "");
+  std::memcpy(&buf, &f, sizeof buf);
+  if (!(buf.fptr & 1))
+    buf.fptr -= cxx::detail::serialize_anchor;
+  ar(buf.fptr, buf.off);
+}
+template <
+    class Archive, typename F,
+    std::enable_if_t<std::is_member_function_pointer<F>::value> * = nullptr>
+void load(Archive &ar, F &f) {
+  struct {
+    uintptr_t fptr;
+    ptrdiff_t off;
+  } buf;
+  static_assert(sizeof f == sizeof buf, "");
+  ar(buf.fptr, buf.off);
+  if (!(buf.fptr & 1))
+    buf.fptr += cxx::detail::serialize_anchor;
+  std::memcpy(&f, &buf, sizeof buf);
+}
+
+// member object pointers
 
 template <typename Archive, typename T,
-          std::enable_if_t<std::is_member_pointer<T>::value> * = nullptr>
+          std::enable_if_t<std::is_member_object_pointer<T>::value> * = nullptr>
 void save(Archive &ar, T const &m) {
-  char buf[sizeof(T)];
-  std::memcpy(buf, &m, sizeof(T));
+  static_assert(sizeof m == sizeof(std::ptrdiff_t), "");
+  std::ptrdiff_t buf;
+  std::memcpy(&buf, &m, sizeof buf);
   ar(buf);
 }
 template <class Archive, typename T,
-          std::enable_if_t<std::is_member_pointer<T>::value> * = nullptr>
+          std::enable_if_t<std::is_member_object_pointer<T>::value> * = nullptr>
 void load(Archive &ar, T &m) {
-  char buf[sizeof(T)];
+  static_assert(sizeof m == sizeof(std::ptrdiff_t), "");
+  std::ptrdiff_t buf;
   ar(buf);
-  std::memcpy(&m, buf, sizeof(T));
+  std::memcpy(&m, &buf, sizeof buf);
 }
 }
 

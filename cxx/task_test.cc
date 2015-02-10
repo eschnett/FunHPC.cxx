@@ -24,3 +24,14 @@ TEST(cxx_task, task) {
   // acceptable since task is used (and thus tested) extensively in
   // qthread/future.
 }
+
+struct obj {
+  const int m = 1;
+  int operator()(int x) { return x; }
+};
+
+TEST(cxx_task, objects) {
+  EXPECT_EQ(1, task<int>(obj(), 1)());
+  EXPECT_EQ(1, task<int>(&obj::operator(), obj(), 1)());
+  EXPECT_EQ(1, task<int>(&obj::m, obj())());
+}

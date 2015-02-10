@@ -2,6 +2,8 @@
 #ifndef CXX_APPLY
 #define CXX_APPLY
 
+#include <cxx/invoke>
+
 #include <tuple>
 #include <utility>
 
@@ -10,7 +12,8 @@ namespace cxx {
 namespace detail {
 template <typename F, typename Tuple, size_t... I>
 decltype(auto) apply_impl(F &&f, Tuple &&t, std::index_sequence<I...>) {
-  return std::forward<F>(f)(std::get<I>(std::forward<Tuple>(t))...);
+  return cxx::invoke(std::forward<F>(f),
+                     std::get<I>(std::forward<Tuple>(t))...);
 }
 }
 

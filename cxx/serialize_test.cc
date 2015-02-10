@@ -22,7 +22,7 @@ template <typename T> T deserialize(const std::string &str) {
 
 int fun() { return 1; }
 
-TEST(funhpc_rexec, serialize_function) {
+TEST(cxx_serialize, function) {
   auto orig = &fun;
   auto buf = serialize(orig);
   auto copy = deserialize<decltype(orig)>(buf);
@@ -34,7 +34,7 @@ struct funobj {
   int operator()() { return 1; }
 };
 
-TEST(funhpc_rexec, serialize_function_object) {
+TEST(cxx_serialize, function_object) {
   auto orig = funobj();
   auto buf = serialize(orig);
   auto copy = deserialize<decltype(orig)>(buf);
@@ -42,7 +42,7 @@ TEST(funhpc_rexec, serialize_function_object) {
   EXPECT_EQ(cxx::invoke(orig), cxx::invoke(copy));
 }
 
-TEST(funhpc_rexec, serialize_member_function) {
+TEST(cxx_serialize, member_function) {
   auto orig = &funobj::operator();
   auto buf = serialize(orig);
   auto copy = deserialize<decltype(orig)>(buf);
@@ -55,7 +55,7 @@ struct obj {
   obj() : m(1) {}
 };
 
-TEST(funhpc_rexec, serialize_member_object) {
+TEST(cxx_serialize, member_object) {
   auto orig = &obj::m;
   auto buf = serialize(orig);
   auto copy = deserialize<decltype(orig)>(buf);

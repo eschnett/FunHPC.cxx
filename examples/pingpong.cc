@@ -25,7 +25,7 @@ int funhpc_main(int argc, char **argv) {
     p = std::make_unique<qthread::promise<void>>();
     funhpc::rexec(1 % funhpc::size(), ping);
     p->get_future().wait();
-    p = {};
+    p.reset();
   }
   auto t1 = std::chrono::high_resolution_clock::now();
   std::cout << "   ping-pong time: ("

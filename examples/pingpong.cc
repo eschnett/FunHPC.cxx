@@ -13,15 +13,9 @@
 // is initialized too late and finalized too early
 std::unique_ptr<qthread::promise<void>> p;
 
-struct pong {
-  template <typename Archive> void serialize(Archive &ar) {}
-  void operator()() { p->set_value(); }
-};
+void pong() { p->set_value(); }
 
-struct ping {
-  template <typename Archive> void serialize(Archive &ar) {}
-  void operator()() { funhpc::rexec(0, pong()); }
-};
+void ping() { funhpc::rexec(0, pong); }
 
 int funhpc_main(int argc, char **argv) {
   std::cout << "Ping-Pong\n";
@@ -29,7 +23,7 @@ int funhpc_main(int argc, char **argv) {
   auto t0 = std::chrono::high_resolution_clock::now();
   for (std::size_t i = 0; i < count; ++i) {
     p = std::make_unique<qthread::promise<void>>();
-    funhpc::rexec(1 % funhpc::size(), ping());
+    funhpc::rexec(1 % funhpc::size(), ping);
     p->get_future().wait();
     p = {};
   }

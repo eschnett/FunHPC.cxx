@@ -3,19 +3,22 @@
 #define FUNHPC_REXEC
 
 #include <cxx/task>
+#include <qthread/thread>
 
-#include <cereal/archives/binary.hpp>
+#include <type_traits>
 
 namespace funhpc {
-typedef cxx::task<void> task_t;
-
 std::size_t rank();
 std::size_t size();
 
+typedef cxx::task<void> task_t;
 void enqueue_task(std::size_t dest, task_t &&t);
 
+// Remote execution
 template <typename F, typename... Args>
 void rexec(std::size_t dest, F &&f, Args &&... args) {
+  if (dest == rank())
+    qthread::thread(std::forward<F>(f), std::forward<Args>(args)...).detach();
   task_t::register_type<F, Args...>();
   enqueue_task(dest, task_t(std::forward<F>(f), std::forward<Args>(args)...));
 }

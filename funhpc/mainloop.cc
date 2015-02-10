@@ -1,6 +1,7 @@
 #include <cxx/task>
 #include <funhpc/main>
 #include <funhpc/rexec>
+#include <funhpc/serialize>
 #include <qthread/future>
 #include <qthread/mutex>
 #include <qthread/thread>

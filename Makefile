@@ -1,39 +1,44 @@
 # Makefile for FunHPC
 
-CEREAL_NAME    = cereal-1.1.0
-CEREAL_URL     = https://github.com/USCiLab/cereal/archive/v1.1.0.tar.gz
-CEREAL_DIR     = $(abspath ./$(CEREAL_NAME))
-CEREAL_INCDIRS = $(CEREAL_DIR)/include
-CEREAL_LIBDIRS =
-CEREAL_LIBS    =
+CEREAL_NAME     = cereal-1.1.0
+CEREAL_URL      = https://github.com/USCiLab/cereal/archive/v1.1.0.tar.gz
+CEREAL_DIR      = $(abspath ./$(CEREAL_NAME))
+CEREAL_CPPFLAGS = -DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION
+CEREAL_INCDIRS  = $(CEREAL_DIR)/include
+CEREAL_LIBDIRS  =
+CEREAL_LIBS     =
 
-GTEST_NAME    = gtest-1.7.0
-GTEST_URL     = https://googletest.googlecode.com/files/gtest-1.7.0.zip
-GTEST_DIR     = $(abspath ./$(GTEST_NAME))
-GTEST_INCDIRS = $(GTEST_DIR)/include $(GTEST_DIR)
-GTEST_LIBDIRS = $(GTEST_DIR)/src
-GTEST_LIBS    =
+GTEST_NAME     = gtest-1.7.0
+GTEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
+GTEST_DIR      = $(abspath ./$(GTEST_NAME))
+GTEST_CPPFLAGS =
+GTEST_INCDIRS  = $(GTEST_DIR)/include $(GTEST_DIR)
+GTEST_LIBDIRS  = $(GTEST_DIR)/src
+GTEST_LIBS     =
 
-HWLOC_NAME    = hwloc-1.10.0
-HWLOC_URL     =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
-HWLOC_DIR     = $(abspath ./$(HWLOC_NAME))
-HWLOC_INCDIRS = $(HWLOC_DIR)/include
-HWLOC_LIBDIRS = $(HWLOC_DIR)/lib
-HWLOC_LIBS    = hwloc
+HWLOC_NAME     = hwloc-1.10.0
+HWLOC_URL      =	http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
+HWLOC_DIR      = $(abspath ./$(HWLOC_NAME))
+HWLOC_CPPFLAGS =
+HWLOC_INCDIRS  = $(HWLOC_DIR)/include
+HWLOC_LIBDIRS  = $(HWLOC_DIR)/lib
+HWLOC_LIBS     = hwloc
 
-JEMALLOC_NAME    = jemalloc-3.6.0
-JEMALLOC_URL     = http://www.canonware.com/download/jemalloc/jemalloc-3.6.0.tar.bz2
-JEMALLOC_DIR     = $(abspath ./$(JEMALLOC_NAME))
-JEMALLOC_INCDIRS = $(JEMALLOC_DIR)/include
-JEMALLOC_LIBDIRS = $(JEMALLOC_DIR)/lib
-JEMALLOC_LIBS    = jemalloc pthread # Note: JEMALLOC_LIBS must come last
+JEMALLOC_NAME     = jemalloc-3.6.0
+JEMALLOC_URL      = http://www.canonware.com/download/jemalloc/jemalloc-3.6.0.tar.bz2
+JEMALLOC_DIR      = $(abspath ./$(JEMALLOC_NAME))
+JEMALLOC_CPPFLAGS =
+JEMALLOC_INCDIRS  = $(JEMALLOC_DIR)/include
+JEMALLOC_LIBDIRS  = $(JEMALLOC_DIR)/lib
+JEMALLOC_LIBS     = jemalloc pthread # Note: JEMALLOC_LIBS must come last
 
-QTHREADS_NAME    = qthread-1.10
-QTHREADS_URL     = https://qthreads.googlecode.com/files/qthread-1.10.tar.bz2
-QTHREADS_DIR     = $(abspath ./$(QTHREADS_NAME))
-QTHREADS_INCDIRS = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
-QTHREADS_LIBDIRS = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
-QTHREADS_LIBS    = qthread pthread $(HWLOC_LIBS)
+QTHREADS_NAME     = qthread-1.10
+QTHREADS_URL      = https://qthreads.googlecode.com/files/qthread-1.10.tar.bz2
+QTHREADS_DIR      = $(abspath ./$(QTHREADS_NAME))
+QTHREADS_CPPFLAGS =
+QTHREADS_INCDIRS  = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
+QTHREADS_LIBDIRS  = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
+QTHREADS_LIBS     = qthread pthread $(HWLOC_LIBS)
 
 INCDIRS = $(CEREAL_INCDIRS) $(GTEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
 LIBDIRS = $(CEREAL_LIBDIRS) $(GTEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
@@ -42,7 +47,7 @@ LIBS    = $(CEREAL_LIBS) $(GTEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC
 # Can also use gcc
 CC          = clang
 CXX         = clang++
-CPPFLAGS    = $(INCDIRS:%=-I%)
+CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GTEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 OPTFLAGS    = -O3
@@ -64,6 +69,7 @@ HDRS =	cxx/apply				\
 	fun/shared_ptr				\
 	fun/vector				\
 	funhpc/rexec				\
+	funhpc/serialize			\
 	qthread/future				\
 	qthread/mutex				\
 	qthread/thread
@@ -80,6 +86,7 @@ TEST_SRCS =					\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\
+	funhpc/serialize_test.cc		\
 	qthread/future_test.cc			\
 	qthread/future_test_std.cc		\
 	qthread/mutex_test.cc			\
@@ -170,12 +177,15 @@ external:
 cereal: external/cereal.done
 .PHONY: cereal
 external/cereal.downloaded: | external
-	(cd external &&				\
-		wget $(CEREAL_URL)) &&		\
+	(cd external &&					\
+		$(RM) $(notdir $(CEREAL_URL)) &&	\
+		wget $(CEREAL_URL)) &&			\
 	: > $@
 external/cereal.unpacked: external/cereal.downloaded
 	rm -rf $(CEREAL_NAME) &&			\
 	tar xzf external/$(notdir $(CEREAL_URL)) &&	\
+	(cd $(CEREAL_NAME) &&				\
+		patch -p0 < $(abspath cereal.patch)) &&	\
 	: > $@
 external/cereal.done: external/cereal.unpacked
 	: > $@
@@ -186,6 +196,7 @@ gtest: external/gtest.done
 .PHONY: gtest
 external/gtest.downloaded: | external
 	(cd external &&				\
+		$(RM) $(notdir $(GTEST_URL)) &&	\
 		wget $(GTEST_URL)) &&		\
 	: > $@
 external/gtest.unpacked: external/gtest.downloaded
@@ -208,6 +219,7 @@ hwloc: external/hwloc.done
 .PHONY: hwloc
 external/hwloc.downloaded: | external
 	(cd external &&				\
+		$(RM) $(notdir $(HWLOC_URL)) &&	\
 		wget $(HWLOC_URL)) &&		\
 	: > $@
 external/hwloc.unpacked: external/hwloc.downloaded
@@ -243,8 +255,9 @@ external/hwloc.done: external/hwloc.installed
 jemalloc: external/jemalloc.done
 .PHONY: jemalloc
 external/jemalloc.downloaded: | external
-	(cd external &&				\
-		wget $(JEMALLOC_URL)) &&	\
+	(cd external &&					\
+		$(RM) $(notdir $(JEMALLOC_URL)) &&	\
+		wget $(JEMALLOC_URL)) &&		\
 	: > $@
 external/jemalloc.unpacked: external/jemalloc.downloaded
 	(cd external &&					\
@@ -278,8 +291,9 @@ external/jemalloc.done: external/jemalloc.installed
 qthreads: external/qthreads.done
 .PHONY: qthreads
 external/qthreads.downloaded: | external
-	(cd external &&				\
-		wget $(QTHREADS_URL)) &&	\
+	(cd external &&					\
+		$(RM) $(notdir $(QTHREADS_URL)) &&	\
+		wget $(QTHREADS_URL)) &&		\
 	: > $@
 external/qthreads.unpacked: external/qthreads.downloaded
 	(cd external &&						\

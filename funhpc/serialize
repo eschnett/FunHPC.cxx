@@ -1,0 +1,68 @@
+// -*-C++-*-
+#ifndef FUNHPC_SERIALIZE
+#define FUNHPC_SERIALIZE
+
+#include <cxx/task>
+
+#include <cereal/archives/binary.hpp>
+
+#include <cstring>
+#include <type_traits>
+
+namespace funhpc {
+namespace detail {
+template <typename T> void serialize_anchor_f() {}
+static_assert(sizeof &serialize_anchor_f<void> <= sizeof(uintptr_t), "");
+const uintptr_t serialize_anchor = uintptr_t(&serialize_anchor_f<void>);
+}
+}
+
+namespace cereal {
+// This exists only to throw a static_assert to let users know we
+// don't support raw pointers
+template <typename Archive, typename T>
+std::enable_if_t<!std::is_function<T>::value, void> serialize(Archive &, T *&) {
+  static_assert(cereal::traits::detail::delay_static_assert<T>::value,
+                "Cereal does not support serializing raw pointers - please use "
+                "a smart pointer");
+}
+
+// function pointers
+
+template <typename Archive, typename F,
+          std::enable_if_t<std::is_function<F>::value> * = nullptr>
+void save(Archive &ar, F *const &f) {
+  uintptr_t offset = uintptr_t(f) - funhpc::detail::serialize_anchor;
+  ar(offset);
+}
+template <class Archive, typename F,
+          std::enable_if_t<std::is_function<F>::value> * = nullptr>
+void load(Archive &ar, F *&f) {
+  uintptr_t offset;
+  ar(offset);
+  f = (F *)(offset + funhpc::detail::serialize_anchor);
+}
+
+// member pointers (both member functions and member objects)
+
+template <typename Archive, typename T,
+          std::enable_if_t<std::is_member_pointer<T>::value> * = nullptr>
+void save(Archive &ar, T const &m) {
+  char buf[sizeof(T)];
+  std::memcpy(buf, &m, sizeof(T));
+  ar(buf);
+}
+template <class Archive, typename T,
+          std::enable_if_t<std::is_member_pointer<T>::value> * = nullptr>
+void load(Archive &ar, T &m) {
+  char buf[sizeof(T)];
+  ar(buf);
+  std::memcpy(&m, buf, sizeof(T));
+}
+}
+
+#define FUNHPC_SERIALIZE_DONE
+#endif // #ifdef FUNHPC_SERIALIZE
+#ifndef FUNHPC_SERIALIZE_DONE
+#error "Cyclic include dependency"
+#endif

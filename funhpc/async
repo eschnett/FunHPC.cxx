@@ -67,16 +67,31 @@ constexpr qthread::launch local_policy(rlaunch policy) {
 
 namespace detail {
 template <typename R> void set_result(uintptr_t ipres, R &res) {
+  static_assert(!std::is_void<R>::value, "");
   auto pres = (qthread::promise<R> *)(ipres);
   pres->set_value(std::move(res));
   delete pres;
 }
+template <typename R> void set_result_void(uintptr_t ipres) {
+  static_assert(std::is_void<R>::value, "");
+  auto pres = (qthread::promise<R> *)(ipres);
+  pres->set_value();
+  delete pres;
+}
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
+          std::enable_if_t<!std::is_void<R>::value> * = nullptr>
 void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
   rexec(origin, set_result<R>, ipres,
         cxx::invoke(std::move(f), std::move(args)...));
+}
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
+          std::enable_if_t<std::is_void<R>::value> * = nullptr>
+void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
+  cxx::invoke(std::move(f), std::move(args)...);
+  rexec(origin, set_result_void<R>, ipres);
 }
 }
 
@@ -87,11 +102,32 @@ qthread::future<R> async(rlaunch policy, std::size_t dest, F &&f,
   if (dest == rank())
     return qthread::async(detail::local_policy(policy), std::forward<F>(f),
                           std::forward<Args>(args)...);
-  auto pres = new qthread::promise<R>;
-  auto fres = pres->get_future();
-  rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>, rank(),
-        uintptr_t(pres), std::forward<F>(f), std::forward<Args>(args)...);
-  return fres;
+  auto pol = detail::decode_policy(policy);
+  switch (pol) {
+  case rlaunch::async:
+  case rlaunch::sync: {
+    auto pres = new qthread::promise<R>;
+    auto fres = pres->get_future();
+    rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
+          rank(), uintptr_t(pres), std::forward<F>(f),
+          std::forward<Args>(args)...);
+    if (pol == rlaunch::sync)
+      fres.wait();
+    return fres;
+  }
+  case rlaunch::deferred: {
+    return qthread::async(qthread::launch::deferred,
+                          [dest](auto f, auto... args) {
+                            return async(rlaunch::async, dest, std::move(f),
+                                         std::move(args)...).get();
+                          },
+                          std::forward<F>(f), std::forward<Args>(args)...);
+  }
+  case rlaunch::detached: {
+    rexec(dest, std::forward<F>(f), std::forward<Args>(args)...);
+    return qthread::future<R>();
+  }
+  }
 }
 }
 

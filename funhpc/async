@@ -66,13 +66,13 @@ constexpr qthread::launch local_policy(rlaunch policy) {
 // async ///////////////////////////////////////////////////////////////////////
 
 namespace detail {
-template <typename R> void set_result(uintptr_t ipres, R &res) {
+template <typename R> void set_result(std::uintptr_t ipres, R &res) {
   static_assert(!std::is_void<R>::value, "");
   auto pres = (qthread::promise<R> *)(ipres);
   pres->set_value(std::move(res));
   delete pres;
 }
-template <typename R> void set_result_void(uintptr_t ipres) {
+template <typename R> void set_result_void(std::uintptr_t ipres) {
   static_assert(std::is_void<R>::value, "");
   auto pres = (qthread::promise<R> *)(ipres);
   pres->set_value();
@@ -82,14 +82,16 @@ template <typename R> void set_result_void(uintptr_t ipres) {
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
           std::enable_if_t<!std::is_void<R>::value> * = nullptr>
-void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
+void continued(std::ptrdiff_t origin, std::uintptr_t ipres, F &f,
+               Args &... args) {
   rexec(origin, set_result<R>, ipres,
         cxx::invoke(std::move(f), std::move(args)...));
 }
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
           std::enable_if_t<std::is_void<R>::value> * = nullptr>
-void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
+void continued(std::ptrdiff_t origin, std::uintptr_t ipres, F &f,
+               Args &... args) {
   cxx::invoke(std::move(f), std::move(args)...);
   rexec(origin, set_result_void<R>, ipres);
 }
@@ -97,7 +99,7 @@ void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
 
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-qthread::future<R> async(rlaunch policy, std::size_t dest, F &&f,
+qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
                          Args &&... args) {
   if (dest == rank())
     return qthread::async(detail::local_policy(policy), std::forward<F>(f),
@@ -109,7 +111,7 @@ qthread::future<R> async(rlaunch policy, std::size_t dest, F &&f,
     auto pres = new qthread::promise<R>;
     auto fres = pres->get_future();
     rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
-          rank(), uintptr_t(pres), std::forward<F>(f),
+          rank(), std::uintptr_t(pres), std::forward<F>(f),
           std::forward<Args>(args)...);
     if (pol == rlaunch::sync)
       fres.wait();

@@ -8,15 +8,19 @@
 #include <type_traits>
 
 namespace funhpc {
-std::size_t rank();
-std::size_t size();
+namespace detail {
+extern std::ptrdiff_t the_rank;
+extern std::ptrdiff_t the_size;
+}
+inline std::ptrdiff_t rank() { return detail::the_rank; }
+inline std::ptrdiff_t size() { return detail::the_size; }
 
 typedef cxx::task<void> task_t;
-void enqueue_task(std::size_t dest, task_t &&t);
+void enqueue_task(std::ptrdiff_t dest, task_t &&t);
 
 // Remote execution
 template <typename F, typename... Args>
-void rexec(std::size_t dest, F &&f, Args &&... args) {
+void rexec(std::ptrdiff_t dest, F &&f, Args &&... args) {
   if (dest == rank())
     return qthread::thread(std::forward<F>(f), std::forward<Args>(args)...)
         .detach();

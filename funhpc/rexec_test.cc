@@ -73,7 +73,7 @@ TEST(funhpc_rexec, member_function_pointer1) {
   p.reset();
 }
 
-void daisy_chain(std::size_t ttl) {
+void daisy_chain(std::ptrdiff_t ttl) {
   if (ttl == 0)
     return reflect();
   funhpc::rexec((funhpc::rank() + 1) % funhpc::size(), daisy_chain, ttl - 1);

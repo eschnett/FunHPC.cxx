@@ -26,7 +26,7 @@ template <typename T> class shared_state {
   template <typename U> struct id { typedef U type; };
   template <typename U> using id_t = typename id<U>::type;
 
-  mutable syncvar ready;
+  mutable syncvar is_ready;
 
   // if present, needs to be called once when waiting
   std::atomic<bool> has_trigger;
@@ -50,8 +50,8 @@ template <typename T> class shared_state {
   }
 
 public:
-  shared_state() : has_trigger(false) { ready.empty(); }
-  ~shared_state() { ready.fill(); }
+  shared_state() : has_trigger(false) { is_ready.empty(); }
+  ~shared_state() { is_ready.fill(); }
 
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value &&
@@ -86,45 +86,45 @@ public:
   shared_state &operator=(const shared_state &) = delete;
   shared_state &operator=(shared_state &&) = delete;
 
-  bool is_ready() const noexcept { return ready.status(); }
+  bool ready() const noexcept { return is_ready.status(); }
 
   void wait() {
     if (bool(has_trigger) && has_trigger.exchange(false)) {
       run_trigger();
       trigger = {};
     }
-    ready.readFF();
+    is_ready.readFF();
   }
 
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
   void set_value(id_t<U> &&value_) {
-    assert(!is_ready());
+    assert(!ready());
     value = std::move(value_); /*TODO: memory order */
-    ready.fill();
+    is_ready.fill();
   }
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
   void set_value(const id_t<U> &value_) {
     static_assert(!std::is_reference<T>::value, "");
-    assert(!is_ready());
+    assert(!ready());
     value = value_; /*TODO: memory order */
-    ready.fill();
+    is_ready.fill();
   }
   template <typename U = T,
             std::enable_if_t<std::is_reference<U>::value> * = nullptr>
   void set_value(id_t<U> &value_) {
-    assert(!is_ready());
+    assert(!ready());
     value = &value_; /*TODO: memory order */
-    ready.fill();
+    is_ready.fill();
   }
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   void set_value() {
-    assert(!is_ready());
-    ready.fill();
+    assert(!ready());
+    is_ready.fill();
   }
 
   void set_exception() { throw("not implemented"); }
@@ -174,6 +174,15 @@ enum class launch : unsigned;
 template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
 inline future<void> make_ready_future();
 
+namespace detail {
+template <typename T> struct is_future : std::false_type {};
+template <typename T> struct is_future<future<T>> : std::true_type {};
+
+template <typename T> struct is_shared_future : std::false_type {};
+template <typename T>
+struct is_shared_future<shared_future<T>> : std::true_type {};
+}
+
 template <typename F, typename... Args>
 future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 async(launch policy, F &&f, Args &&... args);
@@ -190,6 +199,8 @@ template <typename T> class future {
   friend future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
   async(launch policy, F &&f, Args &&... args);
 
+  typedef T element_type;
+
   std::shared_ptr<detail::shared_state<T>> shared_state;
 
   future(const std::shared_ptr<detail::shared_state<T>> &shared_state)
@@ -201,6 +212,8 @@ public:
   future() noexcept : shared_state() {}
   future(future &&other) noexcept : future() { swap(other); }
   future(const future &other) = delete;
+
+  future(future<future<T>> &&other) noexcept; // unwrap
 
   future &operator=(future &&other) noexcept {
     shared_state.reset();
@@ -246,15 +259,29 @@ public:
 
   bool valid() const noexcept { return bool(shared_state); }
 
-  bool is_ready() const noexcept {
+  bool ready() const {
     assert(valid());
-    return shared_state->is_ready();
+    return shared_state->ready();
   }
 
   void wait() const {
     assert(valid());
     shared_state->wait();
   }
+
+  template <typename F, typename R = cxx::invoke_of_t<F, future>>
+  future<R> then(launch policy, F &&cont);
+  template <typename F, typename R = cxx::invoke_of_t<F, future>>
+  future<R> then(F &&cont);
+
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             detail::is_future<U>::value> * = nullptr>
+  future<typename U::element_type> unwrap();
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             detail::is_shared_future<U>::value> * = nullptr>
+  future<typename U::element_type> unwrap();
 };
 template <typename T> void swap(future<T> &lhs, future<T> &rhs) noexcept {
   lhs.swap(rhs);
@@ -273,7 +300,11 @@ inline future<void> make_ready_future() {
 // shared_future ///////////////////////////////////////////////////////////////
 
 template <typename T> class shared_future {
+  template <typename U> friend class future;
+
   std::shared_ptr<detail::shared_state<T>> shared_state;
+
+  typedef T element_type;
 
 public:
   shared_future() noexcept : shared_state() {}
@@ -284,6 +315,8 @@ public:
   shared_future(shared_future &&other) noexcept : shared_future() {
     swap(other);
   }
+
+  shared_future(const shared_future<shared_future> &&other); // unwrap
 
   shared_future &operator=(const shared_future &other) {
     shared_state = other.shared_state;
@@ -324,15 +357,29 @@ public:
 
   bool valid() const noexcept { return bool(shared_state); }
 
-  bool is_ready() const noexcept {
+  bool ready() const noexcept {
     assert(valid());
-    return shared_state->is_ready();
+    return shared_state->ready();
   }
 
   void wait() const {
     assert(valid());
     shared_state->wait();
   }
+
+  template <typename F, typename R = cxx::invoke_of_t<F, shared_future>>
+  future<R> then(launch policy, F &&cont);
+  template <typename F, typename R = cxx::invoke_of_t<F, shared_future>>
+  future<R> then(F &&cont);
+
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             detail::is_future<U>::value> * = nullptr>
+  future<typename U::element_type> unwrap();
+  template <typename U = T,
+            std::enable_if_t<std::is_same<U, T>::value &&
+                             detail::is_shared_future<U>::value> * = nullptr>
+  future<typename U::element_type> unwrap();
 };
 template <typename T>
 void swap(shared_future<T> &lhs, shared_future<T> &rhs) noexcept {
@@ -351,7 +398,7 @@ public:
   promise(const promise &other) = delete;
 
   ~promise() {
-    if (shared_state && !shared_state.unique() && !shared_state->is_ready())
+    if (shared_state && !shared_state.unique() && !shared_state->ready())
       shared_state->set_exception();
   }
 
@@ -662,6 +709,81 @@ future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 async(F &&f, Args &&... args) {
   return async(launch::async | launch::deferred, std::forward<F>(f),
                std::forward<Args>(args)...);
+}
+
+// more future /////////////////////////////////////////////////////////////////
+
+template <typename T>
+future<T>::future(future<future<T>> &&other) noexcept
+    : future(async([other = std::move(other)]() {
+        return other.get().get();
+      })) {}
+
+template <typename T>
+template <typename F, typename R>
+future<R> future<T>::then(launch policy, F &&cont) {
+  if (!valid())
+    return future<R>();
+  // TODO: if *this is deferred, wait immediately
+  return async(
+      policy,
+      [ ftr = std::move(*this), cont = std::forward<F>(cont) ]() mutable {
+        ftr.wait();
+        return cxx::invoke(std::forward<F>(cont), std::move(ftr));
+      });
+}
+template <typename T>
+template <typename F, typename R>
+future<R> future<T>::then(F &&cont) {
+  // TODO: same as policy of *this
+  return then(launch::async | launch::deferred, std::forward<F>(cont));
+}
+
+template <typename T>
+template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
+                                       detail::is_future<U>::value> *>
+future<typename U::element_type> future<T>::unwrap() {
+  return async([ftr = std::move(*this)]() mutable { return ftr.get().get(); });
+}
+template <typename T>
+template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
+                                       detail::is_shared_future<U>::value> *>
+future<typename U::element_type> future<T>::unwrap() {
+  return async([ftr = std::move(*this)]() mutable { return ftr.get().get(); });
+}
+
+// more shared_future //////////////////////////////////////////////////////////
+
+template <typename T>
+template <typename F, typename R>
+future<R> shared_future<T>::then(launch policy, F &&cont) {
+  if (!valid())
+    return future<R>();
+  // TODO: if *this is deferred, wait immediately
+  return async(policy,
+               [ ftr = *this, cont = std::forward<F>(cont) ]() mutable {
+    ftr.wait();
+    return cxx::invoke(std::forward<F>(cont), ftr);
+  });
+}
+template <typename T>
+template <typename F, typename R>
+future<R> shared_future<T>::then(F &&cont) {
+  // TODO: same as policy of *this
+  return then(launch::async | launch::deferred, std::forward<F>(cont));
+}
+
+template <typename T>
+template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
+                                       detail::is_future<U>::value> *>
+future<typename U::element_type> shared_future<T>::unwrap() {
+  return async([ftr = *this]() mutable { return ftr.get().get(); });
+}
+template <typename T>
+template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
+                                       detail::is_shared_future<U>::value> *>
+future<typename U::element_type> shared_future<T>::unwrap() {
+  return async([ftr = *this]() { return ftr.get().get(); });
 }
 }
 

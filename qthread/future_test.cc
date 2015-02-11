@@ -22,7 +22,7 @@ template <typename T> void test_future(T value) {
   p2.set_value(value);
   auto f2 = p2.get_future();
   EXPECT_TRUE(f2.valid());
-  EXPECT_TRUE(f2.is_ready());
+  EXPECT_TRUE(f2.ready());
   f0 = std::move(f2);
   swap(f0, f2);
   f2.wait();
@@ -32,7 +32,7 @@ template <typename T> void test_future(T value) {
   promise<T> p3;
   p3.set_value(value);
   auto f3 = p3.get_future();
-  EXPECT_TRUE(f3.is_ready());
+  EXPECT_TRUE(f3.ready());
   f3.share();
 }
 }
@@ -61,6 +61,51 @@ TEST(qthread_future, make_ready_future) {
   static_assert(std::is_same<decltype(f4), future<void>>::value, "");
 }
 
+TEST(qthread_future, future_then) {
+  auto f1 = make_ready_future(1);
+  static_assert(std::is_same<decltype(f1), future<int>>::value, "");
+  EXPECT_TRUE(f1.valid());
+  auto f2 = f1.then([](auto f) { return f.get() + 2; });
+  static_assert(std::is_same<decltype(f2), future<int>>::value, "");
+  EXPECT_TRUE(f2.valid());
+  EXPECT_FALSE(f1.valid());
+  EXPECT_EQ(3, f2.get());
+
+  auto p1 = promise<int>();
+  auto fp1 = p1.get_future();
+  static_assert(std::is_same<decltype(fp1), future<int>>::value, "");
+  EXPECT_TRUE(fp1.valid());
+  auto fp2 = fp1.then([](auto f) { return f.get() + 2; });
+  static_assert(std::is_same<decltype(fp2), future<int>>::value, "");
+  EXPECT_TRUE(fp2.valid());
+  EXPECT_FALSE(fp1.valid());
+  p1.set_value(1);
+  EXPECT_EQ(3, fp2.get());
+}
+
+TEST(qthread_future, future_unwrap) {
+  auto f2 = make_ready_future(make_ready_future('a'));
+  static_assert(std::is_same<decltype(f2), future<future<char>>>::value, "");
+  EXPECT_TRUE(f2.valid());
+  auto f1 = f2.unwrap();
+  EXPECT_TRUE(f1.valid());
+  EXPECT_FALSE(f2.valid());
+  static_assert(std::is_same<decltype(f1), future<char>>::value, "");
+  EXPECT_EQ('a', f1.get());
+}
+
+TEST(qthread_future, future_unwrap_shared) {
+  auto f2 = make_ready_future(make_ready_future('a').share());
+  static_assert(std::is_same<decltype(f2), future<shared_future<char>>>::value,
+                "");
+  EXPECT_TRUE(f2.valid());
+  auto f1 = f2.unwrap();
+  EXPECT_TRUE(f1.valid());
+  EXPECT_FALSE(f2.valid());
+  static_assert(std::is_same<decltype(f1), future<char>>::value, "");
+  EXPECT_EQ('a', f1.get());
+}
+
 namespace {
 template <typename T> void test_shared_future(T value) {
   shared_future<T> f0;
@@ -80,7 +125,7 @@ template <typename T> void test_shared_future(T value) {
   p4.set_value(value);
   auto f4 = p4.get_future().share();
   EXPECT_TRUE(f4.valid());
-  EXPECT_TRUE(f4.is_ready());
+  EXPECT_TRUE(f4.ready());
   f4.wait();
   typedef std::decay_t<T> decay_T; // avoid function references
   EXPECT_EQ(decay_T(value), decay_T(f4.get()));
@@ -95,6 +140,53 @@ TEST(qthread_future, shared_future) {
   test_shared_future<const int &>(i);
   test_shared_future<int (*)(int)>(fi);
   test_shared_future<int(&)(int)>(fi);
+}
+
+TEST(qthread_future, shared_future_then) {
+  auto f1 = make_ready_future(1).share();
+  static_assert(std::is_same<decltype(f1), shared_future<int>>::value, "");
+  EXPECT_TRUE(f1.valid());
+  auto f2 = f1.then([](auto f) { return f.get() + 2; });
+  static_assert(std::is_same<decltype(f2), future<int>>::value, "");
+  EXPECT_TRUE(f2.valid());
+  EXPECT_TRUE(f1.valid());
+  EXPECT_EQ(3, f2.get());
+
+  auto p1 = promise<int>();
+  auto fp1 = p1.get_future().share();
+  static_assert(std::is_same<decltype(fp1), shared_future<int>>::value, "");
+  EXPECT_TRUE(fp1.valid());
+  auto fp2 = fp1.then([](auto f) { return f.get() + 2; });
+  static_assert(std::is_same<decltype(fp2), future<int>>::value, "");
+  EXPECT_TRUE(fp2.valid());
+  EXPECT_TRUE(fp1.valid());
+  p1.set_value(1);
+  EXPECT_EQ(3, fp2.get());
+}
+
+TEST(qthread_future, shared_future_unwrap) {
+  auto f2 = make_ready_future(make_ready_future('a')).share();
+  static_assert(std::is_same<decltype(f2), shared_future<future<char>>>::value,
+                "");
+  EXPECT_TRUE(f2.valid());
+  auto f1 = f2.unwrap();
+  EXPECT_TRUE(f1.valid());
+  EXPECT_TRUE(f2.valid());
+  static_assert(std::is_same<decltype(f1), future<char>>::value, "");
+  EXPECT_EQ('a', f1.get());
+}
+
+TEST(qthread_future, shared_future_unwrap_shared) {
+  auto f2 = make_ready_future(make_ready_future('a').share()).share();
+  static_assert(
+      std::is_same<decltype(f2), shared_future<shared_future<char>>>::value,
+      "");
+  EXPECT_TRUE(f2.valid());
+  auto f1 = f2.unwrap();
+  EXPECT_TRUE(f1.valid());
+  EXPECT_TRUE(f2.valid());
+  static_assert(std::is_same<decltype(f1), future<char>>::value, "");
+  EXPECT_EQ('a', f1.get());
 }
 
 namespace {
@@ -134,10 +226,10 @@ void test_packaged_task(F &&f, Args... args) {
 
   auto f0 = t0.get_future();
   EXPECT_TRUE(f0.valid());
-  EXPECT_FALSE(f0.is_ready());
+  EXPECT_FALSE(f0.ready());
   t0(args...);
   EXPECT_TRUE(t0.valid());
-  EXPECT_TRUE(f0.is_ready());
+  EXPECT_TRUE(f0.ready());
   // EXPECT_EQ(1,f0.get());
   f0.get();
 
@@ -145,7 +237,7 @@ void test_packaged_task(F &&f, Args... args) {
   EXPECT_TRUE(t0.valid());
   t0(std::forward<Args>(args)...);
   auto f1 = t0.get_future();
-  EXPECT_TRUE(f1.is_ready());
+  EXPECT_TRUE(f1.ready());
   // EXPECT_EQ(1,f1.get());
   f1.get();
 }
@@ -173,14 +265,14 @@ TEST(qthread_future, async) {
 
   auto fa = async(launch::async, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE(fa.is_ready()); // this is unreliable
+  EXPECT_TRUE(fa.ready()); // this is unreliable
   EXPECT_EQ(1, fa.get());
   auto fd = async(launch::deferred, fi, 1);
   this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_FALSE(fd.is_ready());
+  EXPECT_FALSE(fd.ready());
   EXPECT_EQ(1, fd.get());
   auto fs = async(launch::sync, fi, 1);
-  EXPECT_TRUE(fs.is_ready());
+  EXPECT_TRUE(fs.ready());
   EXPECT_EQ(1, fs.get());
   auto fe = async(launch::detached, fi, 1);
   EXPECT_FALSE(fe.valid());

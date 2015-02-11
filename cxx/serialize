@@ -4,14 +4,16 @@
 
 #include <cereal/archives/binary.hpp>
 
+#include <cstddef>
 #include <cstring>
 #include <type_traits>
 
 namespace cxx {
 namespace detail {
 template <typename T> void serialize_anchor_f() {}
-static_assert(sizeof &serialize_anchor_f<void> <= sizeof(uintptr_t), "");
-const uintptr_t serialize_anchor = uintptr_t(&serialize_anchor_f<void>);
+static_assert(sizeof &serialize_anchor_f<void> <= sizeof(std::uintptr_t), "");
+const std::uintptr_t serialize_anchor =
+    std::uintptr_t(&serialize_anchor_f<void>);
 }
 }
 
@@ -33,13 +35,13 @@ std::enable_if_t<!std::is_function<T>::value, void> serialize(Archive &, T *&) {
 template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
-  uintptr_t offset = uintptr_t(f) - cxx::detail::serialize_anchor;
+  std::uintptr_t offset = std::uintptr_t(f) - cxx::detail::serialize_anchor;
   ar(offset);
 }
 template <class Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void load(Archive &ar, F *&f) {
-  uintptr_t offset;
+  std::uintptr_t offset;
   ar(offset);
   f = (F *)(offset + cxx::detail::serialize_anchor);
 }
@@ -54,8 +56,8 @@ template <
     std::enable_if_t<std::is_member_function_pointer<F>::value> * = nullptr>
 void save(Archive &ar, F const &f) {
   struct {
-    uintptr_t fptr;
-    ptrdiff_t off;
+    std::uintptr_t fptr;
+    std::ptrdiff_t off;
   } buf;
   static_assert(sizeof f == sizeof buf, "");
   std::memcpy(&buf, &f, sizeof buf);
@@ -68,8 +70,8 @@ template <
     std::enable_if_t<std::is_member_function_pointer<F>::value> * = nullptr>
 void load(Archive &ar, F &f) {
   struct {
-    uintptr_t fptr;
-    ptrdiff_t off;
+    std::uintptr_t fptr;
+    std::ptrdiff_t off;
   } buf;
   static_assert(sizeof f == sizeof buf, "");
   ar(buf.fptr, buf.off);

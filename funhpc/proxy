@@ -1,0 +1,225 @@
+// -*-C++-*-
+#ifndef FUNHPC_PROXY
+#define FUNHPC_PROXY
+
+#include <funhpc/rexec>
+#include <qthread/future>
+
+#include <cereal/access.hpp>
+#include <cereal/types/memory.hpp>
+
+#include <atomic>
+#include <cassert>
+#include <cstddef>
+#include <memory>
+#include <utility>
+
+namespace funhpc {
+
+namespace detail {
+// TODO: make this abstract, i.e. independent of the type T
+template <typename T> class manager {
+  std::shared_ptr<T> obj;
+  std::ptrdiff_t proc;
+  std::uintptr_t owner;
+  std::atomic<std::ptrdiff_t> refcount;
+
+  void incref1() { ++refcount; }
+  void decref1() {
+    if (--refcount == 0)
+      delete this;
+  }
+  static void incref(std::uintptr_t self) { ((manager *)self)->incref1(); }
+  static void decref(std::uintptr_t self) { ((manager *)self)->decref1(); }
+
+  static void incref_then_decref2(std::uintptr_t self, std::ptrdiff_t proc1,
+                                  std::uintptr_t mgr1, std::ptrdiff_t proc2,
+                                  std::uintptr_t mgr2) {
+    incref(self);
+    rexec(proc1, decref, mgr2);
+    rexec(proc2, decref, mgr2);
+  }
+
+  friend class cereal::access;
+  template <typename Archive> void save(Archive &ar) const {
+    ar(proc);
+    if (proc != -1) {
+      ++refcount;
+      if (!bool(owner))
+        ar(std::uintptr_t(this)); // we are the owner
+      else
+        ar(owner);
+      ar(rank(), std::uintptr_t(this));
+    }
+  }
+  template <typename Archive> void load(Archive &ar) {
+    ar(proc);
+    if (proc != -1) {
+      std::ptrdiff_t origin_proc;
+      std::uintptr_t origin_mgr;
+      ar(owner, origin_proc, origin_mgr);
+      if (proc == rank()) {
+        // The object is local: copy the pointer
+        obj = ((manager *)owner)->obj;
+        owner = 0;
+        rexec(origin_proc, decref, origin_mgr);
+      } else {
+        // Transfer refcount to owner
+        if (proc != origin_proc) {
+          // We must not destruct ourselves until the owner has
+          // received the refcount. We temporarily increase our
+          // refcount to prevent this.
+          ++refcount;
+          rexec(proc, incref_then_decref2, owner, origin_proc, origin_mgr,
+                rank(), std::uintptr_t(this));
+        }
+      }
+    }
+    assert(invariant());
+  }
+
+public:
+  manager() : obj(nullptr), proc(-1), owner(0), refcount(1) {
+    assert(invariant());
+  }
+  manager(const std::shared_ptr<T> &obj)
+      : obj(obj), proc(bool(obj) ? rank() : -1), owner(0), refcount(1) {
+    assert(invariant());
+  }
+  manager(std::shared_ptr<T> &&obj)
+      : obj(std::move(obj)), proc(bool(obj) ? rank() : -1), owner(0),
+        refcount(1) {
+    assert(invariant());
+  }
+  ~manager() {
+    assert(refcount == 0);
+    if (bool(owner))
+      rexec(proc, decref, owner);
+  }
+
+  operator bool() const { return proc == -1; }
+  bool is_local() const {
+    assert(bool(*this));
+    return !bool(owner);
+  }
+  std::ptrdiff_t get_proc() const {
+    assert(bool(*this));
+    return proc;
+  }
+  const std::shared_ptr<T> &get_shared_ptr() const {
+    assert(!bool(*this) || is_local());
+    return obj;
+  }
+
+  bool invariant() const {
+    if (!bool(*this))
+      return !bool(obj) && proc == -1 && !bool(owner) && refcount == 1;
+    if (is_local())
+      return bool(obj) && proc == rank() && !bool(owner) && refcount >= 1;
+    return !bool(obj) && proc != rank() && bool(owner) && refcount >= 1;
+  }
+};
+}
+
+template <typename T> class proxy {
+  qthread::shared_future<detail::manager<T>> mgr;
+  qthread::shared_future<std::ptrdiff_t> proc;
+
+public:
+  proxy()
+      : mgr(qthread::make_ready_future(detail::manager<T>())),
+        proc(qthread::make_ready_future(std::ptrdiff_t(-1))) {}
+
+  proxy(const std::shared_ptr<T> &ptr)
+      : mgr(qthread::make_ready_future(detail::manager<T>(ptr))),
+        proc(qthread::make_ready_future(rank())) {}
+  proxy(std::shared_ptr<T> &&ptr)
+      : mgr(qthread::make_ready_future(detail::manager<T>(std::move(ptr)))),
+        proc(qthread::make_ready_future(rank())) {}
+
+  proxy(const qthread::shared_future<T> &ftr)
+      : mgr(async([ftr]() { return std::make_shared<T>(ftr.get()); })),
+        proc(qthread::make_ready_future(rank())) {}
+  proxy(qthread::shared_future<T> &&ftr)
+      : mgr(async([ftr = std::move(ftr)]() {
+          return std::make_shared<T>(ftr.get());
+        })),
+        proc(qthread::make_ready_future(rank())) {}
+  proxy(qthread::future<T> &&ftr)
+      : mgr(async([ftr = std::move(ftr)]() {
+          return std::make_shared<T>(ftr.get());
+        })),
+        proc(qthread::make_ready_future(rank())) {}
+
+  proxy(const qthread::shared_future<std::shared_ptr<T>> &fptr)
+      : mgr(async([fptr]() { return fptr.get(); })),
+        proc(qthread::make_ready_future(rank())) {}
+  proxy(qthread::shared_future<std::shared_ptr<T>> &&fptr)
+      : mgr(async([fptr = std::move(fptr)]() { return fptr.get(); })),
+        proc(qthread::make_ready_future(rank())) {}
+  proxy(qthread::future<std::shared_ptr<T>> &&fptr)
+      : mgr(async([fptr = std::move(fptr)]() { return fptr.get(); })),
+        proc(qthread::make_ready_future(rank())) {}
+
+  proxy(const proxy &other) : mgr(other.mgr), proc(other.proc) {}
+  proxy(proxy &&other)
+      : mgr(std::move(other.mgr)), proc(std::move(other.proc)) {}
+  proxy &operator=(const proxy &other) {
+    mgr = other.mgr;
+    proc = other.proc;
+    return *this;
+  }
+  proxy &operator=(proxy &&other) {
+    mgr = std::move(other.mgr);
+    proc = std::move(other.proc);
+    return *this;
+  }
+  void swap(proxy &other) {
+    using std::swap;
+    swap(mgr, other.mgr);
+    swap(proc, other.proc);
+  }
+  void reset() { *this = proxy(); }
+
+  operator bool() const { return proc.get() == -1; }
+
+  bool is_local() const { return proc.get() == rank(); }
+  std::ptrdiff_t get_proc() const { return proc.get(); }
+  const qthread::shared_future<std::ptrdiff_t> &get_proc_future() const {
+    return proc;
+  }
+
+  bool is_ready() const { return mgr.is_ready(); }
+  void wait() const { mgr.wait(); }
+
+  const std::shared_ptr<T> &get_shared_ptr() const {
+    assert(!bool(*this) || is_local());
+    return mgr.get().get_shared_ptr();
+  }
+  const T &operator*() const {
+    assert(bool(*this) && is_local());
+    return *get_shared_ptr();
+  }
+  T &operator*() {
+    assert(bool(*this) && is_local());
+    return *get_shared_ptr();
+  }
+};
+
+template <typename T, typename... Args>
+proxy<T> make_local_proxy(Args &&... args) {
+  return proxy<T>(std::make_shared<T>(std::forward<Args>(args)...));
+}
+
+template <typename T, typename... Args>
+proxy<T> make_remote_proxy(std::ptrdiff_t dest, Args &&... args) {
+#warning "TODO"
+  return proxy<T>(std::make_shared<T>(std::forward<Args>(args)...));
+}
+}
+
+#define FUNHPC_PROXY_DONE
+#endif // #ifdef FUNHPC_PROXY
+#ifndef FUNHPC_PROXY_DONE
+#error "Cyclic include dependency"
+#endif

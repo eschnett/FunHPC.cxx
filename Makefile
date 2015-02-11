@@ -71,6 +71,7 @@ HDRS =	cxx/apply				\
 	fun/vector				\
 	funhpc/async				\
 	funhpc/main				\
+	funhpc/proxy				\
 	funhpc/rexec				\
 	funhpc/server				\
 	qthread/future				\
@@ -95,6 +96,7 @@ TEST_SRCS =					\
 	qthread/thread_test_std.cc
 FUNHPC_TEST_SRCS =				\
 	funhpc/async_test.cc			\
+	funhpc/proxy_test.cc			\
 	funhpc/rexec_test.cc			\
 	funhpc/test_main.cc
 FUNHPC_EXAMPLE_SRCS =				\

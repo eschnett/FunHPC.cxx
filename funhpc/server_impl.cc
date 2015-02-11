@@ -21,16 +21,16 @@ constexpr int mpi_root = 0;
 constexpr int mpi_tag = 0;
 const MPI_Comm mpi_comm = MPI_COMM_WORLD;
 
-std::size_t rank() {
-  int rank;
+namespace detail {
+std::ptrdiff_t the_rank = -1;
+std::ptrdiff_t the_size = -1;
+void set_rank_size() {
+  int rank, size;
   MPI_Comm_rank(mpi_comm, &rank);
-  return rank;
-}
-
-std::size_t size() {
-  int size;
   MPI_Comm_size(mpi_comm, &size);
-  return size;
+  the_rank = rank;
+  the_size = size;
+}
 }
 
 struct mpi_req_t {
@@ -43,7 +43,7 @@ struct mpi_req_t {
   mpi_req_t &operator=(const mpi_req_t &) = delete;
   mpi_req_t &operator=(mpi_req_t &&) = delete;
 
-  std::size_t proc;
+  std::ptrdiff_t proc;
   std::string buf;
   MPI_Request req;
 };
@@ -56,7 +56,7 @@ std::unique_ptr<qthread::mutex> send_queue_mutex;
 std::vector<std::unique_ptr<mpi_req_t>> send_reqs;
 
 // Step 1: Enqueue task (from any thread)
-void enqueue_task(std::size_t dest, task_t &&t) {
+void enqueue_task(std::ptrdiff_t dest, task_t &&t) {
   // Serialize task
   auto reqp = std::make_unique<mpi_req_t>();
   reqp->proc = dest;
@@ -161,6 +161,7 @@ bool terminate_check(bool ready_to_terminate) {
 
 void initialize(int &argc, char **&argv) {
   MPI_Init(&argc, &argv);
+  detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
 }
@@ -175,7 +176,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   for (;;) {
     send_tasks();
     recv_tasks();
-    if (terminate_check(!fres.valid() || fres.is_ready()))
+    if (terminate_check(!fres.valid() || fres.ready()))
       break;
     qthread::this_thread::yield();
   }

@@ -38,31 +38,31 @@ int idelay() {
 
 TEST(funhpc, async_async) {
   auto fres = async(rlaunch::async, 1 % size(), delay);
-  EXPECT_FALSE(fres.is_ready());
+  EXPECT_FALSE(fres.ready());
   fres.wait();
   auto ires = async(rlaunch::async, 1 % size(), idelay);
-  EXPECT_FALSE(ires.is_ready());
+  EXPECT_FALSE(ires.ready());
   EXPECT_EQ(1, ires.get());
 }
 
 TEST(funhpc, async_sync) {
   auto fres = async(rlaunch::sync, 1 % size(), delay);
-  EXPECT_TRUE(fres.is_ready());
+  EXPECT_TRUE(fres.ready());
   auto ires = async(rlaunch::sync, 1 % size(), idelay);
-  EXPECT_TRUE(fres.is_ready());
+  EXPECT_TRUE(fres.ready());
   EXPECT_EQ(1, ires.get());
 }
 
 TEST(funhpc, async_deferred) {
   auto fres = async(rlaunch::deferred, 1 % size(), delay);
-  EXPECT_FALSE(fres.is_ready());
+  EXPECT_FALSE(fres.ready());
   qthread::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_FALSE(fres.is_ready());
+  EXPECT_FALSE(fres.ready());
   fres.wait();
   auto ires = async(rlaunch::deferred, 1 % size(), idelay);
-  EXPECT_FALSE(ires.is_ready());
+  EXPECT_FALSE(ires.ready());
   qthread::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_FALSE(ires.is_ready());
+  EXPECT_FALSE(ires.ready());
   EXPECT_EQ(1, ires.get());
 }
 

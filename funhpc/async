@@ -1,0 +1,102 @@
+// -*-C++-*-
+#ifndef FUNHPC_ASYNC
+#define FUNHPC_ASYNC
+
+#include <cxx/invoke>
+#include <funhpc/rexec>
+#include <qthread/future>
+
+#include <type_traits>
+
+namespace funhpc {
+
+// rlaunch /////////////////////////////////////////////////////////////////////
+
+enum class rlaunch : unsigned {
+  async = static_cast<unsigned>(qthread::launch::async),
+  deferred = static_cast<unsigned>(qthread::launch::deferred),
+  sync = static_cast<unsigned>(qthread::launch::sync),
+  detached = static_cast<unsigned>(qthread::launch::detached),
+};
+
+inline constexpr rlaunch operator~(rlaunch a) {
+  return static_cast<rlaunch>(~static_cast<unsigned>(a));
+}
+
+inline constexpr rlaunch operator&(rlaunch a, rlaunch b) {
+  return static_cast<rlaunch>(static_cast<unsigned>(a) &
+                              static_cast<unsigned>(b));
+}
+inline constexpr rlaunch operator|(rlaunch a, rlaunch b) {
+  return static_cast<rlaunch>(static_cast<unsigned>(a) |
+                              static_cast<unsigned>(b));
+}
+inline constexpr rlaunch operator^(rlaunch a, rlaunch b) {
+  return static_cast<rlaunch>(static_cast<unsigned>(a) ^
+                              static_cast<unsigned>(b));
+}
+
+inline rlaunch &
+operator&=(rlaunch &a, rlaunch b) {
+  return a = a & b;
+}
+inline rlaunch &operator|=(rlaunch &a, rlaunch b) { return a = a | b; }
+inline rlaunch &operator^=(rlaunch &a, rlaunch b) { return a = a ^ b; }
+
+namespace detail {
+// Convert bitmask to a specific policy
+constexpr rlaunch decode_policy(rlaunch policy) {
+  if ((policy | rlaunch::async) == rlaunch::async)
+    return rlaunch::async;
+  if ((policy | rlaunch::deferred) == rlaunch::deferred)
+    return rlaunch::deferred;
+  if ((policy | rlaunch::sync) == rlaunch::sync)
+    return rlaunch::sync;
+  if ((policy | rlaunch::detached) == rlaunch::detached)
+    return rlaunch::detached;
+  return rlaunch::async;
+}
+
+// Convert policy to a local policy
+constexpr qthread::launch local_policy(rlaunch policy) {
+  return static_cast<qthread::launch>(policy);
+}
+}
+
+// async ///////////////////////////////////////////////////////////////////////
+
+namespace detail {
+template <typename R> void set_result(uintptr_t ipres, R &res) {
+  auto pres = (qthread::promise<R> *)(ipres);
+  pres->set_value(std::move(res));
+  delete pres;
+}
+
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+void continued(std::size_t origin, uintptr_t ipres, F &f, Args &... args) {
+  rexec(origin, set_result<R>, ipres,
+        cxx::invoke(std::move(f), std::move(args)...));
+}
+}
+
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+qthread::future<R> async(rlaunch policy, std::size_t dest, F &&f,
+                         Args &&... args) {
+  if (dest == rank())
+    return qthread::async(detail::local_policy(policy), std::forward<F>(f),
+                          std::forward<Args>(args)...);
+  auto pres = new qthread::promise<R>;
+  auto fres = pres->get_future();
+  rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>, rank(),
+        uintptr_t(pres), std::forward<F>(f), std::forward<Args>(args)...);
+  return fres;
+}
+}
+
+#define FUNHPC_ASYNC_DONE
+#endif // #ifdef FUNHPC_ASYNC
+#ifndef FUNHPC_ASYNC_DONE
+#error "Cyclic include dependency"
+#endif

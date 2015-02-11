@@ -83,16 +83,16 @@ void load(Archive &ar, F &f) {
 template <typename Archive, typename T,
           std::enable_if_t<std::is_member_object_pointer<T>::value> * = nullptr>
 void save(Archive &ar, T const &m) {
-  static_assert(sizeof m == sizeof(std::ptrdiff_t), "");
   std::ptrdiff_t buf;
+  static_assert(sizeof m == sizeof buf, "");
   std::memcpy(&buf, &m, sizeof buf);
   ar(buf);
 }
 template <class Archive, typename T,
           std::enable_if_t<std::is_member_object_pointer<T>::value> * = nullptr>
 void load(Archive &ar, T &m) {
-  static_assert(sizeof m == sizeof(std::ptrdiff_t), "");
   std::ptrdiff_t buf;
+  static_assert(sizeof m == sizeof buf, "");
   ar(buf);
   std::memcpy(&m, &buf, sizeof buf);
 }

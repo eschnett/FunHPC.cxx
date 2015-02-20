@@ -64,7 +64,7 @@ public:
       if (fptr.ready()) {
         robj = qthread::make_ready_future(shared_rptr<T>(fptr.get()));
       } else {
-        robj = async([fptr]() {
+        robj = qthread::async([fptr]() {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return shared_rptr<T>(ptr);
@@ -79,7 +79,7 @@ public:
       if (fptr.ready()) {
         robj = qthread::make_ready_future(shared_rptr<T>(fptr.get()));
       } else {
-        robj = async([fptr = std::move(fptr)]() mutable {
+        robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return shared_rptr<T>(std::move(ptr));
@@ -94,7 +94,7 @@ public:
       if (fptr.ready()) {
         robj = qthread::make_ready_future(shared_rptr<T>(fptr.get()));
       } else {
-        robj = async([fptr = std::move(fptr)]() mutable {
+        robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return shared_rptr<T>(std::move(ptr));
@@ -126,7 +126,7 @@ public:
       if (fptr.ready()) {
         *this = fptr.get();
       } else {
-        robj = async([fptr]() {
+        robj = qthread::async([fptr]() {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return ptr.robj.get();
@@ -140,7 +140,7 @@ public:
       if (fptr.ready()) {
         *this = fptr.get();
       } else {
-        robj = async([fptr = std::move(fptr)]() mutable {
+        robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return ptr.robj.get();
@@ -154,7 +154,7 @@ public:
       if (fptr.ready()) {
         *this = fptr.get();
       } else {
-        robj = async([fptr = std::move(fptr)]() mutable {
+        robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
           assert(bool(ptr));
           return ptr.robj.get();
@@ -220,6 +220,10 @@ public:
   }
 
   operator bool() const noexcept { return robj.valid(); }
+  bool proc_ready() const noexcept {
+    assert(bool(*this));
+    return proc >= 0;
+  }
   std::ptrdiff_t get_proc() const {
     assert(bool(*this));
     if (proc > 0)
@@ -230,19 +234,24 @@ public:
     assert(bool(*this));
     if (proc >= 0)
       return qthread::make_ready_future(proc);
-    return async([robj = this->robj]() { return robj.get_proc(); });
+    return qthread::async([robj = this->robj]() {
+      return robj.get().get_proc();
+    });
   }
   bool local() const {
     assert(bool(*this));
     return get_proc() == rank();
   }
 
-  bool ready() const { return robj.ready(); }
+  bool ready() const noexcept {
+    assert(bool(*this));
+    return robj.ready();
+  }
   void wait() const {
+    assert(bool(*this));
     robj.wait();
     if (proc < 0)
       proc = robj.get().get_proc();
-    assert(proc == robj.get().get_proc());
   }
 
   const std::shared_ptr<T> &get_shared_ptr() const {
@@ -262,14 +271,7 @@ public:
   }
   const std::shared_ptr<T> &operator->() const { return get_shared_ptr(); }
 
-  //   proxy make_local()const{
-  //     assert(bool(*this));
-  //     if(local())return *this;
-  //     auto fobj = async(rlaunch::async|rlaunch::deferred, get_proc(),
-  //     [self=*this](){return *self;});
-  //     return proxy(async([fobj=std::move(fobj)]mutable(){return
-  //     make_shared<T>(fobj.get());}));
-  // }
+  proxy make_local() const;
 
   bool operator==(const proxy &other) const {
     auto nt = bool(*this), no = bool(other);
@@ -320,6 +322,8 @@ proxy<T> make_remote_proxy(std::ptrdiff_t dest, Args &&... args) {
                   std::forward<Args>(args)...));
 }
 
+// remote //////////////////////////////////////////////////////////////////////
+
 namespace detail {
 // TODO: Check that f and args are move-constructed
 template <typename F, typename... Args,
@@ -336,6 +340,39 @@ proxy<R> remote(std::ptrdiff_t dest, F &&f, Args &&... args) {
       dest, async(rlaunch::async | rlaunch::deferred, dest,
                   detail::local_decayed<std::decay_t<F>, std::decay_t<Args>...>,
                   std::forward<F>(f), std::forward<Args>(args)...));
+}
+
+// make_local_shared_ptr ///////////////////////////////////////////////////////
+
+namespace detail {
+template <typename T>
+std::shared_ptr<T> proxy_get_shared_ptr(const proxy<T> &rptr) {
+  return rptr.get_shared_ptr();
+}
+}
+
+template <typename T>
+qthread::future<std::shared_ptr<T>>
+make_local_shared_ptr(const proxy<T> &rptr) {
+  assert(bool(rptr));
+  if (rptr.proc_ready()) {
+    if (rptr.local()) {
+      if (rptr.ready())
+        return qthread::make_ready_future(detail::proxy_get_shared_ptr(rptr));
+      return qthread::async(detail::proxy_get_shared_ptr<T>, rptr);
+    }
+    return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),
+                 detail::proxy_get_shared_ptr<T>, rptr);
+  }
+  return qthread::async([rptr]() {
+    return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),
+                 detail::proxy_get_shared_ptr<T>, rptr).get();
+  });
+}
+
+template <typename T> proxy<T> proxy<T>::make_local() const {
+  assert(bool(*this));
+  return proxy(make_local_shared_ptr(*this));
 }
 }
 

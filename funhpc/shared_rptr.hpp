@@ -234,21 +234,23 @@ shared_rptr<T> make_shared_rptr(Args &&... args) {
   return shared_rptr<T>(std::make_shared<T>(std::forward<Args>(args)...));
 }
 
-// get_from_shared_rptr ////////////////////////////////////////////////////////
+// make_local_shared_ptr ///////////////////////////////////////////////////////
 
 namespace detail {
-template <typename T> T get_from_shared_rptr_local(const shared_rptr<T> &rptr) {
-  return *rptr;
+template <typename T>
+std::shared_ptr<T> shared_rptr_get_shared_ptr(const shared_rptr<T> &rptr) {
+  return rptr.get_shared_ptr();
 }
 }
 
 template <typename T>
-qthread::future<T> get_from_shared_rptr(const shared_rptr<T> &rptr) {
+qthread::future<std::shared_ptr<T>>
+make_local_shared_ptr(const shared_rptr<T> &rptr) {
   assert(bool(rptr));
   if (rptr.local())
-    return qthread::make_ready_future(*rptr);
+    return qthread::make_ready_future(detail::shared_rptr_get_shared_ptr(rptr));
   return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),
-               detail::get_from_shared_rptr_local<T>, rptr);
+               detail::shared_rptr_get_shared_ptr<T>, rptr);
 }
 }
 

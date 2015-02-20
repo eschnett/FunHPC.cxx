@@ -48,7 +48,7 @@ TEST(funhpc_proxy, make_remote) {
   auto pi = make_remote_proxy<int>(p, 1);
   auto ps = make_remote_proxy<s>(p, s());
   auto pf = make_remote_proxy<int (*)(int)>(p, f);
-  auto pp = make_remote_proxy<proxy<int>>(make_remote_proxy<int>(1));
+  auto pp = make_remote_proxy<proxy<int>>(p, make_remote_proxy<int>(p, 1));
   EXPECT_TRUE(bool(pi));
   EXPECT_TRUE(bool(ps));
   EXPECT_TRUE(bool(pf));
@@ -59,23 +59,23 @@ TEST(funhpc_proxy, make_remote) {
     EXPECT_FALSE(pf.local());
     EXPECT_FALSE(pp.local());
   }
-  // TODO auto pil = pi.make_local();
-  // TODO auto psl = ps.make_local();
-  // TODO auto pfl = pf.make_local();
-  // TODO auto ppl = pp.make_local();
-  // TODO EXPECT_TRUE(bool(pil));
-  // TODO EXPECT_TRUE(bool(psl));
-  // TODO EXPECT_TRUE(bool(pfl));
-  // TODO EXPECT_TRUE(bool(ppl));
-  // TODO EXPECT_TRUE(pil.local());
-  // TODO EXPECT_TRUE(psl.local());
-  // TODO EXPECT_TRUE(pfl.local());
-  // TODO EXPECT_TRUE(ppl.local());
-  // TODO EXPECT_EQ(1,*pil)
-  // TODO auto ppll = ppl.make_local();
-  // TODO EXPECT_TRUE(bool(ppll));
-  // TODO EXPECT_TRUE(ppll.local());
-  // TODO EXPECT_EQ(1,**ppll)
+  auto pil = pi.make_local();
+  auto psl = ps.make_local();
+  auto pfl = pf.make_local();
+  auto ppl = pp.make_local();
+  EXPECT_TRUE(bool(pil));
+  EXPECT_TRUE(bool(psl));
+  EXPECT_TRUE(bool(pfl));
+  EXPECT_TRUE(bool(ppl));
+  EXPECT_TRUE(pil.local());
+  EXPECT_TRUE(psl.local());
+  EXPECT_TRUE(pfl.local());
+  EXPECT_TRUE(ppl.local());
+  EXPECT_EQ(1, *pil);
+  auto ppll = ppl->make_local();
+  EXPECT_TRUE(bool(ppll));
+  EXPECT_TRUE(ppll.local());
+  EXPECT_EQ(1, *ppll);
 }
 
 TEST(funhpc_proxy, remote) {
@@ -88,12 +88,12 @@ TEST(funhpc_proxy, remote) {
     EXPECT_FALSE(pi.local());
     EXPECT_FALSE(ps.local());
   }
-  // TODO auto pil = pi.make_local();
-  // TODO auto psl = ps.make_local();
-  // TODO EXPECT_TRUE(bool(pil));
-  // TODO EXPECT_TRUE(bool(psl));
-  // TODO EXPECT_TRUE(pil.local());
-  // TODO EXPECT_TRUE(psl.local());
-  // TODO EXPECT_EQ(1, *pi);
-  // TODO EXPECT_EQ(p, ps->x);
+  auto pil = pi.make_local();
+  auto psl = ps.make_local();
+  EXPECT_TRUE(bool(pil));
+  EXPECT_TRUE(bool(psl));
+  EXPECT_TRUE(pil.local());
+  EXPECT_TRUE(psl.local());
+  EXPECT_EQ(1, *pil);
+  EXPECT_EQ(p, psl->x);
 }

@@ -75,9 +75,11 @@ struct t {
 
 template <typename T> void check(const shared_rptr<T> &p, const T &x) {
   EXPECT_TRUE(bool(p));
-  auto fp = get_from_shared_rptr(p);
-  static_assert(std::is_same<decltype(fp), qthread::future<T>>::value, "");
-  EXPECT_EQ(x, fp.get());
+  auto fp = make_local_shared_ptr(p);
+  static_assert(
+      std::is_same<decltype(fp), qthread::future<std::shared_ptr<T>>>::value,
+      "");
+  EXPECT_EQ(x, *fp.get());
 }
 }
 

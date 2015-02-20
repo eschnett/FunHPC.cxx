@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUN_SHARED_FUTURE_HPP
 #define FUN_SHARED_FUTURE_HPP
 

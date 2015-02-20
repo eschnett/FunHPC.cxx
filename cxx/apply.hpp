@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef CXX_APPLY_HPP
 #define CXX_APPLY_HPP
 

@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef QTHREAD_MUTEX_HPP
 #define QTHREAD_MUTEX_HPP
 

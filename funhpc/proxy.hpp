@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_PROXY_HPP
 #define FUNHPC_PROXY_HPP
 

@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_REXEC_HPP
 #define FUNHPC_REXEC_HPP
 

@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_SERVER_HPP
 #define FUNHPC_SERVER_HPP
 

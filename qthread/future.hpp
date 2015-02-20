@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef QTHREAD_FUTURE_HPP
 #define QTHREAD_FUTURE_HPP
 

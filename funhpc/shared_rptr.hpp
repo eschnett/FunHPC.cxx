@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_SHARED_RPTR_HPP
 #define FUNHPC_SHARED_RPTR_HPP
 

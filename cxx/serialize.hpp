@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef CXX_SERIALIZE_HPP
 #define CXX_SERIALIZE_HPP
 

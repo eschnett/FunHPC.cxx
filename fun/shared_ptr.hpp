@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUN_SHARED_PTR_HPP
 #define FUN_SHARED_PTR_HPP
 

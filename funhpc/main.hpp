@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_MAIN_HPP
 #define FUNHPC_MAIN_HPP
 

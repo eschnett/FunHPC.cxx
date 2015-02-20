@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef CXX_INVOKE_HPP
 #define CXX_INVOKE_HPP
 

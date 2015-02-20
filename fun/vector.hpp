@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUN_VECTOR_HPP
 #define FUN_VECTOR_HPP
 

@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef FUNHPC_ASYNC_HPP
 #define FUNHPC_ASYNC_HPP
 

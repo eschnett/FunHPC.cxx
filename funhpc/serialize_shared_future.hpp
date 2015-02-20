@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef SERIALIZE_SHARED_FUTURE_HPP
 #define SERIALIZE_SHARED_FUTURE_HPP
 

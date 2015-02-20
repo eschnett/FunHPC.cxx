@@ -1,4 +1,3 @@
-// -*-C++-*-
 #ifndef CXX_TASK_HPP
 #define CXX_TASK_HPP
 

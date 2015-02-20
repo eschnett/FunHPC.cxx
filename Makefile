@@ -216,17 +216,17 @@ external/cereal.done: external/cereal.unpacked
 gtest: external/gtest.done
 .PHONY: gtest
 external/gtest.downloaded: | external
-	(cd external &&				\
+	(cd external &&					\
 		$(RM) $(notdir $(GOOGLETEST_URL)) &&	\
 		wget $(GOOGLETEST_URL)) &&		\
 	: > $@
 external/gtest.unpacked: external/gtest.downloaded
-	rm -rf $(GOOGLETEST_NAME) &&				\
+	rm -rf $(GOOGLETEST_NAME) &&			\
 	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: > $@
 external/gtest.built: external/gtest.unpacked
 	(cd external &&							       \
-		cd $(GOOGLETEST_DIR)/src &&					       \
+		cd $(GOOGLETEST_DIR)/src &&				       \
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest-all.cc &&  \
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest_main.cc && \
 		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	       \

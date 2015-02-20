@@ -1,14 +1,15 @@
-#include <cxx/task>
-#include <funhpc/server>
-#include <funhpc/rexec>
-#include <qthread/future>
-#include <qthread/mutex>
-#include <qthread/thread>
+#include <cxx/task.hpp>
+#include <funhpc/server.hpp>
+#include <funhpc/rexec.hpp>
+#include <qthread/future.hpp>
+#include <qthread/mutex.hpp>
+#include <qthread/thread.hpp>
 
 #include <mpi.h>
 #include <qthread.h>
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <sstream>
 // #include <stdlib.h>
@@ -57,6 +58,7 @@ std::vector<std::unique_ptr<mpi_req_t>> send_reqs;
 
 // Step 1: Enqueue task (from any thread)
 void enqueue_task(std::ptrdiff_t dest, task_t &&t) {
+  assert(dest >= 0 && dest < size());
   // Serialize task
   auto reqp = std::make_unique<mpi_req_t>();
   reqp->proc = dest;

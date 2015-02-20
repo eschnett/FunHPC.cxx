@@ -1,4 +1,4 @@
-#include <qthread/thread>
+#include <qthread/thread.hpp>
 
 #include <gtest/gtest.h>
 #include <qthread.h>

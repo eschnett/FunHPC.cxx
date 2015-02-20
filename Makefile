@@ -62,24 +62,27 @@ MPILDFLAGS  = $(LDFLAGS)
 MPILIBS     = $(LIBS)
 MPIRUN      = mpirun
 
-HDRS =	cxx/apply				\
-	cxx/invoke				\
-	cxx/serialize				\
-	cxx/task				\
-	fun/shared_future			\
-	fun/shared_ptr				\
-	fun/vector				\
-	funhpc/async				\
-	funhpc/main				\
-	funhpc/proxy				\
-	funhpc/rexec				\
-	funhpc/server				\
-	qthread/future				\
-	qthread/mutex				\
-	qthread/thread
+HDRS =	cxx/apply.hpp				\
+	cxx/invoke.hpp				\
+	cxx/serialize.hpp			\
+	cxx/task.hpp				\
+	fun/shared_future.hpp			\
+	fun/shared_ptr.hpp			\
+	fun/vector.hpp				\
+	funhpc/async.hpp			\
+	funhpc/main.hpp				\
+	funhpc/proxy.hpp			\
+	funhpc/rexec.hpp			\
+	funhpc/rptr.hpp				\
+	funhpc/serialize_shared_future.hpp	\
+	funhpc/server.hpp			\
+	funhpc/shared_rptr.hpp			\
+	qthread/future.hpp			\
+	qthread/mutex.hpp			\
+	qthread/thread.hpp
 FUNHPC_SRCS =					\
-	funhpc/main_impl.cc			\
-	funhpc/server_impl.cc
+	funhpc/main.cc				\
+	funhpc/server.cc
 TEST_SRCS =					\
 	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
@@ -98,6 +101,7 @@ FUNHPC_TEST_SRCS =				\
 	funhpc/async_test.cc			\
 	funhpc/proxy_test.cc			\
 	funhpc/rexec_test.cc			\
+	funhpc/shared_rptr_test.cc		\
 	funhpc/test_main.cc
 FUNHPC_EXAMPLE_SRCS =				\
 	examples/hello.cc			\
@@ -134,7 +138,7 @@ format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
-%.o: %.cc $(HDRS) Makefile
+%.o: %.cc Makefile
 	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o

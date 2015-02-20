@@ -1,6 +1,5 @@
-#include <funhpc/main>
-
-#include <qthread/future>
+#include <funhpc/main.hpp>
+#include <qthread/future.hpp>
 
 #include <chrono>
 #include <iostream>

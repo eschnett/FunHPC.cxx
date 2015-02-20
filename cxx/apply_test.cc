@@ -1,5 +1,5 @@
-#include <cxx/apply>
-#include <cxx/invoke>
+#include <cxx/apply.hpp>
+#include <cxx/invoke.hpp>
 
 #include <gtest/gtest.h>
 

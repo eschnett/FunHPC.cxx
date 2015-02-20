@@ -1,9 +1,9 @@
 // -*-C++-*-
-#ifndef FUNHPC_REXEC
-#define FUNHPC_REXEC
+#ifndef FUNHPC_REXEC_HPP
+#define FUNHPC_REXEC_HPP
 
-#include <cxx/task>
-#include <qthread/thread>
+#include <cxx/task.hpp>
+#include <qthread/thread.hpp>
 
 #include <type_traits>
 
@@ -29,8 +29,8 @@ void rexec(std::ptrdiff_t dest, F &&f, Args &&... args) {
 }
 }
 
-#define FUNHPC_REXEC_DONE
-#endif // #ifdef FUNHPC_REXEC
-#ifndef FUNHPC_REXEC_DONE
+#define FUNHPC_REXEC_HPP_DONE
+#endif // #ifdef FUNHPC_REXEC_HPP
+#ifndef FUNHPC_REXEC_HPP_DONE
 #error "Cyclic include dependency"
 #endif

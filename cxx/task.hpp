@@ -1,9 +1,9 @@
 // -*-C++-*-
-#ifndef CXX_TASK
-#define CXX_TASK
+#ifndef CXX_TASK_HPP
+#define CXX_TASK_HPP
 
-#include <cxx/apply>
-#include <cxx/serialize>
+#include <cxx/apply.hpp>
+#include <cxx/serialize.hpp>
 
 #include <cereal/access.hpp>
 #include <cereal/archives/binary.hpp>
@@ -71,7 +71,11 @@ public:
       : f(std::forward<F1>(f)),
         args(std::make_tuple(std::forward<Args1>(args)...)) {}
   virtual ~concrete_task() {}
-  virtual R operator()() { return R(cxx::apply(f, args)); }
+  virtual R operator()() {
+    // TODO: Move function and arguments when possible
+    return R(cxx::apply(f, args));
+    // return R(cxx::apply(std::move(f), std::move(args)));
+  }
   static void register_type() { (void)cereal_register; }
 };
 template <typename R, typename F, typename... Args>
@@ -131,8 +135,8 @@ struct binding_name<::cxx::detail::concrete_task<R, F, Args...>> {
 }
 }
 
-#define CXX_TASK_DONE
-#endif // #ifndef CXX_TASK
-#ifndef CXX_TASK_DONE
+#define CXX_TASK_HPP_DONE
+#endif // #ifndef CXX_TASK_HPP
+#ifndef CXX_TASK_HPP_DONE
 #error "Cyclic include dependency"
 #endif

@@ -1,6 +1,6 @@
 // -*-C++-*-
-#ifndef QTHREAD_MUTEX
-#define QTHREAD_MUTEX
+#ifndef QTHREAD_MUTEX_HPP
+#define QTHREAD_MUTEX_HPP
 
 #include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
@@ -43,8 +43,8 @@ public:
 };
 }
 
-#define QTHREAD_MUTEX_DONE
-#endif // #ifndef QTHREAD_MUTEX
-#ifndef QTHREAD_MUTEX_DONE
+#define QTHREAD_MUTEX_HPP_DONE
+#endif // #ifndef QTHREAD_MUTEX_HPP
+#ifndef QTHREAD_MUTEX_HPP_DONE
 #error "Cyclic include dependency"
 #endif

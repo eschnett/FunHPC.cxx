@@ -1,8 +1,8 @@
 // -*-C++-*-
-#ifndef CXX_APPLY
-#define CXX_APPLY
+#ifndef CXX_APPLY_HPP
+#define CXX_APPLY_HPP
 
-#include <cxx/invoke>
+#include <cxx/invoke.hpp>
 
 #include <tuple>
 #include <utility>
@@ -25,8 +25,8 @@ template <typename F, typename Tuple> decltype(auto) apply(F &&f, Tuple &&t) {
 }
 }
 
-#define CXX_APPLY_DONE
-#endif // #ifdef CXX_APPLY
-#ifndef CXX_APPLY_DONE
+#define CXX_APPLY_HPP_DONE
+#endif // #ifdef CXX_APPLY_HPP
+#ifndef CXX_APPLY_HPP_DONE
 #error "Cyclic include dependency"
 #endif

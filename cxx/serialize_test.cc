@@ -1,5 +1,5 @@
-#include <cxx/invoke>
-#include <cxx/serialize>
+#include <cxx/invoke.hpp>
+#include <cxx/serialize.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <gtest/gtest.h>

@@ -1,5 +1,5 @@
-#include <funhpc/rexec>
-#include <funhpc/main>
+#include <funhpc/rexec.hpp>
+#include <funhpc/main.hpp>
 
 #include <iostream>
 

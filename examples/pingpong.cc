@@ -1,7 +1,7 @@
-#include <funhpc/main>
-#include <funhpc/rexec>
-#include <qthread/future>
-#include <qthread/thread>
+#include <funhpc/main.hpp>
+#include <funhpc/rexec.hpp>
+#include <qthread/future.hpp>
+#include <qthread/thread.hpp>
 
 #include <cereal/access.hpp>
 #include <cereal/archives/binary.hpp>

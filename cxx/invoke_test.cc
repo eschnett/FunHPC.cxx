@@ -1,4 +1,4 @@
-#include <cxx/invoke>
+#include <cxx/invoke.hpp>
 
 #include <gtest/gtest.h>
 

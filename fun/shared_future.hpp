@@ -1,10 +1,9 @@
 // -*-C++-*-
-#ifndef FUN_SHARED_FUTURE
-#define FUN_SHARED_FUTURE
+#ifndef FUN_SHARED_FUTURE_HPP
+#define FUN_SHARED_FUTURE_HPP
 
-#include <qthread/future>
-
-#include <cxx/invoke>
+#include <cxx/invoke.hpp>
+#include <qthread/future.hpp>
 
 #include <cassert>
 #include <algorithm>
@@ -161,8 +160,8 @@ template <typename T> decltype(auto) mextract(qthread::shared_future<T> &&xs) {
 }
 }
 
-#define FUN_SHARED_FUTURE_DONE
-#endif // #ifdef FUN_SHARED_FUTURE
-#ifndef FUN_SHARED_FUTURE_DONE
+#define FUN_SHARED_FUTURE_HPP_DONE
+#endif // #ifdef FUN_SHARED_FUTURE_HPP
+#ifndef FUN_SHARED_FUTURE_HPP_DONE
 #error "Cyclic include dependency"
 #endif

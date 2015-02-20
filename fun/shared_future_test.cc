@@ -1,4 +1,4 @@
-#include <fun/shared_future>
+#include <fun/shared_future.hpp>
 
 #include <gtest/gtest.h>
 #include <qthread.h>

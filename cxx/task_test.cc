@@ -1,4 +1,4 @@
-#include <cxx/task>
+#include <cxx/task.hpp>
 
 #include <gtest/gtest.h>
 

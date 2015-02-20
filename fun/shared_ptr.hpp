@@ -1,8 +1,8 @@
 // -*-C++-*-
-#ifndef FUN_SHARED_PTR
-#define FUN_SHARED_PTR
+#ifndef FUN_SHARED_PTR_HPP
+#define FUN_SHARED_PTR_HPP
 
-#include <cxx/invoke>
+#include <cxx/invoke.hpp>
 
 #include <cassert>
 #include <algorithm>
@@ -195,8 +195,8 @@ auto mplus(std::shared_ptr<T> &&xs, std::shared_ptr<Ts> &&... yss) {
 }
 }
 
-#define FUN_SHARED_PTR_DONE
-#endif // #ifdef FUN_SHARED_PTR
-#ifndef FUN_SHARED_PTR_DONE
+#define FUN_SHARED_PTR_HPP_DONE
+#endif // #ifdef FUN_SHARED_PTR_HPP
+#ifndef FUN_SHARED_PTR_HPP_DONE
 #error "Cyclic include dependency"
 #endif

@@ -1,12 +1,12 @@
 // -*-C++-*-
-#ifndef QTHREAD_FUTURE
-#define QTHREAD_FUTURE
+#ifndef QTHREAD_FUTURE_HPP
+#define QTHREAD_FUTURE_HPP
+
+#include <cxx/apply.hpp>
+#include <cxx/invoke.hpp>
+#include <cxx/task.hpp>
 
 #include <qthread/qthread.hpp>
-
-#include <cxx/apply>
-#include <cxx/invoke>
-#include <cxx/task>
 
 #include <atomic>
 #include <cassert>
@@ -169,11 +169,6 @@ template <typename T> class future;
 template <typename T> class shared_future;
 template <typename T> class promise;
 
-enum class launch : unsigned;
-
-template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
-inline future<void> make_ready_future();
-
 namespace detail {
 template <typename T> struct is_future : std::false_type {};
 template <typename T> struct is_future<future<T>> : std::true_type {};
@@ -182,6 +177,11 @@ template <typename T> struct is_shared_future : std::false_type {};
 template <typename T>
 struct is_shared_future<shared_future<T>> : std::true_type {};
 }
+
+enum class launch : unsigned;
+
+template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
+inline future<void> make_ready_future();
 
 template <typename F, typename... Args>
 future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
@@ -704,9 +704,9 @@ async(launch policy, F &&f, Args &&... args) {
   }
 }
 
-template <typename F, typename... Args>
-future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-async(F &&f, Args &&... args) {
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+future<R> async(F &&f, Args &&... args) {
   return async(launch::async | launch::deferred, std::forward<F>(f),
                std::forward<Args>(args)...);
 }
@@ -787,8 +787,8 @@ future<typename U::element_type> shared_future<T>::unwrap() {
 }
 }
 
-#define QTHREAD_FUTURE_DONE
-#endif // #ifndef QTHREAD_FUTURE
-#ifndef QTHREAD_FUTURE_DONE
+#define QTHREAD_FUTURE_HPP_DONE
+#endif // #ifndef QTHREAD_FUTURE_HPP
+#ifndef QTHREAD_FUTURE_HPP_DONE
 #error "Cyclic include dependency"
 #endif

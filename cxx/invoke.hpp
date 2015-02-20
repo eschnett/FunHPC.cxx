@@ -1,6 +1,6 @@
 // -*-C++-*-
-#ifndef CXX_INVOKE
-#define CXX_INVOKE
+#ifndef CXX_INVOKE_HPP
+#define CXX_INVOKE_HPP
 
 #include <utility>
 
@@ -343,8 +343,8 @@ inline auto invoke(_Fp &&__f, _Args &&... __args)
 }
 }
 
-#define CXX_INVOKE_DONE
-#endif // #ifdef CXX_INVOKE
-#ifndef CXX_INVOKE_DONE
+#define CXX_INVOKE_HPP_DONE
+#endif // #ifdef CXX_INVOKE_HPP
+#ifndef CXX_INVOKE_HPP_DONE
 #error "Cyclic include dependency"
 #endif

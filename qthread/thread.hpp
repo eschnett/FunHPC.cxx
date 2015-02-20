@@ -1,11 +1,11 @@
 // -*-C++-*-
-#ifndef QTHREAD_THREAD
-#define QTHREAD_THREAD
+#ifndef QTHREAD_HPP_THREAD_HPP
+#define QTHREAD_HPP_THREAD_HPP
+
+#include <qthread/future.hpp>
 
 #include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
-
-#include <qthread/future>
 
 #include <chrono>
 #include <tuple>
@@ -33,8 +33,8 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
 }
 }
 
-#define QTHREAD_THREAD_DONE
-#endif // #ifndef QTHREAD_THREAD
-#ifndef QTHREAD_THREAD_DONE
+#define QTHREAD_HPP_THREAD_HPP_DONE
+#endif // #ifndef QTHREAD_HPP_THREAD_HPP
+#ifndef QTHREAD_HPP_THREAD_HPP_DONE
 #error "Cyclic include dependency"
 #endif

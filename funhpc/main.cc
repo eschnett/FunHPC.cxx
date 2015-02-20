@@ -1,5 +1,5 @@
-#include <funhpc/main>
-#include <funhpc/server>
+#include <funhpc/main.hpp>
+#include <funhpc/server.hpp>
 
 int main(int argc, char **argv) {
   using namespace funhpc;

@@ -1,6 +1,6 @@
 // -*-C++-*-
-#ifndef CXX_SERIALIZE
-#define CXX_SERIALIZE
+#ifndef CXX_SERIALIZE_HPP
+#define CXX_SERIALIZE_HPP
 
 #include <cereal/archives/binary.hpp>
 
@@ -100,8 +100,8 @@ void load(Archive &ar, T &m) {
 }
 }
 
-#define CXX_SERIALIZE_DONE
-#endif // #ifdef CXX_SERIALIZE
-#ifndef CXX_SERIALIZE_DONE
+#define CXX_SERIALIZE_HPP_DONE
+#endif // #ifdef CXX_SERIALIZE_HPP
+#ifndef CXX_SERIALIZE_HPP_DONE
 #error "Cyclic include dependency"
 #endif

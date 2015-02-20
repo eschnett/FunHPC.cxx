@@ -1,5 +1,5 @@
-#include <qthread/mutex>
-#include <qthread/thread>
+#include <qthread/mutex.hpp>
+#include <qthread/thread.hpp>
 
 #include <gtest/gtest.h>
 #include <qthread.h>

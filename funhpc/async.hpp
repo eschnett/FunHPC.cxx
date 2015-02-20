@@ -1,10 +1,11 @@
 // -*-C++-*-
-#ifndef FUNHPC_ASYNC
-#define FUNHPC_ASYNC
+#ifndef FUNHPC_ASYNC_HPP
+#define FUNHPC_ASYNC_HPP
 
-#include <cxx/invoke>
-#include <funhpc/rexec>
-#include <qthread/future>
+#include <cxx/invoke.hpp>
+#include <funhpc/rexec.hpp>
+#include <funhpc/rptr.hpp>
+#include <qthread/future.hpp>
 
 #include <type_traits>
 
@@ -66,15 +67,15 @@ constexpr qthread::launch local_policy(rlaunch policy) {
 // async ///////////////////////////////////////////////////////////////////////
 
 namespace detail {
-template <typename R> void set_result(std::uintptr_t ipres, R &res) {
+template <typename R> void set_result(rptr<qthread::promise<R>> rpres, R &res) {
   static_assert(!std::is_void<R>::value, "");
-  auto pres = (qthread::promise<R> *)(ipres);
+  auto pres = rpres.get_ptr();
   pres->set_value(std::move(res));
   delete pres;
 }
-template <typename R> void set_result_void(std::uintptr_t ipres) {
+template <typename R> void set_result_void(rptr<qthread::promise<R>> rpres) {
   static_assert(std::is_void<R>::value, "");
-  auto pres = (qthread::promise<R> *)(ipres);
+  auto pres = rpres.get_ptr();
   pres->set_value();
   delete pres;
 }
@@ -82,18 +83,16 @@ template <typename R> void set_result_void(std::uintptr_t ipres) {
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
           std::enable_if_t<!std::is_void<R>::value> * = nullptr>
-void continued(std::ptrdiff_t origin, std::uintptr_t ipres, F &f,
-               Args &... args) {
-  rexec(origin, set_result<R>, ipres,
+void continued(rptr<qthread::promise<R>> rpres, F &f, Args &... args) {
+  rexec(rpres.get_proc(), set_result<R>, rpres,
         cxx::invoke(std::move(f), std::move(args)...));
 }
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
           std::enable_if_t<std::is_void<R>::value> * = nullptr>
-void continued(std::ptrdiff_t origin, std::uintptr_t ipres, F &f,
-               Args &... args) {
+void continued(rptr<qthread::promise<R>> rpres, F &f, Args &... args) {
   cxx::invoke(std::move(f), std::move(args)...);
-  rexec(origin, set_result_void<R>, ipres);
+  rexec(rpres.get_proc(), set_result_void<R>, rpres);
 }
 }
 
@@ -111,7 +110,7 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     auto pres = new qthread::promise<R>;
     auto fres = pres->get_future();
     rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
-          rank(), std::uintptr_t(pres), std::forward<F>(f),
+          rptr<qthread::promise<R>>(pres), std::forward<F>(f),
           std::forward<Args>(args)...);
     if (pol == rlaunch::sync)
       fres.wait();
@@ -133,8 +132,8 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
 }
 }
 
-#define FUNHPC_ASYNC_DONE
-#endif // #ifdef FUNHPC_ASYNC
-#ifndef FUNHPC_ASYNC_DONE
+#define FUNHPC_ASYNC_HPP_DONE
+#endif // #ifdef FUNHPC_ASYNC_HPP
+#ifndef FUNHPC_ASYNC_HPP_DONE
 #error "Cyclic include dependency"
 #endif

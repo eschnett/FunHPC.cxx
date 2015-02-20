@@ -1,4 +1,4 @@
-#include <funhpc/main>
+#include <funhpc/main.hpp>
 
 #include <gtest/gtest.h>
 

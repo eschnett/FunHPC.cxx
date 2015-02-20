@@ -1,5 +1,5 @@
-#include <qthread/future>
-#include <qthread/thread>
+#include <qthread/future.hpp>
+#include <qthread/thread.hpp>
 
 #include <gtest/gtest.h>
 #include <qthread.h>

@@ -1,8 +1,8 @@
 // -*-C++-*-
-#ifndef FUN_VECTOR
-#define FUN_VECTOR
+#ifndef FUN_VECTOR_HPP
+#define FUN_VECTOR_HPP
 
-#include <cxx/invoke>
+#include <cxx/invoke.hpp>
 
 #include <cassert>
 #include <algorithm>
@@ -234,8 +234,8 @@ auto mplus(std::vector<T> &&xs, std::vector<Ts> &&... yss) {
 }
 }
 
-#define FUN_VECTOR_DONE
-#endif // #ifdef FUN_VECTOR
-#ifndef FUN_VECTOR_DONE
+#define FUN_VECTOR_HPP_DONE
+#endif // #ifdef FUN_VECTOR_HPP
+#ifndef FUN_VECTOR_HPP_DONE
 #error "Cyclic include dependency"
 #endif

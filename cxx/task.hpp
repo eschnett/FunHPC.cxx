@@ -71,9 +71,8 @@ public:
         args(std::make_tuple(std::forward<Args1>(args)...)) {}
   virtual ~concrete_task() {}
   virtual R operator()() {
-    // TODO: Move function and arguments when possible
-    return R(cxx::apply(f, args));
-    // return R(cxx::apply(std::move(f), std::move(args)));
+    // TODO: Check that the task is executed at most once
+    return R(cxx::apply(std::move(f), std::move(args)));
   }
   static void register_type() { (void)cereal_register; }
 };
@@ -110,8 +109,7 @@ public:
   }
   R operator()() { return (*ptask)(); }
   template <typename F, typename... Args> static void register_type() {
-    detail::concrete_task<R, std::decay_t<F>,
-                          std::decay_t<Args>...>::register_type();
+    detail::concrete_task<R, F, Args...>::register_type();
   }
 };
 template <typename R> void swap(task<R> &lhs, task<R> &rhs) { lhs.swap(rhs); }

@@ -49,7 +49,7 @@ CC          = clang
 CXX         = clang++
 CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
-CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
+CXXFLAGS    = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
 OPTFLAGS    = -O3
 LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
@@ -66,6 +66,8 @@ HDRS =	cxx/apply.hpp				\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
+	cxx/utility.hpp				\
+	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
 	fun/vector.hpp				\
@@ -88,6 +90,7 @@ TEST_SRCS =					\
 	cxx/invoke_test.cc			\
 	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\
+	cxx/utility_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\
@@ -98,6 +101,7 @@ TEST_SRCS =					\
 	qthread/thread_test.cc			\
 	qthread/thread_test_std.cc
 FUNHPC_TEST_SRCS =				\
+	fun/proxy_test.cc			\
 	funhpc/async_test.cc			\
 	funhpc/proxy_test.cc			\
 	funhpc/rexec_test.cc			\

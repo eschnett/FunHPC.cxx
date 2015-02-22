@@ -261,6 +261,14 @@ TEST(qthread_future, async) {
   auto flvv = async([]() {});
   auto flii = async([](int x) { return x; }, 1);
   EXPECT_EQ(1, flii.get());
+  auto flrrii = async([](int &&x) { return std::move(x); }, 1);
+  EXPECT_EQ(1, flrrii.get());
+  // Note: async calls the function with decayed arguments, hence
+  // reference arguments are not possible
+  // auto flrii = async([](int &x) { return x; }, 1);
+  // EXPECT_EQ(1, flrii.get());
+  auto flcrii = async([](const int &x) { return x; }, 1);
+  EXPECT_EQ(1, flcrii.get());
   auto fliv = async([](int) {}, 1);
 
   auto fa = async(launch::async, fi, 1);

@@ -24,7 +24,8 @@ struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
 // iota
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::size_t, Args...>,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::size_t,
+                                        std::decay_t<Args>...>,
           std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
 auto iota(F &&f, std::size_t s, Args &&... args) {
   assert(s == 1);
@@ -35,8 +36,9 @@ auto iota(F &&f, std::size_t s, Args &&... args) {
 
 // fmap
 
-template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <
+    typename F, typename T, typename... Args,
+    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   bool s = xs.valid();
   assert(s);
@@ -45,8 +47,9 @@ auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
       .share();
 }
 
-template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <
+    typename F, typename T, typename... Args,
+    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto fmap(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
   bool s = xs.valid();
   assert(s);
@@ -56,7 +59,8 @@ auto fmap(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+          typename R =
+              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>>
 auto fmap2(F &&f, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
   bool s = xs.valid();
@@ -113,16 +117,18 @@ auto munit(T &&x) {
 
 // mbind
 
-template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <
+    typename F, typename T, typename... Args,
+    typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   static_assert(detail::is_shared_future<CR>::value, "");
   assert(xs.valid());
   return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
 }
 
-template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <
+    typename F, typename T, typename... Args,
+    typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto mbind(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
   static_assert(detail::is_shared_future<CR>::value, "");
   assert(xs.valid());

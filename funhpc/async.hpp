@@ -66,7 +66,8 @@ constexpr qthread::launch local_policy(rlaunch policy) {
 // async ///////////////////////////////////////////////////////////////////////
 
 namespace detail {
-template <typename R> void set_result(rptr<qthread::promise<R>> rpres, R &res) {
+template <typename R>
+void set_result(rptr<qthread::promise<R>> rpres, R &&res) {
   static_assert(!std::is_void<R>::value, "");
   auto pres = rpres.get_ptr();
   pres->set_value(std::move(res));
@@ -80,17 +81,17 @@ template <typename R> void set_result_void(rptr<qthread::promise<R>> rpres) {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
+          typename R = cxx::invoke_of_t<F &&, Args &&...>,
           std::enable_if_t<!std::is_void<R>::value> * = nullptr>
-void continued(rptr<qthread::promise<R>> rpres, F &f, Args &... args) {
+void continued(rptr<qthread::promise<R>> rpres, F &&f, Args &&... args) {
   rexec(rpres.get_proc(), set_result<R>, rpres,
-        cxx::invoke(std::move(f), std::move(args)...));
+        cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
 }
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>,
+          typename R = cxx::invoke_of_t<F &&, Args &&...>,
           std::enable_if_t<std::is_void<R>::value> * = nullptr>
-void continued(rptr<qthread::promise<R>> rpres, F &f, Args &... args) {
-  cxx::invoke(std::move(f), std::move(args)...);
+void continued(rptr<qthread::promise<R>> rpres, F &&f, Args &&... args) {
+  cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...);
   rexec(rpres.get_proc(), set_result_void<R>, rpres);
 }
 }
@@ -117,7 +118,7 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
   }
   case rlaunch::deferred: {
     return qthread::async(qthread::launch::deferred,
-                          [dest](auto f, auto... args) {
+                          [dest](auto &&f, auto &&... args) {
                             return async(rlaunch::async, dest, std::move(f),
                                          std::move(args)...).get();
                           },
@@ -128,6 +129,24 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     return qthread::future<R>();
   }
   }
+}
+
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+qthread::future<R> async(rlaunch policy,
+                         qthread::future<std::ptrdiff_t> &&fdest, F &&f,
+                         Args &&... args) {
+  assert(fdest.valid());
+  if (fdest.ready())
+    return async(policy, fdest.get(), std::forward<F>(f),
+                 std::forward<Args>(args)...);
+  return qthread::async(
+      detail::local_policy(policy),
+      [fdest = std::move(fdest)](auto &&f, auto &&... args) mutable {
+        return async(rlaunch::sync, fdest.get(), std::move(f),
+                     std::move(args)...).get();
+      },
+      std::forward<F>(f), std::forward<Args>(args)...);
 }
 }
 

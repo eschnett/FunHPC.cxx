@@ -39,7 +39,7 @@ TEST(fun_shared_future, fmap) {
   EXPECT_EQ(1, rs3.get());
 
   int accum = 0;
-  fmap([](int i, int &accum) { return accum += i; }, xs, accum);
+  fmap([](int i, int *accum) { return *accum += i; }, xs, &accum);
   EXPECT_EQ(0, accum);
 }
 

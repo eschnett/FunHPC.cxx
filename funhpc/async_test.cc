@@ -31,6 +31,34 @@ TEST(funhpc_async, remote2) {
 }
 
 namespace {
+void fvv() {}
+void fiv(int) {}
+int fvi() { return 1; }
+int fii(int x) { return x; }
+int frrii(int &&x) { return x; }
+int frii(int &x) { return x; }
+int fcrii(const int &x) { return x; }
+}
+
+TEST(funhpc_async, types) {
+  auto p = 1 % size();
+  auto ffvv = async(rlaunch::async, p, fvv);
+  auto ffiv = async(rlaunch::async, p, fiv, 1);
+  auto ffvi = async(rlaunch::async, p, fvi);
+  EXPECT_EQ(1, ffvi.get());
+  auto ffii = async(rlaunch::async, p, fii, 1);
+  EXPECT_EQ(1, ffii.get());
+  auto ffrrii = async(rlaunch::async, p, frrii, 1);
+  EXPECT_EQ(1, ffrrii.get());
+  // Note: async calls the function with decayed arguments, hence
+  // reference arguments are not possible
+  // auto ffrii = async(rlaunch::async, p, frii, 1);
+  // EXPECT_EQ(1, ffrii.get());
+  auto ffcrii = async(rlaunch::async, p, fcrii, 1);
+  EXPECT_EQ(1, ffcrii.get());
+}
+
+namespace {
 void delay() {
   qthread::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

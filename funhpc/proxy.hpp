@@ -30,6 +30,7 @@ proxy<T> make_proxy_with_proc(std::ptrdiff_t proc,
 
 template <typename T> class proxy {
   qthread::shared_future<shared_rptr<T>> robj;
+  // TODO: Make access to proc thread-safe
   mutable std::ptrdiff_t proc;
 
   friend class cereal::access;
@@ -176,7 +177,6 @@ private:
       } else {
         robj = qthread::async([ proc, fptr = std::move(fptr) ]() mutable {
           auto ptr = fptr.get();
-          assert(ptr.ready()); // ensure optimization works
           assert(proc == ptr.get_proc());
           return ptr.robj.get();
         });
@@ -221,17 +221,22 @@ public:
   operator bool() const noexcept { return robj.valid(); }
   bool proc_ready() const noexcept {
     assert(bool(*this));
-    return proc >= 0;
+    if (proc >= 0)
+      return true;
+    if (!ready())
+      return false;
+    proc = robj.get().get_proc();
+    return true;
   }
   std::ptrdiff_t get_proc() const {
     assert(bool(*this));
-    if (proc > 0)
+    if (proc >= 0)
       return proc;
     return proc = robj.get().get_proc();
   }
-  const qthread::future<std::ptrdiff_t> &get_proc_future() const {
+  qthread::future<std::ptrdiff_t> get_proc_future() const {
     assert(bool(*this));
-    if (proc >= 0)
+    if (proc_ready())
       return qthread::make_ready_future(proc);
     return qthread::async([robj = this->robj]() {
       return robj.get().get_proc();
@@ -302,7 +307,11 @@ proxy<T> make_proxy_with_proc(std::ptrdiff_t proc,
 
 template <typename T, typename... Args>
 proxy<T> make_local_proxy(Args &&... args) {
-  return proxy<T>(std::make_shared<T>(std::forward<Args>(args)...));
+  return proxy<T>(qthread::async([](auto &&... args) {
+                                   return shared_rptr<T>(
+                                       std::make_shared<T>(std::move(args)...));
+                                 },
+                                 std::forward<Args>(args)...));
 }
 
 namespace detail {
@@ -317,18 +326,30 @@ template <typename T, typename... Args>
 proxy<T> make_remote_proxy(std::ptrdiff_t dest, Args &&... args) {
   return detail::make_proxy_with_proc(
       dest, async(rlaunch::async | rlaunch::deferred, dest,
-                  detail::make_local_proxy_decayed<T, std::decay_t<Args>...>,
+                  // detail::make_local_proxy_decayed<T, std::decay_t<Args>...>,
+                  make_local_proxy<T, std::decay_t<Args>...>,
                   std::forward<Args>(args)...));
 }
 
 // remote //////////////////////////////////////////////////////////////////////
 
-namespace detail {
-// TODO: Check that f and args are move-constructed
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-proxy<R> local_decayed(F f, Args... args) {
-  return make_local_proxy<R>(cxx::invoke(std::move(f), std::move(args)...));
+proxy<R> local(F &&f, Args &&... args) {
+  return proxy<R>(
+      qthread::async([](auto &&f, auto &&... args) {
+                       return shared_rptr<R>(std::make_shared<R>(
+                           cxx::invoke(std::move(f), std::move(args)...)));
+                     },
+                     std::forward<F>(f), std::forward<Args>(args)...));
+}
+
+namespace detail {
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+proxy<R> local_decayed(F &&f, Args &&... args) {
+  return make_local_proxy<R>(
+      cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
 }
 }
 
@@ -336,9 +357,27 @@ template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 proxy<R> remote(std::ptrdiff_t dest, F &&f, Args &&... args) {
   return detail::make_proxy_with_proc(
-      dest, async(rlaunch::async | rlaunch::deferred, dest,
-                  detail::local_decayed<std::decay_t<F>, std::decay_t<Args>...>,
-                  std::forward<F>(f), std::forward<Args>(args)...));
+      dest,
+      async(rlaunch::async | rlaunch::deferred, dest,
+            // detail::local_decayed<std::decay_t<F>, std::decay_t<Args>...>,
+            local<std::decay_t<F>, std::decay_t<Args>...>, std::forward<F>(f),
+            std::forward<Args>(args)...));
+}
+
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+proxy<R> remote(qthread::future<std::ptrdiff_t> &&fdest, F &&f,
+                Args &&... args) {
+  assert(fdest.valid());
+  if (fdest.ready())
+    return remote(fdest.get(), std::forward<F>(f), std::forward<Args>(args)...);
+  return proxy<R>(
+      qthread::async([fdest = std::move(fdest)](auto &&f,
+                                                auto &&... args) mutable {
+                       return remote(fdest.get(), std::move(f),
+                                     std::move(args)...);
+                     },
+                     std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 // make_local_shared_ptr ///////////////////////////////////////////////////////
@@ -364,7 +403,7 @@ make_local_shared_ptr(const proxy<T> &rptr) {
                  detail::proxy_get_shared_ptr<T>, rptr);
   }
   return qthread::async([rptr]() {
-    return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),
+    return async(rlaunch::sync, rptr.get_proc(),
                  detail::proxy_get_shared_ptr<T>, rptr).get();
   });
 }

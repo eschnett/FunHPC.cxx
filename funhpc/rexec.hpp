@@ -23,7 +23,7 @@ void rexec(std::ptrdiff_t dest, F &&f, Args &&... args) {
   if (dest == rank())
     return qthread::thread(std::forward<F>(f), std::forward<Args>(args)...)
         .detach();
-  task_t::register_type<F, Args...>();
+  task_t::register_type<std::decay_t<F>, std::decay_t<Args>...>();
   enqueue_task(dest, task_t(std::forward<F>(f), std::forward<Args>(args)...));
 }
 }

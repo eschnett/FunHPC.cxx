@@ -179,24 +179,18 @@ struct is_shared_future<shared_future<T>> : std::true_type {};
 
 enum class launch : unsigned;
 
-template <typename T> future<std::decay_t<T>> make_ready_future(T &&value);
-inline future<void> make_ready_future();
-
-template <typename F, typename... Args>
-future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-async(launch policy, F &&f, Args &&... args);
+namespace detail {
+template <typename T>
+future<T> make_future_with_shared_state(
+    std::shared_ptr<detail::shared_state<T>> &&shared_state);
+}
 
 template <typename T> class future {
   template <typename U> friend class shared_future;
   template <typename U> friend class promise;
 
-  template <typename U>
-  friend future<std::decay_t<U>> make_ready_future(U &&value);
-  friend inline future<void> make_ready_future();
-
-  template <typename F, typename... Args>
-  friend future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-  async(launch policy, F &&f, Args &&... args);
+  friend future<T> detail::make_future_with_shared_state<T>(
+      std::shared_ptr<detail::shared_state<T>> &&shared_state);
 
   typedef T element_type;
 
@@ -268,9 +262,9 @@ public:
     shared_state->wait();
   }
 
-  template <typename F, typename R = cxx::invoke_of_t<F, future>>
+  template <typename F, typename R = cxx::invoke_of_t<std::decay_t<F>, future>>
   future<R> then(launch policy, F &&cont);
-  template <typename F, typename R = cxx::invoke_of_t<F, future>>
+  template <typename F, typename R = cxx::invoke_of_t<std::decay_t<F>, future>>
   future<R> then(F &&cont);
 
   template <typename U = T,
@@ -286,13 +280,23 @@ template <typename T> void swap(future<T> &lhs, future<T> &rhs) noexcept {
   lhs.swap(rhs);
 }
 
+namespace detail {
+template <typename T>
+future<T> make_future_with_shared_state(
+    std::shared_ptr<detail::shared_state<T>> &&shared_state) {
+  return future<T>(std::move(shared_state));
+}
+}
+
+// make_ready_future ///////////////////////////////////////////////////////////
+
 template <typename T> future<std::decay_t<T>> make_ready_future(T &&value) {
-  return future<std::decay_t<T>>(
+  return detail::make_future_with_shared_state(
       std::make_shared<detail::shared_state<std::decay_t<T>>>(
           std::forward<T>(value)));
 }
 inline future<void> make_ready_future() {
-  return future<void>(
+  return detail::make_future_with_shared_state(
       std::make_shared<detail::shared_state<void>>(std::tuple<>()));
 }
 
@@ -366,9 +370,9 @@ public:
     shared_state->wait();
   }
 
-  template <typename F, typename R = cxx::invoke_of_t<F, shared_future>>
+  template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
   future<R> then(launch policy, F &&cont);
-  template <typename F, typename R = cxx::invoke_of_t<F, shared_future>>
+  template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
   future<R> then(F &&cont);
 
   template <typename U = T,
@@ -666,33 +670,35 @@ constexpr launch decode_policy(launch policy) {
 
 namespace detail {
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, Args...>>
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 std::enable_if_t<!std::is_void<R>::value, future<R>>
 async_make_ready_future(F &&f, Args &&... args) {
   return make_ready_future(
-      cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
+      cxx::invoke(cxx::decay_copy(std::forward<F>(f)),
+                  cxx::decay_copy(std::forward<Args>(args))...));
 }
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, Args...>>
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 std::enable_if_t<std::is_void<R>::value, future<R>>
 async_make_ready_future(F &&f, Args &&... args) {
-  cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+  cxx::invoke(cxx::decay_copy(std::forward<F>(f)),
+              cxx::decay_copy(std::forward<Args>(args))...);
   return make_ready_future();
 }
 }
 
-template <typename F, typename... Args>
-future<cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
-async(launch policy, F &&f, Args &&... args) {
-  typedef cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...> R;
+template <typename F, typename... Args,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+future<R> async(launch policy, F &&f, Args &&... args) {
   switch (detail::decode_policy(policy)) {
   case launch::async:
     return detail::async_thread<R>(std::forward<F>(f),
                                    std::forward<Args>(args)...)
         .detach_get_future();
   case launch::deferred:
-    return future<R>(std::make_shared<detail::shared_state<R>>(
-        cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...)));
+    return detail::make_future_with_shared_state(
+        std::make_shared<detail::shared_state<R>>(
+            cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...)));
   case launch::sync:
     return detail::async_make_ready_future(std::forward<F>(f),
                                            std::forward<Args>(args)...);
@@ -724,12 +730,11 @@ future<R> future<T>::then(launch policy, F &&cont) {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(
-      policy,
-      [ ftr = std::move(*this), cont = std::forward<F>(cont) ]() mutable {
-        ftr.wait();
-        return cxx::invoke(std::forward<F>(cont), std::move(ftr));
-      });
+  return async(policy, [ftr = std::move(*this)](auto &&cont) mutable {
+                         ftr.wait();
+                         return cxx::invoke(std::move(cont), std::move(ftr));
+                       },
+               std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>
@@ -759,11 +764,11 @@ future<R> shared_future<T>::then(launch policy, F &&cont) {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(policy,
-               [ ftr = *this, cont = std::forward<F>(cont) ]() mutable {
-    ftr.wait();
-    return cxx::invoke(std::forward<F>(cont), ftr);
-  });
+  return async(policy, [ftr = *this](auto &&cont) {
+                         ftr.wait();
+                         return cxx::invoke(std::move(cont), std::move(ftr));
+                       },
+               std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>

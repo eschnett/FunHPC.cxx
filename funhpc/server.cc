@@ -107,7 +107,7 @@ void cancel_sends() {
 }
 
 // Step 4: Run the task (in a new thread)
-void run_task(std::unique_ptr<mpi_req_t> &reqp) {
+void run_task(std::unique_ptr<mpi_req_t> &&reqp) {
   // Deserialize task
   task_t t;
   {

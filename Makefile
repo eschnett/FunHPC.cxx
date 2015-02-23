@@ -62,7 +62,10 @@ MPILDFLAGS  = $(LDFLAGS)
 MPILIBS     = $(LIBS)
 MPIRUN      = mpirun
 
-HDRS =	cxx/apply.hpp				\
+HDRS =						\
+	adt/nested.hpp				\
+	adt/tree.hpp				\
+	cxx/apply.hpp				\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
@@ -87,6 +90,8 @@ FUNHPC_SRCS =					\
 	funhpc/main.cc				\
 	funhpc/server.cc
 TEST_SRCS =					\
+	adt/nested_test.cc			\
+	adt/tree_test.cc			\
 	cxx/apply_test.cc			\
 	cxx/invoke_test.cc			\
 	cxx/serialize_test.cc			\

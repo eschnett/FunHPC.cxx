@@ -77,4 +77,16 @@ TEST(fun_function, monad) {
   EXPECT_TRUE(bool(x13a));
   EXPECT_EQ(x13(42), x13a(42));
   EXPECT_EQ(x13(42), x13b(42));
+
+  EXPECT_FALSE(mempty(x1));
+  EXPECT_FALSE(mempty(xx1));
+  EXPECT_FALSE(mempty(xx1(42)));
+  EXPECT_FALSE(mempty(x1j));
+  EXPECT_FALSE(mempty(x2));
+  EXPECT_TRUE(mempty(x0));
+  EXPECT_FALSE(mempty(x11));
+  EXPECT_FALSE(mempty(x12));
+  EXPECT_FALSE(mempty(x13));
+  EXPECT_FALSE(mempty(x13a));
+  EXPECT_FALSE(mempty(x13b));
 }

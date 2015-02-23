@@ -130,6 +130,12 @@ auto mplus(const std::function<T(A)> &xs, const std::function<Ts(A)> &... yss) {
       return *pys;
   return std::function<T(A)>();
 }
+
+// mempty
+
+template <typename T> bool mempty(const std::function<T> &xs) {
+  return !bool(xs);
+}
 }
 
 #define FUN_FUNCTION_HPP_DONE

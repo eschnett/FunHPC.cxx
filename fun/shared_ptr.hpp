@@ -195,6 +195,12 @@ auto mplus(std::shared_ptr<T> &&xs, std::shared_ptr<Ts> &&... yss) {
       return std::move(*pys);
   return std::shared_ptr<T>();
 }
+
+// mempty
+
+template <typename T> bool mempty(const std::shared_ptr<T> &xs) {
+  return !bool(xs);
+}
 }
 
 #define FUN_SHARED_PTR_HPP_DONE

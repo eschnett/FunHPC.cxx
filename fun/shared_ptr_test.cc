@@ -101,4 +101,16 @@ TEST(fun_shared_ptr, monad) {
   EXPECT_TRUE(bool(x13a));
   EXPECT_EQ(x13, x13a);
   EXPECT_EQ(x13, x13b);
+
+  EXPECT_FALSE(mempty(x1));
+  EXPECT_FALSE(mempty(xx1));
+  EXPECT_FALSE(mempty(*xx1));
+  EXPECT_FALSE(mempty(x1j));
+  EXPECT_FALSE(mempty(x2));
+  EXPECT_TRUE(mempty(x0));
+  EXPECT_FALSE(mempty(x11));
+  EXPECT_FALSE(mempty(x12));
+  EXPECT_FALSE(mempty(x13));
+  EXPECT_FALSE(mempty(x13a));
+  EXPECT_FALSE(mempty(x13b));
 }

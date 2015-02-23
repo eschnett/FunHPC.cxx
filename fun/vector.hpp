@@ -235,6 +235,13 @@ auto mplus(std::vector<T> &&xs, std::vector<Ts> &&... yss) {
     std::move(pys->begin(), pys->end(), std::back_inserter(rs));
   return rs;
 }
+
+// mempty
+
+template <typename T, typename Allocator>
+bool mempty(const std::vector<T, Allocator> &xs) {
+  return xs.empty();
+}
 }
 
 #define FUN_VECTOR_HPP_DONE

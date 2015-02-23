@@ -27,21 +27,22 @@ template <typename T> using vector1 = std::vector<T>;
 // iota
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::size_t, Args...>,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::size_t s, Args &&... args) {
+auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
   std::vector<R> rs(s);
 #pragma omp simd
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...);
   return rs;
 }
 
+// TODO: Use rebind to obtain the new allocator
 template <template <typename, typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::size_t, Args...>,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
-auto iota(F &&f, std::size_t s, Args &&... args) {
+auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
   return iota<detail::vector1>(std::forward<F>(f), s,
                                std::forward<Args>(args)...);
 }
@@ -51,10 +52,10 @@ auto iota(F &&f, std::size_t s, Args &&... args) {
 template <typename F, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 auto fmap(F &&f, const std::vector<T> &xs, Args &&... args) {
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   std::vector<R> rs(s);
 #pragma omp simd
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...);
   return rs;
 }
@@ -62,10 +63,10 @@ auto fmap(F &&f, const std::vector<T> &xs, Args &&... args) {
 template <typename F, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 auto fmap(F &&f, std::vector<T> &&xs, Args &&... args) {
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   std::vector<R> rs(s);
 #pragma omp simd
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), std::move(xs[i]),
                         std::forward<Args>(args)...);
   return rs;
@@ -75,11 +76,11 @@ template <typename F, typename T, typename T2, typename... Args,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 auto fmap2(F &&f, const std::vector<T> &xs, const std::vector<T2> &ys,
            Args &&... args) {
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
   std::vector<R> rs(s);
 #pragma omp simd
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
                         std::forward<Args>(args)...);
   return rs;
@@ -87,51 +88,54 @@ auto fmap2(F &&f, const std::vector<T> &xs, const std::vector<T2> &ys,
 
 // foldMap
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, const std::vector<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   R r(z);
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(
         std::forward<Op>(op), std::move(r),
         cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...));
   return r;
 }
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, std::vector<T> &&xs, Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, std::vector<T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   R r(z);
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(std::forward<Op>(op), std::move(r),
                     cxx::invoke(std::forward<F>(f), std::move(xs[i]),
                                 std::forward<Args>(args)...));
   return r;
 }
 
-template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... Args>
-R foldMap2(F &&f, Op &&op, const R &z, const std::vector<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename T2,
+          typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
+R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
            const std::vector<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::size_t s = xs.size();
+  std::ptrdiff_t s = xs.size();
   R r(z);
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(std::forward<Op>(op), std::move(r),
                     cxx::invoke(std::forward<F>(f), xs[i], ys[i],
                                 std::forward<Args>(args)...));

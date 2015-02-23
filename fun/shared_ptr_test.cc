@@ -5,7 +5,7 @@
 using namespace fun;
 
 TEST(fun_shared_ptr, iota) {
-  std::size_t s = 1;
+  std::ptrdiff_t s = 1;
   auto rs = iota<std::shared_ptr>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), std::shared_ptr<int>>::value, "");
   EXPECT_TRUE(bool(rs));
@@ -43,8 +43,8 @@ TEST(fun_shared_ptr, fmap) {
 }
 
 TEST(fun_shared_ptr, foldMap) {
-  std::size_t s = 1;
-  auto xs = iota<std::shared_ptr>([](auto x) { return x; }, s);
+  std::ptrdiff_t s = 1;
+  auto xs = iota<std::shared_ptr>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

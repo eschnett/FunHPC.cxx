@@ -24,13 +24,13 @@ struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 // iota
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::size_t, Args...>,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::size_t s, Args &&... args) {
+auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
     return std::shared_ptr<R>();
-  return std::make_shared<R>(cxx::invoke(std::forward<F>(f), std::size_t(0),
+  return std::make_shared<R>(cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
                                          std::forward<Args>(args)...));
 }
 
@@ -70,8 +70,9 @@ auto fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
 
 // foldMap
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, const std::shared_ptr<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
@@ -82,8 +83,9 @@ R foldMap(F &&f, Op &&op, const R &z, const std::shared_ptr<T> &xs,
       cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
 }
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, std::shared_ptr<T> &&xs,
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, std::shared_ptr<T> &&xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
@@ -94,9 +96,10 @@ R foldMap(F &&f, Op &&op, const R &z, std::shared_ptr<T> &&xs,
                                  std::forward<Args>(args)...));
 }
 
-template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... Args>
-R foldMap2(F &&f, Op &&op, const R &z, const std::shared_ptr<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename T2,
+          typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
+R foldMap2(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
            const std::shared_ptr<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);

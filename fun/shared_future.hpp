@@ -24,13 +24,13 @@ struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
 // iota
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::size_t,
+          typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
                                         std::decay_t<Args>...>,
           std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::size_t s, Args &&... args) {
+auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s == 1);
   return qthread::make_ready_future(
-             cxx::invoke(std::forward<F>(f), std::size_t(0),
+             cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
                          std::forward<Args>(args)...)).share();
 }
 
@@ -73,8 +73,10 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
 
 // foldMap
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, const qthread::shared_future<T> &xs,
+template <
+    typename F, typename Op, typename Z, typename T, typename... Args,
+    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
+R foldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
@@ -84,8 +86,10 @@ R foldMap(F &&f, Op &&op, const R &z, const qthread::shared_future<T> &xs,
       cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...));
 }
 
-template <typename F, typename Op, typename R, typename T, typename... Args>
-R foldMap(F &&f, Op &&op, const R &z, qthread::shared_future<T> &&xs,
+template <
+    typename F, typename Op, typename Z, typename T, typename... Args,
+    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
+R foldMap(F &&f, Op &&op, const Z &z, qthread::shared_future<T> &&xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
@@ -95,9 +99,10 @@ R foldMap(F &&f, Op &&op, const R &z, qthread::shared_future<T> &&xs,
                                  std::forward<Args>(args)...));
 }
 
-template <typename F, typename Op, typename R, typename T, typename T2,
-          typename... Args>
-R foldMap2(F &&f, Op &&op, const R &z, const qthread::shared_future<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename T2,
+          typename... Args, typename R = cxx::invoke_of_t<
+                                std::decay_t<F>, T, T2, std::decay_t<Args>...>>
+R foldMap2(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();

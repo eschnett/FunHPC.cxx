@@ -7,39 +7,39 @@ using namespace fun;
 template <typename T> using vector1 = std::vector<T>;
 
 TEST(fun_vector, iota) {
-  std::size_t s = 10;
+  std::ptrdiff_t s = 10;
   auto rs = iota<std::vector>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), std::vector<int>>::value, "");
   EXPECT_EQ(s, rs.size());
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i, rs[i]);
 
   auto rs1 = iota<vector1>([](auto x, auto y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), std::vector<double>>::value, "");
   EXPECT_EQ(s, rs1.size());
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i - 1, rs1[i]);
 }
 
 TEST(fun_vector, fmap) {
-  std::size_t s = 10;
+  std::ptrdiff_t s = 10;
   std::vector<int> xs(s);
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     xs[i] = i;
 
   auto rs = fmap([](int i) { return i + 1; }, xs);
   EXPECT_EQ(s, rs.size());
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i + 1, rs[i]);
 
   auto rs2 = fmap([](int i, int j) { return i + j; }, xs, 2);
   EXPECT_EQ(s, rs2.size());
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i + 2, rs2[i]);
 
   auto rs3 = fmap2([](int i, int j) { return i + j; }, xs, rs);
   EXPECT_EQ(rs3.size(), s);
-  for (std::size_t i = 0; i < s; ++i)
+  for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(2 * i + 1, rs3[i]);
 
   int accum = 0;
@@ -48,8 +48,8 @@ TEST(fun_vector, fmap) {
 }
 
 TEST(fun_vector, foldMap) {
-  std::size_t s = 10;
-  auto xs = iota<std::vector>([](auto x) { return x; }, s);
+  std::ptrdiff_t s = 10;
+  auto xs = iota<std::vector>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

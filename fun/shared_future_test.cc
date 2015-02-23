@@ -8,7 +8,7 @@ using namespace fun;
 TEST(fun_shared_future, iota) {
   qthread_initialize();
 
-  std::size_t s = 1;
+  std::ptrdiff_t s = 1;
   auto rs = iota<qthread::shared_future>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), qthread::shared_future<int>>::value,
                 "");
@@ -44,8 +44,8 @@ TEST(fun_shared_future, fmap) {
 }
 
 TEST(fun_shared_future, foldMap) {
-  std::size_t s = 1;
-  auto xs = iota<qthread::shared_future>([](auto x) { return x; }, s);
+  std::ptrdiff_t s = 1;
+  auto xs = iota<qthread::shared_future>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

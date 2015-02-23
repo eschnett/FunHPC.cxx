@@ -67,6 +67,7 @@ HDRS =	cxx/apply.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
 	cxx/utility.hpp				\
+	fun/function.hpp			\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
@@ -91,6 +92,7 @@ TEST_SRCS =					\
 	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\
 	cxx/utility_test.cc			\
+	fun/function_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\

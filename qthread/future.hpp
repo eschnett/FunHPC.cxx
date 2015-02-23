@@ -319,7 +319,8 @@ public:
     swap(other);
   }
 
-  shared_future(const shared_future<shared_future> &&other); // unwrap
+  shared_future(const shared_future<shared_future> &other); // unwrap
+  shared_future(shared_future<shared_future> &&other);      // unwrap
 
   shared_future &operator=(const shared_future &other) {
     shared_state = other.shared_state;
@@ -378,11 +379,11 @@ public:
   template <typename U = T,
             std::enable_if_t<std::is_same<U, T>::value &&
                              detail::is_future<U>::value> * = nullptr>
-  future<typename U::element_type> unwrap();
+  future<typename U::element_type> unwrap() const;
   template <typename U = T,
             std::enable_if_t<std::is_same<U, T>::value &&
                              detail::is_shared_future<U>::value> * = nullptr>
-  future<typename U::element_type> unwrap();
+  future<typename U::element_type> unwrap() const;
 };
 template <typename T>
 void swap(shared_future<T> &lhs, shared_future<T> &rhs) noexcept {
@@ -780,13 +781,13 @@ future<R> shared_future<T>::then(F &&cont) {
 template <typename T>
 template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
                                        detail::is_future<U>::value> *>
-future<typename U::element_type> shared_future<T>::unwrap() {
+future<typename U::element_type> shared_future<T>::unwrap() const {
   return async([ftr = *this]() mutable { return ftr.get().get(); });
 }
 template <typename T>
 template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
                                        detail::is_shared_future<U>::value> *>
-future<typename U::element_type> shared_future<T>::unwrap() {
+future<typename U::element_type> shared_future<T>::unwrap() const {
   return async([ftr = *this]() { return ftr.get().get(); });
 }
 }

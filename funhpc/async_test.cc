@@ -36,7 +36,7 @@ void fiv(int) {}
 int fvi() { return 1; }
 int fii(int x) { return x; }
 int frrii(int &&x) { return x; }
-int frii(int &x) { return x; }
+// int frii(int &x) { return x; }
 int fcrii(const int &x) { return x; }
 }
 

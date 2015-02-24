@@ -103,6 +103,7 @@ R foldMap2(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
            const std::shared_ptr<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
+  assert(bool(ys) == s);
   if (!s)
     return z;
   return cxx::invoke(

@@ -63,6 +63,8 @@ MPILIBS     = $(LIBS)
 MPIRUN      = mpirun
 
 HDRS =						\
+	adt/either.hpp				\
+	adt/maybe.hpp				\
 	adt/nested.hpp				\
 	adt/tree.hpp				\
 	cxx/apply.hpp				\
@@ -70,7 +72,10 @@ HDRS =						\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
 	cxx/utility.hpp				\
+	fun/either.hpp				\
 	fun/function.hpp			\
+	fun/maybe.hpp				\
+	fun/nested.hpp				\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
@@ -90,6 +95,8 @@ FUNHPC_SRCS =					\
 	funhpc/main.cc				\
 	funhpc/server.cc
 TEST_SRCS =					\
+	adt/either_test.cc			\
+	adt/maybe_test.cc			\
 	adt/nested_test.cc			\
 	adt/tree_test.cc			\
 	cxx/apply_test.cc			\
@@ -97,7 +104,10 @@ TEST_SRCS =					\
 	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\
 	cxx/utility_test.cc			\
+	fun/either_test.cc			\
 	fun/function_test.cc			\
+	fun/maybe_test.cc			\
+	fun/nested_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/vector_test.cc			\

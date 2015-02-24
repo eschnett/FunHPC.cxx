@@ -106,6 +106,7 @@ R foldMap2(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
+  assert(ys.valid() == s);
   assert(s);
   return cxx::invoke(std::forward<Op>(op), z,
                      cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),

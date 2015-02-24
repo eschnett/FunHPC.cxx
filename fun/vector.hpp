@@ -130,6 +130,7 @@ R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
            const std::vector<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
+  assert(ys.size() == s);
   R r(z);
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \

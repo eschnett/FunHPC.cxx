@@ -176,11 +176,6 @@ template <typename T> decltype(auto) mextract(const funhpc::proxy<T> &xs) {
   assert(xs.valid());
   return xs.get();
 }
-
-template <typename T> decltype(auto) mextract(funhpc::proxy<T> &&xs) {
-  assert(xs.valid());
-  return std::move(xs.get());
-}
 }
 
 #define FUN_PROXY_HPP_DONE

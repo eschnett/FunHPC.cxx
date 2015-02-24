@@ -20,14 +20,6 @@ struct nested {
       return false;
     return true;
   }
-  // operator bool() const { return bool(data); }
-  // bool empty() const { return !bool(data); }
-  // bool operator==(const nested &other) const { return data == other.data; }
-  // bool operator!=(const nested &other) const { return data != other.data; }
-  // bool operator<(const nested &other) const { return data < other.data; }
-  // bool operator<=(const nested &other) const { return data <= other.data; }
-  // bool operator>(const nested &other) const { return data > other.data; }
-  // bool operator>=(const nested &other) const { return data >= other.data; }
 };
 }
 

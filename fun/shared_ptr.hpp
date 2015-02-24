@@ -161,11 +161,6 @@ template <typename T> decltype(auto) mextract(const std::shared_ptr<T> &xs) {
   return *xs;
 }
 
-template <typename T> decltype(auto) mextract(std::shared_ptr<T> &&xs) {
-  assert(bool(xs));
-  return std::move(*xs);
-}
-
 // mzero
 
 template <template <typename> class C, typename R,

@@ -164,9 +164,12 @@ decltype(auto) mextract(const qthread::shared_future<T> &xs) {
   return xs.get();
 }
 
-template <typename T> decltype(auto) mextract(qthread::shared_future<T> &&xs) {
+// mempty
+
+template <typename T>
+constexpr bool mempty(const qthread::shared_future<T> &xs) {
   assert(xs.valid());
-  return std::move(xs.get());
+  return false;
 }
 }
 

@@ -21,13 +21,13 @@ template <typename L, typename R>
 struct is_either<adt::either<L, R>> : std::true_type {};
 }
 
-// iota
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename L = typename C<R>::left_type,
           std::enable_if_t<detail::is_either<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
     return adt::either<L, R>();

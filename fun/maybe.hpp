@@ -20,12 +20,12 @@ template <typename> struct is_maybe : std::false_type {};
 template <typename T> struct is_maybe<adt::maybe<T>> : std::true_type {};
 }
 
-// iota
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_maybe<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
     return adt::maybe<R>();

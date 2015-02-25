@@ -21,13 +21,13 @@ template <typename T>
 struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
 }
 
-// iota
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
                                         std::decay_t<Args>...>,
           std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s == 1);
   return qthread::make_ready_future(
              cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),

@@ -20,14 +20,14 @@ template <typename> struct is_proxy : std::false_type {};
 template <typename T> struct is_proxy<funhpc::proxy<T>> : std::true_type {};
 }
 
-// iota
+// iotaMap
 
 // TODO: use remote
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
                                         std::decay_t<Args>...>,
           std::enable_if_t<detail::is_proxy<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s == 1);
   return funhpc::local(std::forward<F>(f), std::ptrdiff_t(0),
                        std::forward<Args>(args)...);

@@ -6,15 +6,16 @@ using namespace fun;
 
 template <typename T> using vector1 = std::vector<T>;
 
-TEST(fun_vector, iota) {
+TEST(fun_vector, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iota<std::vector>([](int x) { return x; }, s);
+  auto rs = iotaMap<std::vector>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), std::vector<int>>::value, "");
   EXPECT_EQ(s, rs.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i, rs[i]);
 
-  auto rs1 = iota<vector1>([](auto x, auto y) { return double(x + y); }, s, -1);
+  auto rs1 =
+      iotaMap<vector1>([](auto x, auto y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), std::vector<double>>::value, "");
   EXPECT_EQ(s, rs1.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -49,7 +50,7 @@ TEST(fun_vector, fmap) {
 
 TEST(fun_vector, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iota<std::vector>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<std::vector>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -108,6 +109,11 @@ TEST(fun_vector, monad) {
   EXPECT_EQ(3, x13a.size());
   EXPECT_EQ(x13, x13a);
   EXPECT_EQ(x13, x13b);
+
+  auto y1 = msome<std::vector>(2);
+  EXPECT_EQ(1, y1.size());
+  auto y2 = msome<vector1>(2, 3, 4);
+  EXPECT_EQ(3, y2.size());
 
   EXPECT_FALSE(mempty(x1));
   EXPECT_FALSE(mempty(xx1));

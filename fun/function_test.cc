@@ -6,17 +6,18 @@ using namespace fun;
 
 template <typename R> using function1 = std::function<R(int)>;
 
-TEST(fun_function, iota) {
+TEST(fun_function, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iota<function1>([](int x) { return x; }, s);
+  auto rs = iotaMap<function1>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), function1<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, rs(42));
 
-  auto rs0 = iota<function1>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<function1>([](int x) { return x; }, 0);
   EXPECT_FALSE(bool(rs0));
 
-  auto rs1 = iota<function1>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 =
+      iotaMap<function1>([](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), function1<double>>::value, "");
   EXPECT_TRUE(bool(rs1));
   EXPECT_EQ(-1, rs1(42));

@@ -3,6 +3,8 @@
 
 #include <cereal/access.hpp>
 
+#include <vector>
+
 namespace adt {
 
 // nested<P,A,T> = P<A<T>>

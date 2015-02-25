@@ -24,12 +24,21 @@ struct is_vector<std::vector<T, Allocator>> : std::true_type {};
 template <typename T> using vector1 = std::vector<T>;
 }
 
-// iota
+// types
+
+template <typename> struct fun_traits;
+template <typename T, typename Allocator>
+struct fun_traits<std::vector<T, Allocator>> {
+  template <typename U> using constructor = std::vector<U, Allocator>;
+  typedef T value_type;
+};
+
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   std::vector<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -42,9 +51,9 @@ template <template <typename, typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
-  return iota<detail::vector1>(std::forward<F>(f), s,
-                               std::forward<Args>(args)...);
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  return iotaMap<detail::vector1>(std::forward<F>(f), s,
+                                  std::forward<Args>(args)...);
 }
 
 // fmap
@@ -235,6 +244,23 @@ auto mplus(std::vector<T> &&xs, std::vector<Ts> &&... yss) {
   for (auto pys : std::initializer_list<std::vector<T> *>{&yss...})
     std::move(pys->begin(), pys->end(), std::back_inserter(rs));
   return rs;
+}
+
+// msome
+
+template <template <typename> class C, typename T, typename... Ts,
+          typename R = std::decay_t<T>,
+          std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
+auto msome(T &&x, Ts &&... ys) {
+  return std::vector<R>{std::forward<T>(x), std::forward<Ts>(ys)...};
+}
+
+template <template <typename, typename> class C, typename T, typename... Ts,
+          typename R = std::decay_t<T>,
+          std::enable_if_t<
+              detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
+auto msome(T &&x, Ts &&... ys) {
+  return msome<detail::vector1>(std::forward<T>(x), std::forward<Ts>(ys)...);
 }
 
 // mempty

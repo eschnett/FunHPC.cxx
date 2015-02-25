@@ -4,18 +4,18 @@
 
 using namespace fun;
 
-TEST(fun_shared_ptr, iota) {
+TEST(fun_shared_ptr, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iota<std::shared_ptr>([](int x) { return x; }, s);
+  auto rs = iotaMap<std::shared_ptr>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), std::shared_ptr<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, *rs);
 
-  auto rs0 = iota<std::shared_ptr>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<std::shared_ptr>([](int x) { return x; }, 0);
   EXPECT_FALSE(bool(rs0));
 
-  auto rs1 =
-      iota<std::shared_ptr>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<std::shared_ptr>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), std::shared_ptr<double>>::value,
                 "");
   EXPECT_TRUE(bool(rs1));
@@ -44,7 +44,7 @@ TEST(fun_shared_ptr, fmap) {
 
 TEST(fun_shared_ptr, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iota<std::shared_ptr>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<std::shared_ptr>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

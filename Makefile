@@ -47,7 +47,7 @@ LIBS    = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEM
 # Can also use gcc
 CC          = clang
 CXX         = clang++
-CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
+CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
 CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS    = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
 OPTFLAGS    = -O3
@@ -68,17 +68,20 @@ HDRS =						\
 	adt/nested.hpp				\
 	adt/tree.hpp				\
 	cxx/apply.hpp				\
+	cxx/cstdlib.hpp				\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
 	cxx/utility.hpp				\
 	fun/either.hpp				\
+	fun/fun.hpp				\
 	fun/function.hpp			\
 	fun/maybe.hpp				\
 	fun/nested.hpp				\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
+	fun/tree.hpp				\
 	fun/vector.hpp				\
 	funhpc/async.hpp			\
 	funhpc/main.hpp				\
@@ -105,11 +108,13 @@ TEST_SRCS =					\
 	cxx/task_test.cc			\
 	cxx/utility_test.cc			\
 	fun/either_test.cc			\
+	fun/fun_test.cc				\
 	fun/function_test.cc			\
 	fun/maybe_test.cc			\
 	fun/nested_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
+	fun/tree_test.cc			\
 	fun/vector_test.cc			\
 	qthread/future_test.cc			\
 	qthread/future_test_std.cc		\

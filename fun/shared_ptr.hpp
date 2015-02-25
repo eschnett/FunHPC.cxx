@@ -21,12 +21,20 @@ template <typename T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 }
 
-// iota
+// types
+
+template <typename> struct fun_traits;
+template <typename T> struct fun_traits<std::shared_ptr<T>> {
+  template <typename U> using constructor = std::shared_ptr<U>;
+  typedef T value_type;
+};
+
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
     return std::shared_ptr<R>();
@@ -190,6 +198,15 @@ auto mplus(std::shared_ptr<T> &&xs, std::shared_ptr<Ts> &&... yss) {
     if (bool(*pys))
       return std::move(*pys);
   return std::shared_ptr<T>();
+}
+
+// msome
+
+template <template <typename> class C, typename T, typename... Ts,
+          typename R = std::decay_t<T>,
+          std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
+auto msome(T &&x, Ts &&... ys) {
+  return munit<C>(std::forward<T>(x));
 }
 
 // mempty

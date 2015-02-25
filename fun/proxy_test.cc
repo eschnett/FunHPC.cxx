@@ -6,15 +6,15 @@
 
 using namespace fun;
 
-TEST(fun_proxy, iota) {
+TEST(fun_proxy, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iota<funhpc::proxy>([](int x) { return x; }, s);
+  auto rs = iotaMap<funhpc::proxy>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), funhpc::proxy<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, *rs);
 
   auto rs1 =
-      iota<funhpc::proxy>([](int x, int y) { return double(x + y); }, s, -1);
+      iotaMap<funhpc::proxy>([](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), funhpc::proxy<double>>::value, "");
   EXPECT_TRUE(bool(rs1));
   EXPECT_EQ(-1, *rs1);
@@ -61,7 +61,7 @@ int sq(int x) { return x * x; }
 
 TEST(fun_proxy, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iota<funhpc::proxy>(id, s);
+  auto xs = iotaMap<funhpc::proxy>(id, s);
   auto ys = xs;
 
   auto sum = foldMap(id, add, 0, xs);

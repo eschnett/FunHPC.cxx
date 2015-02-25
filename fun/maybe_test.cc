@@ -4,18 +4,18 @@
 
 using namespace fun;
 
-TEST(fun_maybe, iota) {
+TEST(fun_maybe, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iota<adt::maybe>([](int x) { return x; }, s);
+  auto rs = iotaMap<adt::maybe>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), adt::maybe<int>>::value, "");
   EXPECT_TRUE(rs.just());
   EXPECT_EQ(0, rs.get_just());
 
-  auto rs0 = iota<adt::maybe>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<adt::maybe>([](int x) { return x; }, 0);
   EXPECT_FALSE(rs0.just());
 
   auto rs1 =
-      iota<adt::maybe>([](int x, int y) { return double(x + y); }, s, -1);
+      iotaMap<adt::maybe>([](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), adt::maybe<double>>::value, "");
   EXPECT_TRUE(rs1.just());
   EXPECT_EQ(-1, rs1.get_just());
@@ -43,7 +43,7 @@ TEST(fun_maybe, fmap) {
 
 TEST(fun_maybe, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iota<adt::maybe>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<adt::maybe>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

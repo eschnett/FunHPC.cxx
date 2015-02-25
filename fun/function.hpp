@@ -23,13 +23,13 @@ template <typename A> struct function1 {
 };
 }
 
-// iota
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
                                         std::decay_t<Args>...>,
           std::enable_if_t<detail::is_function<C<R>>::value> * = nullptr>
-auto iota(F &&f, std::ptrdiff_t s, Args &&... args) {
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   typedef typename C<R>::argument_type A;
   assert(s <= 1);
   if (s == 0)
@@ -93,6 +93,7 @@ auto mbind(F &&f, const std::function<T(A)> &xs, Args &&... args) {
   static_assert(detail::is_function<CR>::value, "");
   if (!bool(xs))
     return CR();
+  // TODO: allow empty f?
   CR rs = [ f = std::forward<F>(f), xs, args... ](const A &a) {
     return cxx::invoke(cxx::invoke(f, cxx::invoke(xs, a), args...), a);
   };

@@ -19,7 +19,16 @@ template <template <typename> class P, template <typename> class A, typename T>
 struct is_nested<adt::nested<P, A, T>> : std::true_type {};
 }
 
-// iota
+// types
+
+template <typename> struct fun_traits;
+template <template <typename> class P, template <typename> class A, typename T>
+struct fun_traits<adt::nested<P, A, T>> {
+  template <typename U> using constructor = adt::nested<P, A, U>;
+  typedef T value_type;
+};
+
+// iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
@@ -27,11 +36,11 @@ template <template <typename> class C, typename F, typename... Args,
           template <typename> class P = C<R>::template pointer_constructor,
           template <typename> class A = C<R>::template array_constructor,
           std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
-C<R> iota(F &&f, std::ptrdiff_t s, Args &&... args) {
-  return {iota<P>([s](std::ptrdiff_t, auto &&f,
-                      auto &&... args) { return iota<A>(f, s, args...); },
-                  std::ptrdiff_t(1), std::forward<F>(f),
-                  std::forward<Args>(args)...)};
+C<R> iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  return {iotaMap<P>([s](std::ptrdiff_t, auto &&f,
+                         auto &&... args) { return iotaMap<A>(f, s, args...); },
+                     std::ptrdiff_t(1), std::forward<F>(f),
+                     std::forward<Args>(args)...)};
 }
 
 // fmap
@@ -131,6 +140,17 @@ adt::nested<P, A, T> mplus(const adt::nested<P, A, T> &xss,
   return {munit<P, A<T>>(
       mplus(mempty(xss.data) ? mzero<A, T>() : mextract(xss.data),
             mempty(yss.data) ? mzero<A, T>() : mextract(yss.data)...))};
+}
+
+// msome
+
+template <template <typename> class C, typename T, typename... Ts,
+          typename R = std::decay_t<T>,
+          template <typename> class P = C<R>::template pointer_constructor,
+          template <typename> class A = C<R>::template array_constructor,
+          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
+C<R> msome(T &&x, Ts &&... ys) {
+  return {msome<P>(msome<A>(std::forward<T>(x), std::forward<Ts>(ys)...))};
 }
 
 // mempty

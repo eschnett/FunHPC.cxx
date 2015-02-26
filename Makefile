@@ -78,6 +78,7 @@ HDRS =						\
 	fun/function.hpp			\
 	fun/maybe.hpp				\
 	fun/nested.hpp				\
+	fun/pair.hpp				\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
@@ -112,6 +113,7 @@ TEST_SRCS =					\
 	fun/function_test.cc			\
 	fun/maybe_test.cc			\
 	fun/nested_test.cc			\
+	fun/pair_test.cc			\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/tree_test.cc			\

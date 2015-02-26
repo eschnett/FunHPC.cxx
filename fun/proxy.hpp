@@ -178,21 +178,19 @@ template <typename T> auto mjoin(const funhpc::proxy<funhpc::proxy<T>> &xss) {
 
 // mbind
 
-// IMPLEMENT VIA MJOIN
 template <
     typename F, typename T, typename... Args,
     typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto mbind(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
-  static_assert(detail::is_proxy<CR>::value, "");
-  assert(bool(xs));
-  return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
+  return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
 // mextract
 
 template <typename T> decltype(auto) mextract(const funhpc::proxy<T> &xs) {
-  assert(xs.valid());
-  return xs.get();
+  assert(bool(xs));
+  return *xs.make_local();
+}
 }
 }
 

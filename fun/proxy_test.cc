@@ -91,14 +91,12 @@ TEST(fun_proxy, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(*x1, *x1j);
 
-  // auto x2 =
-  //     mbind([](auto x, auto c) { return munit<funhpc::proxy>(x + c); },
-  //           x1, 1);
-  // static_assert(std::is_same<decltype(x2), funhpc::proxy<int>>::value,
-  //               "");
-  // EXPECT_TRUE(x2.valid());
-  // EXPECT_EQ(2, x2.get());
+  auto x2 = mbind(mkproxy_add, x1, 1);
+  static_assert(std::is_same<decltype(x2), funhpc::proxy<int>>::value, "");
+  EXPECT_TRUE(bool(x2));
+  EXPECT_EQ(2, *x2);
 
-  // auto r = mextract(x1);
-  // EXPECT_EQ(1, r);
+  auto r = mextract(x1);
+  EXPECT_EQ(1, r);
+
 }

@@ -98,6 +98,21 @@ decltype(auto) mextract(const adt::tree<C, T> &xs) {
   return xs.extract();
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, template <typename> class C,
+          typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+adt::tree<C, R> mfoldMap(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
+                         Args &&... args) {
+  struct S {
+    template <typename U> using tree1 = adt::tree<C, U>;
+  };
+  return munit<S::template tree1>(foldMap(std::forward<F>(f),
+                                          std::forward<Op>(op), z, xs,
+                                          std::forward<Args>(args)...));
+}
+
 // mzero
 
 template <template <typename> class C, typename R> C<R> mzero() {

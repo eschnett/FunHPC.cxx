@@ -77,6 +77,10 @@ TEST(fun_proxy, foldMap) {
   EXPECT_EQ((s - 1) * s * (2 * s - 1) / 6, sum_sq);
 }
 
+namespace {
+auto mkproxy_add(int x, int y) { return munit<funhpc::proxy>(x + y); }
+}
+
 TEST(fun_proxy, monad) {
   auto x1 = munit<funhpc::proxy>(1);
   static_assert(std::is_same<decltype(x1), funhpc::proxy<int>>::value, "");
@@ -99,4 +103,6 @@ TEST(fun_proxy, monad) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
+  auto r1 = mfoldMap(id, add, 0, x1);
+  EXPECT_EQ(r, mextract(r1));
 }

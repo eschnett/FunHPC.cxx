@@ -63,6 +63,14 @@ TEST(fun_function, monad) {
   EXPECT_TRUE(bool(x2));
   EXPECT_EQ(2, x2(42));
 
+  auto r1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, x1);
+  EXPECT_EQ(1, r1(42));
+  auto r2 =
+      mfoldMap([](auto x) { return x; }, [](auto x, auto y) { return x + y; },
+               0, std::function<int(int)>([](int x) { return x; }));
+  EXPECT_EQ(42, r2(42));
+
   auto x0 = mzero<function1, int>();
   static_assert(std::is_same<decltype(x0), function1<int>>::value, "");
   EXPECT_FALSE(bool(x0));

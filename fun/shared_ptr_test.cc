@@ -86,6 +86,10 @@ TEST(fun_shared_ptr, monad) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
+  auto r1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, x1);
+  EXPECT_EQ(r, mextract(r1));
+
   auto x0 = mzero<std::shared_ptr, int>();
   static_assert(std::is_same<decltype(x0), std::shared_ptr<int>>::value, "");
   EXPECT_FALSE(bool(x0));

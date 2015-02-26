@@ -191,6 +191,18 @@ template <typename T> decltype(auto) mextract(const funhpc::proxy<T> &xs) {
   assert(bool(xs));
   return *xs.make_local();
 }
+
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
+              Args &&... args) {
+  return funhpc::remote(xs.get_proc_future(),
+                        detail::foldMap_local<std::decay_t<F>, std::decay_t<Op>,
+                                              Z, T, std::decay_t<Args>...>,
+                        std::forward<F>(f), std::forward<Op>(op), z, xs,
+                        std::forward<Args>(args)...);
 }
 }
 

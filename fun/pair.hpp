@@ -148,6 +148,17 @@ decltype(auto) mextract(std::pair<L, T> &&xs) {
   return std::move(xs.second);
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename L,
+          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const std::pair<L, T> &xs,
+              Args &&... args) {
+  return std::pair<L, R>(xs.first,
+                         foldMap(std::forward<F>(f), std::forward<Op>(op), z,
+                                 xs, std::forward<Args>(args)...));
+}
+
 // mempty
 
 template <typename T, typename L> bool mempty(const std::pair<L, T> &xs) {

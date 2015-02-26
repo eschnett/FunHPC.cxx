@@ -73,6 +73,14 @@ TEST(fun_pair, monad) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
+  auto r1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, x1);
+  EXPECT_EQ(r, mextract(r1));
+  auto r2 =
+      mfoldMap([](auto x) { return x; }, [](auto x, auto y) { return x + y; },
+               0, std::make_pair('a', 1));
+  EXPECT_EQ(std::make_pair('a', 1), r2);
+
   EXPECT_FALSE(mempty(x1));
   EXPECT_FALSE(mempty(xx1));
   EXPECT_FALSE(mempty(xx1.second));

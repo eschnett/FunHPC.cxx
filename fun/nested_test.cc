@@ -160,6 +160,10 @@ TEST(adt_nested, monad2) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
+  auto r1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, x1);
+  EXPECT_EQ(r, mextract(r1));
+
   auto x11 = mplus(x1);
   auto x12 = mplus(x1, x2);
   auto x13 = mplus(x1, x2, x1);

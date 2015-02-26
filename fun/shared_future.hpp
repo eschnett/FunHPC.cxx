@@ -173,6 +173,21 @@ decltype(auto) mextract(const qthread::shared_future<T> &xs) {
   return xs.get();
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
+              Args &&... args) {
+  return qthread::async(
+             [](auto &&f, auto &&op, auto &&z, auto &&xs, auto &&... args) {
+               return foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+                              std::forward<Args>(args)...);
+             },
+             std::forward<F>(f), std::forward<Op>(op), z, xs,
+             std::forward<Args>(args)...).share();
+}
+
 // mempty
 
 template <typename T>

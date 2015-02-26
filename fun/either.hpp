@@ -176,6 +176,20 @@ decltype(auto) mextract(const adt::either<L, T> &xs) {
   return xs.get_right();
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename L,
+          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const adt::either<L, T> &xs,
+              Args &&... args) {
+  struct S {
+    template <typename U> using either1 = adt::either<L, U>;
+  };
+  return munit<S::template either1>(foldMap(std::forward<F>(f),
+                                            std::forward<Op>(op), z, xs,
+                                            std::forward<Args>(args)...));
+}
+
 // mzero
 
 template <template <typename> class C, typename R,

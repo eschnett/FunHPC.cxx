@@ -122,6 +122,20 @@ decltype(auto) mextract(const adt::nested<P, A, T> &xss) {
   return mextract(mextract(xss.data));
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, template <typename> class P,
+          template <typename> class A, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+adt::nested<P, A, R> mfoldMap(F &&f, Op &&op, const Z &z,
+                              const adt::nested<P, A, T> &xss,
+                              Args &&... args) {
+  return {fmap([](const A<T> &xs, auto &&f, auto &&op, auto &&z,
+                  auto &&... args) { return mfoldMap(f, op, z, xs, args...); },
+               xss.data, std::forward<F>(f), std::forward<Op>(op), z,
+               std::forward<Args>(args)...)};
+}
+
 // mzero
 
 template <template <typename> class C, typename R,

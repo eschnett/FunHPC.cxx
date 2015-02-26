@@ -170,6 +170,17 @@ template <typename T> decltype(auto) mextract(const std::shared_ptr<T> &xs) {
   return *xs;
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
+              Args &&... args) {
+  return munit<std::shared_ptr>(foldMap(std::forward<F>(f),
+                                        std::forward<Op>(op), z, xs,
+                                        std::forward<Args>(args)...));
+}
+
 // mzero
 
 template <template <typename> class C, typename R,

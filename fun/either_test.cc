@@ -86,6 +86,10 @@ TEST(fun_either, monad) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
+  auto r1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, x1);
+  EXPECT_EQ(r, mextract(r1));
+
   auto x0 = mzero<either1, int>();
   static_assert(std::is_same<decltype(x0), either1<int>>::value, "");
   EXPECT_FALSE(x0.right());

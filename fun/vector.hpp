@@ -218,6 +218,20 @@ decltype(auto) mextract(std::vector<T, Allocator> &&xs) {
   return std::move(xs[0]);
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename Allocator,
+          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+              Args &&... args) {
+  struct S {
+    template <typename U> using vector1 = std::vector<U, Allocator>;
+  };
+  return munit<S::template vector1>(foldMap(std::forward<F>(f),
+                                            std::forward<Op>(op), z, xs,
+                                            std::forward<Args>(args)...));
+}
+
 // mzero
 
 template <template <typename> class C, typename R,

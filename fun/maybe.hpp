@@ -170,6 +170,16 @@ template <typename T> decltype(auto) mextract(const adt::maybe<T> &xs) {
   return xs.get_just();
 }
 
+// mfoldMap
+
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+auto mfoldMap(F &&f, Op &&op, const Z &z, const adt::maybe<T> &xs,
+              Args &&... args) {
+  return munit<adt::maybe>(foldMap(std::forward<F>(f), std::forward<Op>(op), z,
+                                   xs, std::forward<Args>(args)...));
+}
+
 // mzero
 
 template <template <typename> class C, typename R,

@@ -392,8 +392,7 @@ proxy<T> make_proxy_with_proc(std::ptrdiff_t proc,
 }
 }
 
-// make_proxy
-// //////////////////////////////////////////////////////////////////
+// make_proxy //////////////////////////////////////////////////////////////////
 
 template <typename T, typename... Args>
 proxy<T> make_local_proxy(Args &&... args) {
@@ -412,8 +411,7 @@ proxy<T> make_remote_proxy(std::ptrdiff_t dest, Args &&... args) {
                   std::forward<Args>(args)...));
 }
 
-// remote
-// //////////////////////////////////////////////////////////////////////
+// remote //////////////////////////////////////////////////////////////////////
 
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
@@ -452,8 +450,7 @@ proxy<R> remote(qthread::future<std::ptrdiff_t> &&fdest, F &&f,
                      std::forward<F>(f), std::forward<Args>(args)...));
 }
 
-// make_local_shared_ptr
-// ///////////////////////////////////////////////////////
+// make_local_shared_ptr ///////////////////////////////////////////////////////
 
 namespace detail {
 template <typename T>

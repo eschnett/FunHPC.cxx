@@ -21,7 +21,7 @@ template <typename T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 }
 
-// types
+// traits
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<std::shared_ptr<T>> {

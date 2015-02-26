@@ -20,7 +20,7 @@ template <typename L, typename R>
 struct is_pair<std::pair<L, R>> : std::true_type {};
 }
 
-// types
+// traits
 
 template <typename> struct fun_traits;
 template <typename T, typename L> struct fun_traits<std::pair<L, T>> {

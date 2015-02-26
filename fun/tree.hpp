@@ -20,7 +20,7 @@ template <template <typename> class C, typename T>
 struct is_tree<adt::tree<C, T>> : std::true_type {};
 }
 
-// types
+// traits
 
 template <typename> struct fun_traits;
 template <template <typename> class C, typename T>

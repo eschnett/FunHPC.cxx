@@ -24,7 +24,7 @@ struct is_vector<std::vector<T, Allocator>> : std::true_type {};
 template <typename T> using vector1 = std::vector<T>;
 }
 
-// types
+// traits
 
 template <typename> struct fun_traits;
 template <typename T, typename Allocator>

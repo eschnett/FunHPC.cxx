@@ -20,6 +20,14 @@ template <typename> struct is_maybe : std::false_type {};
 template <typename T> struct is_maybe<adt::maybe<T>> : std::true_type {};
 }
 
+// traits
+
+template <typename> struct fun_traits;
+template <typename T> struct fun_traits<adt::maybe<T>> {
+  template <typename U> using constructor = adt::maybe<U>;
+  typedef T value_type;
+};
+
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,

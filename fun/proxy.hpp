@@ -20,6 +20,14 @@ template <typename> struct is_proxy : std::false_type {};
 template <typename T> struct is_proxy<funhpc::proxy<T>> : std::true_type {};
 }
 
+// traits
+
+template <typename> struct fun_traits;
+template <typename T> struct fun_traits<funhpc::proxy<T>> {
+  template <typename U> using constructor = funhpc::proxy<U>;
+  typedef T value_type;
+};
+
 // iotaMap
 
 // TODO: use remote

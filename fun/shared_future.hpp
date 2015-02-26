@@ -21,6 +21,14 @@ template <typename T>
 struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
 }
 
+// traits
+
+template <typename> struct fun_traits;
+template <typename T> struct fun_traits<qthread::shared_future<T>> {
+  template <typename U> using constructor = qthread::shared_future<U>;
+  typedef T value_type;
+};
+
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,

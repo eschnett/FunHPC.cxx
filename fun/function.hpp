@@ -23,6 +23,14 @@ template <typename A> struct function1 {
 };
 }
 
+// traits
+
+template <typename> struct fun_traits;
+template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
+  template <typename U> using constructor = std::function<U(A)>;
+  typedef R value_type;
+};
+
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,

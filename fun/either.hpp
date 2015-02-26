@@ -21,6 +21,14 @@ template <typename L, typename R>
 struct is_either<adt::either<L, R>> : std::true_type {};
 }
 
+// traits
+
+template <typename> struct fun_traits;
+template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
+  template <typename U> using constructor = adt::either<L, U>;
+  typedef R value_type;
+};
+
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,

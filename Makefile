@@ -44,7 +44,6 @@ INCDIRS = $(CEREAL_INCDIRS) $(GOOGLETEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_IN
 LIBDIRS = $(CEREAL_LIBDIRS) $(GOOGLETEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
 LIBS    = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
-# Can also use gcc
 CC          = clang
 CXX         = clang++
 CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
@@ -52,6 +51,14 @@ CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS    = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
 OPTFLAGS    = -O3
 LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+
+# CC          = gcc
+# CXX         = g++
+# CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
+# CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
+# CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
+# OPTFLAGS    = -O3
+# LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 
 MPICC       = env "OMPI_CC=$(CC)" mpicc
 MPICXX      = env "OMPI_CXX=$(CXX)" mpicxx

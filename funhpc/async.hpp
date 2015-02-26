@@ -45,7 +45,7 @@ inline rlaunch &operator^=(rlaunch &a, rlaunch b) { return a = a ^ b; }
 
 namespace detail {
 // Convert bitmask to a specific policy
-constexpr rlaunch decode_policy(rlaunch policy) {
+/*gcc constexpr*/ inline rlaunch decode_policy(rlaunch policy) {
   if ((policy | rlaunch::async) == rlaunch::async)
     return rlaunch::async;
   if ((policy | rlaunch::deferred) == rlaunch::deferred)

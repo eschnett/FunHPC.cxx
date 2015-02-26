@@ -656,7 +656,7 @@ inline launch &operator^=(launch &a, launch b) { return a = a ^ b; }
 
 namespace detail {
 // Convert bitmask to a specific policy
-constexpr launch decode_policy(launch policy) {
+/*gcc constexpr*/ inline launch decode_policy(launch policy) {
   if ((policy | launch::async) == launch::async)
     return launch::async;
   if ((policy | launch::deferred) == launch::deferred)

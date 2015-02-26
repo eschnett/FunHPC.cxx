@@ -168,7 +168,7 @@ decltype(auto) mextract(const qthread::shared_future<T> &xs) {
 // mempty
 
 template <typename T>
-constexpr bool mempty(const qthread::shared_future<T> &xs) {
+/*gcc constexpr*/ bool mempty(const qthread::shared_future<T> &xs) {
   assert(xs.valid());
   return false;
 }

@@ -39,14 +39,13 @@ template <template <typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  std::vector<R> rs(s);
+  C<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...);
   return rs;
 }
 
-// TODO: Use rebind to obtain the new allocator
 template <template <typename, typename> class C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           std::enable_if_t<
@@ -58,22 +57,22 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 
 // fmap
 
-template <typename F, typename T, typename... Args,
+template <typename F, typename T, typename Allocator, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
-auto fmap(F &&f, const std::vector<T> &xs, Args &&... args) {
+auto fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  std::vector<R> rs(s);
+  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...);
   return rs;
 }
 
-template <typename F, typename T, typename... Args,
+template <typename F, typename T, typename Allocator, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
-auto fmap(F &&f, std::vector<T> &&xs, Args &&... args) {
+auto fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  std::vector<R> rs(s);
+  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), std::move(xs[i]),
@@ -81,13 +80,14 @@ auto fmap(F &&f, std::vector<T> &&xs, Args &&... args) {
   return rs;
 }
 
-template <typename F, typename T, typename T2, typename... Args,
+template <typename F, typename T, typename Allocator, typename T2,
+          typename Allocator2, typename... Args,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
-auto fmap2(F &&f, const std::vector<T> &xs, const std::vector<T2> &ys,
-           Args &&... args) {
+auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
+           const std::vector<T2, Allocator2> &ys, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
-  std::vector<R> rs(s);
+  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
@@ -97,9 +97,9 @@ auto fmap2(F &&f, const std::vector<T> &xs, const std::vector<T2> &ys,
 
 // foldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
+template <typename F, typename Op, typename Z, typename T, typename Allocator,
+          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
@@ -115,9 +115,10 @@ R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
   return r;
 }
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, std::vector<T> &&xs, Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename Allocator,
+          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, const Z &z, std::vector<T, Allocator> &&xs,
+          Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
@@ -132,11 +133,11 @@ R foldMap(F &&f, Op &&op, const Z &z, std::vector<T> &&xs, Args &&... args) {
   return r;
 }
 
-template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args,
+template <typename F, typename Op, typename Z, typename T, typename Allocator,
+          typename T2, typename Allocator2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
-           const std::vector<T2> &ys, Args &&... args) {
+R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+           const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
@@ -157,7 +158,7 @@ R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T> &xs,
 template <template <typename> class C, typename T, typename R = std::decay_t<T>,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
 auto munit(T &&x) {
-  return std::vector<R>{std::forward<T>(x)};
+  return C<R>{std::forward<T>(x)};
 }
 
 template <template <typename, typename> class C, typename T,
@@ -170,15 +171,17 @@ auto munit(T &&x) {
 
 // mjoin
 
-template <typename T> auto mjoin(const std::vector<std::vector<T>> &xss) {
-  std::vector<T> rs;
+template <typename T, typename Allocator, typename Allocator2>
+auto mjoin(const std::vector<std::vector<T, Allocator>, Allocator2> &xss) {
+  std::vector<T, Allocator> rs;
   for (const auto &xs : xss)
     rs.insert(rs.end(), xs.begin(), xs.end());
   return rs;
 }
 
-template <typename T> auto mjoin(std::vector<std::vector<T>> &&xss) {
-  std::vector<T> rs;
+template <typename T, typename Allocator, typename Allocator2>
+auto mjoin(std::vector<std::vector<T, Allocator>, Allocator2> &&xss) {
+  std::vector<T, Allocator> rs;
   for (auto &xs : xss)
     std::move(xs.begin(), xs.end(), std::back_inserter(rs));
   return rs;
@@ -186,16 +189,16 @@ template <typename T> auto mjoin(std::vector<std::vector<T>> &&xss) {
 
 // mbind
 
-template <typename F, typename T, typename... Args,
+template <typename F, typename T, typename Allocator, typename... Args,
           typename CR = cxx::invoke_of_t<F, T, Args...>>
-auto mbind(F &&f, const std::vector<T> &xs, Args &&... args) {
+auto mbind(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   static_assert(detail::is_vector<CR>::value, "");
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename... Args,
+template <typename F, typename T, typename Allocator, typename... Args,
           typename CR = cxx::invoke_of_t<F, T, Args...>>
-auto mbind(F &&f, std::vector<T> &&xs, Args &&... args) {
+auto mbind(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   static_assert(detail::is_vector<CR>::value, "");
   return mjoin(
       fmap(std::forward<F>(f), std::move(xs), std::forward<Args>(args)...));
@@ -203,12 +206,14 @@ auto mbind(F &&f, std::vector<T> &&xs, Args &&... args) {
 
 // mextract
 
-template <typename T> decltype(auto) mextract(const std::vector<T> &xs) {
+template <typename T, typename Allocator>
+decltype(auto) mextract(const std::vector<T, Allocator> &xs) {
   assert(!xs.empty());
   return xs[0];
 }
 
-template <typename T> decltype(auto) mextract(std::vector<T> &&xs) {
+template <typename T, typename Allocator>
+decltype(auto) mextract(std::vector<T, Allocator> &&xs) {
   assert(!xs.empty());
   return std::move(xs[0]);
 }
@@ -218,7 +223,7 @@ template <typename T> decltype(auto) mextract(std::vector<T> &&xs) {
 template <template <typename> class C, typename R,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
 auto mzero() {
-  return std::vector<R>();
+  return C<R>();
 }
 
 template <template <typename, typename> class C, typename R,
@@ -230,18 +235,21 @@ auto mzero() {
 
 // mplus
 
-template <typename T, typename... Ts>
-auto mplus(const std::vector<T> &xs, const std::vector<Ts> &... yss) {
-  std::vector<T> rs(xs);
-  for (auto pys : std::initializer_list<const std::vector<T> *>{&yss...})
+template <typename T, typename Allocator, typename... Ts>
+auto mplus(const std::vector<T, Allocator> &xs,
+           const std::vector<Ts, Allocator> &... yss) {
+  std::vector<T, Allocator> rs(xs);
+  for (auto pys :
+       std::initializer_list<const std::vector<T, Allocator> *>{&yss...})
     rs.insert(rs.end(), pys->begin(), pys->end());
   return rs;
 }
 
-template <typename T, typename... Ts>
-auto mplus(std::vector<T> &&xs, std::vector<Ts> &&... yss) {
-  std::vector<T> rs(std::move(xs));
-  for (auto pys : std::initializer_list<std::vector<T> *>{&yss...})
+template <typename T, typename Allocator, typename... Ts>
+auto mplus(std::vector<T, Allocator> &&xs,
+           std::vector<Ts, Allocator> &&... yss) {
+  std::vector<T, Allocator> rs(std::move(xs));
+  for (auto pys : std::initializer_list<std::vector<T, Allocator> *>{&yss...})
     std::move(pys->begin(), pys->end(), std::back_inserter(rs));
   return rs;
 }
@@ -252,7 +260,7 @@ template <template <typename> class C, typename T, typename... Ts,
           typename R = std::decay_t<T>,
           std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
 auto msome(T &&x, Ts &&... ys) {
-  return std::vector<R>{std::forward<T>(x), std::forward<Ts>(ys)...};
+  return C<R>{std::forward<T>(x), std::forward<Ts>(ys)...};
 }
 
 template <template <typename, typename> class C, typename T, typename... Ts,

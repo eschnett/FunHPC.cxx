@@ -131,6 +131,7 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     return qthread::future<R>();
   }
   }
+  __builtin_unreachable();
 }
 
 template <typename F, typename... Args,

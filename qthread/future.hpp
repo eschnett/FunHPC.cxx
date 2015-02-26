@@ -710,6 +710,7 @@ future<R> async(launch policy, F &&f, Args &&... args) {
         .detach();
     return future<R>();
   }
+  __builtin_unreachable();
 }
 
 template <typename F, typename... Args,

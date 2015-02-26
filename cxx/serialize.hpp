@@ -10,7 +10,9 @@
 namespace cxx {
 namespace detail {
 template <typename T> void serialize_anchor_f() {}
-static_assert(sizeof &serialize_anchor_f<void> <= sizeof(std::uintptr_t), "");
+static_assert(sizeof &(void (&)())serialize_anchor_f<void> <=
+                  sizeof(std::uintptr_t),
+              "");
 const std::uintptr_t serialize_anchor =
     std::uintptr_t(&serialize_anchor_f<void>);
 }

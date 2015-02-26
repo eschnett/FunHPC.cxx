@@ -51,10 +51,11 @@ template <
 auto fmap(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
   assert(s);
-  return funhpc::remote(
-      xs.get_proc_future(),
-      detail::fmap_local<std::decay_t<F>, T, std::decay_t<Args>...>,
-      std::forward<F>(f), xs, std::forward<Args>(args)...);
+  auto fmap_local = (R(&)(std::decay_t<F> && f, const funhpc::proxy<T> &xs,
+                          std::decay_t<Args> &&... args))
+      detail::fmap_local<std::decay_t<F>, T, std::decay_t<Args>...>;
+  return funhpc::remote(xs.get_proc_future(), fmap_local, std::forward<F>(f),
+                        xs, std::forward<Args>(args)...);
 }
 
 namespace detail {
@@ -78,10 +79,12 @@ auto fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
   bool s = bool(xs);
   assert(bool(ys) == s);
   assert(s);
-  return funhpc::remote(
-      xs.get_proc_future(),
-      detail::fmap2_local<std::decay_t<F>, T, T2, std::decay_t<Args>...>,
-      std::forward<F>(f), xs, ys, std::forward<Args>(args)...);
+  auto fmap2_local =
+      (R(&)(std::decay_t<F> && f, const funhpc::proxy<T> &xs,
+            const funhpc::proxy<T2> &ys, std::decay_t<Args> &&... args))
+      detail::fmap2_local<std::decay_t<F>, T, T2, std::decay_t<Args>...>;
+  return funhpc::remote(xs.get_proc_future(), fmap2_local, std::forward<F>(f),
+                        xs, ys, std::forward<Args>(args)...);
 }
 
 // foldMap
@@ -105,11 +108,14 @@ R foldMap(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(s);
+  auto foldMap_local =
+      (R(&)(std::decay_t<F> && f, std::decay_t<Op> && op, const Z &z,
+            const funhpc::proxy<T> &xs, std::decay_t<Args> &&... args))
+      detail::foldMap_local<std::decay_t<F>, std::decay_t<Op>, Z, T,
+                            std::decay_t<Args>...>;
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       detail::foldMap_local<std::decay_t<F>, std::decay_t<Op>,
-                                             Z, T, std::decay_t<Args>...>,
-                       std::forward<F>(f), std::forward<Op>(op), z, xs,
-                       std::forward<Args>(args)...).get();
+                       foldMap_local, std::forward<F>(f), std::forward<Op>(op),
+                       z, xs, std::forward<Args>(args)...).get();
 }
 
 namespace detail {
@@ -135,11 +141,15 @@ R foldMap2(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
   bool s = bool(xs);
   assert(bool(ys) == s);
   assert(s);
+  auto foldMap2_local =
+      (R(&)(std::decay_t<F> && f, std::decay_t<Op> && op, const Z &z,
+            const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
+            std::decay_t<Args> &&... args))
+      detail::foldMap2_local<std::decay_t<F>, std::decay_t<Op>, Z, T, T2,
+                             std::decay_t<Args>...>;
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       detail::foldMap2_local<std::decay_t<F>, std::decay_t<Op>,
-                                              Z, T, T2, std::decay_t<Args>...>,
-                       std::forward<F>(f), std::forward<Op>(op), z, xs, ys,
-                       std::forward<Args>(args)...).get();
+                       foldMap2_local, std::forward<F>(f), std::forward<Op>(op),
+                       z, xs, ys, std::forward<Args>(args)...).get();
 }
 
 // munit

@@ -429,9 +429,10 @@ proxy<R> local(F &&f, Args &&... args) {
 template <typename F, typename... Args,
           typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
 proxy<R> remote(std::ptrdiff_t dest, F &&f, Args &&... args) {
+  auto local1 = (proxy<R>(&)(std::decay_t<F> &&, std::decay_t<Args> && ...))
+      local<std::decay_t<F>, std::decay_t<Args>...>;
   return detail::make_proxy_with_proc(
-      dest, async(rlaunch::async | rlaunch::deferred, dest,
-                  local<std::decay_t<F>, std::decay_t<Args>...>,
+      dest, async(rlaunch::async | rlaunch::deferred, dest, local1,
                   std::forward<F>(f), std::forward<Args>(args)...));
 }
 

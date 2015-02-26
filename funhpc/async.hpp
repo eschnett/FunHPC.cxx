@@ -109,7 +109,9 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
   case rlaunch::sync: {
     auto pres = new qthread::promise<R>;
     auto fres = pres->get_future();
-    rexec(dest, detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
+    rexec(dest, (void(&)(rptr<qthread::promise<R>> rpres, std::decay_t<F> &&,
+                         std::decay_t<Args> && ...))
+          detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
           rptr<qthread::promise<R>>(pres), std::forward<F>(f),
           std::forward<Args>(args)...);
     if (pol == rlaunch::sync)

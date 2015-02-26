@@ -186,6 +186,7 @@ future<T> make_future_with_shared_state(
 }
 
 template <typename T> class future {
+  template <typename U> friend class future;
   template <typename U> friend class shared_future;
   template <typename U> friend class promise;
 
@@ -304,6 +305,7 @@ inline future<void> make_ready_future() {
 
 template <typename T> class shared_future {
   template <typename U> friend class future;
+  template <typename U> friend class shared_future;
 
   std::shared_ptr<detail::shared_state<T>> shared_state;
 

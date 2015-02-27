@@ -374,9 +374,9 @@ public:
   }
 
   template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
-  future<R> then(launch policy, F &&cont);
+  future<R> then(launch policy, F &&cont) const;
   template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
-  future<R> then(F &&cont);
+  future<R> then(F &&cont) const;
 
   template <typename U = T,
             std::enable_if_t<std::is_same<U, T>::value &&
@@ -764,7 +764,7 @@ future<typename U::element_type> future<T>::unwrap() {
 
 template <typename T>
 template <typename F, typename R>
-future<R> shared_future<T>::then(launch policy, F &&cont) {
+future<R> shared_future<T>::then(launch policy, F &&cont) const {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
@@ -776,7 +776,7 @@ future<R> shared_future<T>::then(launch policy, F &&cont) {
 }
 template <typename T>
 template <typename F, typename R>
-future<R> shared_future<T>::then(F &&cont) {
+future<R> shared_future<T>::then(F &&cont) const {
   // TODO: same as policy of *this
   return then(launch::async | launch::deferred, std::forward<F>(cont));
 }

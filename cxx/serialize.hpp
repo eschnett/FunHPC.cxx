@@ -101,6 +101,32 @@ void load(Archive &ar, T &m) {
 }
 }
 
+#if 0
+namespace cxx {
+// captureless lambdas
+
+// It is not possible to create a captureless lambda via a default
+// constructor, although this "should" work. We don't know how to
+// cheat and let Cereal use an uninitialized object, which also
+// "should" work. Thus we convert captureless lambdas to a function
+// pointer before serializing it.
+
+namespace detail {
+template <typename R, typename... Args>
+auto get_funptr(R (*fptr)(Args...)) -> R (*)(Args...) {
+  return fptr;
+}
+}
+
+template <typename T, typename R, typename... Args>
+auto lambda_to_function(const T &lambda) {
+  return detail::get_funptr(lambda);
+  // return detail::get_funptr<R, Args...>(lambda);
+  // return (R (*)(Args...))lambda;
+}
+}
+#endif
+
 #define CXX_SERIALIZE_HPP_DONE
 #endif // #ifdef CXX_SERIALIZE_HPP
 #ifndef CXX_SERIALIZE_HPP_DONE

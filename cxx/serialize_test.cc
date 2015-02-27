@@ -62,3 +62,13 @@ TEST(cxx_serialize, member_object) {
   EXPECT_EQ(obj().*orig, obj().*copy);
   EXPECT_EQ(cxx::invoke(orig, obj()), cxx::invoke(copy, obj()));
 }
+
+#if 0
+TEST(cxx_serialize, lambda) {
+  auto orig0 = [](int x) { return x; };
+  auto orig = cxx::lambda_to_function(orig0);
+  auto buf = serialize(orig);
+  auto copy = deserialize<decltype(orig)>(buf);
+  EXPECT_EQ(cxx::invoke(orig, 3), cxx::invoke(copy, 3));
+}
+#endif

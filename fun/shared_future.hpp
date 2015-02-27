@@ -37,9 +37,8 @@ template <template <typename> class C, typename F, typename... Args,
           std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s == 1);
-  return qthread::make_ready_future(
-             cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
-                         std::forward<Args>(args)...)).share();
+  return qthread::async(std::forward<F>(f), std::ptrdiff_t(0),
+                        std::forward<Args>(args)...).share();
 }
 
 // fmap
@@ -50,9 +49,11 @@ template <
 auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   bool s = xs.valid();
   assert(s);
-  return qthread::make_ready_future(cxx::invoke(std::forward<F>(f), xs.get(),
-                                                std::forward<Args>(args)...))
-      .share();
+  return xs.then([ f = std::forward<F>(f), args... ](
+                     const qthread::shared_future<T> &xs) mutable {
+                   return cxx::invoke(std::move(f), xs.get(),
+                                      std::move(args)...);
+                 }).share();
 }
 
 template <
@@ -61,9 +62,11 @@ template <
 auto fmap(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
   bool s = xs.valid();
   assert(s);
-  return qthread::make_ready_future(
-             cxx::invoke(std::forward<F>(f), std::move(xs.get()),
-                         std::forward<Args>(args)...)).share();
+  return xs.then([ f = std::forward<F>(f), args... ](
+                     qthread::shared_future<T> && xs) mutable {
+                   return cxx::invoke(std::move(f), std::move(xs.get()),
+                                      std::move(args)...);
+                 }).share();
 }
 
 template <typename F, typename T, typename T2, typename... Args,
@@ -74,9 +77,11 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
   bool s = xs.valid();
   assert(ys.valid() == s);
   assert(s);
-  return qthread::make_ready_future(
-             cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
-                         std::forward<Args>(args)...)).share();
+  return xs.then([ f = std::forward<F>(f), ys, args... ](
+                     const qthread::shared_future<T> &xs) mutable {
+                   return cxx::invoke(std::move(f), xs.get(), ys.get(),
+                                      std::move(args)...);
+                 }).share();
 }
 
 // foldMap

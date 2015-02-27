@@ -9,6 +9,7 @@
 #include <iterator>
 #include <memory>
 #include <vector>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -92,6 +93,55 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
                         std::forward<Args>(args)...);
+  return rs;
+}
+
+// topo_fmap
+
+template <typename> struct connectivity;
+template <typename T, typename Allocator>
+struct connectivity<std::vector<T, Allocator>> {
+  template <typename U> using constructor = std::vector<U, Allocator>;
+  std::tuple<const T &, const T &> data;
+  connectivity(const T &x0, const T &x1)
+      : data(std::forward_as_tuple(x0, x1)) {}
+  template <std::ptrdiff_t I> const T &get() const {
+    using std::get;
+    return get<I>(data);
+  }
+};
+template <std::ptrdiff_t I, typename T, typename Allocator>
+decltype(auto) get(const connectivity<std::vector<T, Allocator>> &topo) {
+  return topo.template get<I>();
+}
+
+template <typename F, typename G, typename T, typename Allocator,
+          typename... Args, typename B = cxx::invoke_of_t<G, bool, T>,
+          typename TB = connectivity<std::vector<T, Allocator>>,
+          typename R = cxx::invoke_of_t<F, T, TB, Args...>>
+auto topo_fmap(F &&f, G &&g, const std::vector<T, Allocator> &xs, const TB &bs,
+               Args &&... args) {
+  std::ptrdiff_t s = xs.size();
+  std::vector<R, Allocator> rs(s);
+  if (s == 1) {
+    rs[0] =
+        cxx::invoke(std::forward<F>(f), xs[0], bs, std::forward<Args>(args)...);
+  } else if (s > 1) {
+    rs[0] =
+        cxx::invoke(std::forward<F>(f), xs[0],
+                    TB(get<0>(bs), cxx::invoke(std::forward<G>(g), xs[1], 0)),
+                    std::forward<Args>(args)...);
+#pragma omp simd
+    for (std::ptrdiff_t i = 1; i < s - 1; ++i)
+      rs[i] = cxx::invoke(f, xs[i],
+                          TB(cxx::invoke(std::forward<G>(g), xs[i - 1], 1),
+                             cxx::invoke(std::forward<G>(g), xs[i + 1], 0)),
+                          std::forward<Args>(args)...);
+    rs[s - 1] = cxx::invoke(
+        std::forward<F>(f), xs[s - 1],
+        TB(cxx::invoke(std::forward<G>(g), xs[s - 2], 1), get<1>(bs)),
+        std::forward<Args>(args)...);
+  }
   return rs;
 }
 

@@ -52,9 +52,17 @@ template <typename CT,
           template <typename> class C = fun_traits<CT>::template constructor,
           typename T = typename fun_traits<CT>::value_type>
 std::string to_string(const CT &xs) {
-  return foldMap([](const auto &x) { return detail::to_string(x); },
-                 [](const auto &x, const auto &y) { return x + y; },
-                 std::string(), xs);
+  return std::string("[") +
+         foldMap([](const auto &x) { return detail::to_string(x); },
+                 [](const auto &x, const auto &y) {
+                   if (x.empty())
+                     return y;
+                   if (y.empty())
+                     return x;
+                   return x + ", " + y;
+                 },
+                 std::string(), xs) +
+         "]";
 }
 
 // to_string_function

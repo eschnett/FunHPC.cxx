@@ -33,5 +33,5 @@ TEST(fun_fun, convert) {
 TEST(fun_fun, to_string) {
   auto xs = msome<vector1, char>('h', 'e', 'l', 'l', 'o');
   auto s = to_string(xs);
-  EXPECT_EQ("hello", s);
+  EXPECT_EQ("[h, e, l, l, o]", s);
 }

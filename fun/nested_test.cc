@@ -23,7 +23,7 @@ template <typename T>
 using nested2 = adt::nested<qthread::shared_future, vector1, T>;
 }
 
-TEST(adt_nested, iotaMap) {
+TEST(fun_nested, iotaMap) {
   auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
   static_assert(std::is_same<decltype(xs), nested1<double>>::value, "");
   EXPECT_TRUE(bool(xs.data));
@@ -31,7 +31,7 @@ TEST(adt_nested, iotaMap) {
   EXPECT_EQ(5.0, xs.data->at(5));
 }
 
-TEST(adt_nested, iotaMap2) {
+TEST(fun_nested, iotaMap2) {
   qthread_initialize();
 
   auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
@@ -41,7 +41,7 @@ TEST(adt_nested, iotaMap2) {
   EXPECT_EQ(5.0, xs.data.get().at(5));
 }
 
-TEST(adt_nested, fmap) {
+TEST(fun_nested, fmap) {
   auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
   auto ys = fmap([](auto x) { return x + 1.0; }, xs);
   EXPECT_TRUE(bool(ys.data));
@@ -54,7 +54,7 @@ TEST(adt_nested, fmap) {
   EXPECT_EQ(11.0, zs.data->at(5));
 }
 
-TEST(adt_nested, fmap2) {
+TEST(fun_nested, fmap2) {
   auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
   auto ys = fmap([](auto x) { return x + 1.0; }, xs);
   EXPECT_TRUE(ys.data.valid());
@@ -67,7 +67,7 @@ TEST(adt_nested, fmap2) {
   EXPECT_EQ(11.0, zs.data.get().at(5));
 }
 
-TEST(adt_nested, foldMap) {
+TEST(fun_nested, foldMap) {
   auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
 
   auto r = foldMap([](auto x) { return x; },
@@ -75,7 +75,7 @@ TEST(adt_nested, foldMap) {
   EXPECT_EQ(45.0, r);
 }
 
-TEST(adt_nested, foldMap2) {
+TEST(fun_nested, foldMap2) {
   auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
 
   auto r = foldMap([](auto x) { return x; },
@@ -83,7 +83,7 @@ TEST(adt_nested, foldMap2) {
   EXPECT_EQ(45.0, r);
 }
 
-TEST(adt_nested, monad) {
+TEST(fun_nested, monad) {
   auto x1 = munit<nested1>(1);
   static_assert(std::is_same<decltype(x1), nested1<int>>::value, "");
   EXPECT_EQ(1, x1.data->size());
@@ -138,7 +138,7 @@ TEST(adt_nested, monad) {
   EXPECT_FALSE(mempty(x13b));
 }
 
-TEST(adt_nested, monad2) {
+TEST(fun_nested, monad2) {
   auto x1 = munit<nested2>(1);
   static_assert(std::is_same<decltype(x1), nested2<int>>::value, "");
   EXPECT_EQ(1, x1.data.get().size());
@@ -202,4 +202,4 @@ template <typename T> void test_serialize(const T &x) {
 }
 }
 
-TEST(adt_nested, serialize) { test_serialize(munit<nested1>(1)); }
+TEST(fun_nested, serialize) { test_serialize(munit<nested1>(1)); }

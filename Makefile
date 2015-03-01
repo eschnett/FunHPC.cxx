@@ -70,6 +70,7 @@ MPILIBS     = $(LIBS)
 MPIRUN      = mpirun
 
 HDRS =						\
+	adt/array.hpp				\
 	adt/either.hpp				\
 	adt/maybe.hpp				\
 	adt/nested.hpp				\
@@ -80,6 +81,7 @@ HDRS =						\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
 	cxx/utility.hpp				\
+	fun/array.hpp				\
 	fun/either.hpp				\
 	fun/fun.hpp				\
 	fun/function.hpp			\
@@ -107,6 +109,7 @@ FUNHPC_SRCS =					\
 	funhpc/main.cc				\
 	funhpc/server.cc
 TEST_SRCS =					\
+	adt/array_test.cc			\
 	adt/either_test.cc			\
 	adt/maybe_test.cc			\
 	adt/nested_test.cc			\
@@ -116,6 +119,7 @@ TEST_SRCS =					\
 	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\
 	cxx/utility_test.cc			\
+	fun/array_test.cc			\
 	fun/either_test.cc			\
 	fun/fun_test.cc				\
 	fun/function_test.cc			\
@@ -175,7 +179,7 @@ objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc Makefile
-	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc $(OPTFLAGS)
+	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 

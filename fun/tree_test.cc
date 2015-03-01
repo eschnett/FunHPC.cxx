@@ -1,4 +1,6 @@
+#include <fun/shared_future.hpp>
 #include <fun/shared_ptr.hpp>
+#include <fun/topology.hpp>
 #include <fun/vector.hpp>
 
 #include <adt/nested.hpp>
@@ -15,7 +17,10 @@ namespace {
 template <typename T> using vector1 = std::vector<T>;
 template <typename T>
 using shared_vector = adt::nested<std::shared_ptr, vector1, T>;
+template <typename T>
+using future_vector = adt::nested<qthread::shared_future, vector1, T>;
 template <typename T> using tree1 = adt::tree<shared_vector, T>;
+template <typename T> using tree2 = adt::tree<future_vector, T>;
 }
 
 TEST(fun_tree, iotaMap) {
@@ -36,6 +41,30 @@ TEST(fun_tree, fmap) {
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
 
   auto zs = fmap2([](auto x, auto y) { return x + y; }, xs, ys);
+}
+
+TEST(fun_tree, fmapTopo) {
+  std::ptrdiff_t s = 10;
+  auto xs = iotaMap<tree1>([](int x) { return x * x; }, s);
+  auto ys = fmapTopo(
+      [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
+      [](auto x, auto i) { return x; }, xs, connectivity<int>(1, 100));
+  auto sum = foldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, ys);
+  EXPECT_EQ(20, sum);
+
+  auto x2s = iotaMap<tree2>([](int x) { return x * x; }, s);
+  // EXPECT_FALSE(x2s.data.ready());
+  auto y2s = fmapTopo(
+      [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
+      [](auto x, auto i) { return x; }, x2s, connectivity<int>(1, 100));
+  // EXPECT_FALSE(x2s.data.ready());
+  // EXPECT_FALSE(y2s.data.ready());
+  auto sum2 = foldMap([](auto x) { return x; },
+                      [](auto x, auto y) { return x + y; }, 0, y2s);
+  // EXPECT_TRUE(x2s.data.ready());
+  // EXPECT_TRUE(y2s.data.ready());
+  EXPECT_EQ(20, sum2);
 }
 
 TEST(fun_tree, foldMap) {

@@ -89,6 +89,7 @@ HDRS =						\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
+	fun/topology.hpp			\
 	fun/tree.hpp				\
 	fun/vector.hpp				\
 	funhpc/async.hpp			\
@@ -174,7 +175,7 @@ objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc Makefile
-	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
+	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc $(OPTFLAGS)
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 

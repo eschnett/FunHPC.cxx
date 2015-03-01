@@ -3,6 +3,7 @@
 
 #include <adt/nested.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/topology.hpp>
 
 #include <cereal/access.hpp>
 
@@ -66,37 +67,30 @@ adt::nested<P, A, R> fmap2(F &&f, const adt::nested<P, A, T> &xss,
                 std::forward<Args>(args)...)};
 }
 
-// fopo_fmap
-
-template <typename> struct connectivity;
-template <template <typename> class P, template <typename> class A, typename T>
-struct connectivity<adt::nested<P, A, T>> {
-  template <typename U> using constructor = adt::nested<P, A, U>;
-  connectivity<A<T>> data;
-  connectivity(const connectivity<A<T>> &xs) : data(xs) {}
-  connectivity(connectivity<A<T>> &&xs) : data(std::move(xs)) {}
-  template <std::ptrdiff_t I> const T &get() const {
-    using std::get;
-    return get<I>(data);
-  }
-};
-template <std::ptrdiff_t I, template <typename> class P,
-          template <typename> class A, typename T>
-decltype(auto) get(const connectivity<adt::nested<P, A, T>> &topo) {
-  return topo.template get<I>();
-}
+// fmapTopo
 
 template <typename F, typename G, template <typename> class P,
           template <typename> class A, typename T, typename... Args,
-          typename B = cxx::invoke_of_t<G, bool, T>,
-          typename TB = connectivity<adt::nested<P, A, T>>,
-          typename R = cxx::invoke_of_t<F, T, TB, Args...>>
-adt::nested<P, A, R> topo_fmap(F &&f, G &&g, const adt::nested<P, A, T> &xss,
-                               const TB &bs, Args &&... args) {
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, connectivity<B>, Args...>>
+adt::nested<P, A, R> fmapTopo(F &&f, G &&g, const adt::nested<P, A, T> &xss,
+                              const connectivity<B> &bs, Args &&... args) {
   return {fmap([](const A<T> &xs, auto &&f, auto &&g, auto &&bs,
-                  auto &&... args) { return topo_fmap(f, g, xs, bs, args...); },
-               xss.data, std::forward<F>(f), std::forward<G>(g), bs.data,
+                  auto &&... args) { return fmapTopo(f, g, xs, bs, args...); },
+               xss.data, std::forward<F>(f), std::forward<G>(g), bs,
                std::forward<Args>(args)...)};
+}
+
+// head, last
+
+template <template <typename> class P, template <typename> class A, typename T>
+decltype(auto) head(const adt::nested<P, A, T> &xss) {
+  return mextract(fmap([](const A<T> &xs) { return head(xs); }, xss.data));
+}
+
+template <template <typename> class P, template <typename> class A, typename T>
+decltype(auto) last(const adt::nested<P, A, T> &xss) {
+  return mextract(fmap([](const A<T> &xs) { return last(xs); }, xss.data));
 }
 
 // foldMap
@@ -176,6 +170,7 @@ template <template <typename> class C, typename R,
           template <typename> class A = C<R>::template array_constructor>
 C<R> mzero() {
   return {mzero<P, A<R>>()};
+  // return {munit<P>(mzero<A, R>())};
 }
 
 // mplus
@@ -197,7 +192,7 @@ template <template <typename> class C, typename T, typename... Ts,
           template <typename> class A = C<R>::template array_constructor,
           std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
 C<R> msome(T &&x, Ts &&... ys) {
-  return {msome<P>(msome<A>(std::forward<T>(x), std::forward<Ts>(ys)...))};
+  return {munit<P>(msome<A>(std::forward<T>(x), std::forward<Ts>(ys)...))};
 }
 
 // mempty

@@ -193,6 +193,14 @@ auto mfoldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
              std::forward<Args>(args)...).share();
 }
 
+// mzero
+
+template <template <typename> class C, typename R,
+          std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
+auto mzero() {
+  return qthread::shared_future<R>();
+}
+
 // mempty
 
 template <typename T>

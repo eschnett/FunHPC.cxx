@@ -15,13 +15,6 @@ struct nested {
   typedef T value_type;
   P<A<T>> data;
   template <typename Archive> void serialize(Archive &ar) { ar(data); }
-  // bool invariant() const {
-  //   if (fun::mempty(data))
-  //     return true;
-  //   if (!fun::mempty(fun::mextract(data)))
-  //     return false;
-  //   return true;
-  // }
 };
 }
 

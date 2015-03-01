@@ -56,6 +56,18 @@ auto fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
                          xs, ys, std::forward<Args>(args)...);
 }
 
+// fmapTopo
+
+template <typename F, typename G, template <typename> class C, typename T,
+          typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, connectivity<B>, Args...>>
+auto fmapTopo(F &&f, G &&g, const adt::tree<C, T> &xs,
+              const connectivity<B> &bs, Args &&... args) {
+  return adt::tree<C, T>(typename adt::tree<C, T>::fmapTopo(),
+                         std::forward<F>(f), std::forward<G>(g), xs, bs,
+                         std::forward<Args>(args)...);
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, template <typename> class C,

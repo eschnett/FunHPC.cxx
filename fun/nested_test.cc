@@ -68,60 +68,28 @@ TEST(fun_nested, fmap2) {
   EXPECT_EQ(11.0, zs.data.get().at(5));
 }
 
-namespace {
-struct norm_t {
-  double count, min, max, sum, sum2;
-  norm_t() : count(0), min(1.0 / 0.0), max(-1.0 / 0.0), sum(0), sum2(0) {}
-  norm_t(double x) : count(1), min(x), max(x), sum(x), sum2(x * x) {}
-  norm_t(const norm_t &other) = default;
-  norm_t(norm_t &&other) = default;
-  norm_t &operator=(const norm_t &other) = default;
-  norm_t &operator=(norm_t &&other) = default;
-  norm_t &operator+=(const norm_t &other) {
-    count += other.count;
-    min = std::min(min, other.min);
-    max = std::max(max, other.max);
-    sum += other.sum;
-    sum2 += other.sum2;
-    return *this;
-  }
-  norm_t operator+(const norm_t &other) const { return norm_t(*this) += other; }
-  double avg() const { return sum / count; }
-  // sdv
-};
-}
-
-TEST(fun_nested, topo_fmap) {
+TEST(fun_nested, fmapTopo) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<nested1>([](auto x) { return int(x); }, s);
-  auto ys = topo_fmap(
+  auto xs = iotaMap<nested1>([](int x) { return x * x; }, s);
+  auto ys = fmapTopo(
       [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
-      [](auto x, auto i) { return x; }, xs,
-      connectivity<nested1<int>>(connectivity<vector1<int>>(-1, 10)));
-  auto norm =
-      foldMap([](auto x) { return norm_t(x); },
-              [](const auto &x, const auto &y) { return x + y; }, norm_t(), ys);
-  EXPECT_EQ(0, norm.min);
-  EXPECT_EQ(0, norm.max);
+      [](auto x, auto i) { return x; }, xs, connectivity<int>(1, 100));
+  auto sum = foldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, ys);
+  EXPECT_EQ(20, sum);
 
-  auto qs = iotaMap<qthread::shared_future>([](auto x) { return int(x); }, 1);
-  EXPECT_FALSE(qs.ready());
-
-  auto x2s = iotaMap<nested2>([](auto x) { return int(x); }, s);
+  auto x2s = iotaMap<nested2>([](int x) { return x * x; }, s);
   EXPECT_FALSE(x2s.data.ready());
-  auto y2s = topo_fmap(
+  auto y2s = fmapTopo(
       [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
-      [](auto x, auto i) { return x; }, x2s,
-      connectivity<nested2<int>>(connectivity<vector1<int>>(-1, 10)));
+      [](auto x, auto i) { return x; }, x2s, connectivity<int>(1, 100));
   EXPECT_FALSE(x2s.data.ready());
   EXPECT_FALSE(y2s.data.ready());
-  auto norm2 = foldMap([](auto x) { return norm_t(x); },
-                       [](const auto &x, const auto &y) { return x + y; },
-                       norm_t(), y2s);
+  auto sum2 = foldMap([](auto x) { return x; },
+                      [](auto x, auto y) { return x + y; }, 0, y2s);
+  EXPECT_EQ(20, sum2);
   EXPECT_TRUE(x2s.data.ready());
   EXPECT_TRUE(y2s.data.ready());
-  EXPECT_EQ(0, norm2.min);
-  EXPECT_EQ(0, norm2.max);
 }
 
 TEST(fun_nested, foldMap) {

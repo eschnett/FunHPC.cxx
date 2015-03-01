@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <tuple>
 #include <vector>
 
 namespace adt {
@@ -64,6 +65,15 @@ public:
 
   bool empty() const {
     return subtrees.left() && fun::mempty(subtrees.get_left());
+  }
+
+  const T &head() const {
+    return subtrees.left() ? fun::head(subtrees.get_left())
+                           : fun::head(subtrees.get_right()).head();
+  }
+  const T &last() const {
+    return subtrees.left() ? fun::last(subtrees.get_left())
+                           : fun::last(subtrees.get_right()).last();
   }
 
   const T &extract() const {
@@ -148,6 +158,36 @@ public:
                            std::forward<F>(f), std::forward<Args>(args)...))) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, T2, Args...>, T>::value,
                   "");
+  }
+
+  struct fmapTopo {};
+  template <typename F, typename G, typename T1, typename B, typename... Args>
+  tree(fmapTopo, F &&f, G &&g, const tree<C, T1> &xs,
+       const fun::connectivity<B> &bs, Args &&... args)
+      : subtrees(
+            xs.subtrees.left()
+                ? adt::make_left<C<T>, C<tree>>(fun::fmapTopo(
+                      std::forward<F>(f), std::forward<G>(g),
+                      xs.subtrees.get_left(), bs, std::forward<Args>(args)...))
+                : adt::make_right<C<T>, C<tree>>(fun::fmapTopo(
+                      [ f = std::forward<F>(f), g = std::forward<G>(g) ](
+                          const tree<C, T1> &xs, const fun::connectivity<B> &bs,
+                          auto &&... args) {
+                        return tree(fmapTopo(), f, g, xs, bs, args...);
+                      },
+                      [g = std::forward<G>(g)](const tree<C, T1> &xs,
+                                               std::ptrdiff_t i) {
+                        return cxx::invoke(g, i == 0 ? xs.head() : xs.last(),
+                                           i);
+                      },
+                      xs.subtrees.get_right(), bs,
+                      std::forward<Args>(args)...))) {
+    static_assert(
+        std::is_same<cxx::invoke_of_t<F, T1, fun::connectivity<B>, Args...>,
+                     T>::value,
+        "");
+    static_assert(
+        std::is_same<cxx::invoke_of_t<G, T1, std::ptrdiff_t>, B>::value, "");
   }
 
   template <typename F, typename Op, typename Z, typename... Args,

@@ -36,7 +36,8 @@ template <template <typename> class C, typename F, typename... Args,
                                         std::decay_t<Args>...>,
           std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  assert(s == 1);
+  if (!s)
+    return qthread::shared_future<R>();
   return qthread::async(std::forward<F>(f), std::ptrdiff_t(0),
                         std::forward<Args>(args)...).share();
 }
@@ -48,7 +49,8 @@ template <
     typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   bool s = xs.valid();
-  assert(s);
+  if (!s)
+    return qthread::shared_future<R>();
   return xs.then([ f = std::forward<F>(f), args... ](
                      const qthread::shared_future<T> &xs) mutable {
                    return cxx::invoke(std::move(f), xs.get(),
@@ -61,7 +63,8 @@ template <
     typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
 auto fmap(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
   bool s = xs.valid();
-  assert(s);
+  if (!s)
+    return qthread::shared_future<R>();
   return xs.then([ f = std::forward<F>(f), args... ](
                      qthread::shared_future<T> && xs) mutable {
                    return cxx::invoke(std::move(f), std::move(xs.get()),
@@ -76,7 +79,8 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
   bool s = xs.valid();
   assert(ys.valid() == s);
-  assert(s);
+  if (!s)
+    return qthread::shared_future<R>();
   return xs.then([ f = std::forward<F>(f), ys, args... ](
                      const qthread::shared_future<T> &xs) mutable {
                    return cxx::invoke(std::move(f), xs.get(), ys.get(),
@@ -93,7 +97,8 @@ R foldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
-  assert(s);
+  if (!s)
+    return z;
   return cxx::invoke(
       std::forward<Op>(op), z,
       cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...));
@@ -106,7 +111,8 @@ R foldMap(F &&f, Op &&op, const Z &z, qthread::shared_future<T> &&xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
-  assert(s);
+  if (!s)
+    return z;
   return cxx::invoke(std::forward<Op>(op), z,
                      cxx::invoke(std::forward<F>(f), std::move(xs.get()),
                                  std::forward<Args>(args)...));
@@ -120,7 +126,8 @@ R foldMap2(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
   assert(ys.valid() == s);
-  assert(s);
+  if (!s)
+    return z;
   return cxx::invoke(std::forward<Op>(op), z,
                      cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
                                  std::forward<Args>(args)...));
@@ -203,10 +210,8 @@ auto mzero() {
 
 // mempty
 
-template <typename T>
-/*gcc constexpr*/ bool mempty(const qthread::shared_future<T> &xs) {
-  assert(xs.valid());
-  return false;
+template <typename T> bool mempty(const qthread::shared_future<T> &xs) {
+  return !xs.valid();
 }
 }
 

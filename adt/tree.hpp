@@ -5,6 +5,8 @@
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 
+#include <cereal/access.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <tuple>
@@ -22,6 +24,9 @@ template <template <typename> class C, typename T> class tree {
   static constexpr std::ptrdiff_t max_branch_size = 10;
 
   adt::either<C<T>, C<tree>> subtrees;
+
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) { ar(subtrees); }
 
 public:
   template <typename U> using constructor = C<U>;

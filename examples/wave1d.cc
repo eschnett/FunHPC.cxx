@@ -112,6 +112,7 @@ auto cell_energy(const cell_t &c) {
   return parameters.dx() * (0.5 * std::pow(c.rho, 2) + 0.5 * std::pow(c.v, 2));
 }
 
+// Note: These Dirichlet boundaries are unstable
 auto cell_boundary_dirichlet(double t, std::ptrdiff_t i) {
   return cell_analytic(t, i == 0 ? parameters.xmin - 0.5 * parameters.dx()
                                  : parameters.xmax + 0.5 * parameters.dx());

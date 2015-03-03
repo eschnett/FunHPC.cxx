@@ -23,8 +23,6 @@ namespace detail {
 template <typename> struct is_array : std::false_type {};
 template <typename T, std::size_t N>
 struct is_array<std::array<T, N>> : std::true_type {};
-
-// template <typename T> using array1 = std::array<T>;
 }
 
 // traits

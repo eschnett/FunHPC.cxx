@@ -204,6 +204,20 @@ auto mfoldMap(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
                         std::forward<F>(f), std::forward<Op>(op), z, xs,
                         std::forward<Args>(args)...);
 }
+
+// mzero
+
+template <template <typename> class C, typename R,
+          std::enable_if_t<detail::is_proxy<C<R>>::value> * = nullptr>
+auto mzero() {
+  return funhpc::proxy<R>();
+}
+
+// mempty
+
+template <typename T> bool mempty(const funhpc::proxy<T> &xs) {
+  return !bool(xs);
+}
 }
 
 #define FUN_PROXY_HPP_DONE

@@ -46,19 +46,21 @@ LIBS    = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEM
 
 CC          = clang
 CXX         = clang++
-CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
+CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS    = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
-OPTFLAGS    = -O3
 LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+DEBUGFLAGS  = -D_GLIBCXX_DEBUG
+OPTFLAGS    = # -O3 -DNDEBUG -Wno-unused-variable
 
 # CC          = gcc
 # CXX         = g++
 # CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
 # CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 # CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
-# OPTFLAGS    = -O3
 # LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+# DEBUGFLAGS  = -D_GLIBCXX_DEBUG
+# OPTFLAGS    = -O3 -DNDEBUG
 
 MPICC       = env "OMPI_CC=$(CC)" mpicc
 MPICXX      = env "OMPI_CXX=$(CXX)" mpicxx
@@ -179,7 +181,7 @@ objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc Makefile
-	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) -c -o $*.o.tmp $*.cc
+	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 

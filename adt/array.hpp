@@ -49,12 +49,14 @@ MAKEOP(<< )
 MAKEOP(>> )
 MAKEOP(&&)
 MAKEOP(|| )
-MAKEOP(== )
-MAKEOP(!= )
-MAKEOP(< )
-MAKEOP(<= )
-MAKEOP(> )
-MAKEOP(>= )
+// These are already provided by std::array, albeit with a different
+// meaning
+// MAKEOP(== )
+// MAKEOP(!= )
+// MAKEOP(< )
+// MAKEOP(<= )
+// MAKEOP(> )
+// MAKEOP(>= )
 #undef MAKEOP
 
 #define MAKEOP(op)                                                             \

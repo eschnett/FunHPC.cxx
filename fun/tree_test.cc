@@ -87,6 +87,12 @@ TEST(fun_tree, monad) {
   auto zs = mbind([](auto x) { return munit<tree1>(x); }, ys);
   auto z = mextract(zs);
   EXPECT_EQ(1, z);
+
+  auto z1 = mfoldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0, zs);
+  EXPECT_EQ(1, z1.size());
+  EXPECT_EQ(z, mextract(z1));
+
   auto ns = mzero<tree1, int>();
   EXPECT_TRUE(ns.empty());
   auto ps = mplus(ns, xs, ys, zs);

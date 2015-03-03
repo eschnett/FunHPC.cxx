@@ -74,6 +74,7 @@ MPIRUN      = mpirun
 HDRS =						\
 	adt/array.hpp				\
 	adt/either.hpp				\
+	adt/grid.hpp				\
 	adt/maybe.hpp				\
 	adt/nested.hpp				\
 	adt/tree.hpp				\
@@ -87,6 +88,7 @@ HDRS =						\
 	fun/either.hpp				\
 	fun/fun.hpp				\
 	fun/function.hpp			\
+	fun/grid.hpp				\
 	fun/maybe.hpp				\
 	fun/nested.hpp				\
 	fun/pair.hpp				\
@@ -113,6 +115,7 @@ FUNHPC_SRCS =					\
 TEST_SRCS =					\
 	adt/array_test.cc			\
 	adt/either_test.cc			\
+	adt/grid_test.cc			\
 	adt/maybe_test.cc			\
 	adt/nested_test.cc			\
 	adt/tree_test.cc			\
@@ -125,6 +128,7 @@ TEST_SRCS =					\
 	fun/either_test.cc			\
 	fun/fun_test.cc				\
 	fun/function_test.cc			\
+	fun/grid_test.cc			\
 	fun/maybe_test.cc			\
 	fun/nested_test.cc			\
 	fun/pair_test.cc			\

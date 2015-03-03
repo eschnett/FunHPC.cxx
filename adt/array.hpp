@@ -36,6 +36,24 @@ MAKEOP(!)
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y[i];                                                     \
     return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<                                         \
+                decltype(std::declval<T>() op std::declval<U>())>>             \
+  auto operator op(const T &x, const std::array<U, N> &y) {                    \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = x op y[i];                                                        \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<                                         \
+                decltype(std::declval<T>() op std::declval<U>())>>             \
+  auto operator op(const std::array<T, N> &x, const U &y) {                    \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = x[i] op y;                                                        \
+    return r;                                                                  \
   }
 MAKEOP(+)
 MAKEOP(-)
@@ -66,6 +84,12 @@ MAKEOP(|| )
     for (std::size_t i = 0; i < N; ++i)                                        \
       x[i] op y[i];                                                            \
     return x;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U>                             \
+  std::array<T, N> &operator op(std::array<T, N> &x, const U &y) {             \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      x[i] op y;                                                               \
+    return x;                                                                  \
   }
 MAKEOP(+= )
 MAKEOP(-= )
@@ -89,6 +113,33 @@ MAKEOP(>>= )
     return r;                                                                  \
   }
 MAKEFUN(abs)
+#undef MAKEFUN
+
+#define MAKEFUN(f)                                                             \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+  auto f(const std::array<T, N> &x, const std::array<U, N> &y) {               \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = std::f(x[i], y[i]);                                               \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+  auto f(const T &x, const std::array<U, N> &y) {                              \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = std::f(x, y[i]);                                                  \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+  auto f(const std::array<T, N> &x, const U &y) {                              \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = std::f(x[i], y);                                                  \
+    return r;                                                                  \
+  }
 MAKEFUN(max)
 MAKEFUN(min)
 #undef MAKEFUN
@@ -96,16 +147,30 @@ MAKEFUN(min)
 
 namespace adt {
 
-template <typename T, std::size_t N> auto array_zero() {
+template <typename T, std::size_t N> constexpr auto array_zero() {
   std::array<T, N> r;
   r.fill(T(0));
   return r;
 }
 
-template <typename T, std::size_t N, std::size_t I> auto array_dir() {
+template <typename T, std::size_t N, typename U>
+constexpr auto array_fill(const U &x) {
+  std::array<T, N> r;
+  r.fill(x);
+  return r;
+}
+
+template <typename T, std::size_t N, std::size_t I> constexpr auto array_dir() {
   std::array<T, N> r;
   r.fill(T(0));
   std::get<I>(r) = T(1);
+  return r;
+}
+
+template <std::size_t I, typename T, std::size_t N, typename U>
+auto update(const std::array<T, N> &x, const U &y) {
+  std::array<T, N> r(x);
+  std::get<I>(r) = y;
   return r;
 }
 

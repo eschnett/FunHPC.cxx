@@ -1,6 +1,7 @@
 #ifndef FUN_ARRAY_HPP
 #define FUN_ARRAY_HPP
 
+#include <adt/array.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/topology.hpp>
 

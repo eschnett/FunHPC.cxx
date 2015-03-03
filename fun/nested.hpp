@@ -107,6 +107,19 @@ R foldMap(F &&f, Op &&op, const Z &z, const adt::nested<P, A, T> &xss,
                  std::forward<Args>(args)...);
 }
 
+template <typename F, typename Op, typename Z, template <typename> class P,
+          template <typename> class A, typename T, typename T2,
+          typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+R foldMap2(F &&f, Op &&op, const Z &z, const adt::nested<P, A, T> &xss,
+           const adt::nested<P, A, T2> &yss, Args &&... args) {
+  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  return foldMap2(
+      [](const A<T> &xs, const A<T2> &ys, auto &&f, auto &&op, const Z &z,
+         auto &&... args) { return foldMap2(f, op, z, xs, ys, args...); },
+      op, z, xss.data, yss.data, std::forward<F>(f), op, z,
+      std::forward<Args>(args)...);
+}
+
 // munit
 
 template <template <typename> class C, typename T, typename R = std::decay_t<T>,

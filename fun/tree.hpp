@@ -79,6 +79,15 @@ auto foldMap(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
                     std::forward<Args>(args)...);
 }
 
+template <typename F, typename Op, typename Z, template <typename> class C,
+          typename T, typename T2, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+auto foldMap2(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
+              const adt::tree<C, T2> &ys, Args &&... args) {
+  return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op), z, ys,
+                     std::forward<Args>(args)...);
+}
+
 // munit
 
 template <template <typename> class C, typename T, typename R = std::decay_t<T>,

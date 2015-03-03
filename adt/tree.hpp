@@ -206,6 +206,26 @@ public:
                               std::forward<Args>(args)...);
   }
 
+  template <typename F, typename Op, typename Z, typename T2, typename... Args,
+            typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+  R foldMap2(F &&f, Op &&op, const Z &z, const tree<C, T2> &ys,
+             Args &&... args) const {
+    static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+    bool s = subtrees.left();
+    assert(ys.subtrees.left() == s);
+    return s ? fun::foldMap2(std::forward<F>(f), std::forward<Op>(op), z,
+                             subtrees.get_left(), ys.subtrees.get_left(),
+                             std::forward<Args>(args)...)
+             : fun::foldMap2([](const tree &t, const tree<C, T2> &t2, auto &&f,
+                                auto &&op, const Z &z, auto &&... args) {
+                               return t.foldMap2(f, op, z, t2, args...);
+                             },
+                             std::forward<Op>(op), z, subtrees.get_right(),
+                             ys.subtrees.get_right(), std::forward<F>(f),
+                             std::forward<Op>(op), z,
+                             std::forward<Args>(args)...);
+  }
+
   struct join {};
   tree(join, const tree<C, tree> &xss)
       : subtrees(xss.subtrees.left()

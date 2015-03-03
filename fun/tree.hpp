@@ -107,7 +107,7 @@ adt::tree<C, R> mbind(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
 
 template <template <typename> class C, typename T>
 decltype(auto) mextract(const adt::tree<C, T> &xs) {
-  return xs.extract();
+  return xs.head();
 }
 
 // mfoldMap

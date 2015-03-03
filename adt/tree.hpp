@@ -81,11 +81,6 @@ public:
                            : fun::last(subtrees.get_right()).last();
   }
 
-  const T &extract() const {
-    return subtrees.left() ? fun::mextract(subtrees.get_left())
-                           : fun::mextract(subtrees.get_right()).extract();
-  }
-
   std::size_t size() const {
     return foldMap([](auto) { return std::size_t(1); },
                    [](auto x, auto y) { return x + y; }, 0);

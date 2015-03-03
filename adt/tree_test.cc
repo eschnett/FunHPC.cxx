@@ -24,7 +24,7 @@ TEST(adt_tree, basic) {
   EXPECT_TRUE(xs.empty());
   auto ys = tree1<double>(1.0);
   EXPECT_FALSE(ys.empty());
-  EXPECT_EQ(1.0, ys.extract());
+  EXPECT_EQ(1.0, ys.head());
 
   auto zs1(xs);
   auto zs2(std::move(ys));
@@ -46,26 +46,26 @@ TEST(adt_tree, iota) {
   auto xs = tree1<double>(typename tree1<double>::iotaMap(),
                           [](auto i) { return double(i); }, 0, 10, 1);
   EXPECT_FALSE(xs.empty());
-  EXPECT_EQ(0.0, xs.extract());
+  EXPECT_EQ(0.0, xs.head());
   auto ys = tree1<double>(typename tree1<double>::iotaMap(),
                           [](auto i) { return double(i); }, 0, 100, 1);
   EXPECT_FALSE(ys.empty());
-  EXPECT_EQ(0.0, ys.extract());
+  EXPECT_EQ(0.0, ys.head());
 }
 
 TEST(adt_tree, fmap) {
   auto xs = tree1<double>(typename tree1<double>::iotaMap(),
                           [](auto i) { return double(i); }, 0, 10, 1);
   EXPECT_FALSE(xs.empty());
-  EXPECT_EQ(0.0, xs.extract());
+  EXPECT_EQ(0.0, xs.head());
   auto ys = tree1<double>(typename tree1<double>::fmap(),
                           [](auto x, auto y) { return x + y; }, xs, 1.0);
   EXPECT_FALSE(ys.empty());
-  EXPECT_EQ(1.0, ys.extract());
+  EXPECT_EQ(1.0, ys.head());
   auto zs = tree1<double>(typename tree1<double>::fmap2(),
                           [](auto x, auto y) { return x + y; }, xs, ys);
   EXPECT_FALSE(zs.empty());
-  EXPECT_EQ(1.0, zs.extract());
+  EXPECT_EQ(1.0, zs.head());
 }
 
 // TEST(adt_tree, fmapTopo) {
@@ -90,11 +90,11 @@ TEST(adt_tree, foldMap) {
   auto xs = tree1<double>(typename tree1<double>::iotaMap(),
                           [](auto i) { return double(i); }, 0, 10, 1);
   EXPECT_FALSE(xs.empty());
-  EXPECT_EQ(0.0, xs.extract());
+  EXPECT_EQ(0.0, xs.head());
   auto ys = tree1<double>(typename tree1<double>::iotaMap(),
                           [](auto i) { return double(i); }, 0, 100, 1);
   EXPECT_FALSE(ys.empty());
-  EXPECT_EQ(0.0, ys.extract());
+  EXPECT_EQ(0.0, ys.head());
 
   auto rx = xs.foldMap([](auto x) { return x; },
                        [](auto x, auto y) { return x + y; }, 0.0);
@@ -114,7 +114,7 @@ TEST(adt_tree, join) {
   EXPECT_EQ(1, xss.size());
   auto xs = tree1<double>(typename tree1<double>::join(), xss);
   EXPECT_EQ(1, xs.size());
-  EXPECT_EQ(1, xs.extract());
+  EXPECT_EQ(1, xs.head());
 
   auto yss = tree1<tree1<double>>(
       typename tree1<tree1<double>>::iotaMap(),

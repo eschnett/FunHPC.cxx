@@ -53,30 +53,6 @@ TEST(fun_vector, fmap) {
   EXPECT_EQ((s - 1) * s / 2, accum);
 }
 
-// namespace {
-// struct norm_t {
-//   double count, min, max, sum, sum2;
-//   norm_t() : count(0), min(1.0 / 0.0), max(-1.0 / 0.0), sum(0), sum2(0) {}
-//   norm_t(double x) : count(1), min(x), max(x), sum(x), sum2(x * x) {}
-//   norm_t(const norm_t &other) = default;
-//   norm_t(norm_t &&other) = default;
-//   norm_t &operator=(const norm_t &other) = default;
-//   norm_t &operator=(norm_t &&other) = default;
-//   norm_t &operator+=(const norm_t &other) {
-//     count += other.count;
-//     min = std::min(min, other.min);
-//     max = std::max(max, other.max);
-//     sum += other.sum;
-//     sum2 += other.sum2;
-//     return *this;
-//   }
-//   norm_t operator+(const norm_t &other) const { return norm_t(*this) +=
-//   other; }
-//   double avg() const { return sum / count; }
-//   // sdv
-// };
-// }
-
 TEST(fun_vector, fmapTopo) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<std::vector>([](int x) { return x * x; }, s);

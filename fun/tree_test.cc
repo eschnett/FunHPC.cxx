@@ -28,19 +28,24 @@ TEST(fun_tree, iotaMap) {
   auto rs = iotaMap<tree1>([](auto x) { return int(x); }, s);
   static_assert(std::is_same<decltype(rs), tree1<int>>::value, "");
   EXPECT_EQ(s, rs.size());
+  EXPECT_EQ(9, rs.last());
 
   auto rs1 =
       iotaMap<tree1>([](auto x, auto y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), tree1<double>>::value, "");
+  EXPECT_EQ(8, rs1.last());
 }
 
 TEST(fun_tree, fmap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<tree1>([](auto x) { return int(x); }, s);
+  EXPECT_EQ(9, xs.last());
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
+  EXPECT_EQ(10, ys.last());
 
   auto zs = fmap2([](auto x, auto y) { return x + y; }, xs, ys);
+  EXPECT_EQ(19, zs.last());
 }
 
 TEST(fun_tree, fmapTopo) {

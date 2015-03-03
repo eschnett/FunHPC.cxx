@@ -68,6 +68,18 @@ auto fmapTopo(F &&f, G &&g, const adt::tree<C, T> &xs,
                          std::forward<Args>(args)...);
 }
 
+// head, last
+
+template <template <typename> class C, typename T>
+decltype(auto) head(const adt::tree<C, T> &xs) {
+  return xs.head();
+}
+
+template <template <typename> class C, typename T>
+decltype(auto) last(const adt::tree<C, T> &xs) {
+  return xs.last();
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, template <typename> class C,

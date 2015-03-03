@@ -65,7 +65,7 @@ template <typename F, typename T, typename Allocator, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 auto fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
+  typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...);
@@ -76,7 +76,7 @@ template <typename F, typename T, typename Allocator, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 auto fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
+  typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), std::move(xs[i]),
@@ -91,7 +91,7 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
            const std::vector<T2, Allocator2> &ys, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
-  std::vector<R, typename Allocator::template rebind<R>::other> rs(s);
+  typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
@@ -162,8 +162,8 @@ decltype(auto) last(std::vector<T, Allocator> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
-          Args &&... args) {
+auto foldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+             Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
@@ -180,8 +180,8 @@ R foldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, std::vector<T, Allocator> &&xs,
-          Args &&... args) {
+auto foldMap(F &&f, Op &&op, const Z &z, std::vector<T, Allocator> &&xs,
+             Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
@@ -199,8 +199,8 @@ R foldMap(F &&f, Op &&op, const Z &z, std::vector<T, Allocator> &&xs,
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename T2, typename Allocator2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
-           const std::vector<T2, Allocator2> &ys, Args &&... args) {
+auto foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+              const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);

@@ -185,21 +185,27 @@ $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 
+### run an application ###
+
+# These two can be overridden on the command line
+NPROCS = 1
+EXE = ./hello
+run:
+	$(MPIRUN) -np $(NPROCS)						\
+		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+		-x "QTHREAD_STACK_SIZE=65536"				\
+		$(EXE)
+
 ### examples ###
 
 examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
-	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	   \
-		env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"   \
-			"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))" \
-			"QTHREAD_STACK_SIZE=65536"			   \
-			./$$example;					   \
+	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
+		$(MAKE) run EXE=$$example;				\
 	done
-	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	      \
-		$(MPIRUN) -np 2						      \
-			-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"   \
-			-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))" \
-			-x "QTHREAD_STACK_SIZE=65536"			      \
-			./$$example;					      \
+	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
+		$(MAKE) run NPROCS=2 EXE=$$example;			\
+									\
 	done
 .PHONY: examples
 hello: $(FUNHPC_SRCS:%.cc=%.o) examples/hello.o
@@ -215,15 +221,8 @@ pingpong: $(FUNHPC_SRCS:%.cc=%.o) examples/pingpong.o
 ### check ###
 
 check: selftest selftest-funhpc
-	env	"LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		"DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		"QTHREAD_STACK_SIZE=65536"				\
-		./selftest
-	$(MPIRUN) -np 2							\
-		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "QTHREAD_STACK_SIZE=65536"				\
-		./selftest-funhpc
+	$(MAKE) run EXE=./selftest
+	$(MAKE) run NPROCS=2 EXE=./selftest-funhpc
 .PHONY: check
 selftest: $(TEST_SRCS:%.cc=%.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)

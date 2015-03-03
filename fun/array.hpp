@@ -267,12 +267,9 @@ template <typename F, typename Op, typename Z, typename T, std::size_t N,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
 auto mfoldMap(F &&f, Op &&op, const Z &z, const std::array<T, N> &xs,
               Args &&... args) {
-  struct S {
-    template <typename U> using array1 = std::array<U, N>;
-  };
-  return munit<S::template array1>(foldMap(std::forward<F>(f),
-                                           std::forward<Op>(op), z, xs,
-                                           std::forward<Args>(args)...));
+  return munit<fun_traits<std::array<T, N>>::template constructor>(
+      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+              std::forward<Args>(args)...));
 }
 
 // mzero

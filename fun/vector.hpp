@@ -31,7 +31,9 @@ template <typename T> using vector1 = std::vector<T>;
 template <typename> struct fun_traits;
 template <typename T, typename Allocator>
 struct fun_traits<std::vector<T, Allocator>> {
-  template <typename U> using constructor = std::vector<U, Allocator>;
+  template <typename U>
+  using constructor =
+      std::vector<U, typename Allocator::template rebind<U>::other>;
   typedef T value_type;
 };
 
@@ -285,12 +287,9 @@ template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
 auto mfoldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
               Args &&... args) {
-  struct S {
-    template <typename U> using vector1 = std::vector<U, Allocator>;
-  };
-  return munit<S::template vector1>(foldMap(std::forward<F>(f),
-                                            std::forward<Op>(op), z, xs,
-                                            std::forward<Args>(args)...));
+  return munit<fun_traits<std::vector<T, Allocator>>::template constructor>(
+      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+              std::forward<Args>(args)...));
 }
 
 // mzero

@@ -152,7 +152,8 @@ FUNHPC_TEST_SRCS =				\
 FUNHPC_EXAMPLE_SRCS =				\
 	examples/hello.cc			\
 	examples/million.cc			\
-	examples/pingpong.cc
+	examples/pingpong.cc			\
+	examples/wave1d.cc
 ALL_SRCS = $(SRCS) $(FUNHPC_SRCS) $(TEST_SRCS) $(FUNHPC_TEST_SRCS) $(FUNHPC_EXAMPLE_SRCS)
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
@@ -219,6 +220,9 @@ million: $(FUNHPC_SRCS:%.cc=%.o) examples/million.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
 pingpong: $(FUNHPC_SRCS:%.cc=%.o) examples/pingpong.o
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+		$(MPILIBS:%=-l%)
+wave1d: $(FUNHPC_SRCS:%.cc=%.o) examples/wave1d.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
 

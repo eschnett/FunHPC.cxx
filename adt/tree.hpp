@@ -6,6 +6,7 @@
 #include <cxx/invoke.hpp>
 
 #include <cereal/access.hpp>
+#include <cereal/types/tuple.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -125,23 +126,40 @@ public:
   }
 
   struct fmap {};
+
+private:
+  template <typename T1> struct detail_fmap : std::tuple<> {
+    template <typename F, typename... Args>
+    auto operator()(const tree<C, T1> &xs, F &&f, Args &&... args) {
+      return tree(fmap(), f, xs, args...);
+    }
+  };
+
+public:
   template <typename F, typename T1, typename... Args>
   tree(fmap, F &&f, const tree<C, T1> &xs, Args &&... args)
-      : subtrees(
-            xs.subtrees.left()
-                ? adt::make_left<C<T>, C<tree>>(
-                      fun::fmap(std::forward<F>(f), xs.subtrees.get_left(),
-                                std::forward<Args>(args)...))
-                : adt::make_right<C<T>, C<tree>>(fun::fmap(
-                      [](const tree<C, T1> &xs, auto &&f, auto &&... args) {
-                        return tree(fmap(), f, xs, args...);
-                      },
-                      xs.subtrees.get_right(), std::forward<F>(f),
-                      std::forward<Args>(args)...))) {
+      : subtrees(xs.subtrees.left()
+                     ? adt::make_left<C<T>, C<tree>>(
+                           fun::fmap(std::forward<F>(f), xs.subtrees.get_left(),
+                                     std::forward<Args>(args)...))
+                     : adt::make_right<C<T>, C<tree>>(fun::fmap(
+                           detail_fmap<T1>(), xs.subtrees.get_right(),
+                           std::forward<F>(f), std::forward<Args>(args)...))) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, Args...>, T>::value, "");
   }
 
   struct fmap2 {};
+
+private:
+  template <typename T1, typename T2> struct detail_fmap2 : std::tuple<> {
+    template <typename F, typename... Args>
+    auto operator()(const tree<C, T1> &xs, const tree<C, T2> &ys, F &&f,
+                    Args &&... args) const {
+      return tree(fmap2(), f, xs, ys, args...);
+    }
+  };
+
+public:
   template <typename F, typename T1, typename T2, typename... Args>
   tree(fmap2, F &&f, const tree<C, T1> &xs, const tree<C, T2> &ys,
        Args &&... args)
@@ -150,38 +168,51 @@ public:
                            std::forward<F>(f), xs.subtrees.get_left(),
                            ys.subtrees.get_left(), std::forward<Args>(args)...))
                      : adt::make_right<C<T>, C<tree>>(fun::fmap2(
-                           [](const tree<C, T1> &xs, const tree<C, T2> &ys,
-                              auto &&f, auto &&... args) {
-                             return tree(fmap2(), f, xs, ys, args...);
-                           },
-                           xs.subtrees.get_right(), ys.subtrees.get_right(),
-                           std::forward<F>(f), std::forward<Args>(args)...))) {
+                           detail_fmap2<T1, T2>(), xs.subtrees.get_right(),
+                           ys.subtrees.get_right(), std::forward<F>(f),
+                           std::forward<Args>(args)...))) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, T2, Args...>, T>::value,
                   "");
   }
 
   struct fmapTopo {};
+
+private:
+  template <typename F, typename G, typename T1, typename B>
+  struct detail_fmapTopo_f {
+    F f;
+    G g;
+    template <typename Archive> void serialize(Archive &ar) { ar(f, g); }
+    template <typename... Args>
+    auto operator()(const tree<C, T1> &xs, const fun::connectivity<B> &bs,
+                    Args &&... args) const {
+      return tree(fmapTopo(), f, g, xs, bs, std::forward<Args>(args)...);
+    }
+  };
+  template <typename G, typename T1> struct detail_fmapTopo_g {
+    G g;
+    template <typename Archive> void serialize(Archive &ar) { ar(g); }
+    template <typename... Args>
+    auto operator()(const tree<C, T1> &xs, std::ptrdiff_t i) const {
+      return cxx::invoke(g, i == 0 ? xs.head() : xs.last(), i);
+    }
+  };
+
+public:
   template <typename F, typename G, typename T1, typename B, typename... Args>
   tree(fmapTopo, F &&f, G &&g, const tree<C, T1> &xs,
        const fun::connectivity<B> &bs, Args &&... args)
-      : subtrees(
-            xs.subtrees.left()
-                ? adt::make_left<C<T>, C<tree>>(fun::fmapTopo(
-                      std::forward<F>(f), std::forward<G>(g),
-                      xs.subtrees.get_left(), bs, std::forward<Args>(args)...))
-                : adt::make_right<C<T>, C<tree>>(fun::fmapTopo(
-                      [ f = std::forward<F>(f), g = std::forward<G>(g) ](
-                          const tree<C, T1> &xs, const fun::connectivity<B> &bs,
-                          auto &&... args) {
-                        return tree(fmapTopo(), f, g, xs, bs, args...);
-                      },
-                      [g = std::forward<G>(g)](const tree<C, T1> &xs,
-                                               std::ptrdiff_t i) {
-                        return cxx::invoke(g, i == 0 ? xs.head() : xs.last(),
-                                           i);
-                      },
-                      xs.subtrees.get_right(), bs,
-                      std::forward<Args>(args)...))) {
+      : subtrees(xs.subtrees.left()
+                     ? adt::make_left<C<T>, C<tree>>(
+                           fun::fmapTopo(std::forward<F>(f), std::forward<G>(g),
+                                         xs.subtrees.get_left(), bs,
+                                         std::forward<Args>(args)...))
+                     : adt::make_right<C<T>, C<tree>>(fun::fmapTopo(
+                           detail_fmapTopo_f<std::decay_t<F>, std::decay_t<G>,
+                                             T1, B>{std::forward<F>(f), g},
+                           detail_fmapTopo_g<std::decay_t<G>, T1>{g},
+                           xs.subtrees.get_right(), bs,
+                           std::forward<Args>(args)...))) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, T1, fun::connectivity<B>, Args...>,
                      T>::value,
@@ -190,6 +221,17 @@ public:
         std::is_same<cxx::invoke_of_t<G, T1, std::ptrdiff_t>, B>::value, "");
   }
 
+private:
+  struct detail_foldMap : std::tuple<> {
+    template <typename F, typename Op, typename Z, typename... Args>
+    auto operator()(const tree &t, F &&f, Op &&op, const Z &z,
+                    Args &&... args) const {
+      return t.foldMap(std::forward<F>(f), std::forward<Op>(op), z,
+                       std::forward<Args>(args)...);
+    }
+  };
+
+public:
   template <typename F, typename Op, typename Z, typename... Args,
             typename R = cxx::invoke_of_t<F, T, Args...>>
   R foldMap(F &&f, Op &&op, const Z &z, Args &&... args) const {
@@ -197,15 +239,23 @@ public:
     return subtrees.left()
                ? fun::foldMap(std::forward<F>(f), std::forward<Op>(op), z,
                               subtrees.get_left(), std::forward<Args>(args)...)
-               : fun::foldMap([](const tree &t, auto &&f, auto &&op, const Z &z,
-                                 auto &&... args) {
-                                return t.foldMap(f, op, z, args...);
-                              },
-                              std::forward<Op>(op), z, subtrees.get_right(),
-                              std::forward<F>(f), std::forward<Op>(op), z,
+               : fun::foldMap(detail_foldMap(), std::forward<Op>(op), z,
+                              subtrees.get_right(), std::forward<F>(f),
+                              std::forward<Op>(op), z,
                               std::forward<Args>(args)...);
   }
 
+private:
+  template <typename T2> struct detail_foldMap2 : std::tuple<> {
+    template <typename F, typename Op, typename Z, typename... Args>
+    auto operator()(const tree &t, const tree<C, T2> &t2, F &&f, Op &&op,
+                    const Z &z, Args &&... args) const {
+      return t.foldMap2(std::forward<F>(f), std::forward<Op>(op), z, t2,
+                        std::forward<Args>(args)...);
+    }
+  };
+
+public:
   template <typename F, typename Op, typename Z, typename T2, typename... Args,
             typename R = cxx::invoke_of_t<F, T, T2, Args...>>
   R foldMap2(F &&f, Op &&op, const Z &z, const tree<C, T2> &ys,
@@ -216,13 +266,9 @@ public:
     return s ? fun::foldMap2(std::forward<F>(f), std::forward<Op>(op), z,
                              subtrees.get_left(), ys.subtrees.get_left(),
                              std::forward<Args>(args)...)
-             : fun::foldMap2([](const tree &t, const tree<C, T2> &t2, auto &&f,
-                                auto &&op, const Z &z, auto &&... args) {
-                               return t.foldMap2(f, op, z, t2, args...);
-                             },
-                             std::forward<Op>(op), z, subtrees.get_right(),
-                             ys.subtrees.get_right(), std::forward<F>(f),
-                             std::forward<Op>(op), z,
+             : fun::foldMap2(detail_foldMap2<T2>(), std::forward<Op>(op), z,
+                             subtrees.get_right(), ys.subtrees.get_right(),
+                             std::forward<F>(f), std::forward<Op>(op), z,
                              std::forward<Args>(args)...);
   }
 

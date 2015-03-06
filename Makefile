@@ -252,10 +252,11 @@ external/cereal.downloaded: | external
 		wget $(CEREAL_URL)) &&			\
 	: > $@
 external/cereal.unpacked: external/cereal.downloaded
-	rm -rf $(CEREAL_NAME) &&			\
-	tar xzf external/$(notdir $(CEREAL_URL)) &&	\
-	(cd $(CEREAL_NAME) &&				\
-		patch -p0 < $(abspath cereal.patch)) &&	\
+	rm -rf $(CEREAL_NAME) &&					\
+	tar xzf external/$(notdir $(CEREAL_URL)) &&			\
+	(cd $(CEREAL_NAME) &&						\
+		patch -p0 < $(abspath cereal-pointers.patch) &&		\
+		patch -p0 < $(abspath cereal-to_string.patch)) &&	\
 	: > $@
 external/cereal.done: external/cereal.unpacked
 	: > $@

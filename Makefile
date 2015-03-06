@@ -406,8 +406,9 @@ external/qthreads.done: external/qthreads.installed
 clean:
 	$(RM) $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 	$(RM) $(ALL_SRCS:%.cc=%.o) $(ALL_SRCS:%.cc=%.d)
-	$(RM) $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	$(RM) selftest selftest-funhpc
+	$(RM) $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
+	$(RM) wave1d.tsv
 .PHONY: clean
 
 distclean: clean

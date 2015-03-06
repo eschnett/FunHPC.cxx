@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
 
 namespace fun {
 
@@ -82,23 +83,114 @@ std::string to_string(const CT &xs) {
   return std::string("[") + foldMap(f(), op(), std::string(), xs) + "]";
 }
 
-// to_string_function
+// An ostreamer is function that outputs something
 
-// namespace detail {
-// template <typename T> using string_function = std::function<std::string(T)>;
-// }
-//
-// template <typename CT,
-//           template <typename> class C = fun_traits<CT>::template constructor,
-//           typename T = typename fun_traits<CT>::value_type>
-// std::function<std::string(T)> to_string_function(const CT &xs) {
-//   return foldMap([](const auto &x) {
-//                    return
-//                    munit<detail::string_function>(detail::to_string(x));
-//                  },
-//                  [](const auto &x, const auto &y) { return mbind(x, y); },
-//                  munit<detail::string_function>(std::string()));
-// }
+class ostreamer {
+  std::function<void(std::ostream &)> impl;
+  friend class cereal::access;
+  template <typename Archive> void save(Archive &ar) const {
+    std::ostringstream os;
+    os << *this;
+    ar(os.str());
+  }
+  template <typename Archive> void load(Archive &ar) {
+    std::string str;
+    ar(str);
+    impl = [str = std::move(str)](std::ostream & os) { os << str; };
+  }
+
+public:
+  ostreamer() = default;
+  ostreamer(const ostreamer &) = default;
+  ostreamer(ostreamer &&) = default;
+  ostreamer &operator=(const ostreamer &) = default;
+  ostreamer &operator=(ostreamer &&) = default;
+  void swap(ostreamer &other) {
+    using std::swap;
+    swap(impl, other.impl);
+  }
+
+  ostreamer(const std::string &str) {
+    impl = [str](std::ostream &os) { os << str; };
+  }
+  ostreamer(std::string &&str) {
+    impl = [str = std::move(str)](std::ostream & os) { os << str; };
+  }
+  template <typename T> ostreamer(T &&x) {
+    std::ostringstream os;
+    os << std::forward<T>(x);
+    impl = [str = os.str()](std::ostream & os) { os << str; };
+  }
+
+  ostreamer &operator+=(const ostreamer &other) {
+    ostreamer self;
+    swap(self);
+    impl = [ self = std::move(self), other ](std::ostream & os) {
+      os << self << other;
+    };
+    return *this;
+  }
+  ostreamer &operator+=(ostreamer &&other) {
+    ostreamer self;
+    swap(self);
+    impl = [ self = std::move(self), other = std::move(other) ](std::ostream &
+                                                                os) {
+      os << self << other;
+    };
+    return *this;
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, const ostreamer &ostr) {
+    if (ostr.impl)
+      ostr.impl(os);
+    return os;
+  }
+};
+inline void swap(ostreamer &left, ostreamer &right) { left.swap(right); }
+inline ostreamer operator+(const ostreamer &left, const ostreamer &right) {
+  return ostreamer(left) += right;
+}
+inline ostreamer operator+(const ostreamer &left, ostreamer &&right) {
+  return ostreamer(left) += std::move(right);
+}
+inline ostreamer operator+(ostreamer &&left, const ostreamer &right) {
+  return ostreamer(std::move(left)) += right;
+}
+inline ostreamer operator+(ostreamer &&left, ostreamer &&right) {
+  return ostreamer(std::move(left)) += std::move(right);
+}
+
+template <typename T> ostreamer make_ostreamer(T &&x) {
+  return {std::forward<T>(x)};
+}
+
+// to_ostreamer
+
+template <typename CT,
+          template <typename> class C = fun_traits<CT>::template constructor,
+          typename T = typename fun_traits<CT>::value_type>
+ostreamer to_ostreamer(const CT &xs) {
+  struct f : std::tuple<> {
+    auto operator()(const T &x) const { return make_ostreamer(x); }
+    auto operator()(T &&x) const { return make_ostreamer(std::move(x)); }
+  };
+  struct op : std::tuple<> {
+    auto operator()(const ostreamer &left, const ostreamer &right) const {
+      return left + make_ostreamer(", ") + right;
+    }
+    auto operator()(const ostreamer &left, ostreamer &&right) const {
+      return left + make_ostreamer(", ") + std::move(right);
+    }
+    auto operator()(ostreamer &&left, const ostreamer &right) const {
+      return std::move(left) + make_ostreamer(", ") + right;
+    }
+    auto operator()(ostreamer &&left, ostreamer &&right) const {
+      return std::move(left) + make_ostreamer(", ") + std::move(right);
+    }
+  };
+  return make_ostreamer("[") + foldMap(f(), op(), ostreamer(), xs) +
+         make_ostreamer("]");
+}
 }
 
 #define FUN_FUN_HPP_DONE

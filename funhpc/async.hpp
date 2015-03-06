@@ -6,6 +6,9 @@
 #include <funhpc/rptr.hpp>
 #include <qthread/future.hpp>
 
+#include <cereal/types/tuple.hpp>
+
+#include <tuple>
 #include <type_traits>
 
 namespace funhpc {
@@ -66,34 +69,35 @@ constexpr qthread::launch local_policy(rlaunch policy) {
 // async ///////////////////////////////////////////////////////////////////////
 
 namespace detail {
-template <typename R>
-void set_result(rptr<qthread::promise<R>> rpres, R &&res) {
-  static_assert(!std::is_void<R>::value, "");
-  auto pres = rpres.get_ptr();
-  pres->set_value(std::move(res));
-  delete pres;
-}
-template <typename R> void set_result_void(rptr<qthread::promise<R>> rpres) {
-  static_assert(std::is_void<R>::value, "");
-  auto pres = rpres.get_ptr();
-  pres->set_value();
-  delete pres;
-}
+template <typename R> struct set_result : std::tuple<> {
+  void operator()(rptr<qthread::promise<R>> rpres, R &&res) const {
+    auto pres = rpres.get_ptr();
+    pres->set_value(std::move(res));
+    delete pres;
+  }
+};
+template <> struct set_result<void> : std::tuple<> {
+  void operator()(rptr<qthread::promise<void>> rpres) const {
+    auto pres = rpres.get_ptr();
+    pres->set_value();
+    delete pres;
+  }
+};
 
-template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, Args &&...>,
-          std::enable_if_t<!std::is_void<R>::value> * = nullptr>
-void continued(rptr<qthread::promise<R>> rpres, F &&f, Args &&... args) {
-  rexec(rpres.get_proc(), set_result<R>, rpres,
-        cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
-}
-template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, Args &&...>,
-          std::enable_if_t<std::is_void<R>::value> * = nullptr>
-void continued(rptr<qthread::promise<R>> rpres, F &&f, Args &&... args) {
-  cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-  rexec(rpres.get_proc(), set_result_void<R>, rpres);
-}
+template <typename R> struct continued : std::tuple<> {
+  template <typename F, typename... Args>
+  void operator()(rptr<qthread::promise<R>> rpres, F &&f, Args &&... args) {
+    rexec(rpres.get_proc(), set_result<R>(), rpres,
+          cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...));
+  }
+};
+template <> struct continued<void> : std::tuple<> {
+  template <typename F, typename... Args>
+  void operator()(rptr<qthread::promise<void>> rpres, F &&f, Args &&... args) {
+    cxx::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    rexec(rpres.get_proc(), set_result<void>(), rpres);
+  }
+};
 }
 
 template <typename F, typename... Args,
@@ -109,11 +113,8 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
   case rlaunch::sync: {
     auto pres = new qthread::promise<R>;
     auto fres = pres->get_future();
-    rexec(dest, (void(&)(rptr<qthread::promise<R>> rpres, std::decay_t<F> &&,
-                         std::decay_t<Args> && ...))
-          detail::continued<std::decay_t<F>, std::decay_t<Args>...>,
-          rptr<qthread::promise<R>>(pres), std::forward<F>(f),
-          std::forward<Args>(args)...);
+    rexec(dest, detail::continued<R>(), rptr<qthread::promise<R>>(pres),
+          std::forward<F>(f), std::forward<Args>(args)...);
     if (pol == rlaunch::sync)
       fres.wait();
     return fres;

@@ -154,7 +154,9 @@ FUNHPC_EXAMPLE_SRCS =				\
 	examples/million.cc			\
 	examples/pingpong.cc			\
 	examples/wave1d.cc
-ALL_SRCS = $(SRCS) $(FUNHPC_SRCS) $(TEST_SRCS) $(FUNHPC_TEST_SRCS) $(FUNHPC_EXAMPLE_SRCS)
+ALL_SRCS =							\
+	$(SRCS) $(FUNHPC_SRCS)					\
+	$(TEST_SRCS) $(FUNHPC_TEST_SRCS) $(FUNHPC_EXAMPLE_SRCS)
 
 # Taken from <http://mad-scientist.net/make/autodep.html> as written
 # by Paul D. Smith <psmith@gnu.org>, originally developed by Tom
@@ -186,7 +188,8 @@ objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
 %.o: %.cc Makefile
-	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) -c -o $*.o.tmp $*.cc
+	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) \
+		-c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 
@@ -235,7 +238,8 @@ check: selftest selftest-funhpc
 selftest: $(TEST_SRCS:%.cc=%.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)
 selftest-funhpc: $(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
-	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^ -lgtest $(MPILIBS:%=-l%)
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+		-lgtest $(MPILIBS:%=-l%)
 
 ### external ###
 

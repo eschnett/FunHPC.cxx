@@ -154,7 +154,7 @@ struct grid_t {
 std::ostream &operator<<(std::ostream &os, const grid_t &g) {
   os << "grid_t{\n"
      << "  time=" << g.time << "\n"
-     << "  cells=" << fun::to_string(g.cells) << "\n"
+     << "  cells=" << fun::to_ostreamer(g.cells) << "\n"
      << "}\n";
   return os;
 }
@@ -239,15 +239,15 @@ int info_output(int token, const state_t &s) {
   return token;
 }
 
-struct cell_to_string {
+struct cell_to_ostreamer {
   double t;
   template <typename Archive> void serialize(Archive &ar) { ar(t); }
   auto operator()(const cell_t &cs, const cell_t &ce) const {
-    std::ostringstream ss;
-    ss << t << "\t" << cs.x << "\t" << cs.u << "\t" << cs.rho << "\t" << cs.v
-       << "\t" << ce.u << "\t" << ce.rho << "\t" << ce.v << "\t"
-       << cell_energy(cs) << "\n";
-    return ss.str();
+    fun::ostreamer ostr;
+    ostr << t << "\t" << cs.x << "\t" << cs.u << "\t" << cs.rho << "\t" << cs.v
+         << "\t" << ce.u << "\t" << ce.rho << "\t" << ce.v << "\t"
+         << cell_energy(cs) << "\n";
+    return ostr;
   };
 };
 
@@ -257,8 +257,9 @@ int file_output(int token, const state_t &s) {
     auto mode = s.iter == 0 ? std::ios::in | std::ios::out | std::ios::trunc
                             : std::ios::in | std::ios::out | std::ios::ate;
     fs.open(parameters.outfile_name, mode);
-    fs << fun::foldMap2(cell_to_string{s.state.time}, std::plus<std::string>(),
-                        std::string(), s.state.cells, s.error.cells) << "\n";
+    fs << fun::foldMap2(cell_to_ostreamer{s.state.time},
+                        fun::combine_ostreamers(), fun::ostreamer(),
+                        s.state.cells, s.error.cells) << "\n";
     fs.close();
   }
   return token;

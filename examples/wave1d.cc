@@ -1,14 +1,17 @@
+#include <fun/proxy.hpp>
+#include <fun/shared_future.hpp>
 #include <fun/topology.hpp>
 #include <fun/vector.hpp>
-// #include <fun/proxy.hpp>
-#include <fun/shared_future.hpp>
-#include <funhpc/rexec.hpp>
 #include <funhpc/main.hpp>
+#include <funhpc/rexec.hpp>
 
 #include <fun/nested.hpp>
 #include <fun/tree.hpp>
 
 #include <fun/fun.hpp>
+
+#include <cereal/types/memory.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <cmath>
 #include <fstream>
@@ -41,6 +44,10 @@ parameters_t parameters;
 
 struct norm_t {
   double count, min, max, max_abs, sum, sum2, sum_abs;
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(count, min, max, max_abs, sum, sum2, sum_abs);
+  }
+
   norm_t()
       : count(0), min(1.0 / 0.0), max(-1.0 / 0.0), max_abs(0), sum(0), sum2(0),
         sum_abs(0) {}
@@ -76,6 +83,7 @@ auto norm_zero() { return norm_t(); }
 struct cell_t {
   double x;
   double u, rho, v;
+  template <typename Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
 };
 
 std::ostream &operator<<(std::ostream &os, const cell_t &c) {
@@ -135,8 +143,7 @@ auto cell_rhs(const cell_t &c, const fun::connectivity<cell_t> &bs) {
 
 template <typename T> using std_vector = std::vector<T>;
 template <typename T>
-using proxy_vector =
-    adt::nested</*funhpc::proxy*/ qthread::shared_future, std_vector, T>;
+using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
 template <typename T> using proxy_tree = adt::tree<proxy_vector, T>;
 
 struct grid_t {
@@ -185,12 +192,12 @@ auto grid_boundary(const grid_t &g, std::ptrdiff_t i) {
       i == 0 ? fun::head(g.cells) : fun::last(g.cells), i);
 }
 
+auto cell_get_face(const cell_t &c, std::ptrdiff_t i) { return c; }
 auto grid_rhs(const grid_t &g) {
-  return grid_t{
-      1.0, fun::fmapTopo(
-               cell_rhs, [](const cell_t &c, std::ptrdiff_t i) { return c; },
-               g.cells, fun::connectivity<cell_t>(grid_boundary(g, 0),
-                                                  grid_boundary(g, 1)))};
+  return grid_t{1.0,
+                fun::fmapTopo(cell_rhs, cell_get_face, g.cells,
+                              fun::connectivity<cell_t>(grid_boundary(g, 0),
+                                                        grid_boundary(g, 1)))};
 }
 
 // State
@@ -232,22 +239,25 @@ int info_output(int token, const state_t &s) {
   return token;
 }
 
+struct cell_to_string {
+  double t;
+  template <typename Archive> void serialize(Archive &ar) { ar(t); }
+  auto operator()(const cell_t &cs, const cell_t &ce) const {
+    std::ostringstream ss;
+    ss << t << "\t" << cs.x << "\t" << cs.u << "\t" << cs.rho << "\t" << cs.v
+       << "\t" << ce.u << "\t" << ce.rho << "\t" << ce.v << "\t"
+       << cell_energy(cs) << "\n";
+    return ss.str();
+  };
+};
+
 int file_output(int token, const state_t &s) {
   if (s.iter % parameters.outfile_every == 0 || s.iter == parameters.nsteps) {
     std::fstream fs;
     auto mode = s.iter == 0 ? std::ios::in | std::ios::out | std::ios::trunc
                             : std::ios::in | std::ios::out | std::ios::ate;
     fs.open(parameters.outfile_name, mode);
-    fs << fun::foldMap2([t = s.state.time](const cell_t &cs, const cell_t &ce) {
-                          std::ostringstream ss;
-                          ss << t << "\t" << cs.x << "\t" << cs.u << "\t"
-                             << cs.rho << "\t" << cs.v << "\t" << ce.u << "\t"
-                             << ce.rho << "\t" << ce.v << "\t"
-                             << cell_energy(cs) << "\n";
-                          return ss.str();
-                        },
-                        [](const std::string &s1,
-                           const std::string &s2) { return s1 + s2; },
+    fs << fun::foldMap2(cell_to_string{s.state.time}, std::plus<std::string>(),
                         std::string(), s.state.cells, s.error.cells) << "\n";
     fs.close();
   }

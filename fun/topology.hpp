@@ -1,6 +1,8 @@
 #ifndef FUN_TOPOLOGY_HPP
 #define FUN_TOPOLOGY_HPP
 
+#include <cereal/types/array.hpp>
+
 #include <array>
 #include <utility>
 
@@ -15,6 +17,15 @@ template <typename T> struct connectivity {
   // connectivity(const T &x0, const T &x1)
   //     : data(std::forward_as_tuple(x0, x1)) {}
   std::array<T, 2> data;
+
+  template <typename Archive> void serialize(Archive &ar) { ar(data); }
+
+  connectivity() = default;
+  connectivity(const connectivity &) = default;
+  connectivity(connectivity &&) = default;
+  connectivity &operator=(const connectivity &) = default;
+  connectivity &operator=(connectivity &&) = default;
+
   template <typename T0, typename T1>
   connectivity(T0 &&x0, T1 &&x1)
       : data{{std::forward<T0>(x0), std::forward<T1>(x1)}} {}

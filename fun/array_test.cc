@@ -56,14 +56,11 @@ TEST(fun_array, fmap) {
 TEST(fun_array, fmapTopo) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<array10>([](int x) { return x * x; }, s);
-  // std::cout << to_string(xs) << "\n";
   auto ys = fmapTopo(
       [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
       [](auto x, auto i) { return x; }, xs, connectivity<int>(1, 100));
-  // std::cout << to_string(ys) << "\n";
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
-  // std::cout << sum << "\n";
   EXPECT_EQ(20, sum);
 }
 

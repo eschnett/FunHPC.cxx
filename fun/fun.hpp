@@ -140,6 +140,16 @@ public:
     return *this;
   }
 
+  template <typename T> ostreamer &operator<<(const ostreamer &ostr) {
+    return *this += ostr;
+  }
+  template <typename T> ostreamer &operator<<(ostreamer &&ostr) {
+    return *this += std::move(ostr);
+  }
+  template <typename T> ostreamer &operator<<(T &&x) {
+    return *this += ostreamer(std::forward<T>(x));
+  }
+
   friend std::ostream &operator<<(std::ostream &os, const ostreamer &ostr) {
     if (ostr.impl)
       ostr.impl(os);
@@ -163,6 +173,20 @@ inline ostreamer operator+(ostreamer &&left, ostreamer &&right) {
 template <typename T> ostreamer make_ostreamer(T &&x) {
   return {std::forward<T>(x)};
 }
+struct combine_ostreamers : std::tuple<> {
+  ostreamer operator()(const ostreamer &left, const ostreamer &right) const {
+    return left + right;
+  }
+  ostreamer operator()(const ostreamer &left, ostreamer &&right) const {
+    return left + std::move(right);
+  }
+  ostreamer operator()(ostreamer &&left, const ostreamer &right) const {
+    return std::move(left) + right;
+  }
+  ostreamer operator()(ostreamer &&left, ostreamer &&right) const {
+    return std::move(left) + std::move(right);
+  }
+};
 
 // to_ostreamer
 

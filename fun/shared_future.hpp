@@ -58,20 +58,6 @@ auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
                  }).share();
 }
 
-template <
-    typename F, typename T, typename... Args,
-    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-auto fmap(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
-  bool s = xs.valid();
-  if (!s)
-    return qthread::shared_future<R>();
-  return xs.then([ f = std::forward<F>(f), args... ](
-                     qthread::shared_future<T> && xs) mutable {
-                   return cxx::invoke(std::move(f), std::move(xs.get()),
-                                      std::move(args)...);
-                 }).share();
-}
-
 template <typename F, typename T, typename T2, typename... Args,
           typename R =
               cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>>
@@ -103,20 +89,6 @@ R foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
   return cxx::invoke(
       std::forward<Op>(op), std::forward<Z>(z),
       cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...));
-}
-
-template <
-    typename F, typename Op, typename Z, typename T, typename... Args,
-    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-R foldMap(F &&f, Op &&op, const Z &z, qthread::shared_future<T> &&xs,
-          Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  bool s = xs.valid();
-  if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
-                     cxx::invoke(std::forward<F>(f), std::move(xs.get()),
-                                 std::forward<Args>(args)...));
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
@@ -154,29 +126,12 @@ auto mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
 }
 
-template <
-    typename F, typename T, typename... Args,
-    typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-auto mbind(F &&f, qthread::shared_future<T> &&xs, Args &&... args) {
-  static_assert(detail::is_shared_future<CR>::value, "");
-  assert(xs.valid());
-  return cxx::invoke(std::forward<F>(f), std::move(xs.get()),
-                     std::forward<Args>(args)...);
-}
-
 // mjoin
 
 template <typename T>
 auto mjoin(const qthread::shared_future<qthread::shared_future<T>> &xss) {
   assert(xss.valid());
   return qthread::async([xss]() { return xss.get().get(); }).share();
-}
-
-template <typename T>
-auto mjoin(qthread::shared_future<qthread::shared_future<T>> &&xss) {
-  assert(xss.valid());
-  return qthread::async([xss = std::move(xss)]() { return xss.get().get(); })
-      .share();
 }
 
 // mextract

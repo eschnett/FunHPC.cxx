@@ -70,19 +70,18 @@ auto fmap2(F &&f, const std::pair<L, T> &xs, const std::pair<L, T2> &ys,
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const std::pair<L, T> &xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return cxx::invoke(
-      std::forward<Op>(op), z,
+      std::forward<Op>(op), std::forward<Z>(z),
       cxx::invoke(std::forward<F>(f), xs.second, std::forward<Args>(args)...));
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, std::pair<L, T> &&xs, Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, std::pair<L, T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return cxx::invoke(std::forward<Op>(op), z,
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), std::move(xs.second),
                                  std::forward<Args>(args)...));
 }
@@ -90,10 +89,10 @@ R foldMap(F &&f, Op &&op, const Z &z, std::pair<L, T> &&xs, Args &&... args) {
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename T2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const std::pair<L, T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
            const std::pair<L, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return cxx::invoke(std::forward<Op>(op), z,
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.second, ys.second,
                                  std::forward<Args>(args)...));
 }
@@ -152,11 +151,11 @@ decltype(auto) mextract(std::pair<L, T> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const std::pair<L, T> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
               Args &&... args) {
-  return std::pair<L, R>(xs.first,
-                         foldMap(std::forward<F>(f), std::forward<Op>(op), z,
-                                 xs, std::forward<Args>(args)...));
+  return std::pair<L, R>(
+      xs.first, foldMap(std::forward<F>(f), std::forward<Op>(op),
+                        std::forward<Z>(z), xs, std::forward<Args>(args)...));
 }
 
 // mempty

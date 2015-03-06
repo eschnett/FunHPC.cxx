@@ -81,25 +81,24 @@ auto fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const adt::maybe<T> &xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.get_just(),
                                  std::forward<Args>(args)...));
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, adt::maybe<T> &&xs, Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), std::move(xs.get_just()),
                                  std::forward<Args>(args)...));
 }
@@ -107,14 +106,14 @@ R foldMap(F &&f, Op &&op, const Z &z, adt::maybe<T> &&xs, Args &&... args) {
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const adt::maybe<T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
            const adt::maybe<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   assert(ys.just() == s);
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.get_just(),
                                  ys.get_just(), std::forward<Args>(args)...));
 }
@@ -174,10 +173,10 @@ template <typename T> decltype(auto) mextract(const adt::maybe<T> &xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const adt::maybe<T> &xs,
-              Args &&... args) {
-  return munit<adt::maybe>(foldMap(std::forward<F>(f), std::forward<Op>(op), z,
-                                   xs, std::forward<Args>(args)...));
+auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
+  return munit<adt::maybe>(foldMap(std::forward<F>(f), std::forward<Op>(op),
+                                   std::forward<Z>(z), xs,
+                                   std::forward<Args>(args)...));
 }
 
 // mzero

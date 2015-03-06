@@ -162,57 +162,52 @@ decltype(auto) last(std::vector<T, Allocator> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto foldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
              Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out),            \
+                                            omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(
-        std::forward<Op>(op), std::move(r),
-        cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
   return r;
 }
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto foldMap(F &&f, Op &&op, const Z &z, std::vector<T, Allocator> &&xs,
+auto foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
              Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out),            \
+                                            omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(std::forward<Op>(op), std::move(r),
-                    cxx::invoke(std::forward<F>(f), std::move(xs[i]),
-                                std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r),
+                    cxx::invoke(f, std::move(xs[i]), args...));
   return r;
 }
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename T2, typename Allocator2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-auto foldMap2(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+auto foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
               const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
+                                            op, std::move(omp_out),            \
+                                            omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(std::forward<Op>(op), std::move(r),
-                    cxx::invoke(std::forward<F>(f), xs[i], ys[i],
-                                std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
 }
 
@@ -285,10 +280,10 @@ decltype(auto) mextract(std::vector<T, Allocator> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const std::vector<T, Allocator> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
               Args &&... args) {
   return munit<fun_traits<std::vector<T, Allocator>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
               std::forward<Args>(args)...));
 }
 

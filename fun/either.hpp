@@ -83,25 +83,24 @@ auto fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L, T2> &ys,
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const adt::either<L, T> &xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.get_right(),
                                  std::forward<Args>(args)...));
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, adt::either<L, T> &&xs, Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, adt::either<L, T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), std::move(xs.get_right()),
                                  std::forward<Args>(args)...));
 }
@@ -109,14 +108,14 @@ R foldMap(F &&f, Op &&op, const Z &z, adt::either<L, T> &&xs, Args &&... args) {
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename T2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const adt::either<L, T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
            const adt::either<L, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   assert(ys.right() == s);
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.get_right(),
                                  ys.get_right(), std::forward<Args>(args)...));
 }
@@ -180,10 +179,10 @@ decltype(auto) mextract(const adt::either<L, T> &xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const adt::either<L, T> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
               Args &&... args) {
   return munit<fun_traits<adt::either<L, T>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
               std::forward<Args>(args)...));
 }
 

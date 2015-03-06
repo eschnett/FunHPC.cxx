@@ -93,14 +93,15 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
 template <
     typename F, typename Op, typename Z, typename T, typename... Args,
     typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-R foldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
+R foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
           Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  static_assert(
+      std::is_same<cxx::invoke_of_t<std::decay_t<Op>, R, R>, R>::value, "");
   bool s = xs.valid();
   if (!s)
-    return z;
+    return std::forward<Z>(z);
   return cxx::invoke(
-      std::forward<Op>(op), z,
+      std::forward<Op>(op), std::forward<Z>(z),
       cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...));
 }
 
@@ -121,14 +122,15 @@ R foldMap(F &&f, Op &&op, const Z &z, qthread::shared_future<T> &&xs,
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args, typename R = cxx::invoke_of_t<
                                 std::decay_t<F>, T, T2, std::decay_t<Args>...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  static_assert(
+      std::is_same<cxx::invoke_of_t<std::decay_t<Op>, R, R>, R>::value, "");
   bool s = xs.valid();
   assert(ys.valid() == s);
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
                                  std::forward<Args>(args)...));
 }
@@ -187,9 +189,10 @@ decltype(auto) mextract(const qthread::shared_future<T> &xs) {
 
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const qthread::shared_future<T> &xs,
+template <
+    typename F, typename Op, typename Z, typename T, typename... Args,
+    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
+auto mfoldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
               Args &&... args) {
   return qthread::async(
              [](auto &&f, auto &&op, auto &&z, auto &&xs, auto &&... args) {

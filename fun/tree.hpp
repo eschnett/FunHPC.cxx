@@ -85,19 +85,19 @@ decltype(auto) last(const adt::tree<C, T> &xs) {
 template <typename F, typename Op, typename Z, template <typename> class C,
           typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
-auto foldMap(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
+auto foldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
              Args &&... args) {
-  return xs.foldMap(std::forward<F>(f), std::forward<Op>(op), z,
-                    std::forward<Args>(args)...);
+  return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
+                    std::forward<Z>(z), std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, template <typename> class C,
           typename T, typename T2, typename... Args,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
-auto foldMap2(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
+auto foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
               const adt::tree<C, T2> &ys, Args &&... args) {
-  return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op), z, ys,
-                     std::forward<Args>(args)...);
+  return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
+                     std::forward<Z>(z), ys, std::forward<Args>(args)...);
 }
 
 // munit
@@ -136,10 +136,10 @@ decltype(auto) mextract(const adt::tree<C, T> &xs) {
 template <typename F, typename Op, typename Z, template <typename> class C,
           typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-adt::tree<C, R> mfoldMap(F &&f, Op &&op, const Z &z, const adt::tree<C, T> &xs,
+adt::tree<C, R> mfoldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
                          Args &&... args) {
   return munit<fun_traits<adt::tree<C, R>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
               std::forward<Args>(args)...));
 }
 

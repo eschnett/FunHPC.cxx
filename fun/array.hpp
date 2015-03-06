@@ -149,11 +149,10 @@ decltype(auto) last(std::array<T, N> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const std::array<T, N> &xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = N;
-  R r(z);
+  R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
@@ -167,10 +166,10 @@ R foldMap(F &&f, Op &&op, const Z &z, const std::array<T, N> &xs,
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, std::array<T, N> &&xs, Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = N;
-  R r(z);
+  R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
@@ -185,11 +184,11 @@ R foldMap(F &&f, Op &&op, const Z &z, std::array<T, N> &&xs, Args &&... args) {
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
           typename T2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const std::array<T, N> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
            const std::array<T2, N> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = N;
-  R r(z);
+  R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
                           omp_in))) initializer(omp_priv(z))
@@ -265,10 +264,10 @@ decltype(auto) mextract(std::array<T, N> &&xs) {
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const std::array<T, N> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
               Args &&... args) {
   return munit<fun_traits<std::array<T, N>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
               std::forward<Args>(args)...));
 }
 

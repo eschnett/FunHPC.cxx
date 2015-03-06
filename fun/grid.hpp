@@ -88,10 +88,10 @@ auto fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
 template <typename F, typename Op, typename Z, template <typename> class C,
           typename T, std::ptrdiff_t D, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
-auto foldMap(F &&f, Op &&op, const Z &z, const adt::grid<C, T, D> &xs,
+auto foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
              Args &&... args) {
-  return xs.foldMap(std::forward<F>(f), std::forward<Op>(op), z,
-                    std::forward<Args>(args)...);
+  return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
+                    std::forward<Z>(z), std::forward<Args>(args)...);
 }
 
 // munit
@@ -132,10 +132,10 @@ decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
 template <typename F, typename Op, typename Z, template <typename> class C,
           typename T, std::ptrdiff_t D, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-adt::grid<C, R, D> mfoldMap(F &&f, Op &&op, const Z &z,
-                            const adt::grid<C, T, D> &xs, Args &&... args) {
+adt::grid<C, R, D> mfoldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
+                            Args &&... args) {
   return munit<fun_traits<adt::grid<C, T, D>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), z, xs,
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
               std::forward<Args>(args)...));
 }
 

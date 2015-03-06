@@ -80,26 +80,25 @@ auto fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
+R foldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   if (!s)
-    return z;
+    return std::forward<Z>(z);
   return cxx::invoke(
-      std::forward<Op>(op), z,
+      std::forward<Op>(op), std::forward<Z>(z),
       cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, const Z &z, std::shared_ptr<T> &&xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, std::shared_ptr<T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   if (!s)
-    return z;
-  return cxx::invoke(std::forward<Op>(op), z,
+    return std::forward<Z>(z);
+  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), std::move(*xs),
                                  std::forward<Args>(args)...));
 }
@@ -107,15 +106,15 @@ R foldMap(F &&f, Op &&op, const Z &z, std::shared_ptr<T> &&xs,
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
            const std::shared_ptr<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(bool(ys) == s);
   if (!s)
-    return z;
+    return std::forward<Z>(z);
   return cxx::invoke(
-      std::forward<Op>(op), z,
+      std::forward<Op>(op), std::forward<Z>(z),
       cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...));
 }
 
@@ -174,11 +173,11 @@ template <typename T> decltype(auto) mextract(const std::shared_ptr<T> &xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const std::shared_ptr<T> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
               Args &&... args) {
-  return munit<std::shared_ptr>(foldMap(std::forward<F>(f),
-                                        std::forward<Op>(op), z, xs,
-                                        std::forward<Args>(args)...));
+  return munit<std::shared_ptr>(
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
+              std::forward<Args>(args)...));
 }
 
 // mzero

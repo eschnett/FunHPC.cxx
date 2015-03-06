@@ -124,13 +124,17 @@ auto mjoin(const std::function<std::function<T(A)>(A)> &xss) {
 
 template <typename F, typename Op, typename Z, typename T, typename A,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const std::function<T(A)> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const std::function<T(A)> &xs,
               Args &&... args) {
-  return std::function<R(A)>(
-      [ f = std::forward<F>(f), op = std::forward<Op>(op), z, xs, args... ](
-          const A &a) mutable {
-        return cxx::invoke(op, z, cxx::invoke(f, xs(a), args...));
-      });
+  return std::function<R(A)>([
+    f = std::forward<F>(f),
+    op = std::forward<Op>(op),
+    z = std::forward<Z>(z),
+    xs,
+    args...
+  ](const A &a) mutable {
+    return cxx::invoke(op, z, cxx::invoke(f, xs(a), args...));
+  });
 }
 
 // mzero

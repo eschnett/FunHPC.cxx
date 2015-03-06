@@ -4,10 +4,13 @@
 #include <cxx/invoke.hpp>
 #include <funhpc/proxy.hpp>
 
+#include <cereal/types/tuple.hpp>
+
 #include <cassert>
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -44,13 +47,13 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 // fmap
 
 namespace detail {
-template <
-    typename F, typename T, typename... Args,
-    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-auto fmap_local(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
-  assert(bool(xs) && xs.proc_ready() && xs.local());
-  return cxx::invoke(std::move(f), *xs, std::move(args)...);
-}
+template <typename T> struct proxy_fmap : std::tuple<> {
+  template <typename F, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs, Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    return cxx::invoke(std::move(f), *xs, std::move(args)...);
+  }
+};
 }
 
 template <
@@ -59,24 +62,21 @@ template <
 auto fmap(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
   assert(s);
-  auto fmap_local = (R(&)(std::decay_t<F> && f, const funhpc::proxy<T> &xs,
-                          std::decay_t<Args> &&... args))
-      detail::fmap_local<std::decay_t<F>, T, std::decay_t<Args>...>;
-  return funhpc::remote(xs.get_proc_future(), fmap_local, std::forward<F>(f),
-                        xs, std::forward<Args>(args)...);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap<T>(),
+                        std::forward<F>(f), xs, std::forward<Args>(args)...);
 }
 
 namespace detail {
-template <typename F, typename T, typename T2, typename... Args,
-          typename R =
-              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>>
-auto fmap2_local(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
-                 Args &&... args) {
-  assert(bool(xs) && xs.proc_ready() && xs.local());
-  assert(bool(ys));
-  auto ysl = ys.make_local();
-  return cxx::invoke(std::move(f), *xs, *ysl, std::move(args)...);
-}
+template <typename T, typename T2> struct proxy_fmap2 : std::tuple<> {
+  template <typename F, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs,
+                  const funhpc::proxy<T2> &ys, Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    assert(bool(ys));
+    auto ysl = ys.make_local();
+    return cxx::invoke(std::move(f), *xs, *ysl, std::move(args)...);
+  }
+};
 }
 
 template <typename F, typename T, typename T2, typename... Args,
@@ -87,77 +87,67 @@ auto fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
   bool s = bool(xs);
   assert(bool(ys) == s);
   assert(s);
-  auto fmap2_local =
-      (R(&)(std::decay_t<F> && f, const funhpc::proxy<T> &xs,
-            const funhpc::proxy<T2> &ys, std::decay_t<Args> &&... args))
-      detail::fmap2_local<std::decay_t<F>, T, T2, std::decay_t<Args>...>;
-  return funhpc::remote(xs.get_proc_future(), fmap2_local, std::forward<F>(f),
-                        xs, ys, std::forward<Args>(args)...);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap2<T, T2>(),
+                        std::forward<F>(f), xs, ys,
+                        std::forward<Args>(args)...);
 }
 
 // foldMap
 
 namespace detail {
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap_local(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
-                Args &&... args) {
-  assert(bool(xs) && xs.proc_ready() && xs.local());
-  return cxx::invoke(std::move(op), z,
-                     cxx::invoke(std::move(f), *xs, std::move(args)...));
-}
+template <typename T> struct proxy_foldMap : std::tuple<> {
+  template <typename F, typename Op, typename Z, typename... Args>
+  auto operator()(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
+                  Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    return cxx::invoke(
+        std::forward<Op>(op), std::forward<Z>(z),
+        cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
+  }
+};
 }
 
 template <
     typename F, typename Op, typename Z, typename T, typename... Args,
     typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
-R foldMap(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
-          Args &&... args) {
+R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(s);
-  auto foldMap_local =
-      (R(&)(std::decay_t<F> && f, std::decay_t<Op> && op, const Z &z,
-            const funhpc::proxy<T> &xs, std::decay_t<Args> &&... args))
-      detail::foldMap_local<std::decay_t<F>, std::decay_t<Op>, Z, T,
-                            std::decay_t<Args>...>;
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       foldMap_local, std::forward<F>(f), std::forward<Op>(op),
-                       z, xs, std::forward<Args>(args)...).get();
+                       detail::proxy_foldMap<T>(), std::forward<F>(f),
+                       std::forward<Op>(op), std::forward<Z>(z), xs,
+                       std::forward<Args>(args)...).get();
 }
 
 namespace detail {
-template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2_local(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
-                 const funhpc::proxy<T2> &ys, Args &&... args) {
-  assert(bool(xs) && xs.proc_ready() && xs.local());
-  assert(bool(ys));
-  auto ysl = ys.make_local();
-  return cxx::invoke(std::move(op), z,
-                     cxx::invoke(std::move(f), *xs, *ysl, std::move(args)...));
-}
+template <typename T, typename T2> struct proxy_foldMap2 : std::tuple<> {
+  template <typename F, typename Op, typename Z, typename... Args>
+  auto operator()(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
+                  const funhpc::proxy<T2> &ys, Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    assert(bool(ys));
+    auto ysl = ys.make_local();
+    return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
+                       cxx::invoke(std::forward<F>(f), *xs, *ysl,
+                                   std::forward<Args>(args)...));
+  }
+};
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args, typename R = cxx::invoke_of_t<
                                 std::decay_t<F>, T, T2, std::decay_t<Args>...>>
-R foldMap2(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
+R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
            const funhpc::proxy<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(bool(ys) == s);
   assert(s);
-  auto foldMap2_local =
-      (R(&)(std::decay_t<F> && f, std::decay_t<Op> && op, const Z &z,
-            const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
-            std::decay_t<Args> &&... args))
-      detail::foldMap2_local<std::decay_t<F>, std::decay_t<Op>, Z, T, T2,
-                             std::decay_t<Args>...>;
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       foldMap2_local, std::forward<F>(f), std::forward<Op>(op),
-                       z, xs, ys, std::forward<Args>(args)...).get();
+                       detail::proxy_foldMap2<T, T2>(), std::forward<F>(f),
+                       std::forward<Op>(op), std::forward<Z>(z), xs, ys,
+                       std::forward<Args>(args)...).get();
 }
 
 // munit
@@ -196,13 +186,11 @@ template <typename T> decltype(auto) mextract(const funhpc::proxy<T> &xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-auto mfoldMap(F &&f, Op &&op, const Z &z, const funhpc::proxy<T> &xs,
+auto mfoldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
               Args &&... args) {
-  return funhpc::remote(xs.get_proc_future(),
-                        detail::foldMap_local<std::decay_t<F>, std::decay_t<Op>,
-                                              Z, T, std::decay_t<Args>...>,
-                        std::forward<F>(f), std::forward<Op>(op), z, xs,
-                        std::forward<Args>(args)...);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_foldMap<T>(),
+                        std::forward<F>(f), std::forward<Op>(op),
+                        std::forward<Z>(z), xs, std::forward<Args>(args)...);
 }
 
 // mzero

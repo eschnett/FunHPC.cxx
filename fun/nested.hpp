@@ -132,13 +132,21 @@ struct nested_last : std::tuple<> {
 };
 }
 
+// Note: The call to fmap is necessary in case we use a proxy; calling
+// head or mextract on the proxy would copy the whole data structure
+// to the local process, which would be prohibitively expensive.
+
+// Note: The call to fmap creates a temporary, and mextract returns a
+// reference to the content of this temporary. It appears that Clang
+// extends the lifetime of this temporary (maybe accidentally?), while
+// GCC does not. Hence we need to return a value and not a reference.
 template <template <typename> class P, template <typename> class A, typename T>
-decltype(auto) head(const adt::nested<P, A, T> &xss) {
+auto head(const adt::nested<P, A, T> &xss) {
   return mextract(fmap(detail::nested_head<A, T>(), xss.data));
 }
 
 template <template <typename> class P, template <typename> class A, typename T>
-decltype(auto) last(const adt::nested<P, A, T> &xss) {
+auto last(const adt::nested<P, A, T> &xss) {
   return mextract(fmap(detail::nested_last<A, T>(), xss.data));
 }
 
@@ -237,7 +245,7 @@ adt::nested<P, A, R> mbind(F &&f, const adt::nested<P, A, T> &xss,
 // mextract
 
 template <template <typename> class P, template <typename> class A, typename T>
-decltype(auto) mextract(const adt::nested<P, A, T> &xss) {
+auto mextract(const adt::nested<P, A, T> &xss) {
   return mextract(mextract(xss.data));
 }
 

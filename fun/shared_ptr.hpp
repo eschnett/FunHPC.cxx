@@ -31,9 +31,10 @@ template <typename T> struct fun_traits<std::shared_ptr<T>> {
 
 // iotaMap
 
-template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
+template <
+    template <typename> class C, typename F, typename... Args,
+    typename R = std::decay_t<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>>,
+    std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
@@ -45,7 +46,7 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 // fmap
 
 template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto fmap(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
   bool s = bool(xs);
   if (!s)
@@ -55,7 +56,7 @@ auto fmap(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto fmap(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
   bool s = bool(xs);
   if (!s)
@@ -65,7 +66,7 @@ auto fmap(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F, T, T2, Args...>>>
 auto fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
            Args &&... args) {
   bool s = bool(xs);
@@ -79,10 +80,11 @@ auto fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F &&, T, Args &&...>>>
 R foldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
           Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  static_assert(
+      std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
   if (!s)
     return std::forward<Z>(z);
@@ -92,9 +94,10 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F &&, T, Args &&...>>>
 R foldMap(F &&f, Op &&op, Z &&z, std::shared_ptr<T> &&xs, Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  static_assert(
+      std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
   if (!s)
     return std::forward<Z>(z);
@@ -105,10 +108,11 @@ R foldMap(F &&f, Op &&op, Z &&z, std::shared_ptr<T> &&xs, Args &&... args) {
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F &&, T, T2, Args &&...>>>
 R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
            const std::shared_ptr<T2> &ys, Args &&... args) {
-  static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+  static_assert(
+      std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
   assert(bool(ys) == s);
   if (!s)
@@ -129,7 +133,7 @@ auto munit(T &&x) {
 // mbind
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto mbind(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
   static_assert(detail::is_shared_ptr<CR>::value, "");
   if (!bool(xs))
@@ -138,7 +142,7 @@ auto mbind(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto mbind(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
   static_assert(detail::is_shared_ptr<CR>::value, "");
   if (!bool(xs))
@@ -172,7 +176,7 @@ template <typename T> decltype(auto) mextract(const std::shared_ptr<T> &xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename R = std::decay_t<cxx::invoke_of_t<F &&, T, Args &&...>>>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
               Args &&... args) {
   return munit<std::shared_ptr>(

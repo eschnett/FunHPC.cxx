@@ -71,12 +71,12 @@ auto fmapTopo(F &&f, G &&g, const adt::tree<C, T> &xs,
 // head, last
 
 template <template <typename> class C, typename T>
-decltype(auto) head(const adt::tree<C, T> &xs) {
+auto head(const adt::tree<C, T> &xs) {
   return xs.head();
 }
 
 template <template <typename> class C, typename T>
-decltype(auto) last(const adt::tree<C, T> &xs) {
+auto last(const adt::tree<C, T> &xs) {
   return xs.last();
 }
 
@@ -127,7 +127,7 @@ adt::tree<C, R> mbind(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
 // mextract
 
 template <template <typename> class C, typename T>
-decltype(auto) mextract(const adt::tree<C, T> &xs) {
+auto mextract(const adt::tree<C, T> &xs) {
   return xs.head();
 }
 

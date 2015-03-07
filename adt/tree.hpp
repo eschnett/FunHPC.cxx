@@ -73,11 +73,11 @@ public:
     return subtrees.left() && fun::mempty(subtrees.get_left());
   }
 
-  const T &head() const {
+  T head() const {
     return subtrees.left() ? fun::head(subtrees.get_left())
                            : fun::head(subtrees.get_right()).head();
   }
-  const T &last() const {
+  T last() const {
     return subtrees.left() ? fun::last(subtrees.get_left())
                            : fun::last(subtrees.get_right()).last();
   }

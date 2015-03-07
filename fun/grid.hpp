@@ -123,7 +123,7 @@ C<R> munit(T &&x) {
 // mextract
 
 template <template <typename> class C, typename T, std::ptrdiff_t D>
-decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
+auto mextract(const adt::grid<C, T, D> &xs) {
   return xs.head();
 }
 

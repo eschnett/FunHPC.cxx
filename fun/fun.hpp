@@ -83,7 +83,9 @@ std::string to_string(const CT &xs) {
   return std::string("[") + foldMap(f(), op(), std::string(), xs) + "]";
 }
 
-// An ostreamer is function that outputs something
+// An ostreamer is function that outputs something. In particular,
+// there is an efficient way of combining ostreamers -- somthing that
+// is not possible with regular ostreams.
 
 class ostreamer {
   std::function<void(std::ostream &)> impl;

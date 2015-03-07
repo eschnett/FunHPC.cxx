@@ -35,11 +35,17 @@ TEST(adt_tree, basic) {
   swap(xs, zs1);
 
   auto t0 = tree1<double>();
+  EXPECT_EQ(0, t0.size());
   auto t1 = tree1<double>(1.0);
+  EXPECT_EQ(1, t1.size());
   auto t2 = tree1<double>(2.0);
+  EXPECT_EQ(1, t2.size());
   auto t3 = tree1<double>(t0, t1, t2);
+  EXPECT_EQ(2, t3.size());
   auto t4 = tree1<double>(t2, t3);
+  EXPECT_EQ(3, t4.size());
   auto t5 = tree1<double>(t0, t1, t4);
+  EXPECT_EQ(4, t5.size());
 }
 
 TEST(adt_tree, iota) {

@@ -55,7 +55,7 @@ OPTFLAGS    = # -O3 -DNDEBUG -Wno-unused-variable
 
 # CC          = gcc
 # CXX         = g++
-# CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS) -D_GLIBCXX_DEBUG
+# CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 # CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 # CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 # LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)

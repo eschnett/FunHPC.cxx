@@ -63,12 +63,14 @@ OPTFLAGS     = # -O3 -DNDEBUG -Wno-unused-variable
 CFLAGS_EXT   = -march=native -Wall -g -O3
 CXXFLAGS_EXT = -march=native -Wall -g -O3
 
-# CC          = gcc
-# CXX         = g++
-# CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
-# CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
-# DEBUGFLAGS  = -D_GLIBCXX_DEBUG
-# OPTFLAGS    = -O3 -DNDEBUG
+# CC           = gcc
+# CXX          = g++
+# CFLAGS       = -march=native -Wall -g -std=c99 -Dasm=__asm__
+# CXXFLAGS     = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
+# DEBUGFLAGS   = -D_GLIBCXX_DEBUG
+# OPTFLAGS     = # -O3 -DNDEBUG
+# CFLAGS_EXT   = -march=native -Wall -g -O3
+# CXXFLAGS_EXT = -march=native -Wall -g -O3
 
 MPICC       = env "OMPI_CC=$(CC)" $(OPENMPI_DIR)/bin/mpicc
 MPICXX      = env "OMPI_CXX=$(CXX)" $(OPENMPI_DIR)/bin/mpicxx

@@ -70,14 +70,14 @@ CXXFLAGS_EXT = -march=native -Wall -g -O3
 # DEBUGFLAGS  = -D_GLIBCXX_DEBUG
 # OPTFLAGS    = -O3 -DNDEBUG
 
-MPICC       = env "OMPI_CC=$(CC)" mpicc
-MPICXX      = env "OMPI_CXX=$(CXX)" mpicxx
+MPICC       = env "OMPI_CC=$(CC)" $(OPENMPI_DIR)/bin/mpicc
+MPICXX      = env "OMPI_CXX=$(CXX)" $(OPENMPI_DIR)/bin/mpicxx
 MPICPPFLAGS = $(CPPFLAGS)
 MPICFLAGS   = $(CFLAGS)
 MPICXXFLAGS = $(CXXFLAGS)
 MPILDFLAGS  = $(LDFLAGS)
 MPILIBS     = $(LIBS)
-MPIRUN      = mpirun
+MPIRUN      = $(OPENMPI_DIR)/bin/mpirun
 
 HDRS =						\
 	adt/array.hpp				\

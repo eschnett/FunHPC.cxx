@@ -13,13 +13,43 @@
 #include <vector>
 
 namespace {
-template <typename T> using vector1 = std::vector<T>;
+template <typename T> using std_vector = std::vector<T>;
 template <typename T>
-using shared_vector = adt::nested<std::shared_ptr, vector1, T>;
+using shared_vector = adt::nested<std::shared_ptr, std_vector, T>;
+template <typename T> using tree0 = adt::tree<std_vector, T>;
 template <typename T> using tree1 = adt::tree<shared_vector, T>;
 }
 
 TEST(adt_tree, basic) {
+  auto xs = tree0<double>();
+  EXPECT_TRUE(xs.empty());
+  auto ys = tree0<double>(1.0);
+  EXPECT_FALSE(ys.empty());
+  EXPECT_EQ(1.0, ys.head());
+
+  auto zs1(xs);
+  auto zs2(std::move(ys));
+  zs1 = xs;
+  zs1 = zs1;
+  zs1 = std::move(zs2);
+  using std::swap;
+  swap(xs, zs1);
+
+  auto t0 = tree0<double>();
+  EXPECT_EQ(0, t0.size());
+  auto t1 = tree0<double>(1.0);
+  EXPECT_EQ(1, t1.size());
+  auto t2 = tree0<double>(2.0);
+  EXPECT_EQ(1, t2.size());
+  auto t3 = tree0<double>(t0, t1, t2);
+  EXPECT_EQ(2, t3.size());
+  auto t4 = tree0<double>(t2, t3);
+  EXPECT_EQ(3, t4.size());
+  auto t5 = tree0<double>(t0, t1, t4);
+  EXPECT_EQ(4, t5.size());
+}
+
+TEST(adt_tree, basic_nested) {
   auto xs = tree1<double>();
   EXPECT_TRUE(xs.empty());
   auto ys = tree1<double>(1.0);
@@ -83,7 +113,7 @@ TEST(adt_tree, fmap) {
 //                           },
 //                           [](auto x, auto i) {
 //     return x; }, xs,
-//                               fun::connectivity<vector1<double>>(-1.0,
+//                               fun::connectivity<std_vector<double>>(-1.0,
 //                               10.0)));
 //   EXPECT_EQ(xs.size(), ys.size());
 //   auto maxabs = ys.foldMap([](auto x) { return std::fabs(x); },

@@ -32,6 +32,14 @@ JEMALLOC_INCDIRS  = $(JEMALLOC_DIR)/include
 JEMALLOC_LIBDIRS  = $(JEMALLOC_DIR)/lib
 JEMALLOC_LIBS     = jemalloc pthread # Note: JEMALLOC_LIBS must come last
 
+OPENMPI_NAME     = openmpi-1.8.4
+OPENMPI_URL      = http://www.open-mpi.org/software/ompi/v1.8/downloads/openmpi-1.8.4.tar.bz2
+OPENMPI_DIR      = $(abspath ./$(OPENMPI_NAME))
+OPENMPI_CPPFLAGS =
+OPENMPI_INCDIRS  = $(HWLOC_INCDIRS)
+OPENMPI_LIBDIRS  = $(HWLOC_LIBDIRS)
+OPENMPI_LIBS     = $(HWLOC_LIBS)
+
 QTHREADS_NAME     = qthread-1.10
 QTHREADS_URL      = https://qthreads.googlecode.com/files/qthread-1.10.tar.bz2
 QTHREADS_DIR      = $(abspath ./$(QTHREADS_NAME))
@@ -40,25 +48,25 @@ QTHREADS_INCDIRS  = $(QTHREADS_DIR)/include $(HWLOC_INCDIRS)
 QTHREADS_LIBDIRS  = $(QTHREADS_DIR)/lib $(HWLOC_LIBDIRS)
 QTHREADS_LIBS     = qthread pthread $(HWLOC_LIBS)
 
-INCDIRS = $(CEREAL_INCDIRS) $(GOOGLETEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(abspath .) $(QTHREADS_INCDIRS)
-LIBDIRS = $(CEREAL_LIBDIRS) $(GOOGLETEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(QTHREADS_LIBDIRS)
-LIBS    = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
+INCDIRS  = $(abspath .) $(CEREAL_INCDIRS) $(GOOGLETEST_INCDIRS) $(HWLOC_INCDIRS) $(JEMALLOC_INCDIRS) $(OPENMPI_INCDIRS) $(QTHREADS_INCDIRS)
+CPPFLAGS = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(OPENMPI_CPPFLAGS) $(QTHREADS_CPPFLAGS)
+LIBDIRS  = $(CEREAL_LIBDIRS) $(GOOGLETEST_LIBDIRS) $(HWLOC_LIBDIRS) $(JEMALLOC_LIBDIRS) $(OPENMPI_LIBDIRS) $(QTHREADS_LIBDIRS)
+LDFLAGS  = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
+LIBS     = $(CEREAL_LIBS) $(GOOGLETEST_LIBS) $(HWLOC_LIBS) $(OPENMPI_LIBS) $(QTHREADS_LIBS) $(JEMALLOC_LIBS)
 
-CC          = clang
-CXX         = clang++
-CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
-CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
-CXXFLAGS    = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
-LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
-DEBUGFLAGS  = -D_GLIBCXX_DEBUG
-OPTFLAGS    = # -O3 -DNDEBUG -Wno-unused-variable
+CC           = clang
+CXX          = clang++
+CFLAGS       = -march=native -Wall -g -std=c99 -Dasm=__asm__
+CXXFLAGS     = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
+DEBUGFLAGS   = -D_GLIBCXX_DEBUG
+OPTFLAGS     = # -O3 -DNDEBUG -Wno-unused-variable
+CFLAGS_EXT   = -march=native -Wall -g -O3
+CXXFLAGS_EXT = -march=native -Wall -g -O3
 
 # CC          = gcc
 # CXX         = g++
-# CPPFLAGS    = $(INCDIRS:%=-I%) $(CEREAL_CPPFLAGS) $(GOOGLETEST_CPPFLAGS) $(HWLOC_CPPFLAGS) $(JEMALLOC_CPPFLAGS) $(QTHREADS_CPPFLAGS)
 # CFLAGS      = -march=native -Wall -g -std=c99 -Dasm=__asm__
 # CXXFLAGS    = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
-# LDFLAGS     = $(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)
 # DEBUGFLAGS  = -D_GLIBCXX_DEBUG
 # OPTFLAGS    = -O3 -DNDEBUG
 
@@ -186,7 +194,7 @@ format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 
 objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
-$(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc qthreads
+$(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 %.o: %.cc Makefile
 	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) \
 		-c -o $*.o.tmp $*.cc
@@ -279,11 +287,11 @@ external/gtest.unpacked: external/gtest.downloaded
 	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: > $@
 external/gtest.built: external/gtest.unpacked
-	(cd external &&							       \
-		cd $(GOOGLETEST_DIR)/src &&				       \
-		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest-all.cc &&  \
-		$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -c gtest_main.cc && \
-		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	       \
+	(cd external &&							\
+		cd $(GOOGLETEST_DIR)/src &&				\
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest-all.cc &&	\
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest_main.cc &&	\
+		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	\
 	: > $@
 external/gtest.done: external/gtest.built
 	: > $@
@@ -312,8 +320,8 @@ external/hwloc.built: external/hwloc.unpacked
 			--disable-libxml2			\
 			"CC=$(CC)"				\
 			"CXX=$(CXX)"				\
-			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"		\
-			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&	\
+			"CFLAGS=$(CFLAGS_EXT)"			\
+			"CXXFLAGS=$(CXXFLAGS_EXT)" &&		\
 		$(MAKE)) &&					\
 	: > $@
 external/hwloc.installed: external/hwloc.built
@@ -348,8 +356,8 @@ external/jemalloc.built: external/jemalloc.unpacked
 			--prefix="$(JEMALLOC_DIR)"			\
 			"CC=$(CC)"					\
 			"CXX=$(CXX)"					\
-			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
-			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
+			"CFLAGS=$(CFLAGS_EXT)"				\
+			"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
 		$(MAKE)) &&						\
 	: > $@
 external/jemalloc.installed: external/jemalloc.built
@@ -359,6 +367,44 @@ external/jemalloc.installed: external/jemalloc.built
 		$(MAKE) install) &&		\
 	: > $@
 external/jemalloc.done: external/jemalloc.installed
+	: > $@
+
+### OpenMPI ###
+
+openmpi: external/openmpi.done
+.PHONY: openmpi
+external/openmpi.downloaded: | external
+	(cd external &&					\
+		$(RM) $(notdir $(OPENMPI_URL)) &&	\
+		wget $(OPENMPI_URL)) &&			\
+	: > $@
+external/openmpi.unpacked: external/openmpi.downloaded
+	(cd external &&					\
+		rm -rf $(OPENMPI_NAME) &&		\
+		tar xjf $(notdir $(OPENMPI_URL))) &&	\
+	: > $@
+external/openmpi.built: external/openmpi.unpacked | hwloc
+	+(cd external &&					\
+		rm -rf $(OPENMPI_NAME)-build &&			\
+		mkdir $(OPENMPI_NAME)-build &&			\
+		cd $(OPENMPI_NAME)-build &&			\
+		unset MPICC MPICXX &&				\
+		"$(abspath external/$(OPENMPI_NAME)/configure)"	\
+			--prefix="$(OPENMPI_DIR)"		\
+			--with-hwloc="$(HWLOC_DIR)"		\
+			"CC=gcc"				\
+			"CXX=g++"				\
+			"CFLAGS=$(CFLAGS_EXT)"			\
+			"CXXFLAGS=$(CXXFLAGS_EXT)" &&		\
+		$(MAKE)) &&					\
+	: > $@
+external/openmpi.installed: external/openmpi.built
+	+(cd external &&			\
+		rm -rf $(OPENMPI_DIR) &&	\
+		cd $(OPENMPI_NAME)-build &&	\
+		$(MAKE) install) &&		\
+	: > $@
+external/openmpi.done: external/openmpi.installed
 	: > $@
 
 ### Qthreads ###
@@ -388,8 +434,8 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 			--with-hwloc="$(HWLOC_DIR)"			\
 			"CC=$(CC)"					\
 			"CXX=$(CXX)"					\
-			"CFLAGS=$(CFLAGS) $(OPTFLAGS)"			\
-			"CXXFLAGS=$(CXXFLAGS) $(OPTFLAGS)" &&		\
+			"CFLAGS=$(CFLAGS_EXT)"				\
+			"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
 		$(MAKE)) &&						\
 	: > $@
 external/qthreads.installed: external/qthreads.built
@@ -413,7 +459,7 @@ clean:
 
 distclean: clean
 	$(RM) -r external $(CEREAL_DIR) $(GOOGLETEST_DIR) $(HWLOC_DIR)	\
-		$(JEMALLOC_DIR) $(QTHREADS_DIR)
+		$(JEMALLOC_DIR) $(OPENMPI_DIR) $(QTHREADS_DIR)
 .PHONY: distclean
 
 -include $(ALL_SRCS:%.cc=%.d)

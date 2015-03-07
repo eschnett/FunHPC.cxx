@@ -15,3 +15,4 @@ selftest
 selftest-funhpc
 wave1d
 wave1d.tsv
+openmpi-1.8.4

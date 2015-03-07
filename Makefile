@@ -182,7 +182,7 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 
-all: format objs
+all: objs selftest selftest-funhpc $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 .PHONY: all
 
 ### format ###

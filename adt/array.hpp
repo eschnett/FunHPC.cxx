@@ -147,20 +147,22 @@ MAKEFUN(min)
 
 namespace adt {
 
-template <typename T, std::size_t N> constexpr auto array_zero() {
+template <typename T, std::size_t N>
+/*gcc constexpr*/ inline auto array_zero() {
   std::array<T, N> r;
   r.fill(T(0));
   return r;
 }
 
 template <typename T, std::size_t N, typename U>
-constexpr auto array_fill(const U &x) {
+/*gcc constexpr*/ inline auto array_fill(const U &x) {
   std::array<T, N> r;
   r.fill(x);
   return r;
 }
 
-template <typename T, std::size_t N, std::size_t I> constexpr auto array_dir() {
+template <typename T, std::size_t N, std::size_t I>
+/*gcc constexpr*/ inline auto array_dir() {
   std::array<T, N> r;
   r.fill(T(0));
   std::get<I>(r) = T(1);

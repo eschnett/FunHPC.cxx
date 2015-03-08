@@ -94,7 +94,7 @@ public:
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
         "");
-    std::ptrdiff_t icount = cxx::cld(imax - imin, istep);
+    std::ptrdiff_t icount = cxx::div_ceil(imax - imin, istep).quot;
     assert(icount >= 0);
     if (icount <= max_leaf_size) {
       subtrees = adt::make_left<C<T>, C<tree>>(fun::iotaMap<C>(
@@ -104,10 +104,10 @@ public:
           icount, std::forward<F>(f), std::forward<Args>(args)...));
     } else {
       std::ptrdiff_t stride = max_leaf_size;
-      std::ptrdiff_t num_subtrees = cxx::cld(icount, max_leaf_size);
+      std::ptrdiff_t num_subtrees = cxx::div_ceil(icount, max_leaf_size).quot;
       while (num_subtrees > max_branch_size) {
         stride *= max_branch_size;
-        num_subtrees = cxx::cld(num_subtrees, max_branch_size);
+        num_subtrees = cxx::div_ceil(num_subtrees, max_branch_size).quot;
       }
       assert(num_subtrees > 1 && num_subtrees <= max_branch_size);
       subtrees = adt::make_right<C<T>, C<tree>>(

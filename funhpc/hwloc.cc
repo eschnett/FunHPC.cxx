@@ -148,7 +148,7 @@ cpu_info manage_affinity(const hwloc_topology_t topology) {
      << "(S" << qthread_shep() << ") "
      << "T" << tl.proc_thread << set_msg << get_msg;
 
-  return {tl.proc_thread, os.str()};
+  return cpu_info{tl.proc_thread, os.str()};
 }
 }
 

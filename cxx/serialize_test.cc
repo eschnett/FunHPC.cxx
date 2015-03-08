@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 
+namespace {
 template <typename T> std::string serialize(T &&obj) {
   std::stringstream buf;
   { (cereal::BinaryOutputArchive(buf))(std::forward<T>(obj)); }
@@ -19,8 +20,11 @@ template <typename T> T deserialize(const std::string &str) {
   { (cereal::BinaryInputArchive(buf))(obj); }
   return obj;
 }
+}
 
+namespace {
 int fun() { return 1; }
+}
 
 TEST(cxx_serialize, function) {
   auto orig = &fun;
@@ -30,9 +34,11 @@ TEST(cxx_serialize, function) {
   EXPECT_EQ(cxx::invoke(orig), cxx::invoke(copy));
 }
 
+namespace {
 struct funobj {
   int operator()() { return 1; }
 };
+}
 
 TEST(cxx_serialize, function_object) {
   auto orig = funobj();
@@ -42,21 +48,33 @@ TEST(cxx_serialize, function_object) {
   EXPECT_EQ(cxx::invoke(orig), cxx::invoke(copy));
 }
 
-TEST(cxx_serialize, member_function) {
-  auto orig = &funobj::operator();
-  auto buf = serialize(orig);
-  auto copy = deserialize<decltype(orig)>(buf);
-  EXPECT_EQ((funobj().*orig)(), (funobj().*copy)());
-  EXPECT_EQ(cxx::invoke(orig, funobj()), cxx::invoke(copy, funobj()));
+namespace {
+struct obj {
+  int mem;
+  int memfun() { return 2; }
+  virtual int virtmemfun() { return 3; }
+  obj() : mem(1) {}
+};
 }
 
-struct obj {
-  int m;
-  obj() : m(1) {}
-};
+TEST(cxx_serialize, member_function) {
+  auto orig = &obj::memfun;
+  auto buf = serialize(orig);
+  auto copy = deserialize<decltype(orig)>(buf);
+  EXPECT_EQ((obj().*orig)(), (obj().*copy)());
+  EXPECT_EQ(cxx::invoke(orig, obj()), cxx::invoke(copy, obj()));
+}
+
+TEST(cxx_serialize, virtual_member_function) {
+  auto orig = &obj::virtmemfun;
+  auto buf = serialize(orig);
+  auto copy = deserialize<decltype(orig)>(buf);
+  EXPECT_EQ((obj().*orig)(), (obj().*copy)());
+  EXPECT_EQ(cxx::invoke(orig, obj()), cxx::invoke(copy, obj()));
+}
 
 TEST(cxx_serialize, member_object) {
-  auto orig = &obj::m;
+  auto orig = &obj::mem;
   auto buf = serialize(orig);
   auto copy = deserialize<decltype(orig)>(buf);
   EXPECT_EQ(obj().*orig, obj().*copy);

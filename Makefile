@@ -149,6 +149,8 @@ HDRS =						\
 	qthread/future.hpp			\
 	qthread/mutex.hpp			\
 	qthread/thread.hpp
+SRCS =						\
+	cxx/serialize.cc
 FUNHPC_SRCS =					\
 	funhpc/hwloc.cc				\
 	funhpc/main.cc				\
@@ -257,16 +259,16 @@ examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 									\
 	done
 .PHONY: examples
-hello: $(FUNHPC_SRCS:%.cc=%.o) examples/hello.o
+hello: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/hello.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
-million: $(FUNHPC_SRCS:%.cc=%.o) examples/million.o
+million: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/million.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
-pingpong: $(FUNHPC_SRCS:%.cc=%.o) examples/pingpong.o
+pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
-wave1d: $(FUNHPC_SRCS:%.cc=%.o) examples/wave1d.o
+wave1d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave1d.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		$(MPILIBS:%=-l%)
 
@@ -276,9 +278,10 @@ check: selftest selftest-funhpc
 	$(MAKE) run EXE=./selftest
 	$(MAKE) run NPROCS=2 EXE=./selftest-funhpc
 .PHONY: check
-selftest: $(TEST_SRCS:%.cc=%.o)
+selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lgtest $(LIBS:%=-l%)
-selftest-funhpc: $(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
+selftest-funhpc:							      \
+	$(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 		-lgtest $(MPILIBS:%=-l%)
 

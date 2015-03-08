@@ -3,18 +3,16 @@
 
 #include <cereal/archives/binary.hpp>
 
+#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
 
 namespace cxx {
 namespace detail {
-template <typename T> void serialize_anchor_f() {}
-static_assert(sizeof &(void (&)())serialize_anchor_f<void> <=
-                  sizeof(std::uintptr_t),
-              "");
-const std::uintptr_t serialize_anchor =
-    std::uintptr_t(&serialize_anchor_f<void>);
+void serialize_anchor_f();
+static_assert(sizeof &serialize_anchor_f <= sizeof(std::uintptr_t), "");
+const std::uintptr_t serialize_anchor = std::uintptr_t(&serialize_anchor_f);
 }
 }
 
@@ -36,7 +34,8 @@ std::enable_if_t<!std::is_function<T>::value, void> serialize(Archive &, T *&) {
 template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
-  std::uintptr_t offset = std::uintptr_t(f) - cxx::detail::serialize_anchor;
+  std::uintptr_t offset =
+      bool(f) ? std::uintptr_t(f) - cxx::detail::serialize_anchor : 0;
   ar(offset);
 }
 template <class Archive, typename F,
@@ -44,12 +43,14 @@ template <class Archive, typename F,
 void load(Archive &ar, F *&f) {
   std::uintptr_t offset;
   ar(offset);
-  f = (F *)(offset + cxx::detail::serialize_anchor);
+  f = offset ? (F *)(offset + cxx::detail::serialize_anchor) : nullptr;
 }
 
 // member function pointers
 
-// Note: This follows the Itanium C++ ABI
+// Note: This follows the System V ADM64 ABI
+// <http://refspecs.linuxfoundation.org/elf/x86_64-abi-0.95.pdf> and
+// the Itanium C++ ABI
 // <http://refspecs.linuxbase.org/cxxabi-1.86.html>
 
 template <
@@ -57,14 +58,17 @@ template <
     std::enable_if_t<std::is_member_function_pointer<F>::value> * = nullptr>
 void save(Archive &ar, F const &f) {
   struct {
-    std::uintptr_t fptr;
-    std::ptrdiff_t off;
+    std::uintptr_t fptr; // function pointer, or virtual table offset + 1
+    std::ptrdiff_t adj;
   } buf;
   static_assert(sizeof f == sizeof buf, "");
   std::memcpy(&buf, &f, sizeof buf);
-  if (!(buf.fptr & 1))
-    buf.fptr -= cxx::detail::serialize_anchor;
-  ar(buf.fptr, buf.off);
+  if (!(buf.fptr & 1)) {
+    assert(!(cxx::detail::serialize_anchor & 1));
+    if (!buf.fptr)
+      buf.fptr -= cxx::detail::serialize_anchor;
+  }
+  ar(buf.fptr, buf.adj);
 }
 template <
     class Archive, typename F,
@@ -72,12 +76,15 @@ template <
 void load(Archive &ar, F &f) {
   struct {
     std::uintptr_t fptr;
-    std::ptrdiff_t off;
+    std::ptrdiff_t adj;
   } buf;
   static_assert(sizeof f == sizeof buf, "");
-  ar(buf.fptr, buf.off);
-  if (!(buf.fptr & 1))
-    buf.fptr += cxx::detail::serialize_anchor;
+  ar(buf.fptr, buf.adj);
+  if (!(buf.fptr & 1)) {
+    assert(!(cxx::detail::serialize_anchor & 1));
+    if (!buf.fptr)
+      buf.fptr += cxx::detail::serialize_anchor;
+  }
   std::memcpy(&f, &buf, sizeof buf);
 }
 

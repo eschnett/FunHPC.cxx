@@ -138,6 +138,7 @@ HDRS =						\
 	fun/tree.hpp				\
 	fun/vector.hpp				\
 	funhpc/async.hpp			\
+	funhpc/hwloc.hpp			\
 	funhpc/main.hpp				\
 	funhpc/proxy.hpp			\
 	funhpc/rexec.hpp			\
@@ -149,6 +150,7 @@ HDRS =						\
 	qthread/mutex.hpp			\
 	qthread/thread.hpp
 FUNHPC_SRCS =					\
+	funhpc/hwloc.cc				\
 	funhpc/main.cc				\
 	funhpc/server.cc
 TEST_SRCS =					\

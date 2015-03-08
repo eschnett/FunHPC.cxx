@@ -1,6 +1,7 @@
 #include <cxx/task.hpp>
-#include <funhpc/server.hpp>
+#include <funhpc/hwloc.hpp>
 #include <funhpc/rexec.hpp>
+#include <funhpc/server.hpp>
 #include <qthread/future.hpp>
 #include <qthread/mutex.hpp>
 #include <qthread/thread.hpp>
@@ -166,6 +167,7 @@ void initialize(int &argc, char **&argv) {
   detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
+  hwloc_set_affinity();
 }
 
 int eventloop(mainfunc_t *user_main, int argc, char **argv) {

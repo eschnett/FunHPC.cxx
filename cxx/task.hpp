@@ -49,7 +49,7 @@ public:
 };
 
 template <typename R, typename F, typename... Args>
-class concrete_task : public abstract_task<R> {
+class concrete_task final : public abstract_task<R> {
   static_assert(std::is_same<F, std::decay_t<F>>::value, "");
   static_assert(std::is_same<std::tuple<Args...>,
                              std::tuple<std::decay_t<Args>...>>::value,

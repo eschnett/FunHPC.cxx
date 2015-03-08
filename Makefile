@@ -88,7 +88,7 @@ CXX          = clang++
 CFLAGS       = -march=native -Wall -g -std=c99 -Dasm=__asm__
 CXXFLAGS     = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
 DEBUGFLAGS   = -D_GLIBCXX_DEBUG
-OPTFLAGS     = # -O3 -DNDEBUG -Wno-unused-variable
+OPTFLAGS     = # -O3 -flto -DNDEBUG -Wno-unused-variable
 CFLAGS_EXT   = -march=native -Wall -g -O3
 CXXFLAGS_EXT = -march=native -Wall -g -O3
 
@@ -97,7 +97,7 @@ CXXFLAGS_EXT = -march=native -Wall -g -O3
 # CFLAGS       = -march=native -Wall -g -std=c99 -Dasm=__asm__
 # CXXFLAGS     = -march=native -Wall -g -std=c++1y -Drestrict=__restrict__
 # DEBUGFLAGS   = -D_GLIBCXX_DEBUG
-# OPTFLAGS     = # -O3 -DNDEBUG
+# OPTFLAGS     = # -O3 -flto -DNDEBUG
 # CFLAGS_EXT   = -march=native -Wall -g -O3
 # CXXFLAGS_EXT = -march=native -Wall -g -O3
 

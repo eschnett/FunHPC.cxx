@@ -569,6 +569,8 @@ template <typename R> class async_thread {
   }
 
 public:
+  typedef unsigned int id;
+
   async_thread() noexcept {}
   async_thread(async_thread &&other) noexcept : async_thread() { swap(other); }
 
@@ -601,6 +603,8 @@ public:
     using std::swap;
     swap(result, other.result);
   }
+
+  static unsigned int hardware_concurrency() { return qthread_num_workers(); }
 
   bool joinable() const noexcept { return result.valid(); }
 

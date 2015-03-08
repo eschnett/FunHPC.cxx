@@ -19,6 +19,10 @@ typedef detail::async_thread<void> thread;
 // this_thread /////////////////////////////////////////////////////////////////
 
 namespace this_thread {
+inline thread::id get_id() { return qthread_id(); }
+
+inline thread::id get_worker_id() { return qthread_worker(nullptr); }
+
 inline void yield() { qthread_yield(); }
 
 template <typename Rep, typename Period>

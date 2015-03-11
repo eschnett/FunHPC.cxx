@@ -63,10 +63,12 @@ void save(Archive &ar, F const &f) {
   } buf;
   static_assert(sizeof f == sizeof buf, "");
   std::memcpy(&buf, &f, sizeof buf);
-  if (!(buf.fptr & 1)) {
-    assert(!(cxx::detail::serialize_anchor & 1));
-    if (!buf.fptr)
+  if ((buf.fptr & 1) == 0) {
+    if (buf.fptr != 0) {
       buf.fptr -= cxx::detail::serialize_anchor;
+      assert(buf.fptr != 0);
+    }
+    assert((buf.fptr & 1) == 0);
   }
   ar(buf.fptr, buf.adj);
 }
@@ -80,12 +82,14 @@ void load(Archive &ar, F &f) {
   } buf;
   static_assert(sizeof f == sizeof buf, "");
   ar(buf.fptr, buf.adj);
-  if (!(buf.fptr & 1)) {
-    assert(!(cxx::detail::serialize_anchor & 1));
-    if (!buf.fptr)
+  if ((buf.fptr & 1) == 0) {
+    if (buf.fptr != 0) {
       buf.fptr += cxx::detail::serialize_anchor;
+      assert(buf.fptr != 0);
+    }
+    assert((buf.fptr & 1) == 0);
   }
-  std::memcpy(&f, &buf, sizeof buf);
+  std::memcpy(&f, &buf, sizeof f);
 }
 
 // member object pointers

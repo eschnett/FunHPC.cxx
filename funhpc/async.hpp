@@ -101,7 +101,8 @@ template <> struct continued<void> : std::tuple<> {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
                          Args &&... args) {
   if (dest == rank())
@@ -136,7 +137,8 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 qthread::future<R> async(rlaunch policy,
                          qthread::future<std::ptrdiff_t> &&fdest, F &&f,
                          Args &&... args) {

@@ -44,8 +44,8 @@ template <template <typename> class A> struct nested_iotaMap : std::tuple<> {
 }
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
-                                        std::decay_t<Args>...>,
+          typename R = std::decay_t<cxx::invoke_of_t<
+              std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
           template <typename> class P = C<R>::template pointer_constructor,
           template <typename> class A = C<R>::template array_constructor,
           std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>

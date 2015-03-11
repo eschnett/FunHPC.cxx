@@ -8,6 +8,14 @@ using namespace qthread;
 
 namespace {
 int fi(int x) { return x; }
+int &fir(int x) {
+  static int s;
+  return s = x;
+}
+const int &fcir(int x) {
+  static int s;
+  return s = x;
+}
 void fv(int) {}
 
 template <typename T> void test_future(T value) {
@@ -46,6 +54,10 @@ TEST(qthread_future, future) {
   test_future<const int &>(i);
   test_future<int (*)(int)>(fi);
   test_future<int(&)(int)>(fi);
+  test_future<int &(*)(int)>(fir);
+  test_future<int &(&)(int)>(fir);
+  test_future<const int &(*)(int)>(fcir);
+  test_future<const int &(&)(int)>(fcir);
 }
 
 TEST(qthread_future, make_ready_future) {
@@ -256,7 +268,14 @@ TEST(qthread_future, packaged_task) {
 
 TEST(qthread_future, async) {
   auto ffi = async(fi, 1);
+  static_assert(std::is_same<decltype(ffi), future<int>>::value, "");
   EXPECT_EQ(1, ffi.get());
+  auto ffir = async(fir, 1);
+  static_assert(std::is_same<decltype(ffi), future<int>>::value, "");
+  EXPECT_EQ(1, ffir.get());
+  auto ffcir = async(fcir, 1);
+  static_assert(std::is_same<decltype(ffi), future<int>>::value, "");
+  EXPECT_EQ(1, ffcir.get());
   auto ffv = async(fv, 1);
   auto flvv = async([]() {});
   auto flii = async([](int x) { return x; }, 1);

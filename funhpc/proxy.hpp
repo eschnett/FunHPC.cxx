@@ -414,7 +414,8 @@ proxy<T> make_remote_proxy(std::ptrdiff_t dest, Args &&... args) {
 // remote //////////////////////////////////////////////////////////////////////
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 proxy<R> local(F &&f, Args &&... args) {
   return proxy<R>(
       qthread::async([](auto &&f, auto &&... args) {
@@ -425,7 +426,8 @@ proxy<R> local(F &&f, Args &&... args) {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 proxy<R> remote(std::ptrdiff_t dest, F &&f, Args &&... args) {
   auto local1 = (proxy<R>(&)(std::decay_t<F> &&, std::decay_t<Args> && ...))
       local<std::decay_t<F>, std::decay_t<Args>...>;
@@ -435,7 +437,8 @@ proxy<R> remote(std::ptrdiff_t dest, F &&f, Args &&... args) {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 proxy<R> remote(qthread::future<std::ptrdiff_t> &&fdest, F &&f,
                 Args &&... args) {
   assert(fdest.valid());

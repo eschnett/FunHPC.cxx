@@ -263,9 +263,11 @@ public:
     shared_state->wait();
   }
 
-  template <typename F, typename R = cxx::invoke_of_t<std::decay_t<F>, future>>
+  template <typename F, typename R = std::decay_t<
+                            cxx::invoke_of_t<std::decay_t<F>, future>>>
   future<R> then(launch policy, F &&cont);
-  template <typename F, typename R = cxx::invoke_of_t<std::decay_t<F>, future>>
+  template <typename F, typename R = std::decay_t<
+                            cxx::invoke_of_t<std::decay_t<F>, future>>>
   future<R> then(F &&cont);
 
   template <typename U = T,
@@ -373,9 +375,11 @@ public:
     shared_state->wait();
   }
 
-  template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
+  template <typename F, typename R = std::decay_t<
+                            cxx::invoke_of_t<std::decay_t<F>, shared_future>>>
   future<R> then(launch policy, F &&cont) const;
-  template <typename F, typename R = cxx::invoke_of_t<F &&, shared_future>>
+  template <typename F, typename R = std::decay_t<
+                            cxx::invoke_of_t<std::decay_t<F>, shared_future>>>
   future<R> then(F &&cont) const;
 
   template <typename U = T,
@@ -677,7 +681,8 @@ namespace detail {
 
 namespace detail {
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 std::enable_if_t<!std::is_void<R>::value, future<R>>
 async_make_ready_future(F &&f, Args &&... args) {
   return make_ready_future(
@@ -685,7 +690,8 @@ async_make_ready_future(F &&f, Args &&... args) {
                   cxx::decay_copy(std::forward<Args>(args))...));
 }
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 std::enable_if_t<std::is_void<R>::value, future<R>>
 async_make_ready_future(F &&f, Args &&... args) {
   cxx::invoke(cxx::decay_copy(std::forward<F>(f)),
@@ -695,7 +701,8 @@ async_make_ready_future(F &&f, Args &&... args) {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 future<R> async(launch policy, F &&f, Args &&... args) {
   switch (detail::decode_policy(policy)) {
   case launch::async:
@@ -718,7 +725,8 @@ future<R> async(launch policy, F &&f, Args &&... args) {
 }
 
 template <typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 future<R> async(F &&f, Args &&... args) {
   return async(launch::async | launch::deferred, std::forward<F>(f),
                std::forward<Args>(args)...);

@@ -160,16 +160,19 @@ void hwloc_set_affinity() {
   ierr = hwloc_topology_load(topology);
   assert(!ierr);
 
+  int nthreads = qthread::thread::hardware_concurrency();
+  std::vector<std::string> infos(nthreads);
+  bool success = false;
   int nattempts = 10;
   for (int attempt = 1; attempt <= nattempts; ++attempt) {
-    int nthreads = qthread::thread::hardware_concurrency();
     int nsubmit = 10 * nthreads;
 
     std::vector<qthread::future<hwloc::cpu_info>> fs(nsubmit);
     for (auto &f : fs)
       f = qthread::async(hwloc::manage_affinity, topology);
 
-    std::vector<std::string> infos(nthreads);
+    for (auto &info : infos)
+      info = {};
     for (auto &f : fs) {
       int thread;
       std::string info;
@@ -177,19 +180,21 @@ void hwloc_set_affinity() {
       assert(thread >= 0 && thread < nthreads);
       infos[thread] = info;
     }
-    bool did_set_all = true;
-    for (const auto &info : infos)
-      did_set_all &= !info.empty();
-    if (did_set_all) {
-      for (const auto &info : infos)
-        std::cout << info << "\n";
-      goto success;
-    }
-  }
-  std::cerr << "Could not set CPU affinity on process " << rank() << "\n";
-  std::exit(EXIT_FAILURE);
 
-success:
+    success = true;
+    for (const auto &info : infos)
+      success &= !info.empty();
+    if (success)
+      break;
+  }
+
+  for (const auto &info : infos)
+    std::cout << info << "\n";
+
+  if (!success) {
+    std::cerr << "Could not set CPU affinity on process " << rank() << "\n";
+    std::exit(EXIT_FAILURE);
+  }
 
   hwloc_topology_destroy(topology);
 }

@@ -24,8 +24,8 @@ GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
 GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
 GOOGLETEST_LIBS     =
 
-HWLOC_NAME     = hwloc-1.10.0
-HWLOC_URL      = http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.0.tar.bz2
+HWLOC_NAME     = hwloc-1.10.1
+HWLOC_URL      = http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.1.tar.bz2
 HWLOC_DIR      = $(abspath ./$(HWLOC_NAME))
 HWLOC_CPPFLAGS =
 HWLOC_INCDIRS  = $(HWLOC_DIR)/include

@@ -15,6 +15,20 @@
 
 namespace funhpc {
 
+namespace {
+int envtoi(const char *var) {
+  assert(var);
+  char *str = std::getenv(var);
+  if (!str)
+    std::terminate();
+  char *str_end;
+  auto res = std::strtol(str, &str_end, 10);
+  if (*str_end != '\0')
+    std::terminate();
+  return res;
+}
+}
+
 namespace hwloc {
 
 // Thread layout (processes, threads)
@@ -32,14 +46,23 @@ struct thread_layout {
            (node_thread >= 0 && node_thread < node_nthreads);
   }
 
-  thread_layout()
-      : proc(rank()), nprocs(size()), node(proc), nnodes(nprocs),
-        proc_thread(qthread::this_thread::get_worker_id()),
-        proc_nthreads(qthread::thread::hardware_concurrency()),
-        node_proc(cxx::div_exact(nprocs, nnodes).rem),
-        node_nprocs(cxx::div_exact(nprocs, nnodes).quot),
-        node_thread(node_proc * proc_nthreads + proc_thread),
-        node_nthreads(node_nprocs * proc_nthreads) {
+  thread_layout() {
+    // TODO: This requires OpenMPI
+    proc = envtoi("OMPI_COMM_WORLD_RANK");
+    assert(proc == rank());
+    nprocs = envtoi("OMPI_COMM_WORLD_SIZE");
+    assert(nprocs == size());
+
+    node_proc = envtoi("OMPI_COMM_WORLD_LOCAL_RANK");
+    node_nprocs = envtoi("OMPI_COMM_WORLD_LOCAL_SIZE");
+    node = cxx::div_floor(proc, node_nprocs).quot;
+    nnodes = cxx::div_exact(nprocs, node_nprocs).quot;
+
+    proc_thread = qthread::this_thread::get_worker_id();
+    proc_nthreads = qthread::thread::hardware_concurrency();
+    node_thread = node_proc * proc_nthreads + proc_thread;
+    node_nthreads = node_nprocs * proc_nthreads;
+
     assert(invariant());
   }
 };
@@ -142,7 +165,8 @@ cpu_info manage_affinity(const hwloc_topology_t topology) {
   const auto set_msg = set_affinity(topology, ta);
   const auto get_msg = get_affinity(topology);
 
-  // Wait some time
+  // Busy-wait some time to prevent other threads from being scheduled
+  // on the same core
   auto t0 = std::chrono::high_resolution_clock::now();
   while (std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::high_resolution_clock::now() - t0).count() < 10)
@@ -150,6 +174,8 @@ cpu_info manage_affinity(const hwloc_topology_t topology) {
 
   std::ostringstream os;
   os << "   "
+     << "N" << tl.node << " "
+     << "L" << tl.node_proc << " "
      << "P" << tl.proc << " "
      << "(S" << qthread_shep() << ") "
      << "T" << tl.proc_thread << set_msg << get_msg;

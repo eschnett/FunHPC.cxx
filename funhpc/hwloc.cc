@@ -236,13 +236,17 @@ void hwloc_set_affinity() {
   if (infos[0].node == 0) {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (infos[0].proc > 0)
-      MPI_Recv(NULL, 0, MPI_INT, rank - 1, 0, MPI_COMM_WORLD,
+    if (infos[0].proc > 0) {
+      int dummy;
+      MPI_Recv(&dummy, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
+    }
     for (const auto &info : infos)
       std::cout << info.msg << "\n";
-    if (infos[0].proc < infos[0].nprocs - 1)
-      MPI_Send(NULL, 0, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
+    if (infos[0].proc < infos[0].nprocs - 1) {
+      int dummy = 0;
+      MPI_Send(&dummy, 1, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
+    }
   }
 
   if (!success) {

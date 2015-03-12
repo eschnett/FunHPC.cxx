@@ -3,14 +3,15 @@
 #include <qthread/future.hpp>
 #include <qthread/thread.hpp>
 
+#include <cereal/types/string.hpp>
 #include <hwloc.h>
+#include <mpi.h>
 
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <tuple>
 #include <vector>
 
 namespace funhpc {
@@ -19,12 +20,17 @@ namespace {
 int envtoi(const char *var) {
   assert(var);
   char *str = std::getenv(var);
-  if (!str)
-    std::terminate();
+  if (!str) {
+    std::cerr << "FunHPC: Could not getenv(\"" << var << "\")\n";
+    std::exit(EXIT_FAILURE);
+  }
   char *str_end;
   auto res = std::strtol(str, &str_end, 10);
-  if (*str_end != '\0')
-    std::terminate();
+  if (*str_end != '\0') {
+    std::cerr << "FunHPC: Could not strol(getenv(\"" << var << "\")=\"" << str
+              << "\")\n";
+    std::exit(EXIT_FAILURE);
+  }
   return res;
 }
 }
@@ -157,9 +163,16 @@ std::string get_affinity(const hwloc_topology_t topology) {
   return os.str();
 }
 
-typedef std::tuple<int, std::string> cpu_info;
+struct cpu_info_t {
+  int node, proc, nprocs, thread;
+  std::string msg;
 
-cpu_info manage_affinity(const hwloc_topology_t topology) {
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(node, proc, nprocs, thread, msg);
+  }
+};
+
+cpu_info_t manage_affinity(const hwloc_topology_t topology) {
   const thread_layout tl;
   const thread_affinity ta(topology, tl);
   const auto set_msg = set_affinity(topology, ta);
@@ -180,7 +193,8 @@ cpu_info manage_affinity(const hwloc_topology_t topology) {
      << "(S" << qthread_shep() << ") "
      << "T" << tl.proc_thread << set_msg << get_msg;
 
-  return cpu_info{tl.proc_thread, os.str()};
+  return cpu_info_t{tl.node, tl.node_proc, tl.node_nprocs, tl.proc_thread,
+                    os.str()};
 }
 }
 
@@ -193,38 +207,47 @@ void hwloc_set_affinity() {
   assert(!ierr);
 
   int nthreads = qthread::thread::hardware_concurrency();
-  std::vector<std::string> infos(nthreads);
+  std::vector<hwloc::cpu_info_t> infos(nthreads);
   bool success = false;
   int nattempts = 10;
   for (int attempt = 1; attempt <= nattempts; ++attempt) {
     int nsubmit = 10 * nthreads;
 
-    std::vector<qthread::future<hwloc::cpu_info>> fs(nsubmit);
+    std::vector<qthread::future<hwloc::cpu_info_t>> fs(nsubmit);
     for (auto &f : fs)
       f = qthread::async(hwloc::manage_affinity, topology);
 
     for (auto &info : infos)
       info = {};
     for (auto &f : fs) {
-      int thread;
-      std::string info;
-      std::tie(thread, info) = f.get();
-      assert(thread >= 0 && thread < nthreads);
-      infos[thread] = info;
+      hwloc::cpu_info_t info = f.get();
+      assert(info.thread >= 0 && info.thread < nthreads);
+      infos[info.thread] = info;
     }
 
     success = true;
     for (const auto &info : infos)
-      success &= !info.empty();
+      success &= !info.msg.empty();
     if (success)
       break;
   }
 
-  for (const auto &info : infos)
-    std::cout << info << "\n";
+  // Output information from the first node, sorted by MPI rank
+  if (infos[0].node == 0) {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (infos[0].proc > 0)
+      MPI_Recv(NULL, 0, MPI_INT, rank - 1, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    for (const auto &info : infos)
+      std::cout << info.msg << "\n";
+    if (infos[0].proc < infos[0].nprocs - 1)
+      MPI_Send(NULL, 0, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
+  }
 
   if (!success) {
-    std::cerr << "Could not set CPU affinity on process " << rank() << "\n";
+    std::cerr << "FunHPC: Could not set CPU affinity on process " << rank()
+              << "\n";
     std::exit(EXIT_FAILURE);
   }
 

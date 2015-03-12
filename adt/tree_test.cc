@@ -153,12 +153,10 @@ TEST(adt_tree, join) {
   EXPECT_EQ(1, xs.head());
 
   auto yss = tree1<tree1<double>>(
-      typename tree1<tree1<double>>::iotaMap(),
-      [](auto i) {
+      typename tree1<tree1<double>>::iotaMap(), [](auto i) {
         return tree1<double>(typename tree1<double>::iotaMap(),
                              [](auto i) { return double(i); }, 0, i, 1);
-      },
-      0, 100, 1);
+      }, 0, 100, 1);
   EXPECT_EQ(100, yss.size());
   auto ys = tree1<double>(typename tree1<double>::join(), yss);
   EXPECT_EQ(4950, ys.size());

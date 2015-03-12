@@ -483,11 +483,10 @@ template <typename R, typename... Args> class packaged_task<R(Args...)> {
 
 public:
   packaged_task() noexcept {}
-  template <
-      class F,
-      std::enable_if_t<
-          !std::is_same<std::decay_t<F>, packaged_task<R(Args...)>>::value> * =
-          nullptr>
+  template <class F,
+            std::enable_if_t<
+                !std::is_same<std::decay_t<F>,
+                              packaged_task<R(Args...)>>::value> * = nullptr>
   explicit packaged_task(F &&f)
       : task(std::forward<F>(f)) {}
   packaged_task(const packaged_task &) = delete;
@@ -578,10 +577,9 @@ public:
   async_thread() noexcept {}
   async_thread(async_thread &&other) noexcept : async_thread() { swap(other); }
 
-  template <
-      class F, class... Args,
-      std::enable_if_t<!std::is_same<std::decay_t<F>, async_thread>::value> * =
-          nullptr>
+  template <class F, class... Args,
+            std::enable_if_t<!std::is_same<std::decay_t<F>,
+                                           async_thread>::value> * = nullptr>
   explicit async_thread(F &&f, Args &&... args) {
     auto thread_args = new thread_args_t;
     thread_args->task =
@@ -737,8 +735,8 @@ future<R> async(F &&f, Args &&... args) {
 template <typename T>
 future<T>::future(future<future<T>> &&other) noexcept
     : future(async([other = std::move(other)]() {
-        return other.get().get();
-      })) {}
+      return other.get().get();
+    })) {}
 
 template <typename T>
 template <typename F, typename R>
@@ -747,10 +745,9 @@ future<R> future<T>::then(launch policy, F &&cont) {
     return future<R>();
   // TODO: if *this is deferred, wait immediately
   return async(policy, [ftr = std::move(*this)](auto &&cont) mutable {
-                         ftr.wait();
-                         return cxx::invoke(std::move(cont), std::move(ftr));
-                       },
-               std::forward<F>(cont));
+    ftr.wait();
+    return cxx::invoke(std::move(cont), std::move(ftr));
+  }, std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>
@@ -781,10 +778,9 @@ future<R> shared_future<T>::then(launch policy, F &&cont) const {
     return future<R>();
   // TODO: if *this is deferred, wait immediately
   return async(policy, [ftr = *this](auto &&cont) {
-                         ftr.wait();
-                         return cxx::invoke(std::move(cont), std::move(ftr));
-                       },
-               std::forward<F>(cont));
+    ftr.wait();
+    return cxx::invoke(std::move(cont), std::move(ftr));
+  }, std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>

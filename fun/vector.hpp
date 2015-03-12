@@ -167,9 +167,9 @@ auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
-                                            op, std::move(omp_out),            \
-                                            omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (                                       \
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
@@ -183,9 +183,9 @@ auto foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
-                                            op, std::move(omp_out),            \
-                                            omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (                                       \
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r),
@@ -202,9 +202,9 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
   R r(z);
-#pragma omp declare reduction(op : R : (omp_out = cxx::invoke(                 \
-                                            op, std::move(omp_out),            \
-                                            omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(op : R : (                                       \
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));

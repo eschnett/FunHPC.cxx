@@ -155,7 +155,8 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+                                                              omp_in)))        \
+                              initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(
@@ -172,7 +173,8 @@ R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+                                                              omp_in)))        \
+                              initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(std::forward<Op>(op), std::move(r),
@@ -191,7 +193,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                          omp_in))) initializer(omp_priv(z))
+                                                              omp_in)))        \
+                              initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(std::forward<Op>(op), std::move(r),

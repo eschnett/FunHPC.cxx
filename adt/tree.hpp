@@ -110,18 +110,15 @@ public:
         num_subtrees = cxx::div_ceil(num_subtrees, max_branch_size).quot;
       }
       assert(num_subtrees > 1 && num_subtrees <= max_branch_size);
-      subtrees = adt::make_right<C<T>, C<tree>>(
-          fun::iotaMap<C>([ imin, imax, istep, istride = stride * istep ](
-                              std::ptrdiff_t i, auto &&f, auto &&... args) {
-                            std::ptrdiff_t imin1 = imin + i * istride;
-                            std::ptrdiff_t imax1 =
-                                std::min(imax, imin1 + istride);
-                            assert(imin1 < imax);
-                            return tree(iotaMap(), f, imin1, imax1, istep,
-                                        args...);
-                          },
-                          num_subtrees, std::forward<F>(f),
-                          std::forward<Args>(args)...));
+      subtrees = adt::make_right<C<T>, C<tree>>(fun::iotaMap<C>(
+          [ imin, imax, istep, istride = stride * istep ](
+              std::ptrdiff_t i, auto &&f, auto &&... args) {
+            std::ptrdiff_t imin1 = imin + i * istride;
+            std::ptrdiff_t imax1 = std::min(imax, imin1 + istride);
+            assert(imin1 < imax);
+            return tree(iotaMap(), f, imin1, imax1, istep, args...);
+          },
+          num_subtrees, std::forward<F>(f), std::forward<Args>(args)...));
     }
   }
 
@@ -278,9 +275,8 @@ public:
                      ? adt::make_right<C<T>, C<tree>>(xss.subtrees.get_left())
                      : adt::make_right<C<T>, C<tree>>(
                            fun::fmap([](const tree<C, tree> &xss) {
-                                       return tree(join(), xss);
-                                     },
-                                     xss.subtrees.get_right()))) {}
+                             return tree(join(), xss);
+                           }, xss.subtrees.get_right()))) {}
 };
 template <template <typename> class C, typename T>
 void swap(tree<C, T> &x, tree<C, T> &y) {

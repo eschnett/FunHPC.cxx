@@ -166,12 +166,9 @@ auto grid_axpy(const grid_t &y, const grid_t &x, double alpha) {
 
 auto grid_init(double t) {
   return grid_t{t, fun::iotaMap<proxy_tree>([t](std::ptrdiff_t i) {
-                                              double x = parameters.xmin +
-                                                         parameters.dx() *
-                                                             (double(i) + 0.5);
-                                              return cell_init(t, x);
-                                            },
-                                            parameters.ncells)};
+    double x = parameters.xmin + parameters.dx() * (double(i) + 0.5);
+    return cell_init(t, x);
+  }, parameters.ncells)};
 }
 
 auto grid_error(const grid_t &g) {

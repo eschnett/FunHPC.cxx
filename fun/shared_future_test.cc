@@ -86,9 +86,9 @@ TEST(fun_shared_future, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1.get(), x1j.get());
 
-  auto x2 =
-      mbind([](auto x, auto c) { return munit<qthread::shared_future>(x + c); },
-            x1, 1);
+  auto x2 = mbind([](auto x, auto c) {
+    return munit<qthread::shared_future>(x + c);
+  }, x1, 1);
   static_assert(std::is_same<decltype(x2), qthread::shared_future<int>>::value,
                 "");
   EXPECT_TRUE(x2.valid());

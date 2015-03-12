@@ -79,7 +79,7 @@ int fri(int &ri) { return ri; }
 int fmi(int &&mi) { return mi; }
 int frci(const int &rci) { return rci; }
 
-int frfi(int (&rfi)(int i), int i) { return rfi(i); }
+int frfi(int(&rfi)(int i), int i) { return rfi(i); }
 int fpfi(int (*pfi)(int i), int i) { return pfi(i); }
 }
 
@@ -97,7 +97,7 @@ template <typename F, typename... Args> auto wrap2(F &&f, Args &&... args) {
   // gcc
   // return wrap(wrap < F &&, Args && ... >, std::forward<F>(f),
   //             std::forward<Args>(args)...);
-  auto w = wrap < F &&, Args && ... > ;
+  auto w = wrap<F &&, Args &&...>;
   return wrap(w, std::forward<F>(f), std::forward<Args>(args)...);
 }
 
@@ -118,7 +118,7 @@ template <typename F, typename... Args> auto call2(F &&f, Args &&... args) {
 // Combined
 template <typename F, typename... Args> auto wrap_call(F &&f, Args &&... args) {
   // gcc
-  auto c = call < F &&, Args && ... > ;
+  auto c = call<F &&, Args &&...>;
   return wrap(c, std::forward<F>(f), std::forward<Args>(args)...);
 }
 }

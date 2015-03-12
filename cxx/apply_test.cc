@@ -16,7 +16,7 @@ int f2(int x, double y) { return x; }
 void fv(int) {}
 
 int fp(int (*f)(int), int x) { return invoke(f, x); }
-int fr(int (&f)(int), int x) { return invoke(f, x); }
+int fr(int(&f)(int), int x) { return invoke(f, x); }
 
 template <typename F, typename... Args> struct task {
   static_assert(std::is_same<F, std::decay_t<F>>::value, "");

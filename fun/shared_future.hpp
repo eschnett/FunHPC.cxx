@@ -53,9 +53,8 @@ auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
     return qthread::shared_future<R>();
   return xs.then([ f = std::forward<F>(f), args... ](
                      const qthread::shared_future<T> &xs) mutable {
-                   return cxx::invoke(std::move(f), xs.get(),
-                                      std::move(args)...);
-                 }).share();
+    return cxx::invoke(std::move(f), xs.get(), std::move(args)...);
+  }).share();
 }
 
 template <typename F, typename T, typename T2, typename... Args,
@@ -69,9 +68,8 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
     return qthread::shared_future<R>();
   return xs.then([ f = std::forward<F>(f), ys, args... ](
                      const qthread::shared_future<T> &xs) mutable {
-                   return cxx::invoke(std::move(f), xs.get(), ys.get(),
-                                      std::move(args)...);
-                 }).share();
+    return cxx::invoke(std::move(f), xs.get(), ys.get(), std::move(args)...);
+  }).share();
 }
 
 // foldMap

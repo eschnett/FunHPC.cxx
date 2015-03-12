@@ -185,7 +185,7 @@ struct check_complete<_Rp (_Class::*)(_Param...) const volatile &>
     : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>
-struct check_complete<_Rp (_Class::*)(_Param...) && >
+struct check_complete<_Rp (_Class::*)(_Param...) &&>
     : private check_complete<_Class> {};
 
 template <class _Rp, class _Class, class... _Param>

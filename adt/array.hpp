@@ -29,8 +29,8 @@ MAKEOP(!)
 
 #define MAKEOP(op)                                                             \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<                                         \
-                decltype(std::declval<T>() op std::declval<U>())>>             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
   auto operator op(const std::array<T, N> &x, const std::array<U, N> &y) {     \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
@@ -38,8 +38,8 @@ MAKEOP(!)
     return r;                                                                  \
   }                                                                            \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<                                         \
-                decltype(std::declval<T>() op std::declval<U>())>>             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
   auto operator op(const T &x, const std::array<U, N> &y) {                    \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
@@ -47,8 +47,8 @@ MAKEOP(!)
     return r;                                                                  \
   }                                                                            \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<                                         \
-                decltype(std::declval<T>() op std::declval<U>())>>             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
   auto operator op(const std::array<T, N> &x, const U &y) {                    \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
@@ -199,8 +199,8 @@ MAKELIM(long double)
 
 #define MAKEREDOP(name, op, z)                                                 \
   template <typename T, std::size_t N,                                         \
-            typename R = std::decay_t<                                         \
-                decltype(std::declval<T>() op std::declval<T>())>>             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<T>())>>     \
   R name(const std::array<T, N> &xs) {                                         \
     R r(z);                                                                    \
     for (const auto &x : xs)                                                   \
@@ -215,8 +215,8 @@ MAKEREDOP(any, ||, false)
 
 #define MAKEREDFUN(name, f, z)                                                 \
   template <typename T, std::size_t N,                                         \
-            typename R = std::decay_t<                                         \
-                decltype((f)(std::declval<T>(), std::declval<T>()))>>          \
+            typename R = std::decay_t<decltype(                                \
+                (f)(std::declval<T>(), std::declval<T>()))>>                   \
   R name(const std::array<T, N> &xs) {                                         \
     R r(z);                                                                    \
     for (const auto &x : xs)                                                   \

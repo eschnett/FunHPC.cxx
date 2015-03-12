@@ -121,12 +121,11 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     return fres;
   }
   case rlaunch::deferred: {
-    return qthread::async(qthread::launch::deferred,
-                          [dest](auto &&f, auto &&... args) {
-                            return async(rlaunch::async, dest, std::move(f),
-                                         std::move(args)...).get();
-                          },
-                          std::forward<F>(f), std::forward<Args>(args)...);
+    return qthread::async(
+        qthread::launch::deferred, [dest](auto &&f, auto &&... args) {
+          return async(rlaunch::async, dest, std::move(f), std::move(args)...)
+              .get();
+        }, std::forward<F>(f), std::forward<Args>(args)...);
   }
   case rlaunch::detached: {
     rexec(dest, std::forward<F>(f), std::forward<Args>(args)...);

@@ -258,8 +258,8 @@ public:
         else {
           auto p = other.get_proc();
           *this = proxy(p, qthread::async([other = std::move(other)]() {
-                             return *other.make_local();
-                           }));
+            return *other.make_local();
+          }));
         }
       } else {
         *this = proxy(qthread::async([other = std::move(other)]() {
@@ -397,10 +397,8 @@ proxy<T> make_proxy_with_proc(std::ptrdiff_t proc,
 template <typename T, typename... Args>
 proxy<T> make_local_proxy(Args &&... args) {
   return proxy<T>(qthread::async([](auto &&... args) {
-                                   return shared_rptr<T>(
-                                       std::make_shared<T>(std::move(args)...));
-                                 },
-                                 std::forward<Args>(args)...));
+    return shared_rptr<T>(std::make_shared<T>(std::move(args)...));
+  }, std::forward<Args>(args)...));
 }
 
 template <typename T, typename... Args>
@@ -417,12 +415,10 @@ template <typename F, typename... Args,
           typename R = std::decay_t<
               cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 proxy<R> local(F &&f, Args &&... args) {
-  return proxy<R>(
-      qthread::async([](auto &&f, auto &&... args) {
-                       return shared_rptr<R>(std::make_shared<R>(
-                           cxx::invoke(std::move(f), std::move(args)...)));
-                     },
-                     std::forward<F>(f), std::forward<Args>(args)...));
+  return proxy<R>(qthread::async([](auto &&f, auto &&... args) {
+    return shared_rptr<R>(
+        std::make_shared<R>(cxx::invoke(std::move(f), std::move(args)...)));
+  }, std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 template <typename F, typename... Args,
@@ -445,12 +441,10 @@ proxy<R> remote(qthread::future<std::ptrdiff_t> &&fdest, F &&f,
   if (fdest.ready())
     return remote(fdest.get(), std::forward<F>(f), std::forward<Args>(args)...);
   return proxy<R>(
-      qthread::async([fdest = std::move(fdest)](auto &&f,
-                                                auto &&... args) mutable {
-                       return remote(fdest.get(), std::move(f),
-                                     std::move(args)...);
-                     },
-                     std::forward<F>(f), std::forward<Args>(args)...));
+      qthread::
+          async([fdest = std::move(fdest)](auto &&f, auto &&... args) mutable {
+            return remote(fdest.get(), std::move(f), std::move(args)...);
+          }, std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 // make_local_shared_ptr ///////////////////////////////////////////////////////

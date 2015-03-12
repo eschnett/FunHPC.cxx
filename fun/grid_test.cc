@@ -23,17 +23,16 @@ template <typename T> using grid2 = adt::grid<shared_vector, T, 2>;
 
 TEST(fun_grid, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iotaMap<grid1>(
-      [](const typename grid1<int>::index_type &i) { return int(adt::sum(i)); },
-      typename grid1<int>::index_type{{s, s, s}});
+  auto rs = iotaMap<grid1>([](const typename grid1<int>::index_type &i) {
+    return int(adt::sum(i));
+  }, typename grid1<int>::index_type{{s, s, s}});
   static_assert(std::is_same<decltype(rs), grid1<int>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
 
   auto rs1 = iotaMap<grid1>([](const typename grid1<double>::index_type &i) {
-                              return double(adt::sum(i));
-                            },
-                            typename grid1<double>::index_type{{s, s}});
+    return double(adt::sum(i));
+  }, typename grid1<double>::index_type{{s, s}});
   static_assert(std::is_same<decltype(rs1), grid1<double>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
@@ -41,9 +40,9 @@ TEST(fun_grid, iotaMap) {
 
 TEST(fun_grid, fmap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<grid1>(
-      [](const typename grid1<int>::index_type &x) { return int(adt::sum(x)); },
-      typename grid1<int>::index_type{{s, s, s}});
+  auto xs = iotaMap<grid1>([](const typename grid1<int>::index_type &x) {
+    return int(adt::sum(x));
+  }, typename grid1<int>::index_type{{s, s, s}});
   EXPECT_EQ(27, xs.last());
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
@@ -80,9 +79,9 @@ TEST(fun_grid, fmap) {
 
 TEST(fun_grid, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<grid1>(
-      [](const typename grid1<int>::index_type &x) { return int(adt::sum(x)); },
-      typename grid1<int>::index_type{{s, s, s}});
+  auto xs = iotaMap<grid1>([](const typename grid1<int>::index_type &x) {
+    return int(adt::sum(x));
+  }, typename grid1<int>::index_type{{s, s, s}});
   EXPECT_EQ(27, xs.last());
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0, xs);

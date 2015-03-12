@@ -96,8 +96,7 @@ void send_tasks() {
         int flag;
         MPI_Test(&reqp->req, &flag, MPI_STATUS_IGNORE);
         return flag;
-      }),
-      send_reqs.end());
+      }), send_reqs.end());
 }
 
 void cancel_sends() {

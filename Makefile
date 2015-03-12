@@ -106,8 +106,8 @@ CXXFLAGS_EXT = -march=native -Wall -g -O3
 # CXXFLAGS     = -m128bit-long-double -march=native -Wall -g -std=c++14 -Drestrict=__restrict__
 # DEBUGFLAGS   = -D_GLIBCXX_DEBUG
 # OPTFLAGS     = # -O3 -flto -DNDEBUG
-# CFLAGS_EXT   = -march=native -Wall -g -O3
-# CXXFLAGS_EXT = -march=native -Wall -g -O3
+# CFLAGS_EXT   = -m128bit-long-double -march=native -Wall -g -O3
+# CXXFLAGS_EXT = -m128bit-long-double -march=native -Wall -g -O3
 
 MPICC       = env "OMPI_CC=$(CC)" $(OPENMPI_DIR)/bin/mpicc
 MPICXX      = env "OMPI_CXX=$(CXX)" $(OPENMPI_DIR)/bin/mpicxx

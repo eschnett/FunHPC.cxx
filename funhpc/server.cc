@@ -172,13 +172,13 @@ void initialize(int &argc, char **&argv) {
 }
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
-  std::cout << "[FunHPC: begin]\n";
+  std::cout << "FunHPC: begin\n";
   auto start_time = std::chrono::high_resolution_clock::now();
   int res = user_main(argc, argv);
   auto end_time = std::chrono::high_resolution_clock::now();
   auto run_time =
       std::chrono::nanoseconds(end_time - start_time).count() / 1.0e+9;
-  std::cout << "[FunHPC: end; total execution time: " << run_time << " sec]\n";
+  std::cout << "FunHPC: end; total execution time: " << run_time << " sec\n";
   return res;
 }
 

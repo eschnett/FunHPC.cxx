@@ -173,7 +173,7 @@ cpu_info manage_affinity(const hwloc_topology_t topology) {
     ;
 
   std::ostringstream os;
-  os << "   "
+  os << "FunHPC: "
      << "N" << tl.node << " "
      << "L" << tl.node_proc << " "
      << "P" << tl.proc << " "

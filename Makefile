@@ -240,7 +240,7 @@ objs: $(ALL_SRCS:%.cc=%.o)
 $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 %.o: %.cc Makefile
 	$(MPICXX) -MD $(MPICPPFLAGS) $(MPICXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) \
-		-c -o $*.o.tmp $*.cc
+	    -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
 
@@ -251,34 +251,33 @@ NPROCS = 1
 EXE = ./hello
 run:
 	$(MPIRUN) -np $(NPROCS)						\
-		-x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-		-x "QTHREAD_STACK_SIZE=65536"				\
-		$(EXE)
+	    -x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"		\
+	    -x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
+	    -x "QTHREAD_STACK_SIZE=65536"				\
+	    $(EXE)
 
 ### examples ###
 
 examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
-		$(MAKE) run EXE=$$example;				\
-	done
+	    $(MAKE) run EXE=$$example;					\
+	done								\
 	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
-		$(MAKE) run NPROCS=2 EXE=$$example;			\
-									\
+	    $(MAKE) run NPROCS=2 EXE=$$example;				\
 	done
 .PHONY: examples
 hello: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/hello.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
-		$(MPILIBS:%=-l%)
+	    $(MPILIBS:%=-l%)
 million: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/million.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
-		$(MPILIBS:%=-l%)
+	    $(MPILIBS:%=-l%)
 pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
-		$(MPILIBS:%=-l%)
+	    $(MPILIBS:%=-l%)
 wave1d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave1d.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
-		$(MPILIBS:%=-l%)
+	    $(MPILIBS:%=-l%)
 
 ### check ###
 
@@ -291,7 +290,7 @@ selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
 selftest-funhpc:							      \
 	$(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
-		-lgtest $(MPILIBS:%=-l%)
+	    -lgtest $(MPILIBS:%=-l%)
 
 ### external ###
 
@@ -303,16 +302,16 @@ external:
 cereal: external/cereal.done
 .PHONY: cereal
 external/cereal.downloaded: | external
-	(cd external &&					\
-		$(RM) $(notdir $(CEREAL_URL)) &&	\
-		wget $(CEREAL_URL)) &&			\
+	(cd external &&				\
+	    $(RM) $(notdir $(CEREAL_URL)) &&	\
+	    wget $(CEREAL_URL)) &&		\
 	: > $@
 external/cereal.unpacked: external/cereal.downloaded
 	rm -rf $(CEREAL_NAME) &&					\
 	tar xzf external/$(notdir $(CEREAL_URL)) &&			\
 	(cd $(CEREAL_NAME) &&						\
-		patch -p0 < $(abspath cereal-pointers.patch) &&		\
-		patch -p0 < $(abspath cereal-to_string.patch)) &&	\
+	    patch -p0 < $(abspath cereal-pointers.patch) &&		\
+	    patch -p0 < $(abspath cereal-to_string.patch)) &&	\
 	: > $@
 external/cereal.done: external/cereal.unpacked
 	: > $@
@@ -322,51 +321,50 @@ external/cereal.done: external/cereal.unpacked
 gcc: external/gcc.done
 .PHONY: gcc
 external/gcc.downloaded: | external
-	(cd external &&								      \
-		$(RM) $(notdir $(GCC_URL)) &&					      \
-		wget $(GCC_URL) &&						      \
-		$(RM) gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz	      \
-			isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz) &&		      \
-		wget https://gmplib.org/download/gmp/gmp-4.3.2.tar.bz2		      \
-		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/mpfr-2.4.2.tar.bz2 &&   \
-		wget http://www.multiprecision.org/mpc/download/mpc-0.8.1.tar.gz &&   \
-		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-0.12.2.tar.bz2 &&   \
-		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/cloog-0.18.1.tar.gz) && \
+	(cd external &&								  \
+	    $(RM) $(notdir $(GCC_URL)) &&					  \
+	    wget $(GCC_URL) &&							  \
+	    $(RM) gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz		  \
+		isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz) &&			  \
+	    wget https://gmplib.org/download/gmp/gmp-4.3.2.tar.bz2		  \
+	    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/mpfr-2.4.2.tar.bz2 &&	  \
+	    wget http://www.multiprecision.org/mpc/download/mpc-0.8.1.tar.gz &&	  \
+	    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-0.12.2.tar.bz2 &&	  \
+	    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/cloog-0.18.1.tar.gz) && \
 	: > $@
 external/gcc.unpacked: external/gcc.downloaded
-	(cd external &&							\
-		rm -rf $(GCC_NAME) &&					\
-		tar xjf $(notdir $(GCC_URL)) &&				\
-		rm -rf gmp-4.3.2 mpfr-2.4.2 mpc-0.8.1 isl-0.12.2	\
-			cloog-0.18.1 &&					\
-		tar xjf gmp-4.3.2.tar.bz2 &&				\
-		tar xjf mpfr-2.4.2.tar.bz2 &&				\
-		tar xzf mpc-0.8.1.tar.gz &&				\
-		tar xjf isl-0.12.2.tar.bz2 &&				\
-		tar xzf cloog-0.18.1.tar.gz &&				\
-		cd $(GCC_NAME) &&					\
-		ln -s ../gmp-4.3.2 gmp &&				\
-		ln -s ../mpfr-2.4.2 mpfr &&				\
-		ln -s ../mpc-0.8.1 mpc &&				\
-		ln -s ../isl-0.12.2 isl &&				\
-		ln -s ../cloog-0.18.1 cloog) &&				\
+	(cd external &&							     \
+	    rm -rf $(GCC_NAME) &&					     \
+	    tar xjf $(notdir $(GCC_URL)) &&				     \
+	    rm -rf gmp-4.3.2 mpfr-2.4.2 mpc-0.8.1 isl-0.12.2 cloog-0.18.1 && \
+	    tar xjf gmp-4.3.2.tar.bz2 &&				     \
+	    tar xjf mpfr-2.4.2.tar.bz2 &&				     \
+	    tar xzf mpc-0.8.1.tar.gz &&					     \
+	    tar xjf isl-0.12.2.tar.bz2 &&				     \
+	    tar xzf cloog-0.18.1.tar.gz &&				     \
+	    cd $(GCC_NAME) &&						     \
+	    ln -s ../gmp-4.3.2 gmp &&					     \
+	    ln -s ../mpfr-2.4.2 mpfr &&					     \
+	    ln -s ../mpc-0.8.1 mpc &&					     \
+	    ln -s ../isl-0.12.2 isl &&					     \
+	    ln -s ../cloog-0.18.1 cloog) &&				     \
 	: > $@
 external/gcc.built: external/gcc.unpacked
-	+(cd external &&					\
-		rm -rf $(GCC_NAME)-build &&			\
-		mkdir $(GCC_NAME)-build &&			\
-		cd $(GCC_NAME)-build &&				\
-		"$(abspath external/$(GCC_NAME)/configure)"	\
-			--prefix="$(GCC_DIR)"			\
-			--enable-languages=c,c++,fortran	\
-			--disable-multilib &&			\
-		$(MAKE)) &&					\
+	+(cd external &&				\
+	    rm -rf $(GCC_NAME)-build &&			\
+	    mkdir $(GCC_NAME)-build &&			\
+	    cd $(GCC_NAME)-build &&			\
+	    "$(abspath external/$(GCC_NAME)/configure)"	\
+		--prefix="$(GCC_DIR)"			\
+		--enable-languages=c,c++,fortran	\
+		--disable-multilib &&			\
+	    $(MAKE)) &&					\
 	: > $@
 external/gcc.installed: external/gcc.built
 	+(cd external &&			\
-		rm -rf $(GCC_DIR) &&		\
-		cd $(GCC_NAME)-build &&		\
-		$(MAKE) install) &&		\
+	    rm -rf $(GCC_DIR) &&		\
+	    cd $(GCC_NAME)-build &&		\
+	    $(MAKE) install) &&			\
 	: > $@
 external/gcc.done: external/gcc.installed
 	: > $@
@@ -377,8 +375,8 @@ gtest: external/gtest.done
 .PHONY: gtest
 external/gtest.downloaded: | external
 	(cd external &&					\
-		$(RM) $(notdir $(GOOGLETEST_URL)) &&	\
-		wget $(GOOGLETEST_URL)) &&		\
+	    $(RM) $(notdir $(GOOGLETEST_URL)) &&	\
+	    wget $(GOOGLETEST_URL)) &&			\
 	: > $@
 external/gtest.unpacked: external/gtest.downloaded
 	rm -rf $(GOOGLETEST_NAME) &&			\
@@ -386,10 +384,10 @@ external/gtest.unpacked: external/gtest.downloaded
 	: > $@
 external/gtest.built: external/gtest.unpacked
 	(cd external &&							\
-		cd $(GOOGLETEST_DIR)/src &&				\
-		$(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest-all.cc &&	\
-		$(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest_main.cc &&	\
-		$(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&	\
+	    cd $(GOOGLETEST_DIR)/src &&					\
+	    $(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest-all.cc &&	\
+	    $(CXX) $(CPPFLAGS) $(CXXFLAGS_EXT) -c gtest_main.cc &&	\
+	    $(AR) -r -c libgtest.a gtest-all.o gtest_main.o) &&		\
 	: > $@
 external/gtest.done: external/gtest.built
 	: > $@
@@ -400,34 +398,33 @@ hwloc: external/hwloc.done
 .PHONY: hwloc
 external/hwloc.downloaded: | external
 	(cd external &&				\
-		$(RM) $(notdir $(HWLOC_URL)) &&	\
-		wget $(HWLOC_URL)) &&		\
+	    $(RM) $(notdir $(HWLOC_URL)) &&	\
+	    wget $(HWLOC_URL)) &&		\
 	: > $@
 external/hwloc.unpacked: external/hwloc.downloaded
-	(cd external &&					\
-		rm -rf $(HWLOC_NAME) &&			\
-		tar xjf $(notdir $(HWLOC_URL))) &&	\
+	(cd external &&				\
+	    rm -rf $(HWLOC_NAME) &&		\
+	    tar xjf $(notdir $(HWLOC_URL))) &&	\
 	: > $@
 external/hwloc.built: external/hwloc.unpacked
 	+(cd external &&					\
-		rm -rf $(HWLOC_NAME)-build &&			\
-		mkdir $(HWLOC_NAME)-build &&			\
-		cd $(HWLOC_NAME)-build &&			\
-		"$(abspath external/$(HWLOC_NAME)/configure)"	\
-			--prefix="$(HWLOC_DIR)"			\
-			--disable-shared			\
-			--disable-libxml2			\
-			"CC=$(CC)"				\
-			"CXX=$(CXX)"				\
-			"CFLAGS=$(CFLAGS_EXT)"			\
-			"CXXFLAGS=$(CXXFLAGS_EXT)" &&		\
-		$(MAKE)) &&					\
+	    rm -rf $(HWLOC_NAME)-build &&			\
+	    mkdir $(HWLOC_NAME)-build &&			\
+	    cd $(HWLOC_NAME)-build &&				\
+	    "$(abspath external/$(HWLOC_NAME)/configure)"	\
+		--prefix="$(HWLOC_DIR)"				\
+		--disable-libxml2				\
+		"CC=$(CC)"					\
+		"CXX=$(CXX)"					\
+		"CFLAGS=$(CFLAGS_EXT)"				\
+		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
+	    $(MAKE)) &&						\
 	: > $@
 external/hwloc.installed: external/hwloc.built
 	+(cd external &&			\
-		rm -rf $(HWLOC_DIR) &&		\
-		cd $(HWLOC_NAME)-build &&	\
-		$(MAKE) install) &&		\
+	    rm -rf $(HWLOC_DIR) &&		\
+	    cd $(HWLOC_NAME)-build &&		\
+	    $(MAKE) install) &&			\
 	: > $@
 external/hwloc.done: external/hwloc.installed
 	: > $@
@@ -437,34 +434,33 @@ external/hwloc.done: external/hwloc.installed
 jemalloc: external/jemalloc.done
 .PHONY: jemalloc
 external/jemalloc.downloaded: | external
-	(cd external &&					\
-		$(RM) $(notdir $(JEMALLOC_URL)) &&	\
-		wget $(JEMALLOC_URL)) &&		\
+	(cd external &&				\
+	    $(RM) $(notdir $(JEMALLOC_URL)) &&	\
+	    wget $(JEMALLOC_URL)) &&		\
 	: > $@
 external/jemalloc.unpacked: external/jemalloc.downloaded
 	(cd external &&					\
-		rm -rf $(JEMALLOC_NAME) &&		\
-		tar xjf $(notdir $(JEMALLOC_URL))) &&	\
+	    rm -rf $(JEMALLOC_NAME) &&			\
+	    tar xjf $(notdir $(JEMALLOC_URL))) &&	\
 	: > $@
 external/jemalloc.built: external/jemalloc.unpacked
-	+(cd external &&						\
-		rm -rf $(JEMALLOC_NAME)-build &&			\
-		mkdir $(JEMALLOC_NAME)-build &&				\
-		cd $(JEMALLOC_NAME)-build &&				\
-		"$(abspath external/$(JEMALLOC_NAME)/configure)"	\
-			--prefix="$(JEMALLOC_DIR)"			\
-			--disable-shared				\
-			"CC=$(CC)"					\
-			"CXX=$(CXX)"					\
-			"CFLAGS=$(CFLAGS_EXT)"				\
-			"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
-		$(MAKE)) &&						\
+	+(cd external &&					\
+	    rm -rf $(JEMALLOC_NAME)-build &&			\
+	    mkdir $(JEMALLOC_NAME)-build &&			\
+	    cd $(JEMALLOC_NAME)-build &&			\
+	    "$(abspath external/$(JEMALLOC_NAME)/configure)"	\
+		--prefix="$(JEMALLOC_DIR)"			\
+		"CC=$(CC)"					\
+		"CXX=$(CXX)"					\
+		"CFLAGS=$(CFLAGS_EXT)"				\
+		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
+	    $(MAKE)) &&						\
 	: > $@
 external/jemalloc.installed: external/jemalloc.built
 	+(cd external &&			\
-		rm -rf $(JEMALLOC_DIR) &&	\
-		cd $(JEMALLOC_NAME)-build &&	\
-		$(MAKE) install) &&		\
+	    rm -rf $(JEMALLOC_DIR) &&		\
+	    cd $(JEMALLOC_NAME)-build &&	\
+	    $(MAKE) install) &&			\
 	: > $@
 external/jemalloc.done: external/jemalloc.installed
 	: > $@
@@ -474,37 +470,36 @@ external/jemalloc.done: external/jemalloc.installed
 openmpi: external/openmpi.done
 .PHONY: openmpi
 external/openmpi.downloaded: | external
-	(cd external &&					\
-		$(RM) $(notdir $(OPENMPI_URL)) &&	\
-		wget $(OPENMPI_URL)) &&			\
+	(cd external &&				\
+	    $(RM) $(notdir $(OPENMPI_URL)) &&	\
+	    wget $(OPENMPI_URL)) &&		\
 	: > $@
 external/openmpi.unpacked: external/openmpi.downloaded
 	(cd external &&					\
-		rm -rf $(OPENMPI_NAME) &&		\
-		tar xjf $(notdir $(OPENMPI_URL))) &&	\
+	    rm -rf $(OPENMPI_NAME) &&			\
+	    tar xjf $(notdir $(OPENMPI_URL))) &&	\
 	: > $@
 external/openmpi.built: external/openmpi.unpacked | hwloc
 	+(cd external &&					\
-		rm -rf $(OPENMPI_NAME)-build &&			\
-		mkdir $(OPENMPI_NAME)-build &&			\
-		cd $(OPENMPI_NAME)-build &&			\
-		unset MPICC MPICXX &&				\
-		"$(abspath external/$(OPENMPI_NAME)/configure)"	\
-			--prefix="$(OPENMPI_DIR)"		\
-			--disable-shared			\
-			--with-hwloc="$(HWLOC_DIR)"		\
-			--with-hwloc-libdir="$(HWLOC_DIR)/lib"	\
-			"CC=$(CC)"				\
-			"CXX=$(CXX)"				\
-			"CFLAGS=$(CFLAGS_EXT)"			\
-			"CXXFLAGS=$(CXXFLAGS_EXT)" &&		\
-		$(MAKE)) &&					\
+	    rm -rf $(OPENMPI_NAME)-build &&			\
+	    mkdir $(OPENMPI_NAME)-build &&			\
+	    cd $(OPENMPI_NAME)-build &&				\
+	    unset MPICC MPICXX &&				\
+	    "$(abspath external/$(OPENMPI_NAME)/configure)"	\
+		--prefix="$(OPENMPI_DIR)"			\
+		--with-hwloc="$(HWLOC_DIR)"			\
+		--with-hwloc-libdir="$(HWLOC_DIR)/lib"		\
+		"CC=gcc"					\
+		"CXX=g++"					\
+		"CFLAGS=$(CFLAGS_EXT)"				\
+		"CXXFLAGS=$(CXXFLAGS_EXT)"			\
+	    $(MAKE)) &&						\
 	: > $@
 external/openmpi.installed: external/openmpi.built
 	+(cd external &&			\
-		rm -rf $(OPENMPI_DIR) &&	\
-		cd $(OPENMPI_NAME)-build &&	\
-		$(MAKE) install) &&		\
+	    rm -rf $(OPENMPI_DIR) &&		\
+	    cd $(OPENMPI_NAME)-build &&		\
+	    $(MAKE) install) &&			\
 	: > $@
 external/openmpi.done: external/openmpi.installed
 	: > $@
@@ -514,38 +509,37 @@ external/openmpi.done: external/openmpi.installed
 qthreads: external/qthreads.done
 .PHONY: qthreads
 external/qthreads.downloaded: | external
-	(cd external &&					\
-		$(RM) $(notdir $(QTHREADS_URL)) &&	\
-		wget $(QTHREADS_URL)) &&		\
+	(cd external &&				\
+	    $(RM) $(notdir $(QTHREADS_URL)) &&	\
+	    wget $(QTHREADS_URL)) &&		\
 	: > $@
 external/qthreads.unpacked: external/qthreads.downloaded
-	(cd external &&						\
-		rm -rf $(QTHREADS_NAME) &&			\
-		tar xjf $(notdir $(QTHREADS_URL)) &&		\
-		cd $(QTHREADS_NAME) &&				\
-		patch -p0 < $(abspath qthreads.patch)) &&	\
+	(cd external &&					\
+	    rm -rf $(QTHREADS_NAME) &&			\
+	    tar xjf $(notdir $(QTHREADS_URL)) &&	\
+	    cd $(QTHREADS_NAME) &&			\
+	    patch -p0 < $(abspath qthreads.patch)) &&	\
 	: > $@
 external/qthreads.built: external/qthreads.unpacked | hwloc
-	+(cd external &&						\
-		rm -rf $(QTHREADS_NAME)-build &&			\
-		mkdir $(QTHREADS_NAME)-build &&				\
-		cd $(QTHREADS_NAME)-build &&				\
-		"$(abspath external/$(QTHREADS_NAME)/configure)"	\
-			--prefix="$(QTHREADS_DIR)"			\
-			--disable-shared				\
-			--enable-guard-pages --enable-debug=yes		\
-			--with-hwloc="$(HWLOC_DIR)"			\
-			"CC=$(CC)"					\
-			"CXX=$(CXX)"					\
-			"CFLAGS=$(CFLAGS_EXT)"				\
-			"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
-		$(MAKE)) &&						\
+	+(cd external &&					\
+	    rm -rf $(QTHREADS_NAME)-build &&			\
+	    mkdir $(QTHREADS_NAME)-build &&			\
+	    cd $(QTHREADS_NAME)-build &&			\
+	    "$(abspath external/$(QTHREADS_NAME)/configure)"	\
+		--prefix="$(QTHREADS_DIR)"			\
+		--enable-guard-pages --enable-debug=yes		\
+		--with-hwloc="$(HWLOC_DIR)"			\
+		"CC=$(CC)"					\
+		"CXX=$(CXX)"					\
+		"CFLAGS=$(CFLAGS_EXT)"				\
+		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
+	    $(MAKE)) &&						\
 	: > $@
 external/qthreads.installed: external/qthreads.built
 	+(cd external &&			\
-		rm -rf $(QTHREADS_DIR) &&	\
-		cd $(QTHREADS_NAME)-build &&	\
-		$(MAKE) install) &&		\
+	    rm -rf $(QTHREADS_DIR) &&		\
+	    cd $(QTHREADS_NAME)-build &&	\
+	    $(MAKE) install) &&			\
 	: > $@
 external/qthreads.done: external/qthreads.installed
 	: > $@
@@ -562,7 +556,7 @@ clean:
 
 distclean: clean
 	$(RM) -r external $(CEREAL_DIR) $(GOOGLETEST_DIR) $(HWLOC_DIR)	\
-		$(JEMALLOC_DIR) $(OPENMPI_DIR) $(QTHREADS_DIR)
+	    $(JEMALLOC_DIR) $(OPENMPI_DIR) $(QTHREADS_DIR)
 .PHONY: distclean
 
 -include $(ALL_SRCS:%.cc=%.d)

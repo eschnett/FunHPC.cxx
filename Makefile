@@ -490,8 +490,8 @@ external/openmpi.built: external/openmpi.unpacked | hwloc
 		"$(abspath external/$(OPENMPI_NAME)/configure)"	\
 			--prefix="$(OPENMPI_DIR)"		\
 			--with-hwloc="$(HWLOC_DIR)"		\
-			"CC=gcc"				\
-			"CXX=g++"				\
+			"CC=$(CC)"				\
+			"CXX=$(CXX)"				\
 			"CFLAGS=$(CFLAGS_EXT)"			\
 			"CXXFLAGS=$(CXXFLAGS_EXT)" &&		\
 		$(MAKE)) &&					\

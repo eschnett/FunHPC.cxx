@@ -8,6 +8,14 @@ CEREAL_INCDIRS  = $(CEREAL_DIR)/include
 CEREAL_LIBDIRS  =
 CEREAL_LIBS     =
 
+GCC_NAME     = gcc-4.9.2
+GCC_URL      = http://ftp.gnu.org/gnu/gcc/gcc-4.9.2/gcc-4.9.2.tar.bz2
+GCC_DIR      = $(abspath ./$(GCC_NAME))
+GCC_CPPFLAGS =
+GCC_INCDIRS  = $(GCC_DIR)/include
+GCC_LIBDIRS  =
+GCC_LIBS     =
+
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
 GOOGLETEST_DIR      = $(abspath ./$(GOOGLETEST_NAME))
@@ -307,6 +315,60 @@ external/cereal.unpacked: external/cereal.downloaded
 		patch -p0 < $(abspath cereal-to_string.patch)) &&	\
 	: > $@
 external/cereal.done: external/cereal.unpacked
+	: > $@
+
+### GCC
+
+gcc: external/gcc.done
+.PHONY: gcc
+external/gcc.downloaded: | external
+	(cd external &&								      \
+		$(RM) $(notdir $(GCC_URL)) &&					      \
+		wget $(GCC_URL) &&						      \
+		$(RM) gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz	      \
+			isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz) &&		      \
+		wget https://gmplib.org/download/gmp/gmp-4.3.2.tar.bz2		      \
+		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/mpfr-2.4.2.tar.bz2 &&   \
+		wget http://www.multiprecision.org/mpc/download/mpc-0.8.1.tar.gz &&   \
+		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-0.12.2.tar.bz2 &&   \
+		wget ftp://gcc.gnu.org/pub/gcc/infrastructure/cloog-0.18.1.tar.gz) && \
+	: > $@
+external/gcc.unpacked: external/gcc.downloaded
+	(cd external &&							\
+		rm -rf $(GCC_NAME) &&					\
+		tar xjf $(notdir $(GCC_URL)) &&				\
+		rm -rf gmp-4.3.2 mpfr-2.4.2 mpc-0.8.1 isl-0.12.2	\
+			cloog-0.18.1 &&					\
+		tar xjf gmp-4.3.2.tar.bz2 &&				\
+		tar xjf mpfr-2.4.2.tar.bz2 &&				\
+		tar xzf mpc-0.8.1.tar.gz &&				\
+		tar xjf isl-0.12.2.tar.bz2 &&				\
+		tar xzf cloog-0.18.1.tar.gz &&				\
+		cd $(GCC_NAME) &&					\
+		ln -s ../gmp-4.3.2 gmp &&				\
+		ln -s ../mpfr-2.4.2 mpfr &&				\
+		ln -s ../mpc-0.8.1 mpc &&				\
+		ln -s ../isl-0.12.2 isl &&				\
+		ln -s ../cloog-0.18.1 cloog) &&				\
+	: > $@
+external/gcc.built: external/gcc.unpacked
+	+(cd external &&					\
+		rm -rf $(GCC_NAME)-build &&			\
+		mkdir $(GCC_NAME)-build &&			\
+		cd $(GCC_NAME)-build &&				\
+		"$(abspath external/$(GCC_NAME)/configure)"	\
+			--prefix="$(GCC_DIR)"			\
+			--enable-languages=c,c++,fortran	\
+			--disable-multilib &&			\
+		$(MAKE)) &&					\
+	: > $@
+external/gcc.installed: external/gcc.built
+	+(cd external &&			\
+		rm -rf $(GCC_DIR) &&		\
+		cd $(GCC_NAME)-build &&		\
+		$(MAKE) install) &&		\
+	: > $@
+external/gcc.done: external/gcc.installed
 	: > $@
 
 ### Google Test ###

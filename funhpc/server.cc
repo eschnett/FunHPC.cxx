@@ -162,12 +162,24 @@ bool terminate_check(bool ready_to_terminate) {
   return flag;
 }
 
+namespace detail {
+typename std::chrono::high_resolution_clock::time_point start_time, end_time;
+double run_time() {
+  return std::chrono::nanoseconds(end_time - start_time).count() / 1.0e+9;
+}
+}
+
 void initialize(int &argc, char **&argv) {
   MPI_Init(&argc, &argv);
   detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
   hwloc_set_affinity();
+  MPI_Barrier(mpi_comm);
+  if (rank() == 0) {
+    std::cout << "[FunHPC: begin]\n";
+  }
+  detail::start_time = std::chrono::high_resolution_clock::now();
 }
 
 int eventloop(mainfunc_t *user_main, int argc, char **argv) {
@@ -191,6 +203,12 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
 }
 
 void finalize() {
+  MPI_Barrier(mpi_comm);
+  detail::end_time = std::chrono::high_resolution_clock::now();
+  if (rank() == 0) {
+    std::cout << "[FunHPC: end; total execution time: " << detail::run_time()
+              << " sec]\n";
+  }
   qthread_finalize();
   MPI_Finalize();
 }

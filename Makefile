@@ -415,6 +415,7 @@ external/hwloc.built: external/hwloc.unpacked
 		cd $(HWLOC_NAME)-build &&			\
 		"$(abspath external/$(HWLOC_NAME)/configure)"	\
 			--prefix="$(HWLOC_DIR)"			\
+			--disable-shared			\
 			--disable-libxml2			\
 			"CC=$(CC)"				\
 			"CXX=$(CXX)"				\
@@ -452,6 +453,7 @@ external/jemalloc.built: external/jemalloc.unpacked
 		cd $(JEMALLOC_NAME)-build &&				\
 		"$(abspath external/$(JEMALLOC_NAME)/configure)"	\
 			--prefix="$(JEMALLOC_DIR)"			\
+			--disable-shared				\
 			"CC=$(CC)"					\
 			"CXX=$(CXX)"					\
 			"CFLAGS=$(CFLAGS_EXT)"				\
@@ -489,7 +491,9 @@ external/openmpi.built: external/openmpi.unpacked | hwloc
 		unset MPICC MPICXX &&				\
 		"$(abspath external/$(OPENMPI_NAME)/configure)"	\
 			--prefix="$(OPENMPI_DIR)"		\
+			--disable-shared			\
 			--with-hwloc="$(HWLOC_DIR)"		\
+			--with-hwloc-libdir="$(HWLOC_DIR)/lib"	\
 			"CC=$(CC)"				\
 			"CXX=$(CXX)"				\
 			"CFLAGS=$(CFLAGS_EXT)"			\
@@ -528,6 +532,7 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 		cd $(QTHREADS_NAME)-build &&				\
 		"$(abspath external/$(QTHREADS_NAME)/configure)"	\
 			--prefix="$(QTHREADS_DIR)"			\
+			--disable-shared				\
 			--enable-guard-pages --enable-debug=yes		\
 			--with-hwloc="$(HWLOC_DIR)"			\
 			"CC=$(CC)"					\

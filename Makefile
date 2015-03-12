@@ -94,7 +94,7 @@ LIBS =						\
 CC           = clang
 CXX          = clang++
 CFLAGS       = -march=native -Wall -g -std=c99 -Dasm=__asm__
-CXXFLAGS     = -march=native -Wall -g -std=c++1y -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
+CXXFLAGS     = -march=native -Wall -g -std=c++14 -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
 DEBUGFLAGS   = -D_GLIBCXX_DEBUG
 OPTFLAGS     = # -O3 -flto -DNDEBUG -Wno-unused-variable
 CFLAGS_EXT   = -march=native -Wall -g -O3

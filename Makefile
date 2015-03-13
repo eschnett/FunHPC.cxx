@@ -250,6 +250,7 @@ $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 NPROCS = 1
 EXE = ./hello
 run:
+        unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			\
 	$(MPIRUN) -np $(NPROCS) -x "QTHREAD_STACK_SIZE=65536" $(EXE)
 
 ### examples ###

@@ -257,7 +257,7 @@ run:
 examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
 	    $(MAKE) run EXE=$$example;					\
-	done								\
+	done
 	for example in $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%); do	\
 	    $(MAKE) run NPROCS=2 EXE=$$example;				\
 	done

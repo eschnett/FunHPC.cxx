@@ -489,8 +489,8 @@ external/openmpi.built: external/openmpi.unpacked | hwloc
 		--prefix="$(OPENMPI_DIR)"				    \
 		--with-hwloc="$(HWLOC_DIR)"				    \
 		--with-hwloc-libdir="$(HWLOC_DIR)/lib"			    \
-		"CC=gcc"						    \
-		"CXX=g++"						    \
+		"CC=$(CC)"						    \
+		"CXX=$(CXX)"						    \
 		"CFLAGS=$(CFLAGS_EXT)"					    \
 		"CXXFLAGS=$(CXXFLAGS_EXT)"				    \
 		"LDFLAGS=-L$(HWLOC_DIR)/lib -Wl,-rpath,$(HWLOC_DIR)/lib" && \

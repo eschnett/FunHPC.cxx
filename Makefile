@@ -250,11 +250,7 @@ $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 NPROCS = 1
 EXE = ./hello
 run:
-	$(MPIRUN) -np $(NPROCS)						\
-	    -x "LD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"		\
-	    -x "DYLD_LIBRARY_PATH=$(subst $(space),:,$(LIBDIRS))"	\
-	    -x "QTHREAD_STACK_SIZE=65536"				\
-	    $(EXE)
+	$(MPIRUN) -np $(NPROCS) -x "QTHREAD_STACK_SIZE=65536" $(EXE)
 
 ### examples ###
 
@@ -457,10 +453,14 @@ external/jemalloc.built: external/jemalloc.unpacked
 	    $(MAKE)) &&						\
 	: > $@
 external/jemalloc.installed: external/jemalloc.built
-	+(cd external &&			\
-	    rm -rf $(JEMALLOC_DIR) &&		\
-	    cd $(JEMALLOC_NAME)-build &&	\
-	    $(MAKE) install) &&			\
+	+(cd external &&					\
+	    rm -rf $(JEMALLOC_DIR) &&				\
+	    cd $(JEMALLOC_NAME)-build &&			\
+	    $(MAKE) install) &&					\
+	if command -v install_name_tool >/dev/null 2>&1; then	\
+	    lib=$(JEMALLOC_DIR)/lib/libjemalloc.*.dylib &&	\
+	    install_name_tool -id $$lib $$lib;			\
+	fi &&							\
 	: > $@
 external/jemalloc.done: external/jemalloc.installed
 	: > $@
@@ -480,20 +480,21 @@ external/openmpi.unpacked: external/openmpi.downloaded
 	    tar xjf $(notdir $(OPENMPI_URL))) &&	\
 	: > $@
 external/openmpi.built: external/openmpi.unpacked | hwloc
-	+(cd external &&					\
-	    rm -rf $(OPENMPI_NAME)-build &&			\
-	    mkdir $(OPENMPI_NAME)-build &&			\
-	    cd $(OPENMPI_NAME)-build &&				\
-	    unset MPICC MPICXX &&				\
-	    "$(abspath external/$(OPENMPI_NAME)/configure)"	\
-		--prefix="$(OPENMPI_DIR)"			\
-		--with-hwloc="$(HWLOC_DIR)"			\
-		--with-hwloc-libdir="$(HWLOC_DIR)/lib"		\
-		"CC=gcc"					\
-		"CXX=g++"					\
-		"CFLAGS=$(CFLAGS_EXT)"				\
-		"CXXFLAGS=$(CXXFLAGS_EXT)"			\
-	    $(MAKE)) &&						\
+	+(cd external &&						    \
+	    rm -rf $(OPENMPI_NAME)-build &&				    \
+	    mkdir $(OPENMPI_NAME)-build &&				    \
+	    cd $(OPENMPI_NAME)-build &&					    \
+	    unset MPICC MPICXX &&					    \
+	    "$(abspath external/$(OPENMPI_NAME)/configure)"		    \
+		--prefix="$(OPENMPI_DIR)"				    \
+		--with-hwloc="$(HWLOC_DIR)"				    \
+		--with-hwloc-libdir="$(HWLOC_DIR)/lib"			    \
+		"CC=gcc"						    \
+		"CXX=g++"						    \
+		"CFLAGS=$(CFLAGS_EXT)"					    \
+		"CXXFLAGS=$(CXXFLAGS_EXT)"				    \
+		"LDFLAGS=-L$(HWLOC_DIR)/lib -Wl,-rpath,$(HWLOC_DIR)/lib" && \
+	    $(MAKE)) &&							    \
 	: > $@
 external/openmpi.installed: external/openmpi.built
 	+(cd external &&			\
@@ -532,7 +533,8 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 		"CC=$(CC)"					\
 		"CXX=$(CXX)"					\
 		"CFLAGS=$(CFLAGS_EXT)"				\
-		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
+		"CXXFLAGS=$(CXXFLAGS_EXT)"			\
+		"LDFLAGS=-Wl,-rpath,$(HWLOC_DIR)/lib" &&	\
 	    $(MAKE)) &&						\
 	: > $@
 external/qthreads.installed: external/qthreads.built

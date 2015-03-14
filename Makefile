@@ -217,7 +217,7 @@ PROCESS_DEPENDENCIES =							      \
 	perl -p -e 's{$*.o.tmp}{$*.o}g' < $*.o.d &&			      \
 	perl -p -e 's{\#.*}{};s{^[^:]*: *}{};s{ *\\$$}{};s{$$}{ :}' < $*.o.d; \
 	} > $*.d &&							      \
-	rm -f $*.o.d
+	$(RM) $*.o.d
 
 comma := ,
 empty :=
@@ -250,7 +250,7 @@ $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 NPROCS = 1
 EXE = ./hello
 run:
-        unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			\
+	unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			\
 	$(MPIRUN) -np $(NPROCS) -x "QTHREAD_STACK_SIZE=65536" $(EXE)
 .PHONY: run
 
@@ -305,7 +305,7 @@ external/cereal.downloaded: | external
 	    wget $(CEREAL_URL)) &&		\
 	: > $@
 external/cereal.unpacked: external/cereal.downloaded
-	rm -rf $(CEREAL_NAME) &&					\
+	$(RM) -r $(CEREAL_NAME) &&					\
 	tar xzf external/$(notdir $(CEREAL_URL)) &&			\
 	(cd $(CEREAL_NAME) &&						\
 	    patch -p0 < $(abspath cereal-pointers.patch) &&		\
@@ -332,9 +332,9 @@ external/gcc.downloaded: | external
 	: > $@
 external/gcc.unpacked: external/gcc.downloaded
 	(cd external &&							     \
-	    rm -rf $(GCC_NAME) &&					     \
+	    $(RM) -r $(GCC_NAME) &&					     \
 	    tar xjf $(notdir $(GCC_URL)) &&				     \
-	    rm -rf gmp-4.3.2 mpfr-2.4.2 mpc-0.8.1 isl-0.12.2 cloog-0.18.1 && \
+	    $(RM) -r gmp-4.3.2 mpfr-2.4.2 mpc-0.8.1 isl-0.12.2 cloog-0.18.1 && \
 	    tar xjf gmp-4.3.2.tar.bz2 &&				     \
 	    tar xjf mpfr-2.4.2.tar.bz2 &&				     \
 	    tar xzf mpc-0.8.1.tar.gz &&					     \
@@ -349,7 +349,7 @@ external/gcc.unpacked: external/gcc.downloaded
 	: > $@
 external/gcc.built: external/gcc.unpacked
 	+(cd external &&				\
-	    rm -rf $(GCC_NAME)-build &&			\
+	    $(RM) -r $(GCC_NAME)-build &&			\
 	    mkdir $(GCC_NAME)-build &&			\
 	    cd $(GCC_NAME)-build &&			\
 	    "$(abspath external/$(GCC_NAME)/configure)"	\
@@ -360,7 +360,7 @@ external/gcc.built: external/gcc.unpacked
 	: > $@
 external/gcc.installed: external/gcc.built
 	+(cd external &&			\
-	    rm -rf $(GCC_DIR) &&		\
+	    $(RM) -r $(GCC_DIR) &&		\
 	    cd $(GCC_NAME)-build &&		\
 	    $(MAKE) install) &&			\
 	: > $@
@@ -377,7 +377,7 @@ external/gtest.downloaded: | external
 	    wget $(GOOGLETEST_URL)) &&			\
 	: > $@
 external/gtest.unpacked: external/gtest.downloaded
-	rm -rf $(GOOGLETEST_NAME) &&			\
+	$(RM) -r $(GOOGLETEST_NAME) &&			\
 	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: > $@
 external/gtest.built: external/gtest.unpacked
@@ -401,12 +401,12 @@ external/hwloc.downloaded: | external
 	: > $@
 external/hwloc.unpacked: external/hwloc.downloaded
 	(cd external &&				\
-	    rm -rf $(HWLOC_NAME) &&		\
+	    $(RM) -r $(HWLOC_NAME) &&		\
 	    tar xjf $(notdir $(HWLOC_URL))) &&	\
 	: > $@
 external/hwloc.built: external/hwloc.unpacked
 	+(cd external &&					\
-	    rm -rf $(HWLOC_NAME)-build &&			\
+	    $(RM) -r $(HWLOC_NAME)-build &&			\
 	    mkdir $(HWLOC_NAME)-build &&			\
 	    cd $(HWLOC_NAME)-build &&				\
 	    "$(abspath external/$(HWLOC_NAME)/configure)"	\
@@ -420,7 +420,7 @@ external/hwloc.built: external/hwloc.unpacked
 	: > $@
 external/hwloc.installed: external/hwloc.built
 	+(cd external &&			\
-	    rm -rf $(HWLOC_DIR) &&		\
+	    $(RM) -r $(HWLOC_DIR) &&		\
 	    cd $(HWLOC_NAME)-build &&		\
 	    $(MAKE) install) &&			\
 	: > $@
@@ -438,12 +438,12 @@ external/jemalloc.downloaded: | external
 	: > $@
 external/jemalloc.unpacked: external/jemalloc.downloaded
 	(cd external &&					\
-	    rm -rf $(JEMALLOC_NAME) &&			\
+	    $(RM) -r $(JEMALLOC_NAME) &&			\
 	    tar xjf $(notdir $(JEMALLOC_URL))) &&	\
 	: > $@
 external/jemalloc.built: external/jemalloc.unpacked
 	+(cd external &&					\
-	    rm -rf $(JEMALLOC_NAME)-build &&			\
+	    $(RM) -r $(JEMALLOC_NAME)-build &&			\
 	    mkdir $(JEMALLOC_NAME)-build &&			\
 	    cd $(JEMALLOC_NAME)-build &&			\
 	    "$(abspath external/$(JEMALLOC_NAME)/configure)"	\
@@ -456,7 +456,7 @@ external/jemalloc.built: external/jemalloc.unpacked
 	: > $@
 external/jemalloc.installed: external/jemalloc.built
 	+(cd external &&					\
-	    rm -rf $(JEMALLOC_DIR) &&				\
+	    $(RM) -r $(JEMALLOC_DIR) &&				\
 	    cd $(JEMALLOC_NAME)-build &&			\
 	    $(MAKE) install) &&					\
 	if command -v install_name_tool >/dev/null 2>&1; then	\
@@ -478,12 +478,12 @@ external/openmpi.downloaded: | external
 	: > $@
 external/openmpi.unpacked: external/openmpi.downloaded
 	(cd external &&					\
-	    rm -rf $(OPENMPI_NAME) &&			\
+	    $(RM) -r $(OPENMPI_NAME) &&			\
 	    tar xjf $(notdir $(OPENMPI_URL))) &&	\
 	: > $@
 external/openmpi.built: external/openmpi.unpacked | hwloc
 	+(cd external &&						    \
-	    rm -rf $(OPENMPI_NAME)-build &&				    \
+	    $(RM) -r $(OPENMPI_NAME)-build &&				    \
 	    mkdir $(OPENMPI_NAME)-build &&				    \
 	    cd $(OPENMPI_NAME)-build &&					    \
 	    unset MPICC MPICXX &&					    \
@@ -500,7 +500,7 @@ external/openmpi.built: external/openmpi.unpacked | hwloc
 	: > $@
 external/openmpi.installed: external/openmpi.built
 	+(cd external &&			\
-	    rm -rf $(OPENMPI_DIR) &&		\
+	    $(RM) -r $(OPENMPI_DIR) &&		\
 	    cd $(OPENMPI_NAME)-build &&		\
 	    $(MAKE) install) &&			\
 	: > $@
@@ -518,14 +518,14 @@ external/qthreads.downloaded: | external
 	: > $@
 external/qthreads.unpacked: external/qthreads.downloaded
 	(cd external &&					\
-	    rm -rf $(QTHREADS_NAME) &&			\
+	    $(RM) -r $(QTHREADS_NAME) &&			\
 	    tar xjf $(notdir $(QTHREADS_URL)) &&	\
 	    cd $(QTHREADS_NAME) &&			\
 	    patch -p0 < $(abspath qthreads.patch)) &&	\
 	: > $@
 external/qthreads.built: external/qthreads.unpacked | hwloc
 	+(cd external &&					\
-	    rm -rf $(QTHREADS_NAME)-build &&			\
+	    $(RM) -r $(QTHREADS_NAME)-build &&			\
 	    mkdir $(QTHREADS_NAME)-build &&			\
 	    cd $(QTHREADS_NAME)-build &&			\
 	    "$(abspath external/$(QTHREADS_NAME)/configure)"	\
@@ -541,7 +541,7 @@ external/qthreads.built: external/qthreads.unpacked | hwloc
 	: > $@
 external/qthreads.installed: external/qthreads.built
 	+(cd external &&			\
-	    rm -rf $(QTHREADS_DIR) &&		\
+	    $(RM) -r $(QTHREADS_DIR) &&		\
 	    cd $(QTHREADS_NAME)-build &&	\
 	    $(MAKE) install) &&			\
 	: > $@

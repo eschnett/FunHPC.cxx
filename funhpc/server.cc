@@ -11,10 +11,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 // #include <stdlib.h>
 #include <string>
+#include <sys/time.h>
 #include <vector>
 
 namespace funhpc {
@@ -91,6 +93,7 @@ void send_tasks() {
   }
 
   // Clean up all items that are finished sending
+  // TODO: Use MPI_TestAny instead
   send_reqs.erase(
       std::remove_if(send_reqs.begin(), send_reqs.end(), [](auto &reqp) {
         int flag;
@@ -172,11 +175,17 @@ void initialize(int &argc, char **&argv) {
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
   std::cout << "FunHPC: begin\n";
-  auto start_time = std::chrono::high_resolution_clock::now();
+  // auto start_time = std::chrono::high_resolution_clock::now();
+  timeval tv;
+  gettimeofday(&tv, nullptr);
+  auto start_time = tv.tv_sec * INT64_C(1000000) + tv.tv_usec;
   int res = user_main(argc, argv);
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto run_time =
-      std::chrono::nanoseconds(end_time - start_time).count() / 1.0e+9;
+  // auto end_time = std::chrono::high_resolution_clock::now();
+  // auto run_time =
+  //     std::chrono::nanoseconds(end_time - start_time).count() / 1.0e+9;
+  gettimeofday(&tv, nullptr);
+  auto end_time = tv.tv_sec * INT64_C(1000000) + tv.tv_usec;
+  auto run_time = (end_time - start_time) / 1.0e+6;
   std::cout << "FunHPC: end; total execution time: " << run_time << " sec\n";
   return res;
 }
@@ -193,6 +202,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
     recv_tasks();
     if (terminate_check(!fres.valid() || fres.ready()))
       break;
+    // if (qthread::thread::hardware_concurrency() == 1)
     qthread::this_thread::yield();
   }
   cancel_sends();

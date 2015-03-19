@@ -79,12 +79,12 @@ TEST(fun_nested, fmapTopo) {
   EXPECT_EQ(20, sum);
 
   auto x2s = iotaMap<nested2>([](int x) { return x * x; }, s);
-  EXPECT_FALSE(x2s.data.ready());
+  // EXPECT_FALSE(x2s.data.ready());
   auto y2s = fmapTopo(
       [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
       [](auto x, auto i) { return x; }, x2s, connectivity<int>(1, 100));
-  EXPECT_FALSE(x2s.data.ready());
-  EXPECT_FALSE(y2s.data.ready());
+  // EXPECT_FALSE(x2s.data.ready());
+  // EXPECT_FALSE(y2s.data.ready());
   auto sum2 = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, y2s);
   EXPECT_EQ(20, sum2);

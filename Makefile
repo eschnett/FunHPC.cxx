@@ -91,6 +91,10 @@ LIBS =						\
 	$(QTHREADS_LIBS)			\
 	$(JEMALLOC_LIBS)
 
+COMPILER = clang
+
+ifeq ($(COMPILER), clang)
+
 CC           = clang
 CXX          = clang++
 CFLAGS       = -march=native -Wall -g -std=c11 -Dasm=__asm__
@@ -100,14 +104,18 @@ OPTFLAGS     = # -O3 -flto -DNDEBUG -Wno-unused-variable
 CFLAGS_EXT   = -march=native -Wall -g -O3
 CXXFLAGS_EXT = -march=native -Wall -g -O3
 
-# CC           = gcc
-# CXX          = g++
-# CFLAGS       = -m128bit-long-double -march=native -Wall -g -std=c11 -Dasm=__asm__
-# CXXFLAGS     = -m128bit-long-double -march=native -Wall -g -std=c++14 -Drestrict=__restrict__
-# DEBUGFLAGS   = -D_GLIBCXX_DEBUG
-# OPTFLAGS     = # -O3 -flto -DNDEBUG
-# CFLAGS_EXT   = -m128bit-long-double -march=native -Wall -g -O3
-# CXXFLAGS_EXT = -m128bit-long-double -march=native -Wall -g -O3
+else ifeq ($(COMPILER), gcc)
+
+CC           = gcc
+CXX          = g++
+CFLAGS       = -m128bit-long-double -march=native -Wall -g -std=c11 -Dasm=__asm__
+CXXFLAGS     = -m128bit-long-double -march=native -Wall -g -std=c++14 -Drestrict=__restrict__
+DEBUGFLAGS   = -D_GLIBCXX_DEBUG
+OPTFLAGS     = # -O3 -flto -DNDEBUG
+CFLAGS_EXT   = -m128bit-long-double -march=native -Wall -g -O3
+CXXFLAGS_EXT = -m128bit-long-double -march=native -Wall -g -O3
+
+endif
 
 MPICC       = env "OMPI_CC=$(CC)" $(OPENMPI_DIR)/bin/mpicc
 MPICXX      = env "OMPI_CXX=$(CXX)" $(OPENMPI_DIR)/bin/mpicxx

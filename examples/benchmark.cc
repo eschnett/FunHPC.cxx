@@ -72,8 +72,8 @@ token tree(token tok, std::int64_t items, std::int64_t iters) {
     return do_work(tok, items);
   auto iters1 = iters / 2;
   auto iters2 = iters - iters1;
-  auto f1 = qthread::async(daisychained, tok, items, iters1);
-  auto f2 = qthread::async(daisychained, tok, items, iters2);
+  auto f1 = qthread::async(tree, tok, items, iters1);
+  auto f2 = qthread::async(tree, tok, items, iters2);
   return f1.get() + f2.get();
 }
 

@@ -83,9 +83,9 @@ token tree(token tok, std::int64_t items, std::int64_t iter0,
   auto iters2 = iters - iters1;
   int p1 = cxx::div_floor(iter0, funhpc::size()).rem;
   int p2 = cxx::div_floor(iter0 + iters1, funhpc::size()).rem;
-  auto f1 = funhpc::async(funhpc::rlaunch::async, p1, daisychained, tok, items,
-                          iter0, iters1);
-  auto f2 = funhpc::async(funhpc::rlaunch::async, p2, daisychained, tok, items,
+  auto f1 = funhpc::async(funhpc::rlaunch::async, p1, tree, tok, items, iter0,
+                          iters1);
+  auto f2 = funhpc::async(funhpc::rlaunch::async, p2, tree, tok, items,
                           iter0 + iters1, iters2);
   return f1.get() + f2.get();
 }

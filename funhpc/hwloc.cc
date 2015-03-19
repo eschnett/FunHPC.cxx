@@ -206,6 +206,11 @@ void hwloc_set_affinity() {
   ierr = hwloc_topology_load(topology);
   assert(!ierr);
 
+  // The algorithm here fails when we yield after creating a thread.
+  // Apparently, this prevents the threads to be distributed over all
+  // workers. We thus temporarily disable it.
+  qthread::yield_after_thread_create = false;
+
   int nthreads = qthread::thread::hardware_concurrency();
   std::vector<hwloc::cpu_info_t> infos(nthreads);
   bool success = false;
@@ -231,6 +236,8 @@ void hwloc_set_affinity() {
     if (success)
       break;
   }
+
+  qthread::yield_after_thread_create = true;
 
   // Output information from the first node, sorted by MPI rank
   if (infos[0].node == 0) {

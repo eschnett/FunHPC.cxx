@@ -158,7 +158,8 @@ HDRS =						\
 	qthread/mutex.hpp			\
 	qthread/thread.hpp
 SRCS =						\
-	cxx/serialize.cc
+	cxx/serialize.cc			\
+	qthread/future.cc
 FUNHPC_SRCS =					\
 	funhpc/hwloc.cc				\
 	funhpc/main.cc				\

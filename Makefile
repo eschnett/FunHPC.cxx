@@ -256,11 +256,28 @@ $(ALL_SRCS:%.cc=%.o): | format cereal gtest jemalloc hwloc openmpi qthreads
 ### run an application ###
 
 # These two can be overridden on the command line
-NPROCS = 1
+NPROCS := 1
+NSHEPHERDS :=						\
+	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
+	    awk '/ NUMANode / { print $$3; }'), 1)
+NTHREADS :=						\
+	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
+	    awk '/ PU / { print $$3; }'), 1)
+NSHEPHERDS_PER_PROC := \
+	$(shell echo '($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS)' | bc)
+NTHREADS_PER_SHEPHERD :=						       \
+	$(shell echo '($(NTHREADS) + $(NPROCS) * $(NSHEPHERDS_PER_PROC) - 1) / \
+	    ($(NPROCS) * $(NSHEPHERDS_PER_PROC))' | bc)
+
 EXE = ./hello
 run:
-	unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			\
-	$(MPIRUN) -np $(NPROCS) -x "QTHREAD_STACK_SIZE=65536" $(EXE)
+	unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			   \
+	$(MPIRUN)							   \
+	    -np $(NPROCS)						   \
+	    -x "QTHREAD_NUM_SHEPHERDS=$(NSHEPHERDS_PER_PROC)"		   \
+	    -x "QTHREAD_NUM_WORKERS_PER_SHEPHERD=$(NTHREADS_PER_SHEPHERD)" \
+	    -x "QTHREAD_STACK_SIZE=65536"				   \
+	    $(EXE)
 .PHONY: run
 
 ### examples ###

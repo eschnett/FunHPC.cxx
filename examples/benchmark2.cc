@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <sys/time.h>
 #include <utility>
@@ -94,8 +96,10 @@ template <typename F> void runbench(const std::string &name, F &&f) {
   double mintime = 1.0;
 
   for (auto workitems : workitemss) {
-    std::cout << "   " << name << ", " << workitems << " workitems:\n"
-              << std::flush;
+    std::ostringstream os;
+    os << name << ", " << workitems << " workitems:";
+    auto str = os.str();
+    std::cout << "   " << std::left << std::setw(32) << str << std::flush;
     auto iters = inititers;
     auto time = mintime;
     for (;;) {
@@ -110,7 +114,7 @@ template <typename F> void runbench(const std::string &name, F &&f) {
       iters = clamp(std::int64_t(llrint(1.1 * iters * mintime / time)),
                     2 * iters, 10 * iters);
     }
-    std::cout << "      " << time / iters * 1.0e+6 << " usec/iter, "
+    std::cout << "   " << time / iters * 1.0e+6 << " usec/iter, "
               << time / (iters * workitems) * 1.0e+9 << " nsec/iter/item   ("
               << iters << " iters, " << time << " sec)\n";
   }

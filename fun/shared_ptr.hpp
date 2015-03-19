@@ -37,7 +37,7 @@ template <
     std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
-  if (s == 0)
+  if (__builtin_expect(s == 0, false))
     return std::shared_ptr<R>();
   return std::make_shared<R>(cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
                                          std::forward<Args>(args)...));
@@ -49,7 +49,7 @@ template <typename F, typename T, typename... Args,
           typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto fmap(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
   bool s = bool(xs);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::shared_ptr<R>();
   return std::make_shared<R>(
       cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
@@ -59,7 +59,7 @@ template <typename F, typename T, typename... Args,
           typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto fmap(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
   bool s = bool(xs);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::shared_ptr<R>();
   return std::make_shared<R>(cxx::invoke(std::forward<F>(f), std::move(*xs),
                                          std::forward<Args>(args)...));
@@ -71,7 +71,7 @@ auto fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
            Args &&... args) {
   bool s = bool(xs);
   assert(bool(ys) == s);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::shared_ptr<R>();
   return std::make_shared<R>(
       cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...));
@@ -86,7 +86,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
   static_assert(
       std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
   return cxx::invoke(
       std::forward<Op>(op), std::forward<Z>(z),
@@ -99,7 +99,7 @@ R foldMap(F &&f, Op &&op, Z &&z, std::shared_ptr<T> &&xs, Args &&... args) {
   static_assert(
       std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
                      cxx::invoke(std::forward<F>(f), std::move(*xs),
@@ -115,7 +115,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
       std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
   assert(bool(ys) == s);
-  if (!s)
+  if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
   return cxx::invoke(
       std::forward<Op>(op), std::forward<Z>(z),
@@ -136,7 +136,7 @@ template <typename F, typename T, typename... Args,
           typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto mbind(F &&f, const std::shared_ptr<T> &xs, Args &&... args) {
   static_assert(detail::is_shared_ptr<CR>::value, "");
-  if (!bool(xs))
+  if (__builtin_expect(!bool(xs), false))
     return CR();
   return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
 }
@@ -145,7 +145,7 @@ template <typename F, typename T, typename... Args,
           typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto mbind(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
   static_assert(detail::is_shared_ptr<CR>::value, "");
-  if (!bool(xs))
+  if (__builtin_expect(!bool(xs), false))
     return CR();
   return cxx::invoke(std::forward<F>(f), std::move(*xs),
                      std::forward<Args>(args)...);
@@ -155,13 +155,13 @@ auto mbind(F &&f, std::shared_ptr<T> &&xs, Args &&... args) {
 
 template <typename T>
 auto mjoin(const std::shared_ptr<std::shared_ptr<T>> &xss) {
-  if (!bool(xss) || !bool(*xss))
+  if (__builtin_expect(!bool(xss) || !bool(*xss), false))
     return std::shared_ptr<T>();
   return *xss;
 }
 
 template <typename T> auto mjoin(std::shared_ptr<std::shared_ptr<T>> &&xss) {
-  if (!bool(xss) || !bool(*xss))
+  if (__builtin_expect(!bool(xss) || !bool(*xss), false))
     return std::shared_ptr<T>();
   return std::move(*xss);
 }
@@ -196,20 +196,20 @@ auto mzero() {
 
 template <typename T, typename... Ts>
 auto mplus(const std::shared_ptr<T> &xs, const std::shared_ptr<Ts> &... yss) {
-  if (bool(xs))
+  if (__builtin_expect(bool(xs), true))
     return xs;
   for (auto pys : std::initializer_list<const std::shared_ptr<T> *>{&yss...})
-    if (bool(*pys))
+    if (__builtin_expect(bool(*pys), true))
       return *pys;
   return std::shared_ptr<T>();
 }
 
 template <typename T, typename... Ts>
 auto mplus(std::shared_ptr<T> &&xs, std::shared_ptr<Ts> &&... yss) {
-  if (bool(xs))
+  if (__builtin_expect(bool(xs), true))
     return std::move(xs);
   for (auto pys : std::initializer_list<std::shared_ptr<T> *>{&yss...})
-    if (bool(*pys))
+    if (__builtin_expect(bool(*pys), true))
       return std::move(*pys);
   return std::shared_ptr<T>();
 }

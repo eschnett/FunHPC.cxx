@@ -95,10 +95,10 @@ auto fmapTopo(F &&f, G &&g, const std::array<T, N> &xs,
               const connectivity<B> &bs, Args &&... args) {
   std::ptrdiff_t s = N;
   std::array<R, N> rs;
-  if (s == 1) {
+  if (__builtin_expect(s == 1, false)) {
     rs[0] =
         cxx::invoke(std::forward<F>(f), xs[0], bs, std::forward<Args>(args)...);
-  } else if (s > 1) {
+  } else if (__builtin_expect(s > 1, true)) {
     rs[0] = cxx::invoke(
         std::forward<F>(f), xs[0],
         connectivity<B>(get<0>(bs), cxx::invoke(std::forward<G>(g), xs[1], 0)),

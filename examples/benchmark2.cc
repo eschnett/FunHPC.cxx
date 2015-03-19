@@ -75,8 +75,8 @@ token tree(token tok, std::int64_t items, std::int64_t iter0,
            std::int64_t iters) {
   if (iters == 0)
     return tok;
-  --iters;
-  tok = do_work(tok, items);
+  if (iters == 1)
+    return do_work(tok, items);
   auto iters1 = iters / 2;
   auto iters2 = iters - iters1;
   int p1 = cxx::div_floor(iter0, funhpc::size()).rem;
@@ -90,7 +90,7 @@ token tree(token tok, std::int64_t items, std::int64_t iter0,
 
 template <typename F> void runbench(const std::string &name, F &&f) {
   std::int64_t workitemss[] = {1, 1000, 1000000};
-  std::int64_t inititers = 1000;
+  std::int64_t inititers = 100;
   double mintime = 1.0;
 
   for (auto workitems : workitemss) {

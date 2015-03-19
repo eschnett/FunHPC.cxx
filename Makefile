@@ -508,21 +508,19 @@ external/openmpi.unpacked: external/openmpi.downloaded
 	    tar xjf $(notdir $(OPENMPI_URL))) &&	\
 	: > $@
 external/openmpi.built: external/openmpi.unpacked | hwloc
-	+(cd external &&						    \
-	    $(RM) -r $(OPENMPI_NAME)-build &&				    \
-	    mkdir $(OPENMPI_NAME)-build &&				    \
-	    cd $(OPENMPI_NAME)-build &&					    \
-	    unset MPICC MPICXX &&					    \
-	    "$(abspath external/$(OPENMPI_NAME)/configure)"		    \
-		--prefix="$(OPENMPI_DIR)"				    \
-		--with-hwloc="$(HWLOC_DIR)"				    \
-		--with-hwloc-libdir="$(HWLOC_DIR)/lib"			    \
-		"CC=$(CC)"						    \
-		"CXX=$(CXX)"						    \
-		"CFLAGS=$(CFLAGS_EXT)"					    \
-		"CXXFLAGS=$(CXXFLAGS_EXT)"				    \
-		"LDFLAGS=-L$(HWLOC_DIR)/lib -Wl,-rpath,$(HWLOC_DIR)/lib" && \
-	    $(MAKE)) &&							    \
+	+(cd external &&					\
+	    $(RM) -r $(OPENMPI_NAME)-build &&			\
+	    mkdir $(OPENMPI_NAME)-build &&			\
+	    cd $(OPENMPI_NAME)-build &&				\
+	    unset MPICC MPICXX &&				\
+	    "$(abspath external/$(OPENMPI_NAME)/configure)"	\
+		--prefix="$(OPENMPI_DIR)"			\
+		--with-hwloc="$(HWLOC_DIR)"			\
+		"CC=$(CC)"					\
+		"CXX=$(CXX)"					\
+		"CFLAGS=$(CFLAGS_EXT)"				\
+		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
+	    $(MAKE)) &&						\
 	: > $@
 external/openmpi.installed: external/openmpi.built
 	+(cd external &&			\

@@ -99,8 +99,8 @@ CC           = clang
 CXX          = clang++
 CFLAGS       = -march=native -Wall -g -std=c11 -Dasm=__asm__
 CXXFLAGS     = -march=native -Wall -g -std=c++14 -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__
-DEBUGFLAGS   = -D_GLIBCXX_DEBUG
-OPTFLAGS     = # -O3 -flto -DNDEBUG -Wno-unused-variable
+DEBUGFLAGS   = # -D_GLIBCXX_DEBUG
+OPTFLAGS     = -O3 -flto -DNDEBUG -Wno-unused-variable
 CFLAGS_EXT   = -march=native -Wall -g -O3
 CXXFLAGS_EXT = -march=native -Wall -g -O3
 
@@ -210,8 +210,9 @@ FUNHPC_TEST_SRCS =				\
 	funhpc/shared_rptr_test.cc		\
 	funhpc/test_main.cc
 FUNHPC_EXAMPLE_SRCS =				\
+	examples/benchmark.cc			\
+	examples/fibonacci.cc			\
 	examples/hello.cc			\
-	examples/million.cc			\
 	examples/pingpong.cc			\
 	examples/wave1d.cc
 ALL_SRCS =							\
@@ -290,10 +291,13 @@ examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	    $(MAKE) run NPROCS=2 EXE=$$example;				\
 	done
 .PHONY: examples
-hello: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/hello.o
+benchmark: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/benchmark.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 	    $(MPILIBS:%=-l%)
-million: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/million.o
+fibonacci: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/fibonacci.o
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+	    $(MPILIBS:%=-l%)
+hello: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/hello.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 	    $(MPILIBS:%=-l%)
 pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
@@ -516,8 +520,8 @@ external/openmpi.built: external/openmpi.unpacked | hwloc
 	    "$(abspath external/$(OPENMPI_NAME)/configure)"	\
 		--prefix="$(OPENMPI_DIR)"			\
 		--with-hwloc="$(HWLOC_DIR)"			\
-		"CC=$(CC)"					\
-		"CXX=$(CXX)"					\
+		"CC=gcc"					\
+		"CXX=g++"					\
 		"CFLAGS=$(CFLAGS_EXT)"				\
 		"CXXFLAGS=$(CXXFLAGS_EXT)" &&			\
 	    $(MAKE)) &&						\

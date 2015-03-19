@@ -5,7 +5,6 @@
 
 #include <cereal/types/string.hpp>
 #include <hwloc.h>
-#include <mpi.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -196,6 +195,8 @@ cpu_info_t manage_affinity(const hwloc_topology_t topology) {
   return cpu_info_t{tl.node, tl.node_proc, tl.node_nprocs, tl.proc_thread,
                     os.str()};
 }
+
+std::vector<cpu_info_t> cpu_infos;
 }
 
 // This routine is called on each process
@@ -206,13 +207,16 @@ void hwloc_set_affinity() {
   ierr = hwloc_topology_load(topology);
   assert(!ierr);
 
+  auto &infos = hwloc::cpu_infos;
+
   // The algorithm here fails when we yield after creating a thread.
   // Apparently, this prevents the threads to be distributed over all
   // workers. We thus temporarily disable it.
   qthread::yield_after_thread_create = false;
 
   int nthreads = qthread::thread::hardware_concurrency();
-  std::vector<hwloc::cpu_info_t> infos(nthreads);
+  infos.clear();
+  infos.resize(nthreads);
   bool success = false;
   int nattempts = 10;
   for (int attempt = 1; attempt <= nattempts; ++attempt) {
@@ -225,7 +229,7 @@ void hwloc_set_affinity() {
     for (auto &info : infos)
       info = {};
     for (auto &f : fs) {
-      hwloc::cpu_info_t info = f.get();
+      auto info = f.get();
       assert(info.thread >= 0 && info.thread < nthreads);
       infos[info.thread] = info;
     }
@@ -239,31 +243,6 @@ void hwloc_set_affinity() {
 
   qthread::yield_after_thread_create = true;
 
-  // Output information from the first node, sorted by MPI rank
-  if (infos[0].node == 0) {
-    if (infos[0].proc > 0) {
-      int dummy;
-      MPI_Recv(&dummy, 1, MPI_INT, infos[0].proc - 1, 0, MPI_COMM_WORLD,
-               MPI_STATUS_IGNORE);
-    }
-    for (const auto &info : infos)
-      std::cout << info.msg << "\n" << std::flush;
-    if (infos[0].proc < infos[0].nprocs - 1) {
-      int dummy = 0;
-      MPI_Send(&dummy, 1, MPI_INT, infos[0].proc + 1, 0, MPI_COMM_WORLD);
-    }
-    if (infos[0].nprocs > 1) {
-      if (infos[0].proc == 0) {
-        int dummy;
-        MPI_Recv(&dummy, 1, MPI_INT, infos[0].nprocs - 1, 0, MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
-      } else if (infos[0].proc == infos[0].nprocs - 1) {
-        int dummy = 0;
-        MPI_Send(&dummy, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-      }
-    }
-  }
-
   if (!success) {
     std::cerr << "FunHPC: Could not set CPU affinity on process " << rank()
               << "\n";
@@ -271,5 +250,14 @@ void hwloc_set_affinity() {
   }
 
   hwloc_topology_destroy(topology);
+}
+
+int hwloc_num_local_ranks() { return hwloc::cpu_infos.at(0).nprocs; }
+
+std::string hwloc_get_cpu_infos() {
+  std::ostringstream os;
+  for (const auto &info : hwloc::cpu_infos)
+    os << info.msg << "\n";
+  return os.str();
 }
 }

@@ -1,8 +1,12 @@
 #ifndef FUNHPC_HWLOC_HPP
 #define FUNHPC_HWLOC_HPP
 
+#include <string>
+
 namespace funhpc {
 void hwloc_set_affinity();
+int hwloc_num_local_ranks();
+std::string hwloc_get_cpu_infos();
 }
 
 #define FUNHPC_HWLOC_HPP_DONE

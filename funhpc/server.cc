@@ -174,6 +174,13 @@ void initialize(int &argc, char **&argv) {
 }
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
+  std::cout << "FunHPC: " << size() << " processes, " << hwloc_num_local_ranks()
+            << " local processes, " << qthread::thread::hardware_concurrency()
+            << " threads\n";
+  auto nprocs = hwloc_num_local_ranks();
+  for (int p = 0; p < nprocs; ++p)
+    std::cout << hwloc_get_cpu_infos();
+
   std::cout << "FunHPC: begin\n";
   // auto start_time = std::chrono::high_resolution_clock::now();
   timeval tv;

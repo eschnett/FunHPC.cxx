@@ -247,7 +247,7 @@ void hwloc_set_affinity() {
                MPI_STATUS_IGNORE);
     }
     for (const auto &info : infos)
-      std::cout << info.msg << "\n";
+      std::cout << info.msg << "\n" << std::flush;
     if (infos[0].proc < infos[0].nprocs - 1) {
       int dummy = 0;
       MPI_Send(&dummy, 1, MPI_INT, infos[0].proc + 1, 0, MPI_COMM_WORLD);

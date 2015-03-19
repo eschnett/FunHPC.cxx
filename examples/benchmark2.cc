@@ -1,6 +1,7 @@
 #include <cxx/invoke.hpp>
+#include <cxx/cstdlib.hpp>
+#include <funhpc/async.hpp>
 #include <funhpc/main.hpp>
-#include <qthread/future.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -39,39 +40,51 @@ token do_work(token tok, std::int64_t items) {
   return tok;
 }
 
-token serial(token tok, std::int64_t items, std::int64_t iters) {
+token serial(token tok, std::int64_t items, std::int64_t iter0,
+             std::int64_t iters) {
   for (std::ptrdiff_t i = 0; i < iters; ++i)
     tok = do_work(tok, items);
   return tok;
 }
 
-token parallel(token tok, std::int64_t items, std::int64_t iters) {
+token parallel(token tok, std::int64_t items, std::int64_t iter0,
+               std::int64_t iters) {
   std::vector<qthread::future<token>> fs(iters);
-  for (auto &f : fs)
-    f = qthread::async(do_work, tok, items);
+  for (std::int64_t i = 0; i < iters; ++i) {
+    int p = cxx::div_floor(iter0 + i, funhpc::size()).rem;
+    fs[i] = funhpc::async(funhpc::rlaunch::async, p, do_work, tok, items);
+  }
   for (auto &f : fs)
     tok += f.get();
   return tok;
 }
 
-token daisychained(token tok, std::int64_t items, std::int64_t iters) {
+token daisychained(token tok, std::int64_t items, std::int64_t iter0,
+                   std::int64_t iters) {
   if (iters == 0)
     return tok;
   --iters;
   tok = do_work(tok, items);
-  auto f = qthread::async(daisychained, tok, items, iters);
+  int p = cxx::div_floor(iter0, funhpc::size()).rem;
+  auto f = funhpc::async(funhpc::rlaunch::async, p, daisychained, tok, items,
+                         iter0 + 1, iters);
   return f.get();
 }
 
-token tree(token tok, std::int64_t items, std::int64_t iters) {
+token tree(token tok, std::int64_t items, std::int64_t iter0,
+           std::int64_t iters) {
   if (iters == 0)
     return tok;
   --iters;
   tok = do_work(tok, items);
   auto iters1 = iters / 2;
   auto iters2 = iters - iters1;
-  auto f1 = qthread::async(daisychained, tok, items, iters1);
-  auto f2 = qthread::async(daisychained, tok, items, iters2);
+  int p1 = cxx::div_floor(iter0, funhpc::size()).rem;
+  int p2 = cxx::div_floor(iter0 + iters1, funhpc::size()).rem;
+  auto f1 = funhpc::async(funhpc::rlaunch::async, p1, daisychained, tok, items,
+                          iter0, iters1);
+  auto f2 = funhpc::async(funhpc::rlaunch::async, p2, daisychained, tok, items,
+                          iter0 + iters1, iters2);
   return f1.get() + f2.get();
 }
 
@@ -88,7 +101,7 @@ template <typename F> void runbench(const std::string &name, F &&f) {
     for (;;) {
       token tok = begin_work();
       auto t0 = gettime();
-      tok = cxx::invoke(f, tok, workitems, iters);
+      tok = cxx::invoke(f, tok, workitems, 0, iters);
       auto t1 = gettime();
       finish_work(tok);
       time = t1 - t0;
@@ -105,7 +118,7 @@ template <typename F> void runbench(const std::string &name, F &&f) {
 }
 
 int funhpc_main(int argc, char **argv) {
-  std::cout << "Single-Node Benchmark\n"
+  std::cout << "Multi-Node Benchmark\n"
             << "\n";
 
   runbench("serial", serial);

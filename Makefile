@@ -211,6 +211,7 @@ FUNHPC_TEST_SRCS =				\
 	funhpc/test_main.cc
 FUNHPC_EXAMPLE_SRCS =				\
 	examples/benchmark.cc			\
+	examples/benchmark2.cc			\
 	examples/fibonacci.cc			\
 	examples/hello.cc			\
 	examples/pingpong.cc			\
@@ -292,6 +293,9 @@ examples: $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	done
 .PHONY: examples
 benchmark: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/benchmark.o
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+	    $(MPILIBS:%=-l%)
+benchmark2: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/benchmark2.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 	    $(MPILIBS:%=-l%)
 fibonacci: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/fibonacci.o

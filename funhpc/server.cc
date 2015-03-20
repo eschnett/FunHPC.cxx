@@ -21,6 +21,14 @@
 
 namespace funhpc {
 
+namespace detail {
+double gettime() {
+  timeval tv;
+  gettimeofday(&tv, nullptr);
+  return tv.tv_sec + tv.tv_usec / 1.0e+6;
+}
+}
+
 constexpr int mpi_root = 0;
 constexpr int mpi_tag = 0;
 const MPI_Comm mpi_comm = MPI_COMM_WORLD;
@@ -190,18 +198,12 @@ int run_main(mainfunc_t *user_main, int argc, char **argv) {
     std::cout << hwloc_get_cpu_infos();
 
   std::cout << "FunHPC: begin\n";
-  // auto start_time = std::chrono::high_resolution_clock::now();
-  timeval tv;
-  gettimeofday(&tv, nullptr);
-  auto start_time = tv.tv_sec * INT64_C(1000000) + tv.tv_usec;
+  auto start_time = detail::gettime();
   int res = user_main(argc, argv);
-  // auto end_time = std::chrono::high_resolution_clock::now();
-  // auto run_time =
-  //     std::chrono::nanoseconds(end_time - start_time).count() / 1.0e+9;
-  gettimeofday(&tv, nullptr);
-  auto end_time = tv.tv_sec * INT64_C(1000000) + tv.tv_usec;
-  auto run_time = (end_time - start_time) / 1.0e+6;
+  auto end_time = detail::gettime();
+  auto run_time = end_time - start_time;
   std::cout << "FunHPC: end; total execution time: " << run_time << " sec\n";
+
   return res;
 }
 

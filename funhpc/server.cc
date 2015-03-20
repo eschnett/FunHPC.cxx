@@ -70,6 +70,11 @@ std::vector<std::unique_ptr<mpi_req_t>> send_reqs;
 
 // Step 1: Enqueue task (from any thread)
 void enqueue_task(std::ptrdiff_t dest, task_t &&t) {
+  assert(size() > 1);
+  if (size() == 1) {
+    std::cerr << "Called enqueue_task with a single MPI process\n";
+    std::terminate();
+  }
   assert(dest >= 0 && dest < size());
   // Serialize task
   auto reqp = std::make_unique<mpi_req_t>();
@@ -208,6 +213,9 @@ int run_main(mainfunc_t *user_main, int argc, char **argv) {
 }
 
 int eventloop(mainfunc_t *user_main, int argc, char **argv) {
+  if (size() == 1)
+    return run_main(user_main, argc, argv);
+
   send_queue_mutex = std::make_unique<qthread::mutex>();
 
   qthread::future<int> fres;

@@ -237,8 +237,10 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
 }
 
 void finalize() {
-  MPI_Barrier(mpi_comm);
-  qthread_finalize();
+  // This is not necessary
+  // MPI_Barrier(mpi_comm);
+  // It is recommended to only call this when necessary
+  // qthread_finalize();
   MPI_Finalize();
 }
 }

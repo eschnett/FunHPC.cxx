@@ -165,7 +165,14 @@ bool terminate_check(bool ready_to_terminate) {
 }
 
 void initialize(int &argc, char **&argv) {
-  MPI_Init(&argc, &argv);
+  // MPI_Init(&argc, &argv);
+  // TODO: Want MPI_THREAD_FUNNELED
+  int provided;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+  if (provided != MPI_THREAD_SERIALIZED && provided != MPI_THREAD_MULTIPLE) {
+    std::cerr << "MPI does not support multi-threading\n";
+    std::exit(EXIT_FAILURE);
+  }
   detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();

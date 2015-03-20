@@ -53,6 +53,7 @@ struct mpi_req_t {
 };
 
 // Send queue, to communicate between threads
+// TODO: Use Qthread's qdqueue instead?
 std::vector<std::unique_ptr<mpi_req_t>> send_queue;
 std::unique_ptr<qthread::mutex> send_queue_mutex;
 

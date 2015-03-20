@@ -227,7 +227,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
     recv_tasks();
     if (terminate_check(!fres.valid() || fres.ready()))
       break;
-    // if (qthread::thread::hardware_concurrency() == 1)
+    // Note: yield_near does not work here (why?)
     qthread::this_thread::yield();
   }
   cancel_sends();

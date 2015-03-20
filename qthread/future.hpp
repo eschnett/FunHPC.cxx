@@ -589,9 +589,10 @@ public:
     result = thread_args->result.get_future();
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     assert(!ierr);
-    // qthread_yield();
-    if (__builtin_expect(yield_after_thread_create, true))
+    if (__builtin_expect(yield_after_thread_create, true)) {
+      // qthread_yield();
       qthread_yield_near();
+    }
   }
 
   async_thread(const async_thread &) = delete;

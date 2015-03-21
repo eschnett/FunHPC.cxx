@@ -29,7 +29,7 @@ double begin_work() {
   volatile double x{1.0};
   return x;
 }
-double do_workitem(double x) { return sqrt(x); }
+double do_workitem(double x) { return std::sqrt(x); }
 void finish_work(double x) {
   volatile double r;
   volatile double *rp = &r;

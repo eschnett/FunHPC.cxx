@@ -225,6 +225,9 @@ FUNHPC_EXAMPLE_SRCS =				\
 	examples/hello.cc			\
 	examples/pingpong.cc			\
 	examples/wave1d.cc
+HPX_EXAMPLE_SRCS =				\
+	examples/benchmark_hpx.cc		\
+	examples/hello_hpx.cc
 ALL_SRCS =							\
 	$(SRCS) $(FUNHPC_SRCS)					\
 	$(TEST_SRCS) $(FUNHPC_TEST_SRCS) $(FUNHPC_EXAMPLE_SRCS)

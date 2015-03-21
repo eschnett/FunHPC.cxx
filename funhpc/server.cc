@@ -153,17 +153,16 @@ void recv_tasks() {
     // We assume the message is immediately available
     // Note: The const_cast here is against the C++ standard for
     // std::string, but works fine in practice
-    // MPI_Recv(const_cast<char *>(reqp->buf.data()), reqp->buf.size(),
-    // MPI_CHAR,
-    //          reqp->proc, mpi_tag, mpi_comm, MPI_STATUS_IGNORE);
-    MPI_Request req;
-    MPI_Irecv(const_cast<char *>(reqp->buf.data()), reqp->buf.size(), MPI_CHAR,
-              reqp->proc, mpi_tag, mpi_comm, &req);
-    MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
-    if (!flag) {
-      std::cerr << "MPI_Test not ready\n";
-      std::terminate();
-    }
+    MPI_Recv(const_cast<char *>(reqp->buf.data()), reqp->buf.size(), MPI_CHAR,
+             reqp->proc, mpi_tag, mpi_comm, MPI_STATUS_IGNORE);
+    // MPI_Request req;
+    // MPI_Irecv(const_cast<char *>(reqp->buf.data()), reqp->buf.size(),
+    //           MPI_CHAR, reqp->proc, mpi_tag, mpi_comm, &req);
+    // MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+    // if (!flag) {
+    //   std::cerr << "MPI_Test not ready\n";
+    //   std::terminate();
+    // }
     qthread::thread(run_task, std::move(reqp)).detach();
   }
 }

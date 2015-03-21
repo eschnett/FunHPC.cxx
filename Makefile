@@ -381,11 +381,10 @@ gcc: external/gcc.done
 .PHONY: gcc
 external/gcc.downloaded: | external
 	(cd external &&								  \
-	    $(RM) $(notdir $(GCC_URL)) &&					  \
-	    wget $(GCC_URL) &&							  \
-	    $(RM) gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz		  \
-		isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz) &&			  \
-	    wget https://gmplib.org/download/gmp/gmp-4.3.2.tar.bz2		  \
+	    $(RM) $(notdir $(GCC_URL)) gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2	  \
+	    mpc-0.8.1.tar.gz isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz &&		  \
+	    wget $(GCC_URL) &							  \
+	    wget https://gmplib.org/download/gmp/gmp-4.3.2.tar.bz2 &		  \
 	    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/mpfr-2.4.2.tar.bz2 &&	  \
 	    wget http://www.multiprecision.org/mpc/download/mpc-0.8.1.tar.gz &&	  \
 	    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-0.12.2.tar.bz2 &&	  \

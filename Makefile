@@ -24,6 +24,14 @@ GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
 GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
 GOOGLETEST_LIBS     =
 
+HPX_NAME     = hpx-0.9.10-rc1
+HPX_URL      = https://github.com/STEllAR-GROUP/hpx/archive/0.9.10-rc1.tar.gz
+HPX_DIR      = $(abspath ./$(HPX_NAME))
+HPX_CPPFLAGS =
+HPX_INCDIRS  = $(HPX_DIR)/include $(HPX_DIR)/include/hpx/external /opt/local/include
+HPX_LIBDIRS  = $(HPX_DIR)/lib /opt/local/lib
+HPX_LIBS     = hpx hpx_init hpx_serialization boost_program_options-mt boost_serialization-mt boost_system-mt boost_thread-mt
+
 HWLOC_NAME     = hwloc-1.10.1
 HWLOC_URL      = http://www.open-mpi.org/software/hwloc/v1.10/downloads/hwloc-1.10.1.tar.bz2
 HWLOC_DIR      = $(abspath ./$(HWLOC_NAME))
@@ -60,6 +68,7 @@ INCDIRS =					\
 	$(abspath .)				\
 	$(CEREAL_INCDIRS)			\
 	$(GOOGLETEST_INCDIRS)			\
+	$(HPX_INCDIRS)				\
 	$(HWLOC_INCDIRS)			\
 	$(JEMALLOC_INCDIRS)			\
 	$(OPENMPI_INCDIRS)			\
@@ -265,8 +274,10 @@ NSHEPHERDS :=						\
 NTHREADS :=						\
 	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ PU / { print $$3; }'), 1)
-NSHEPHERDS_PER_PROC := \
+NSHEPHERDS_PER_PROC :=							 \
 	$(shell echo '($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS)' | bc)
+NTHREADS_PER_PROC :=							\
+	$(shell echo '($(NTHREADS) + $(NPROCS) - 1) / $(NPROCS)' | bc)
 NTHREADS_PER_SHEPHERD :=						       \
 	$(shell echo '($(NTHREADS) + $(NPROCS) * $(NSHEPHERDS_PER_PROC) - 1) / \
 	    ($(NPROCS) * $(NSHEPHERDS_PER_PROC))' | bc)
@@ -274,12 +285,15 @@ NTHREADS_PER_SHEPHERD :=						       \
 EXE = ./hello
 run:
 	unset LD_LIBRARY_PATH DYLD_LIBRARY_PATH &&			   \
+	export DYLD_LIBRARY_PATH=$(HPX_DIR)/lib &&			   \
 	$(MPIRUN)							   \
 	    -np $(NPROCS)						   \
 	    -x "QTHREAD_NUM_SHEPHERDS=$(NSHEPHERDS_PER_PROC)"		   \
 	    -x "QTHREAD_NUM_WORKERS_PER_SHEPHERD=$(NTHREADS_PER_SHEPHERD)" \
 	    -x "QTHREAD_STACK_SIZE=65536"				   \
-	    $(EXE)
+	    $(EXE)							   \
+	    --hpx:info							   \
+	    --hpx:threads $(NTHREADS_PER_PROC)
 .PHONY: run
 
 ### examples ###
@@ -310,6 +324,19 @@ pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
 wave1d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave1d.o
 	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
 	    $(MPILIBS:%=-l%)
+
+### hpx ###
+
+benchmark_hpx: $(SRCS:%.cc=%.o) examples/benchmark_hpx.o
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+	    $(MPILIBS:%=-l%)						\
+	    $(HPX_LIBDIRS:%=-L%) $(HPX_LIBDIRS:%=-Wl,-rpath,%)		\
+	    $(HPX_LIBS:%=-l%)
+hello_hpx: $(SRCS:%.cc=%.o) examples/hello_hpx.o | hpx
+	$(MPICXX) $(MPICPPFLAGS) $(MPICXXFLAGS) $(MPILDFLAGS) -o $@ $^	\
+	    $(MPILIBS:%=-l%)						\
+	    $(HPX_LIBDIRS:%=-L%) $(HPX_LIBDIRS:%=-Wl,-rpath,%)		\
+	    $(HPX_LIBS:%=-l%)
 
 ### check ###
 
@@ -424,6 +451,58 @@ external/gtest.built: external/gtest.unpacked
 external/gtest.done: external/gtest.built
 	: > $@
 
+### HPX ###
+
+hpx: external/hpx.done
+.PHONY: hpx
+external/hpx.downloaded: | external
+	(cd external &&				\
+	    $(RM) $(notdir $(HPX_URL)) &&	\
+	    wget $(HPX_URL)) &&			\
+	: > $@
+external/hpx.unpacked: external/hpx.downloaded
+	(cd external &&				\
+	    $(RM) -r $(HPX_NAME) &&		\
+	    tar xzf $(notdir $(HPX_URL))) &&	\
+	: > $@
+external/hpx.built: external/hpx.unpacked | hwloc jemalloc openmpi
+	+(cd external &&					\
+	    $(RM) -r $(HPX_NAME)-build &&			\
+	    mkdir $(HPX_NAME)-build &&				\
+	    cd $(HPX_NAME)-build &&				\
+	    cmake						\
+		-DCMAKE_BUILD_TYPE=Release			\
+		-DCMAKE_C_COMPILER="$(CC)"			\
+		-DCMAKE_CXX_COMPILER="$(CXX)"			\
+		-DCMAKE_C_FLAGS="$(CFLAGS_EXT)"			\
+		-DCMAKE_CXX_FLAGS="$(CXXFLAGS_EXT)"		\
+		-DHPX_HAVE_PARCELPORT_MPI=ON			\
+		-DMPI_C_COMPILER="$(MPICC)"			\
+		-DMPI_CXX_COMPILER="$(MPICXX)"			\
+		-DMPI_C_COMPILE_FLAGS="$(CFLAGS_EXT)"		\
+		-DMPI_CXX_COMPILE_FLAGS="$(CXXFLAGS_EXT)"	\
+		-DHPX_MALLOC=jemalloc				\
+		-DHPX_CMAKE_LOGLEVEL=Debug			\
+		-DJEMALLOC_ROOT="$(JEMALLOC_DIR)"		\
+		-DHWLOC_ROOT="$(HWLOC_DIR)"			\
+		-DCMAKE_INSTALL_PREFIX="$(HPX_DIR)"		\
+		"$(abspath external/$(HPX_NAME))" &&		\
+	    $(MAKE)) &&						\
+	: > $@
+external/hpx.installed: external/hpx.built
+	+(cd external &&					\
+	    $(RM) -r $(HPX_DIR) &&				\
+	    cd $(HPX_NAME)-build &&				\
+	    $(MAKE) install) &&					\
+	if command -v install_name_tool >/dev/null 2>&1; then	\
+	    for lib in $(HPX_DIR)/lib/libhpx*.*.dylib; do	\
+		install_name_tool -id $$lib $$lib;		\
+	    done;						\
+	fi &&							\
+	: > $@
+external/hpx.done: external/hpx.installed
+	: > $@
+
 ### hwloc ###
 
 hwloc: external/hwloc.done
@@ -489,14 +568,15 @@ external/jemalloc.built: external/jemalloc.unpacked
 	    $(MAKE)) &&						\
 	: > $@
 external/jemalloc.installed: external/jemalloc.built
-	+(cd external &&					\
-	    $(RM) -r $(JEMALLOC_DIR) &&				\
-	    cd $(JEMALLOC_NAME)-build &&			\
-	    $(MAKE) install) &&					\
-	if command -v install_name_tool >/dev/null 2>&1; then	\
-	    lib=$(JEMALLOC_DIR)/lib/libjemalloc.*.dylib &&	\
-	    install_name_tool -id $$lib $$lib;			\
-	fi &&							\
+	+(cd external &&						\
+	    $(RM) -r $(JEMALLOC_DIR) &&					\
+	    cd $(JEMALLOC_NAME)-build &&				\
+	    $(MAKE) install) &&						\
+	if command -v install_name_tool >/dev/null 2>&1; then		\
+	    for lib in $(JEMALLOC_DIR)/lib/libjemalloc.*.dylib; do	\
+		install_name_tool -id $$lib $$lib;			\
+	    done;							\
+	fi &&								\
 	: > $@
 external/jemalloc.done: external/jemalloc.installed
 	: > $@

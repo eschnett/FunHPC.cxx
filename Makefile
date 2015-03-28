@@ -18,6 +18,7 @@ CXXFLAGS =						\
 	$(CEREAL_CXXFLAGS)				\
 	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
 	$(GOOGLETEST_CXXFLAGS)				\
+	$(HPX_CXXFLAGS)					\
 	$(HWLOC_CXXFLAGS)				\
 	$(JEMALLOC_CXXFLAGS)				\
 	$(QTHREADS_CXXFLAGS)
@@ -25,12 +26,14 @@ LDFLAGS =						\
 	$(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)	\
 	$(CEREAL_LDFLAGS)				\
 	$(GOOGLETEST_LDFLAGS)				\
+	$(HPX_LDFLAGS)					\
 	$(HWLOC_LDFLAGS)				\
 	$(JEMALLOC_LDFLAGS)				\
 	$(QTHREADS_LDFLAGS)
 LIBS =						\
 	$(CEREAL_LIBS)				\
 	$(GOOGLETEST_LIBS)			\
+	$(HPX_LIBS)				\
 	$(HWLOC_LIBS)				\
 	$(JEMALLOC_LIBS)			\
 	$(QTHREADS_LIBS)			\
@@ -242,7 +245,7 @@ wave1d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave1d.o
 
 benchmark_hpx: $(SRCS:%.cc=%.o) examples/benchmark_hpx.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-hello_hpx: $(SRCS:%.cc=%.o) examples/hello_hpx.o | hpx
+hello_hpx: $(SRCS:%.cc=%.o) examples/hello_hpx.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 ### check ###

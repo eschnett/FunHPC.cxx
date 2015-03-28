@@ -2,18 +2,18 @@
 
 # pushd ~/software && source cereal-1.1.0/env.sh && source hpx-0.9.10/env.sh && source hwloc-1.10.1/env.sh && source jemalloc-3.6.0/env.sh && source llvm-3.6.0/env.sh && source openmpi-1.8.4/env.sh && source qthreads-1.10/env.sh && popd && make
 
-GOOGLETEST_NAME    = gtest-1.7.0
-GOOGLETEST_URL     = https://googletest.googlecode.com/files/gtest-1.7.0.zip
-GOOGLETEST_DIR     = $(abspath ./$(GOOGLETEST_NAME))
-GOOGLETEST_INCDIRS = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
-GOOGLETEST_LIBDIRS = $(GOOGLETEST_DIR)/src
-GOOGLETEST_OBJS    = $(GOOGLETEST_DIR)/src/gtest-all.o $(GOOGLETEST_DIR)/src/gtest_main.o
+GOOGLETEST_NAME     = gtest-1.7.0
+GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
+GOOGLETEST_DIR      = $(abspath ./$(GOOGLETEST_NAME))
+GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
+GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
+GOOGLETEST_OBJS     = $(GOOGLETEST_DIR)/src/gtest-all.o
+GOOGLETEST_MAIN_OBJ = $(GOOGLETEST_DIR)/src/gtest_main.o
 
 INCDIRS = . $(GOOGLETEST_INCDIRS)
 LIBDIRS = $(GOOGLETEST_LIBDIRS)
 
 CXXFLAGS =						\
-	-stdlib=libstdc++\
 	$(INCDIRS:%=-I%)				\
 	$(CEREAL_CXXFLAGS)				\
 	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
@@ -251,7 +251,7 @@ check: selftest selftest-funhpc
 	$(MAKE) run EXE=./selftest
 	$(MAKE) run NPROCS=2 EXE=./selftest-funhpc
 .PHONY: check
-selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
+selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) $(GOOGLETEST_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(GOOGLETEST_OBJS) $(LIBS)
 selftest-funhpc:							      \
 	$(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)

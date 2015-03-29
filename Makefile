@@ -198,13 +198,14 @@ NSHEPHERDS :=						\
 NTHREADS :=						\
 	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ PU / { print $$3; }'), 1)
-NSHEPHERDS_PER_PROC :=							 \
-	$(shell echo '($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS)' | bc)
+NSHEPHERDS_PER_PROC :=							\
+	$(shell echo $$((($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS))))
 NTHREADS_PER_PROC :=							\
-	$(shell echo '($(NTHREADS) + $(NPROCS) - 1) / $(NPROCS)' | bc)
-NTHREADS_PER_SHEPHERD :=						       \
-	$(shell echo '($(NTHREADS) + $(NPROCS) * $(NSHEPHERDS_PER_PROC) - 1) / \
-	    ($(NPROCS) * $(NSHEPHERDS_PER_PROC))' | bc)
+	$(shell echo $$((($(NTHREADS) + $(NPROCS) - 1) / $(NPROCS))))
+NTHREADS_PER_SHEPHERD :=						\
+	$(shell echo $$((($(NTHREADS) +					\
+	                  $(NPROCS) * $(NSHEPHERDS_PER_PROC) - 1) /	\
+		         ($(NPROCS) * $(NSHEPHERDS_PER_PROC)))))
 
 EXE = ./hello
 run:

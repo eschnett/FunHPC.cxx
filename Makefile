@@ -42,13 +42,13 @@ LIBS =						\
 ifneq ($(LLVM_DIR), )
 
 DEBUGFLAGS = # -D_GLIBCXX_DEBUG
-OPTFLAGS   = # -O3 -flto -DNDEBUG -Wno-unused-variable
+OPTFLAGS   = -O3 -flto -DNDEBUG -Wno-unused-variable
 CXXFLAGS  += -march=native -Wall -g -std=c++14 -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__ $(DEBUGFLAGS) $(OPTFLAGS)
 
 else ifneq ($(GCC_DIR), )
 
-DEBUGFLAGS  = -D_GLIBCXX_DEBUG
-OPTFLAGS    = # -O3 -flto -DNDEBUG
+DEBUGFLAGS  = # -D_GLIBCXX_DEBUG
+OPTFLAGS    = -O3 -flto -DNDEBUG
 CXXFLAGS   += -m128bit-long-double -march=native -Wall -g -std=c++14 -Drestrict=__restrict__ $(DEBUGFLAGS) $(OPTFLAGS)
 
 else

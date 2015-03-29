@@ -210,6 +210,8 @@ EXE = ./hello
 run:
 	$(MPIRUN)							   \
 	    -np $(NPROCS)						   \
+	    -x "QTHREAD_GUARD_PAGES=0"					   \
+	    -x "QTHREAD_INFO=1"						   \
 	    -x "QTHREAD_NUM_SHEPHERDS=$(NSHEPHERDS_PER_PROC)"		   \
 	    -x "QTHREAD_NUM_WORKERS_PER_SHEPHERD=$(NTHREADS_PER_SHEPHERD)" \
 	    -x "QTHREAD_STACK_SIZE=65536"				   \

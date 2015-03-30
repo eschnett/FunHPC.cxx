@@ -218,6 +218,8 @@ run:
 	    -x "QTHREAD_STACK_SIZE=65536"				   \
 	    $(EXE)							   \
 	    --hpx:info							   \
+	    --hpx:ini hpx.stacks.use_guard_pages=0			   \
+	    --hpx:numa-sensitive					   \
 	    --hpx:threads $(NTHREADS_PER_PROC)
 .PHONY: run
 

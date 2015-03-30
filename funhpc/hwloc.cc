@@ -209,11 +209,6 @@ void hwloc_set_affinity() {
 
   auto &infos = hwloc::cpu_infos;
 
-  // The algorithm here fails when we yield after creating a thread.
-  // Apparently, this prevents the threads to be distributed over all
-  // workers. We thus temporarily disable it.
-  qthread::yield_after_thread_create = false;
-
   int nthreads = qthread::thread::hardware_concurrency();
   infos.clear();
   infos.resize(nthreads);
@@ -240,8 +235,6 @@ void hwloc_set_affinity() {
     if (success)
       break;
   }
-
-  qthread::yield_after_thread_create = true;
 
   if (!success) {
     std::cerr << "FunHPC: Could not set CPU affinity on process " << rank()

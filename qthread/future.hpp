@@ -590,8 +590,8 @@ public:
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     assert(!ierr);
     if (__builtin_expect(yield_after_thread_create, true)) {
-      // qthread_yield();
-      qthread_yield_near();
+      qthread_yield();
+      // qthread_yield_near();
     }
   }
 

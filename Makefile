@@ -1,6 +1,6 @@
 # Makefile for FunHPC
 
-# pushd ~/software && source cereal-1.1.1/env.sh && source hpx-0.9.10/env.sh && source hwloc-1.10.1/env.sh && source jemalloc-3.6.0/env.sh && source llvm-3.6.0/env.sh && source openmpi-1.8.4/env.sh && source qthreads-1.10/env.sh && popd && make
+# pushd ~/software && source cereal-1.1.1/env.sh && source hwloc-1.10.1/env.sh && source jemalloc-3.6.0/env.sh && source llvm-3.6.0/env.sh && source openmpi-1.8.4/env.sh && source qthreads-1.10/env.sh && popd && make
 
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
@@ -18,7 +18,6 @@ CXXFLAGS =						\
 	$(CEREAL_CXXFLAGS)				\
 	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
 	$(GOOGLETEST_CXXFLAGS)				\
-	$(HPX_CXXFLAGS)					\
 	$(HWLOC_CXXFLAGS)				\
 	$(JEMALLOC_CXXFLAGS)				\
 	$(QTHREADS_CXXFLAGS)
@@ -26,14 +25,12 @@ LDFLAGS =						\
 	$(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)	\
 	$(CEREAL_LDFLAGS)				\
 	$(GOOGLETEST_LDFLAGS)				\
-	$(HPX_LDFLAGS)					\
 	$(HWLOC_LDFLAGS)				\
 	$(JEMALLOC_LDFLAGS)				\
 	$(QTHREADS_LDFLAGS)
 LIBS =						\
 	$(CEREAL_LIBS)				\
 	$(GOOGLETEST_LIBS)			\
-	$(HPX_LIBS)				\
 	$(HWLOC_LIBS)				\
 	$(JEMALLOC_LIBS)			\
 	$(QTHREADS_LIBS)			\

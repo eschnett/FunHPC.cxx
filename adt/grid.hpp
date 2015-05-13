@@ -118,6 +118,7 @@ private:
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
+    // TODO: Serialize only the accessible part of data
     ar(indexing, data);
   }
 
@@ -181,6 +182,10 @@ public:
     assert(invariant());
   }
 
+  // TODO: support generic indexable types, not just std::vector.
+  // Probably should define an API, maybe supporting constructing and
+  // indexing. A type consisting of "shared pointer to C-style array"
+  // might be interesting.
   template <typename F, typename... Args>
   grid(iotaMap, F &&f, const index_type &s, Args &&... args)
       : indexing(s), data(indexing.size()) {

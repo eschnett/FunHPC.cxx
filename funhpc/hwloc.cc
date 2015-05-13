@@ -53,6 +53,17 @@ struct thread_layout {
 
   thread_layout() {
     // TODO: This requires OpenMPI
+
+    // TODO: Try this:
+    // From
+    // <https://github.com/jeffhammond/MPI-plus-MPI-slides/blob/master/code/hello-mpi.c>:
+    // int nrank, nsize;
+    // MPI_Comm MPI_COMM_NODE;
+    // MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0 /* key */,
+    //                     MPI_INFO_NULL, &MPI_COMM_NODE);
+    // MPI_Comm_rank(MPI_COMM_NODE, &nrank);
+    // MPI_Comm_size(MPI_COMM_NODE, &nsize);
+
     proc = envtoi("OMPI_COMM_WORLD_RANK");
     assert(proc == rank());
     nprocs = envtoi("OMPI_COMM_WORLD_SIZE");

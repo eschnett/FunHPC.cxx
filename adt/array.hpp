@@ -170,6 +170,15 @@ template <typename T, std::size_t N, std::size_t I>
   return r;
 }
 
+template <std::size_t I, typename T, std::size_t N>
+auto rmdir(const std::array<T, N> &x) {
+  static_assert(I >= 0 && I < N, "");
+  std::array<T, N - 1> r;
+  for (std::size_t i = 0; i < N - 1; ++i)
+    r[i] = x[i + (i >= I)];
+  return r;
+}
+
 template <std::size_t I, typename T, std::size_t N, typename U>
 auto update(const std::array<T, N> &x, const U &y) {
   static_assert(I >= 0 && I < N, "");

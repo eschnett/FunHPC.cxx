@@ -46,7 +46,7 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   C<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, i, args...);
   return rs;
 }
 
@@ -68,7 +68,7 @@ auto fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, xs[i], args...);
   return rs;
 }
 
@@ -79,8 +79,7 @@ auto fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), std::move(xs[i]),
-                        std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, std::move(xs[i]), args...);
   return rs;
 }
 
@@ -94,8 +93,7 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
   typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
-                        std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, xs[i], ys[i], args...);
   return rs;
 }
 

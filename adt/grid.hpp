@@ -90,8 +90,7 @@ private:
   void loop_impl(F &&f, const index_type &pos, Args &&... args) const {
 #pragma omp simd
     for (std::ptrdiff_t i = 0; i < std::get<d - 1>(m_shape); ++i)
-      loop_impl<d - 1>(std::forward<F>(f), update<d - 1>(pos, i),
-                       std::forward<Args>(args)...);
+      loop_impl<d - 1>(f, update<d - 1>(pos, i), args...);
   }
 
 public:
@@ -188,8 +187,7 @@ public:
     static_assert(
         std::is_same<cxx::invoke_of_t<F, index_type, Args...>, T>::value, "");
     indexing.loop([&](const index_type &i) {
-      data[indexing.linear(i)] =
-          cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...);
+      data[indexing.linear(i)] = cxx::invoke(f, i, args...);
     });
     assert(invariant());
   }
@@ -204,10 +202,9 @@ public:
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, Args...>, T>::value, "");
     indexing.loop([&](const index_type &i) {
       data[indexing.linear(i)] =
-          cxx::invoke(std::forward<F>(f), xs.data[xs.indexing.linear(i)],
-                      std::forward<Args>(args)...);
-      assert(invariant());
+          cxx::invoke(f, xs.data[xs.indexing.linear(i)], args...);
     });
+    assert(invariant());
   }
 
   struct fmap2 {};
@@ -220,10 +217,9 @@ public:
                   "");
     assert(ys.shape() == xs.shape());
     indexing.loop([&](const index_type &i) {
-      data[indexing.linear(i)] = cxx::invoke(
-          std::forward<F>(f), xs.data[xs.indexing.linear(i)],
-          ys.data[ys.indexing.linear(i)], std::forward<Args>(args)...);
-      assert(invariant());
+      data[indexing.linear(i)] =
+          cxx::invoke(f, xs.data[xs.indexing.linear(i)],
+                      ys.data[ys.indexing.linear(i)], args...);
     });
   }
 
@@ -235,9 +231,8 @@ public:
     static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
     R r(z);
     indexing.loop([&](const index_type &i) {
-      r = cxx::invoke(std::forward<Op>(op), std::move(r),
-                      cxx::invoke(std::forward<F>(f), data[indexing.linear(i)],
-                                  std::forward<Args>(args)...));
+      r = cxx::invoke(op, std::move(r),
+                      cxx::invoke(f, data[indexing.linear(i)], args...));
     });
     return r;
   }

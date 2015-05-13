@@ -44,7 +44,7 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   C<R> rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, i, args...);
   return rs;
 }
 
@@ -57,7 +57,7 @@ auto fmap(F &&f, const std::array<T, N> &xs, Args &&... args) {
   std::array<R, N> rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, xs[i], args...);
   return rs;
 }
 
@@ -68,8 +68,7 @@ auto fmap(F &&f, std::array<T, N> &&xs, Args &&... args) {
   std::array<R, N> rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), std::move(xs[i]),
-                        std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, std::move(xs[i]), args...);
   return rs;
 }
 
@@ -81,8 +80,7 @@ auto fmap2(F &&f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
   std::array<R, N> rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(std::forward<F>(f), xs[i], ys[i],
-                        std::forward<Args>(args)...);
+    rs[i] = cxx::invoke(f, xs[i], ys[i], args...);
   return rs;
 }
 
@@ -154,14 +152,11 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
   std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                                                              omp_in)))        \
-                              initializer(omp_priv(z))
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(
-        std::forward<Op>(op), std::move(r),
-        cxx::invoke(std::forward<F>(f), xs[i], std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
   return r;
 }
 
@@ -172,14 +167,12 @@ R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
   std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                                                              omp_in)))        \
-                              initializer(omp_priv(z))
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(std::forward<Op>(op), std::move(r),
-                    cxx::invoke(std::forward<F>(f), std::move(xs[i]),
-                                std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r),
+                    cxx::invoke(f, std::move(xs[i]), args...));
   return r;
 }
 
@@ -192,14 +185,11 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
   std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
-    omp_out = cxx::invoke(std::forward < Op > (op), std::move(omp_out),        \
-                                                              omp_in)))        \
-                              initializer(omp_priv(z))
+    omp_out = cxx::invoke(op, std::move(omp_out),                              \
+                                        omp_in))) initializer(omp_priv(z))
 #pragma omp simd reduction(op : r)
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    r = cxx::invoke(std::forward<Op>(op), std::move(r),
-                    cxx::invoke(std::forward<F>(f), xs[i], ys[i],
-                                std::forward<Args>(args)...));
+    r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
 }
 
@@ -210,7 +200,7 @@ template <template <typename> class C, typename T, typename R = std::decay_t<T>,
 auto munit(T &&x) {
   C<R> rs;
   for (auto &r : rs)
-    r = std::forward<T>(x);
+    r = x;
   return rs;
 }
 

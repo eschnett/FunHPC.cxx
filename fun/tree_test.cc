@@ -14,31 +14,31 @@
 using namespace fun;
 
 namespace {
-template <typename T> using vector1 = std::vector<T>;
+template <typename T> using std_vector = std::vector<T>;
 template <typename T>
-using shared_vector = adt::nested<std::shared_ptr, vector1, T>;
+using shared_vector = adt::nested<std::shared_ptr, std_vector, T>;
 template <typename T>
-using future_vector = adt::nested<qthread::shared_future, vector1, T>;
-template <typename T> using tree1 = adt::tree<shared_vector, T>;
-template <typename T> using tree2 = adt::tree<future_vector, T>;
+using future_vector = adt::nested<qthread::shared_future, std_vector, T>;
+template <typename T> using shared_tree = adt::tree<shared_vector, T>;
+template <typename T> using future_tree = adt::tree<future_vector, T>;
 }
 
 TEST(fun_tree, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iotaMap<tree1>([](auto x) { return int(x); }, s);
-  static_assert(std::is_same<decltype(rs), tree1<int>>::value, "");
+  auto rs = iotaMap<shared_tree>([](auto x) { return int(x); }, s);
+  static_assert(std::is_same<decltype(rs), shared_tree<int>>::value, "");
   EXPECT_EQ(s, rs.size());
   EXPECT_EQ(9, rs.last());
 
   auto rs1 =
-      iotaMap<tree1>([](auto x, auto y) { return double(x + y); }, s, -1);
-  static_assert(std::is_same<decltype(rs1), tree1<double>>::value, "");
+      iotaMap<shared_tree>([](auto x, auto y) { return double(x + y); }, s, -1);
+  static_assert(std::is_same<decltype(rs1), shared_tree<double>>::value, "");
   EXPECT_EQ(8, rs1.last());
 }
 
 TEST(fun_tree, fmap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<tree1>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<shared_tree>([](auto x) { return int(x); }, s);
   EXPECT_EQ(9, xs.last());
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
@@ -50,19 +50,17 @@ TEST(fun_tree, fmap) {
 
 TEST(fun_tree, fmapTopo) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<tree1>([](int x) { return x * x; }, s);
-  auto ys = fmapTopo(
-      [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
-      [](auto x, auto i) { return x; }, xs, connectivity<int>(1, 100));
+  auto xs = iotaMap<shared_tree>([](int x) { return x * x; }, s);
+  auto ys = fmapTopo([](auto x, auto bm, auto bp) { return bm - 2 * x + bp; },
+                     [](auto x, auto i) { return x; }, xs, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
 
-  auto x2s = iotaMap<tree2>([](int x) { return x * x; }, s);
+  auto x2s = iotaMap<future_tree>([](int x) { return x * x; }, s);
   // EXPECT_FALSE(x2s.data.ready());
-  auto y2s = fmapTopo(
-      [](auto x, const auto &bs) { return get<0>(bs) - 2 * x + get<1>(bs); },
-      [](auto x, auto i) { return x; }, x2s, connectivity<int>(1, 100));
+  auto y2s = fmapTopo([](auto x, auto bm, auto bp) { return bm - 2 * x + bp; },
+                      [](auto x, auto i) { return x; }, x2s, 1, 100);
   // EXPECT_FALSE(x2s.data.ready());
   // EXPECT_FALSE(y2s.data.ready());
   auto sum2 = foldMap([](auto x) { return x; },
@@ -74,17 +72,17 @@ TEST(fun_tree, fmapTopo) {
 
 TEST(fun_tree, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<tree1>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<shared_tree>([](auto x) { return int(x); }, s);
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0, xs);
   EXPECT_EQ(s * (s - 1) / 2, r);
 }
 
 TEST(fun_tree, monad) {
-  auto xs = munit<tree1>(1);
-  auto xss = munit<tree1>(xs);
+  auto xs = munit<shared_tree>(1);
+  auto xss = munit<shared_tree>(xs);
   auto ys = mjoin(xss);
-  auto zs = mbind([](auto x) { return munit<tree1>(x); }, ys);
+  auto zs = mbind([](auto x) { return munit<shared_tree>(x); }, ys);
   auto z = mextract(zs);
   EXPECT_EQ(1, z);
 
@@ -93,11 +91,11 @@ TEST(fun_tree, monad) {
   EXPECT_EQ(1, z1.size());
   EXPECT_EQ(z, mextract(z1));
 
-  auto ns = mzero<tree1, int>();
+  auto ns = mzero<shared_tree, int>();
   EXPECT_TRUE(ns.empty());
   auto ps = mplus(ns, xs, ys, zs);
   EXPECT_EQ(3, ps.size());
-  auto ss = msome<tree1>(1, 2, 3);
+  auto ss = msome<shared_tree>(1, 2, 3);
   EXPECT_EQ(3, ss.size());
   EXPECT_TRUE(mempty(ns));
   EXPECT_FALSE(mempty(ps));

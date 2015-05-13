@@ -14,35 +14,38 @@
 using namespace fun;
 
 namespace {
-template <typename T> using vector1 = std::vector<T>;
+template <typename T> using std_vector = std::vector<T>;
 template <typename T>
-using shared_vector = adt::nested<std::shared_ptr, vector1, T>;
-template <typename T> using grid1 = adt::grid<vector1, T, 3>;
-template <typename T> using grid2 = adt::grid<shared_vector, T, 2>;
+using shared_vector = adt::nested<std::shared_ptr, std_vector, T>;
+// TODO: test shared_vector as well, once it has been implemented
+template <typename T> using grid0 = adt::grid<std_vector, T, 0>;
+template <typename T> using grid1 = adt::grid<std_vector, T, 1>;
+template <typename T> using grid2 = adt::grid<std_vector, T, 2>;
+template <typename T> using grid3 = adt::grid<std_vector, T, 3>;
 }
 
 TEST(fun_grid, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iotaMap<grid1>([](const typename grid1<int>::index_type &i) {
+  auto rs = iotaMap<grid3>([](const typename grid3<int>::index_type &i) {
     return int(adt::sum(i));
-  }, typename grid1<int>::index_type{{s, s, s}});
-  static_assert(std::is_same<decltype(rs), grid1<int>>::value, "");
+  }, typename grid3<int>::index_type{{s, s, s}});
+  static_assert(std::is_same<decltype(rs), grid3<int>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
 
-  auto rs1 = iotaMap<grid1>([](const typename grid1<double>::index_type &i) {
+  auto rs1 = iotaMap<grid3>([](const typename grid3<double>::index_type &i) {
     return double(adt::sum(i));
-  }, typename grid1<double>::index_type{{s, s}});
-  static_assert(std::is_same<decltype(rs1), grid1<double>>::value, "");
+  }, typename grid3<double>::index_type{{s, s}});
+  static_assert(std::is_same<decltype(rs1), grid3<double>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
 }
 
 TEST(fun_grid, fmap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<grid1>([](const typename grid1<int>::index_type &x) {
+  auto xs = iotaMap<grid3>([](const typename grid3<int>::index_type &x) {
     return int(adt::sum(x));
-  }, typename grid1<int>::index_type{{s, s, s}});
+  }, typename grid3<int>::index_type{{s, s, s}});
   EXPECT_EQ(27, xs.last());
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
@@ -79,9 +82,9 @@ TEST(fun_grid, fmap) {
 
 TEST(fun_grid, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<grid1>([](const typename grid1<int>::index_type &x) {
+  auto xs = iotaMap<grid3>([](const typename grid3<int>::index_type &x) {
     return int(adt::sum(x));
-  }, typename grid1<int>::index_type{{s, s, s}});
+  }, typename grid3<int>::index_type{{s, s, s}});
   EXPECT_EQ(27, xs.last());
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0, xs);
@@ -89,10 +92,10 @@ TEST(fun_grid, foldMap) {
 }
 
 TEST(fun_grid, monad) {
-  auto xs = munit<grid1>(1);
-  auto xss = munit<grid1>(xs);
+  auto xs = munit<grid3>(1);
+  auto xss = munit<grid3>(xs);
   //   auto ys = mjoin(xss);
-  //   auto zs = mbind([](auto x) { return munit<grid1>(x); }, ys);
+  //   auto zs = mbind([](auto x) { return munit<grid3>(x); }, ys);
   //   auto z = mextract(zs);
   //   EXPECT_EQ(1, z);
 
@@ -101,11 +104,11 @@ TEST(fun_grid, monad) {
   // EXPECT_EQ(1, z1.size());
   // EXPECT_EQ(z, mextract(z1));
 
-  auto ns = mzero<grid1, int>();
+  auto ns = mzero<grid3, int>();
   EXPECT_TRUE(ns.empty());
   //   auto ps = mplus(ns, xs, ys, zs);
   //   EXPECT_EQ(3, ps.size());
-  //   auto ss = msome<grid1>(1, 2, 3);
+  //   auto ss = msome<grid3>(1, 2, 3);
   //   EXPECT_EQ(3, ss.size());
   EXPECT_TRUE(mempty(ns));
   //   EXPECT_FALSE(mempty(ps));

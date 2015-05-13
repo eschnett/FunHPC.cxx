@@ -1,12 +1,8 @@
 #ifndef ADT_IDTYPE_HPP
 #define ADT_IDTYPE_HPP
 
-#include <adt/either.hpp>
-
 #include <cereal/access.hpp>
 
-#include <tuple>
-#include <type_traits>
 #include <utility>
 
 namespace adt {

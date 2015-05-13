@@ -104,23 +104,18 @@ TEST(adt_tree, fmap) {
   EXPECT_EQ(1.0, zs.head());
 }
 
-// TEST(adt_tree, fmapTopo) {
-//   auto xs = tree1<double>(typename tree1<double>::iotaMap(),
-//                           [](auto i) { return double(i); }, 0, 1000, 1);
-//   auto ys = tree1<double>(typename tree1<double>::fmapTopo(),
-//                           [](auto x, const auto &bs) {
-//     return bs.template get<0>() - 2.0 * x + bs.template get<1>();
-//                           },
-//                           [](auto x, auto i) {
-//     return x; }, xs,
-//                               fun::connectivity<std_vector<double>>(-1.0,
-//                               10.0)));
-//   EXPECT_EQ(xs.size(), ys.size());
-//   auto maxabs = ys.foldMap([](auto x) { return std::fabs(x); },
-//                            [](auto x, auto y) { return std::fmax(x, y); },
-//                            0.0);
-//   EXPECT_EQ(0.0, maxabs);
-// }
+TEST(adt_tree, fmapTopo) {
+  auto xs = shared_tree<double>(typename shared_tree<double>::iotaMap(),
+                                [](auto i) { return double(i); }, 0, 1000, 1);
+  auto ys = shared_tree<double>(
+      typename shared_tree<double>::fmapTopo(),
+      [](auto x, auto bm, auto bp) { return bm - 2.0 * x + bp; },
+      [](auto x, auto i) { return x; }, xs, -1.0, 1000.0);
+  EXPECT_EQ(xs.size(), ys.size());
+  auto maxabs = ys.foldMap([](auto x) { return std::fabs(x); },
+                           [](auto x, auto y) { return std::fmax(x, y); }, 0.0);
+  EXPECT_EQ(0.0, maxabs);
+}
 
 TEST(adt_tree, foldMap) {
   auto xs = shared_tree<double>(typename shared_tree<double>::iotaMap(),

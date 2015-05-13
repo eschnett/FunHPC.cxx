@@ -175,47 +175,46 @@ public:
   struct fmapTopo {};
 
 private:
-  template <typename F, typename G, typename T1, typename B>
-  struct detail_fmapTopo_f {
-    F f;
-    G g;
-    template <typename Archive> void serialize(Archive &ar) { ar(f, g); }
-    template <typename... Args>
-    auto operator()(const tree<C, T1> &xs, const fun::connectivity<B> &bs,
+  struct detail_fmapTopo_f : std::tuple<> {
+    template <typename T1, typename BM, typename BP, typename F, typename G,
+              typename... Args>
+    auto operator()(const tree<C, T1> &xs, BM &&bm, BP &&bp, F &&f, G &&g,
                     Args &&... args) const {
-      return tree(fmapTopo(), f, g, xs, bs, std::forward<Args>(args)...);
+      return tree(fmapTopo(), std::forward<F>(f), std::forward<G>(g), xs,
+                  std::forward<BM>(bm), std::forward<BP>(bp),
+                  std::forward<Args>(args)...);
     }
   };
-  template <typename G, typename T1> struct detail_fmapTopo_g {
+  template <typename G> struct detail_fmapTopo_g {
     G g;
     template <typename Archive> void serialize(Archive &ar) { ar(g); }
-    template <typename... Args>
+    template <typename T1>
     auto operator()(const tree<C, T1> &xs, std::ptrdiff_t i) const {
       return cxx::invoke(g, i == 0 ? xs.head() : xs.last(), i);
     }
   };
 
 public:
-  template <typename F, typename G, typename T1, typename B, typename... Args>
-  tree(fmapTopo, F &&f, G &&g, const tree<C, T1> &xs,
-       const fun::connectivity<B> &bs, Args &&... args)
+  template <typename F, typename G, typename T1, typename BM, typename BP,
+            typename... Args>
+  tree(fmapTopo, F &&f, G &&g, const tree<C, T1> &xs, BM &&bm, BP &&bp,
+       Args &&... args)
       : subtrees(xs.subtrees.left()
-                     ? adt::make_left<C<T>, C<tree>>(
-                           fun::fmapTopo(std::forward<F>(f), std::forward<G>(g),
-                                         xs.subtrees.get_left(), bs,
-                                         std::forward<Args>(args)...))
+                     ? adt::make_left<C<T>, C<tree>>(fun::fmapTopo(
+                           std::forward<F>(f), std::forward<G>(g),
+                           xs.subtrees.get_left(), std::forward<BM>(bm),
+                           std::forward<BP>(bp), std::forward<Args>(args)...))
                      : adt::make_right<C<T>, C<tree>>(fun::fmapTopo(
-                           detail_fmapTopo_f<std::decay_t<F>, std::decay_t<G>,
-                                             T1, B>{std::forward<F>(f), g},
-                           detail_fmapTopo_g<std::decay_t<G>, T1>{g},
-                           xs.subtrees.get_right(), bs,
+                           detail_fmapTopo_f(),
+                           detail_fmapTopo_g<std::decay_t<G>>{g},
+                           xs.subtrees.get_right(), std::forward<BM>(bm),
+                           std::forward<BP>(bp), std::forward<F>(f), g,
                            std::forward<Args>(args)...))) {
+    typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
     static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, fun::connectivity<B>, Args...>,
-                     T>::value,
-        "");
-    static_assert(
-        std::is_same<cxx::invoke_of_t<G, T1, std::ptrdiff_t>, B>::value, "");
+        std::is_same<cxx::invoke_of_t<F, T1, B, B, Args...>, T>::value, "");
+    static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
+    static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   }
 
 private:

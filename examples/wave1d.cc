@@ -131,11 +131,11 @@ auto cell_boundary_reflecting(const cell_t &c, std::ptrdiff_t i) {
                 -c.u, -c.rho, c.v};
 }
 
-auto cell_rhs(const cell_t &c, const fun::connectivity<cell_t> &bs) {
+auto cell_rhs(const cell_t &c, const cell_t &bm, const cell_t &bp) {
   auto dx = parameters.dx();
   auto u_rhs = c.rho;
-  auto rho_rhs = (-0.5 * fun::get<0>(bs).v + 0.5 * fun::get<1>(bs).v) / dx;
-  auto v_rhs = (-0.5 * fun::get<0>(bs).rho + 0.5 * fun::get<1>(bs).rho) / dx;
+  auto rho_rhs = (-0.5 * bm.v + 0.5 * bp.v) / dx;
+  auto v_rhs = (-0.5 * bm.rho + 0.5 * bp.rho) / dx;
   return cell_t{0.0, u_rhs, rho_rhs, v_rhs};
 }
 
@@ -191,10 +191,8 @@ auto grid_boundary(const grid_t &g, std::ptrdiff_t i) {
 
 auto cell_get_face(const cell_t &c, std::ptrdiff_t i) { return c; }
 auto grid_rhs(const grid_t &g) {
-  return grid_t{1.0,
-                fun::fmapTopo(cell_rhs, cell_get_face, g.cells,
-                              fun::connectivity<cell_t>(grid_boundary(g, 0),
-                                                        grid_boundary(g, 1)))};
+  return grid_t{1.0, fun::fmapTopo(cell_rhs, cell_get_face, g.cells,
+                                   grid_boundary(g, 0), grid_boundary(g, 1))};
 }
 
 // State

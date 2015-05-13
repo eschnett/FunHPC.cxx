@@ -99,33 +99,33 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
 
 // fmapTopo
 
-template <typename F, typename G, typename T, typename Allocator,
-          typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename R = cxx::invoke_of_t<F, T, connectivity<B>, Args...>>
-auto fmapTopo(F &&f, G &&g, const std::vector<T, Allocator> &xs,
-              const connectivity<B> &bs, Args &&... args) {
+// probably want a datatype for the boundary. should support
+// conversion to const references (as for argument passing), and
+// should support decaying (as for storing, serializing). could be
+// built on tuples, or on arrays (with using pointers instead of
+// references).
+
+template <typename F, typename G, typename T, typename Allocator, typename BM,
+          typename BP, typename... Args,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
+auto fmapTopo(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
+              BP &&bp, Args &&... args) {
+  static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
+  static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   std::ptrdiff_t s = xs.size();
   std::vector<R, Allocator> rs(s);
   if (__builtin_expect(s == 1, false)) {
-    rs[0] =
-        cxx::invoke(std::forward<F>(f), xs[0], bs, std::forward<Args>(args)...);
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], std::forward<BM>(bm),
+                        std::forward<BP>(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(
-        std::forward<F>(f), xs[0],
-        connectivity<B>(get<0>(bs), cxx::invoke(std::forward<G>(g), xs[1], 0)),
-        std::forward<Args>(args)...);
+    rs[0] = cxx::invoke(f, xs[0], bm, cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::invoke(
-          f, xs[i],
-          connectivity<B>(cxx::invoke(std::forward<G>(g), xs[i - 1], 1),
-                          cxx::invoke(std::forward<G>(g), xs[i + 1], 0)),
-          std::forward<Args>(args)...);
-    rs[s - 1] = cxx::invoke(
-        std::forward<F>(f), xs[s - 1],
-        connectivity<B>(cxx::invoke(std::forward<G>(g), xs[s - 2], 1),
-                        get<1>(bs)),
-        std::forward<Args>(args)...);
+      rs[i] = cxx::invoke(f, xs[i], cxx::invoke(g, xs[i - 1], 1),
+                          cxx::invoke(g, xs[i + 1], 0), args...);
+    rs[s - 1] =
+        cxx::invoke(f, xs[s - 1], cxx::invoke(g, xs[s - 2], 1), bp, args...);
   }
   return rs;
 }

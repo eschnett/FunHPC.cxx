@@ -163,6 +163,7 @@ template <typename T, std::size_t N, typename U>
 
 template <typename T, std::size_t N, std::size_t I>
 /*gcc constexpr*/ inline auto array_dir() {
+  static_assert(I >= 0 && I < N, "");
   std::array<T, N> r;
   r.fill(T(0));
   std::get<I>(r) = T(1);
@@ -171,6 +172,7 @@ template <typename T, std::size_t N, std::size_t I>
 
 template <std::size_t I, typename T, std::size_t N, typename U>
 auto update(const std::array<T, N> &x, const U &y) {
+  static_assert(I >= 0 && I < N, "");
   std::array<T, N> r(x);
   std::get<I>(r) = y;
   return r;

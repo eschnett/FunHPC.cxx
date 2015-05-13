@@ -208,6 +208,7 @@ NTHREADS_PER_SHEPHERD :=						\
 		         ($(NPROCS) * $(NSHEPHERDS_PER_PROC)))))
 
 EXE = ./hello
+ARGS =
 run:
 	$(MPIRUN)							   \
 	    -np $(NPROCS)						   \
@@ -216,7 +217,7 @@ run:
 	    -x "QTHREAD_NUM_SHEPHERDS=$(NSHEPHERDS_PER_PROC)"		   \
 	    -x "QTHREAD_NUM_WORKERS_PER_SHEPHERD=$(NTHREADS_PER_SHEPHERD)" \
 	    -x "QTHREAD_STACK_SIZE=65536"				   \
-	    $(EXE)							   \
+	    $(EXE) $(ARGS)						   \
 	    --hpx:info							   \
 	    --hpx:ini hpx.stacks.use_guard_pages=0			   \
 	    --hpx:numa-sensitive					   \

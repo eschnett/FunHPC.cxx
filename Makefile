@@ -38,15 +38,61 @@ LIBS =						\
 
 ifneq ($(LLVM_DIR), )
 
-DEBUGFLAGS = # -D_GLIBCXX_DEBUG
-OPTFLAGS   = -Ofast -DNDEBUG -Wno-unused-variable # -flto
-CXXFLAGS  += -march=native -Wall -g -std=c++14 -fmacro-backtrace-limit=0 -ftemplate-backtrace-limit=0 -Drestrict=__restrict__ $(DEBUGFLAGS) $(OPTFLAGS)
+# Try: -fsanitize=address,memory,thread,undefined,vptr
+# Cannot have: -fsanitize=alignment,integer,null
+# DEBUGFLAGS =					\
+	-D_GLIBCXX_DEBUG			\
+	-fsanitize=bool				\
+	-fsanitize=bounds			\
+	-fsanitize=enum				\
+	-fsanitize-undefined-trap-on-error	\
+	-fsanitize=float-cast-overflow		\
+	-fsanitize=integer-divide-by-zero	\
+	-fsanitize=nonnull-attribute		\
+	-fsanitize=object-size			\
+	-fsanitize=return			\
+	-fsanitize=returns-nonnull-attribute	\
+	-fsanitize=shift			\
+	-fsanitize=signed-integer-overflow	\
+	-fsanitize=unreachable			\
+	-fsanitize=vla-bound
+OPTFLAGS =					\
+	-DNDEBUG				\
+	-Ofast					\
+	-Wno-unused-variable			\
+	-flto
+CXXFLAGS +=					\
+	-Wall					\
+	-fmacro-backtrace-limit=0		\
+	-ftemplate-backtrace-limit=0		\
+	-g					\
+	-std=c++14				\
+	-Drestrict=__restrict__			\
+	-march=native				\
+	$(DEBUGFLAGS)				\
+	$(OPTFLAGS)
 
 else ifneq ($(GCC_DIR), )
 
-DEBUGFLAGS  = # -D_GLIBCXX_DEBUG
-OPTFLAGS    = -Ofast -flto -DNDEBUG
-CXXFLAGS   += -m128bit-long-double -march=native -Wall -g -std=c++14 -Drestrict=__restrict__ $(DEBUGFLAGS) $(OPTFLAGS)
+DEBUGFLAGS =					\
+	-D_GLIBCXX_DEBUG			\
+	-fbounds-check				\
+	-fsanitize=undefined			\
+	-fstack-protector-all			\
+	-ftrapv
+# OPTFLAGS =					\
+	-DNDEBUG				\
+	-Ofast					\
+	-flto
+CXXFLAGS +=					\
+	-Wall					\
+	-g					\
+	-std=c++14				\
+	-m128bit-long-double			\
+	-Drestrict=__restrict__			\
+	-march=native				\
+	$(DEBUGFLAGS)				\
+	$(OPTFLAGS)
 
 else
 

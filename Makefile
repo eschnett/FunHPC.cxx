@@ -113,6 +113,7 @@ HDRS =						\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
+	cxx/tuple.hpp				\
 	cxx/utility.hpp				\
 	fun/array.hpp				\
 	fun/either.hpp				\

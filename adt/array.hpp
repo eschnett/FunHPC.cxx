@@ -190,23 +190,21 @@ MAKEFUNOP(gt, > )
 MAKEFUNOP(ge, >= )
 #undef MAKEFUNOP
 
-template <typename T, std::size_t N>
-/*gcc constexpr*/ inline auto array_zero() {
+template <typename T, std::size_t N> /*constexpr*/ inline auto array_zero() {
   std::array<T, N> r;
   r.fill(T(0));
   return r;
 }
 
 template <typename T, std::size_t N, typename U>
-/*gcc constexpr*/ inline auto array_fill(const U &x) {
+/*constexpr*/ inline auto array_fill(const U &x) {
   std::array<T, N> r;
   r.fill(x);
   return r;
 }
 
-template <typename T, std::size_t N, std::size_t I>
-/*gcc constexpr*/ inline auto array_dir() {
-  static_assert(I >= 0 && I < N, "");
+template <typename T, std::size_t N, std::size_t i>
+/*constexpr*/ inline auto array_dir() {
   std::array<T, N> r;
   r.fill(T(0));
   std::get<I>(r) = T(1);

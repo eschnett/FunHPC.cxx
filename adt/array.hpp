@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <ios>
 #include <limits>
 #include <type_traits>
@@ -205,26 +206,52 @@ template <typename T, std::size_t N, typename U>
 
 template <typename T, std::size_t N, std::size_t i>
 /*constexpr*/ inline auto array_dir() {
+  static_assert(i >= 0 && i < N, "");
   std::array<T, N> r;
   r.fill(T(0));
-  std::get<I>(r) = T(1);
+  std::get<i>(r) = T(1);
   return r;
 }
 
-template <std::size_t I, typename T, std::size_t N>
+template <typename T, std::size_t N> inline auto array_dir(std::size_t i) {
+  assert(i >= 0 && i < N);
+  std::array<T, N> r;
+  r.fill(T(0));
+  r[i] = T(1);
+  return r;
+}
+
+template <std::size_t i, typename T, std::size_t N>
 auto rmdir(const std::array<T, N> &x) {
-  static_assert(I >= 0 && I < N, "");
+  static_assert(i >= 0 && i < N, "");
   std::array<T, N - 1> r;
-  for (std::size_t i = 0; i < N - 1; ++i)
-    r[i] = x[i + (i >= I)];
+  for (std::size_t j = 0; j < N - 1; ++j)
+    r[j] = x[j + (j >= i)];
   return r;
 }
 
-template <std::size_t I, typename T, std::size_t N, typename U>
+template <typename T, std::size_t N>
+auto rmdir(const std::array<T, N> &x, std::size_t i) {
+  assert(i >= 0 && i < N);
+  std::array<T, N - 1> r;
+  for (std::size_t j = 0; j < N - 1; ++j)
+    r[j] = x[j + (j >= i)];
+  return r;
+}
+
+template <std::size_t i, typename T, std::size_t N, typename U>
 auto update(const std::array<T, N> &x, const U &y) {
-  static_assert(I >= 0 && I < N, "");
+  static_assert(i >= 0 && i < N, "");
   std::array<T, N> r(x);
-  std::get<I>(r) = y;
+  std::get<i>(r) = y;
+  return r;
+}
+
+template <typename T, std::size_t N, typename U>
+auto update(const std::array<T, N> &x, std::size_t i, const U &y) {
+  assert(i >= 0 && i < N);
+  std::array<T, N> r(x);
+  r[i] = y;
   return r;
 }
 

@@ -154,6 +154,41 @@ MAKEFUN(max)
 MAKEFUN(min)
 #undef MAKEFUN
 
+#define MAKEFUNOP(f, op)                                                       \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
+  auto f(const std::array<T, N> &x, const std::array<U, N> &y) {               \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = x[i] op y[i];                                                     \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
+  auto f(const T &x, const std::array<U, N> &y) {                              \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = x op y[i];                                                        \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(std::declval<T>()               \
+                                                   op std::declval<U>())>>     \
+  auto f(const std::array<T, N> &x, const U &y) {                              \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = x[i] op y;                                                        \
+    return r;                                                                  \
+  }
+MAKEFUNOP(eq, == )
+MAKEFUNOP(ne, != )
+MAKEFUNOP(lt, < )
+MAKEFUNOP(le, <= )
+MAKEFUNOP(gt, > )
+MAKEFUNOP(ge, >= )
+#undef MAKEFUNOP
 
 template <typename T, std::size_t N>
 /*gcc constexpr*/ inline auto array_zero() {

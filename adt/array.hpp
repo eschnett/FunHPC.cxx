@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <array>
+#include <ios>
 #include <limits>
+#include <type_traits>
 #include <utility>
 
 namespace std {
@@ -37,9 +39,11 @@ MAKEOP(!)
       r[i] = x[i] op y[i];                                                     \
     return r;                                                                  \
   }                                                                            \
-  template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(std::declval<T>()               \
-                                                   op std::declval<U>())>>     \
+  template <                                                                   \
+      typename T, std::size_t N, typename U,                                   \
+      typename R =                                                             \
+          std::decay_t<decltype(std::declval<T>() op std::declval<U>())>,      \
+      std::enable_if_t<!std::is_base_of<std::ios_base, T>::value> * = nullptr> \
   auto operator op(const T &x, const std::array<U, N> &y) {                    \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \

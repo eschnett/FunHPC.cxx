@@ -72,7 +72,7 @@ MAKEOP(>> )
 MAKEOP(&&)
 MAKEOP(|| )
 // These are already provided by std::array, albeit with a different
-// meaning
+// meaning; we thus provide functions eq, ne, lt, le, gt, ge instead
 // MAKEOP(== )
 // MAKEOP(!= )
 // MAKEOP(< )

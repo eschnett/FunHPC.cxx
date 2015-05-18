@@ -121,7 +121,8 @@ MAKEFUN(abs)
 
 #define MAKEFUN(f)                                                             \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+            typename R = std::decay_t<decltype(                                \
+                std::f(std::declval<T>(), std::declval<U>()))>>                \
   auto f(const std::array<T, N> &x, const std::array<U, N> &y) {               \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
@@ -129,7 +130,8 @@ MAKEFUN(abs)
     return r;                                                                  \
   }                                                                            \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+            typename R = std::decay_t<decltype(                                \
+                std::f(std::declval<T>(), std::declval<U>()))>>                \
   auto f(const T &x, const std::array<U, N> &y) {                              \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
@@ -137,7 +139,8 @@ MAKEFUN(abs)
     return r;                                                                  \
   }                                                                            \
   template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
+            typename R = std::decay_t<decltype(                                \
+                std::f(std::declval<T>(), std::declval<U>()))>>                \
   auto f(const std::array<T, N> &x, const U &y) {                              \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \

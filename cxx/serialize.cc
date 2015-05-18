@@ -1,6 +1,6 @@
 #include "serialize.hpp"
 
-namespace cxx {
+namespace cereal {
 namespace detail {
 void serialize_anchor_f() {}
 }

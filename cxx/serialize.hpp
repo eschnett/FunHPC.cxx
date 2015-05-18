@@ -8,15 +8,15 @@
 #include <cstring>
 #include <type_traits>
 
-namespace cxx {
+namespace cereal {
+
 namespace detail {
 void serialize_anchor_f();
-static_assert(sizeof &serialize_anchor_f <= sizeof(std::uintptr_t), "");
-const std::uintptr_t serialize_anchor = std::uintptr_t(&serialize_anchor_f);
+inline std::uintptr_t serialize_anchor() {
+  return std::uintptr_t(&serialize_anchor_f);
 }
 }
 
-namespace cereal {
 // This exists only to throw a static_assert to let users know we
 // don't support raw pointers
 template <typename Archive, typename T>
@@ -35,7 +35,7 @@ template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
   std::uintptr_t offset =
-      bool(f) ? std::uintptr_t(f) - cxx::detail::serialize_anchor : 0;
+      bool(f) ? std::uintptr_t(f) - detail::serialize_anchor() : 0;
   ar(offset);
 }
 template <class Archive, typename F,
@@ -43,7 +43,7 @@ template <class Archive, typename F,
 void load(Archive &ar, F *&f) {
   std::uintptr_t offset;
   ar(offset);
-  f = offset ? (F *)(offset + cxx::detail::serialize_anchor) : nullptr;
+  f = offset ? (F *)(offset + detail::serialize_anchor()) : nullptr;
 }
 
 // member function pointers
@@ -65,7 +65,7 @@ void save(Archive &ar, F const &f) {
   std::memcpy(&buf, &f, sizeof buf);
   if ((buf.fptr & 1) == 0) {
     if (buf.fptr != 0) {
-      buf.fptr -= cxx::detail::serialize_anchor;
+      buf.fptr -= detail::serialize_anchor();
       assert(buf.fptr != 0);
     }
     assert((buf.fptr & 1) == 0);
@@ -84,7 +84,7 @@ void load(Archive &ar, F &f) {
   ar(buf.fptr, buf.adj);
   if ((buf.fptr & 1) == 0) {
     if (buf.fptr != 0) {
-      buf.fptr += cxx::detail::serialize_anchor;
+      buf.fptr += detail::serialize_anchor();
       assert(buf.fptr != 0);
     }
     assert((buf.fptr & 1) == 0);

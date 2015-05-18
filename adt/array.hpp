@@ -9,7 +9,10 @@
 #include <array>
 #include <cassert>
 #include <ios>
+#include <iostream>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -305,6 +308,30 @@ MAKEREDOP(any, ||, false)
 MAKEREDFUN(maxval, std::max, detail::numeric_limits<R>::min())
 MAKEREDFUN(minval, std::min, detail::numeric_limits<R>::max())
 #undef MAKEREDFUN
+}
+
+namespace std {
+template <typename T, std::size_t N>
+std::ostream &operator<<(std::ostream &os, const std::array<T, N> &x) {
+  auto oldprec = os.precision(std::numeric_limits<T>::max_digits10);
+  os << "[";
+  for (std::size_t i = 0; i < N; ++i) {
+    if (i > 0)
+      os << ",";
+    os << x[i];
+  }
+  os << "]";
+  os.precision(oldprec);
+  return os;
+}
+
+template <typename T, std::size_t N>
+std::string to_string(const std::array<T, N> &x) {
+  ostringstream os;
+  os.precision(std::numeric_limits<T>::max_digits10);
+  os << x;
+  return std::move(os).str();
+}
 }
 
 #define ADT_ARRAY_HPP_DONE

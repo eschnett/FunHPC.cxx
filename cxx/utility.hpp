@@ -1,10 +1,19 @@
 #ifndef CXX_UTILITY_HPP
 #define CXX_UTILITY_HPP
 
+#include <cstddef>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace cxx {
+
+// Affine transformation of integer sequence
+
+template <std::ptrdiff_t offset, std::ptrdiff_t scale, typename I, I... Ints>
+auto affine_map(std::integer_sequence<I, Ints...>) {
+  return std::integer_sequence<I, offset + scale * Ints...>();
+}
 
 // all_of_type, any_of_type, none_of_type //////////////////////////////////////
 

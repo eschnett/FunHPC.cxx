@@ -106,6 +106,9 @@ MAKEOP(^= )
 MAKEOP(<<= )
 MAKEOP(>>= )
 #undef MAKEOP
+}
+
+namespace adt {
 
 #define MAKEFUN(f)                                                             \
   template <typename T, std::size_t N,                                         \
@@ -150,9 +153,7 @@ MAKEFUN(abs)
 MAKEFUN(max)
 MAKEFUN(min)
 #undef MAKEFUN
-}
 
-namespace adt {
 
 template <typename T, std::size_t N>
 /*gcc constexpr*/ inline auto array_zero() {

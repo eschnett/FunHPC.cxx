@@ -35,9 +35,9 @@ TEST(adt_array, arithmetic) {
   x |= y;
   x ^= y;
 
-  abs(x);
-  max(x, y);
-  min(x, y);
+  adt::abs(x);
+  adt::max(x, y);
+  adt::min(x, y);
 }
 
 TEST(adt_array, init) {

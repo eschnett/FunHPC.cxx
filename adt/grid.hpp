@@ -6,6 +6,7 @@
 
 #include <cereal/access.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <type_traits>
 #include <utility>
@@ -20,15 +21,32 @@ public:
 
 private:
   index_type m_shape;
+  std::ptrdiff_t m_offset;
   index_type m_stride;
+  std::ptrdiff_t m_allocated;
+
+  template <std::ptrdiff_t D1> friend class index_space;
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
-    ar(m_shape, m_stride);
+    ar(m_shape, m_offset, m_stride, m_allocated);
   }
 
   static constexpr index_type origin() noexcept {
     return adt::array_zero<std::ptrdiff_t, D>();
+  }
+
+  static std::ptrdiff_t make_offset(const index_type &stride,
+                                    const index_type &offset) {
+    std::ptrdiff_t off = 0;
+    std::ptrdiff_t str = 1;
+    for (std::ptrdiff_t d = 0; d < D; ++d) {
+      assert(offset[d] >= 0 &&
+             (stride[d] == 0 ? offset[d] == 0 : offset[d] < stride[d]));
+      off += offset[d] * str;
+      str = stride[d];
+    }
+    return off;
   }
 
   // Note: The stride for dimension 0 is always 1, and is not stored.
@@ -44,36 +62,106 @@ private:
     return stride;
   }
 
+  static std::ptrdiff_t make_allocated(const index_type &shape) {
+    return adt::prod(shape);
+  }
+
 public:
-  bool invariant() const {
+  bool invariant() const noexcept {
+    if (adt::any(adt::lt(m_shape, 0)))
+      return false;
+    if (m_offset < 0)
+      return false;
+    auto off = offset();
+    if (adt::any(adt::lt(off, 0)))
+      return false;
+    if (adt::any(adt::lt(m_stride, 0)))
+      return false;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
-      if (m_shape[d] < 0)
+      if (stride(d) < 0)
         return false;
-      if (m_stride[d] < 0)
+      if (stride(d) > 0 && stride(d + 1) % stride(d) != 0)
         return false;
     }
+    if (m_allocated < 0)
+      return false;
+    if (m_offset + size() > m_allocated)
+      return false;
+    auto alloc = allocated();
+    if (adt::any(adt::lt(alloc, 0)))
+      return false;
+    if (adt::any(adt::gt(off + m_shape, alloc)))
+      return false;
     return true;
   }
 
-  index_space(const index_type &shape)
-      : m_shape(shape), m_stride(make_stride(m_shape)) {}
   index_space() : index_space(origin()) {}
+  index_space(const index_type &shape) : index_space(shape, origin(), shape) {}
+  index_space(const index_type &shape, const index_type &offset,
+              const index_type &allocated)
+      : m_shape(shape), m_offset(make_offset(make_stride(allocated), offset)),
+        m_stride(make_stride(allocated)),
+        m_allocated(make_allocated(allocated)) {
+    assert(invariant());
+  }
+  index_space(const index_type &shape, std::ptrdiff_t offset,
+              const index_type &stride, std::ptrdiff_t allocated)
+      : m_shape(shape), m_offset(offset), m_stride(stride),
+        m_allocated(allocated) {
+    assert(invariant());
+  }
 
   const index_type &shape() const { return m_shape; }
-  std::size_t size() const { return D == 0 ? 1 : m_stride[D - 1]; }
+  std::size_t size() const { return adt::prod(shape()); }
   bool empty() const { return size() == 0; }
+
+  std::ptrdiff_t stride(std::ptrdiff_t d) const {
+    assert(d >= 0 && d <= D);
+    if (d == 0)
+      return D == 0 ? 1 : std::min(std::ptrdiff_t(1), m_stride[0]);
+    return m_stride[d - 1];
+  }
+  index_type offset() const {
+    index_type r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r[d] = stride(d) == 0 || stride(d + 1) == 0 ? 0 : (m_offset / stride(d)) %
+                                                            stride(d + 1);
+    return r;
+  }
+  index_type allocated() const {
+    index_type r;
+    for (std::ptrdiff_t d = 0; d < D; ++d)
+      r[d] = stride(d) == 0 ? 0 : stride(d + 1) / stride(d);
+    return r;
+  }
+  std::ptrdiff_t allocated_size() const { return m_allocated; }
 
   // Convert a position to a linear index
   std::ptrdiff_t linear(const index_type &i) const {
-    std::ptrdiff_t lin = 0;
-    std::ptrdiff_t str = 1;
+    std::ptrdiff_t lin = m_offset;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
       assert(i[d] >= 0 && i[d] < m_shape[d]);
-      lin += i[d] * str;
-      str = m_stride[d];
-      assert(lin < str);
+      lin += i[d] * stride(d);
     }
+    assert(lin < m_allocated);
     return lin;
+  }
+
+  struct boundary {};
+  index_space(boundary, const index_space<D + 1> &old, std::ptrdiff_t i) {
+    assert(i >= 0 && i < 2 * (D + 1));
+    auto f = i % 2, d = i / 2;
+    auto new_offset = old.offset();
+    new_offset[d] = !f ? 0 : old.shape()[d] - 1;
+    auto new_shape = old.shape();
+    new_shape[d] = 1;
+    auto new_space = index_space<D + 1>(new_shape, new_offset, old.allocated());
+
+    m_shape = adt::rmdir(new_space.m_shape, d);
+    m_offset = new_space.m_offset;
+    m_stride = adt::rmdir(new_space.m_stride, d);
+    m_allocated = new_space.m_allocated;
+    assert(invariant());
   }
 
   // Multi-dimensional loop
@@ -101,6 +189,17 @@ public:
                   "");
     loop_impl<D>(std::forward<F>(f), origin(), std::forward<Args>(args)...);
   }
+
+  friend std::ostream &operator<<(std::ostream &os, const index_space &is) {
+    std::array<std::ptrdiff_t, D + 1> strides;
+    for (std::ptrdiff_t d = 0; d <= D; ++d)
+      strides[d] = is.stride(d);
+    return os << "index_space{m_shape=" << is.m_shape
+              << ",m_offset=" << is.m_offset << ",m_stride=" << is.m_stride
+              << ",m_allocated=" << is.m_allocated << ";stride()=" << strides
+              << ",offset()=" << is.offset() << ",allocated=" << is.allocated()
+              << "}";
+  }
 };
 }
 
@@ -109,14 +208,15 @@ class grid {
 public:
   typedef T value_type;
   static constexpr std::ptrdiff_t rank = D;
-  typedef typename detail::index_space<D>::index_type index_type;
+  typedef detail::index_space<D> index_space;
+  typedef typename index_space::index_type index_type;
   template <typename U> using storage_constructor = C<U>;
 
   template <template <typename> class C1, typename T1, std::ptrdiff_t D1>
   friend class grid;
 
 private:
-  detail::index_space<D> indexing;
+  index_space indexing;
   C<T> data;
 
   friend class cereal::access;
@@ -130,7 +230,17 @@ public:
   std::size_t size() const { return indexing.size(); }
   std::array<std::ptrdiff_t, D> shape() const { return indexing.shape(); }
 
-  bool invariant() const { return indexing.size() == data.size(); }
+private:
+  bool invariant0() const { return indexing.allocated_size() == data.size(); }
+
+public:
+  bool invariant() const {
+    auto inv = invariant0();
+    if (!inv)
+      std::cout << "grid::invariant: indexing=" << indexing
+                << ", data.size()=" << data.size() << "\n";
+    return inv;
+  }
 
   grid() : indexing(), data(indexing.size()) { assert(invariant()); }
 

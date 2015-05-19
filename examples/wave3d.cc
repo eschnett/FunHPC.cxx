@@ -209,17 +209,18 @@ typedef decltype(
 
 // Grid
 
+#warning "TODO: use tree"
+#warning "TODO: use grid"
 template <typename T> using std_vector = std::vector<T>;
-template <typename T> using vector_grid = adt::grid<std_vector, T, dim>;
+template <typename T, int_t D> using vector_grid = adt::grid<std_vector, T, D>;
 // template <typename T>
 // using proxy_grid = adt::nested<funhpc::proxy, std_vector, T>;
 // template <typename T> using proxy_tree = adt::tree<proxy_grid, T>;
 
-struct grid_t {
-#warning "TODO: use tree"
-#warning "TODO: use grid"
-  template <typename T> using storage_t = vector_grid<T>;
+template <typename T> using storage_t = vector_grid<T, dim>;
+template <typename T> using boundary_t = vector_grid<T, dim - 1>;
 
+struct grid_t {
   real_t time;
   storage_t<cell_t> cells;
 };
@@ -238,7 +239,7 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<grid_t::storage_t>([t](vint_t i) {
+  return grid_t{t, fun::iotaMap<storage_t>([t](vint_t i) {
     vreal_t x = parameters.xmin +
                 parameters.dx() *
                     (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
@@ -273,8 +274,7 @@ auto wrap_fmapStencil(F &&f, G &&g, TS &&xs, BS &&bs,
 }
 
 auto grid_rhs(const grid_t &g) {
-#warning "TODO: Introduce a typedef in grid, or better grid_traits"
-  std::array<adt::grid<std_vector, cell_t, dim - 1>, dim> bms, bps;
+  std::array<boundary_t<cell_t>, dim> bms, bps;
   for (std::ptrdiff_t d = 0; d < dim; ++d) {
     bms[d] = grid_boundary(g, 2 * d + 0);
     bps[d] = grid_boundary(g, 2 * d + 1);

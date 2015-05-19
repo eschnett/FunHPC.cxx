@@ -58,30 +58,31 @@ C1<T> convert(const C2T &xs) {
   return foldMap(f(), op(), mzero<C1, T>(), xs);
 }
 
-// to_string
-
-template <typename CT,
-          template <typename> class C = fun_traits<CT>::template constructor,
-          typename T = typename fun_traits<CT>::value_type>
-std::string to_string(const CT &xs) {
-  struct f : std::tuple<> {
-    auto operator()(const T &x) const {
-      std::ostringstream os;
-      os << x;
-      return os.str();
-    }
-  };
-  struct op : std::tuple<> {
-    auto operator()(const std::string &x, const std::string &y) const {
-      if (x.empty())
-        return y;
-      if (y.empty())
-        return x;
-      return x + ", " + y;
-    }
-  };
-  return std::string("[") + foldMap(f(), op(), std::string(), xs) + "]";
-}
+// // to_string
+//
+// template <typename CT,
+//           template <typename> class C = fun_traits<CT>::template constructor,
+//           typename T = typename fun_traits<CT>::value_type>
+// std::string to_string(const CT &xs) {
+//   struct f : std::tuple<> {
+//     auto operator()(const T &x) const {
+//       std::ostringstream os;
+//       os.precision(std::numeric_limits<T>::max_digits10);
+//       os << x;
+//       return std::move(os).str();
+//     }
+//   };
+//   struct op : std::tuple<> {
+//     auto operator()(const std::string &x, const std::string &y) const {
+//       if (x.empty())
+//         return y;
+//       if (y.empty())
+//         return x;
+//       return x + ", " + y;
+//     }
+//   };
+//   return std::string("[") + foldMap(f(), op(), std::string(), xs) + "]";
+// }
 
 // An ostreamer is function that outputs something. In particular,
 // there is an efficient way of combining ostreamers -- somthing that
@@ -93,7 +94,7 @@ class ostreamer {
   template <typename Archive> void save(Archive &ar) const {
     std::ostringstream os;
     os << *this;
-    ar(os.str());
+    ar(std::move(os).str());
   }
   template <typename Archive> void load(Archive &ar) {
     std::string str;
@@ -120,8 +121,10 @@ public:
   }
   template <typename T> ostreamer(T &&x) {
     std::ostringstream os;
+    os.precision(std::numeric_limits<std::decay_t<T>>::max_digits10);
     os << std::forward<T>(x);
-    impl = [str = os.str()](std::ostream & os) { os << str; };
+    auto str = std::move(os).str();
+    impl = [str = std::move(str)](std::ostream & os) { os << str; };
   }
 
   ostreamer &operator+=(const ostreamer &other) {
@@ -196,26 +199,39 @@ template <typename CT,
           template <typename> class C = fun_traits<CT>::template constructor,
           typename T = typename fun_traits<CT>::value_type>
 ostreamer to_ostreamer(const CT &xs) {
-  struct f : std::tuple<> {
-    auto operator()(const T &x) const { return make_ostreamer(x); }
-    auto operator()(T &&x) const { return make_ostreamer(std::move(x)); }
-  };
-  struct op : std::tuple<> {
-    auto operator()(const ostreamer &left, const ostreamer &right) const {
-      return left + make_ostreamer(", ") + right;
+  struct with_comma : std::tuple<> {
+    auto operator()(const T &x) const {
+      return make_ostreamer(x) + make_ostreamer(",");
     }
-    auto operator()(const ostreamer &left, ostreamer &&right) const {
-      return left + make_ostreamer(", ") + std::move(right);
-    }
-    auto operator()(ostreamer &&left, const ostreamer &right) const {
-      return std::move(left) + make_ostreamer(", ") + right;
-    }
-    auto operator()(ostreamer &&left, ostreamer &&right) const {
-      return std::move(left) + make_ostreamer(", ") + std::move(right);
+    auto operator()(T &&x) const {
+      return make_ostreamer(std::move(x)) + make_ostreamer(",");
     }
   };
-  return make_ostreamer("[") + foldMap(f(), op(), ostreamer(), xs) +
+  return make_ostreamer("[") +
+         foldMap(with_comma(), combine_ostreamers(), ostreamer(), xs) +
          make_ostreamer("]");
+}
+}
+
+namespace std {
+// operator<<
+
+template <typename CT, template <typename>
+                       class C = fun::fun_traits<CT>::template constructor,
+          typename T = typename fun::fun_traits<CT>::value_type>
+std::ostream &operator<<(std::ostream &os, const CT &xs) {
+  return os << fun::to_ostreamer(xs);
+}
+
+// to_string
+
+template <typename CT, template <typename>
+                       class C = fun::fun_traits<CT>::template constructor,
+          typename T = typename fun::fun_traits<CT>::value_type>
+std::string to_string(const CT &xs) {
+  std::ostringstream os;
+  os << xs;
+  return std::move(os).str();
 }
 }
 

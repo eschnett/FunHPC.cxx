@@ -145,14 +145,63 @@ struct nested_last : std::tuple<> {
 // reference to the content of this temporary. It appears that Clang
 // extends the lifetime of this temporary (maybe accidentally?), while
 // GCC does not. Hence we need to return a value and not a reference.
+
+// Note: The above should now be fixed by correcting proxy's mextract.
+
+// Note: Why not use foldMap instead of mextract(fmap)?
+
 template <template <typename> class P, template <typename> class A, typename T>
-auto head(const adt::nested<P, A, T> &xss) {
+decltype(auto) head(const adt::nested<P, A, T> &xss) {
   return mextract(fmap(detail::nested_head<A, T>(), xss.data));
 }
 
 template <template <typename> class P, template <typename> class A, typename T>
-auto last(const adt::nested<P, A, T> &xss) {
+decltype(auto) last(const adt::nested<P, A, T> &xss) {
   return mextract(fmap(detail::nested_last<A, T>(), xss.data));
+}
+
+// indexing
+
+namespace detail {
+template <template <typename> class A, typename T>
+struct nested_getIndex : std::tuple<> {
+  auto operator()(const A<T> &xs, std::ptrdiff_t i) const { return xs[i]; }
+};
+}
+
+template <template <typename> class P, template <typename> class A, typename T>
+decltype(auto) getIndex(const adt::nested<P, A, T> &xs, std::ptrdiff_t i) {
+  return mextract(fmap(detail::nested_getIndex<A, T>(), xs.data, i));
+}
+
+template <typename> class accumulator;
+template <template <typename> class P, template <typename> class A, typename T>
+class accumulator<adt::nested<P, A, T>> {
+  accumulator<A<T>> data;
+
+public:
+  accumulator(std::ptrdiff_t n) : data(n) {}
+  T &operator[](std::ptrdiff_t i) { return data[i]; }
+  adt::nested<P, A, T> finalize() { return {munit<P>(data.finalize())}; }
+};
+
+namespace detail {
+struct nested_fmapIndexed : std::tuple<> {
+  template <typename AT, typename F, typename... Args>
+  auto operator()(const AT &xs, F &&f, std::ptrdiff_t i,
+                  Args &&... args) const {
+    return fmapIndexed(f, xs, i, args...);
+  }
+};
+}
+
+template <typename F, template <typename> class P, template <typename> class A,
+          typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>>
+adt::nested<P, A, R> fmapIndexed(F &&f, const adt::nested<P, A, T> &xss,
+                                 Args &&... args) {
+  return {fmap(detail::nested_fmapIndexed(), xss.data, std::forward<F>(f),
+               std::forward<Args>(args)...)};
 }
 
 // foldMap
@@ -316,6 +365,14 @@ C<R> msome(T &&x, Ts &&... ys) {
 template <template <typename> class P, template <typename> class A, typename T>
 bool mempty(const adt::nested<P, A, T> &xss) {
   return mempty(xss.data);
+}
+
+// msize
+
+template <template <typename> class P, template <typename> class A, typename T>
+std::size_t msize(const adt::nested<P, A, T> &xss) {
+  return mempty(xss.data) ? 0 : foldMap((std::size_t (*)(const A<T> &))msize,
+                                        std::plus<std::size_t>(), 0, xss.data);
 }
 }
 

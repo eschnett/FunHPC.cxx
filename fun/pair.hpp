@@ -160,8 +160,16 @@ auto mfoldMap(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
 
 // mempty
 
-template <typename T, typename L> bool mempty(const std::pair<L, T> &xs) {
+template <typename T, typename L>
+constexpr bool mempty(const std::pair<L, T> &xs) {
   return false;
+}
+
+// msize
+
+template <typename T, typename L>
+constexpr std::size_t msize(const std::pair<L, T> &xs) {
+  return !mempty(xs);
 }
 }
 

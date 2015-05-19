@@ -162,6 +162,12 @@ auto mplus(const std::function<T(A)> &xs, const std::function<Ts(A)> &... yss) {
 template <typename T> bool mempty(const std::function<T> &xs) {
   return !bool(xs);
 }
+
+// msize
+
+template <typename T> std::size_t msize(const std::function<T> &xs) {
+  return !mempty(xs);
+}
 }
 
 #define FUN_FUNCTION_HPP_DONE

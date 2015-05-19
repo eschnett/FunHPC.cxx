@@ -148,7 +148,15 @@ auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::idtype<T> &xs,
 
 // mempty
 
-template <typename T> bool mempty(const adt::idtype<T> &xs) { return false; }
+template <typename T> constexpr bool mempty(const adt::idtype<T> &xs) {
+  return false;
+}
+
+// msize
+
+template <typename T> constexpr std::size_t msize(const adt::idtype<T> &xs) {
+  return !mempty(xs);
+}
 }
 
 #define FUN_IDTYPE_HPP_DONE

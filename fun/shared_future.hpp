@@ -173,6 +173,12 @@ auto mzero() {
 template <typename T> bool mempty(const qthread::shared_future<T> &xs) {
   return !xs.valid();
 }
+
+// msize
+
+template <typename T> std::size_t msize(const qthread::shared_future<T> &xs) {
+  return !mempty(xs);
+}
 }
 
 #define FUN_SHARED_FUTURE_HPP_DONE

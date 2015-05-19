@@ -214,6 +214,12 @@ auto mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
 template <typename T> bool mempty(const adt::maybe<T> &xs) {
   return !xs.just();
 }
+
+// msize
+
+template <typename T> std::size_t msize(const adt::maybe<T> &xs) {
+  return !mempty(xs);
+}
 }
 
 #define FUN_MAYBE_HPP_DONE

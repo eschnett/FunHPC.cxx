@@ -140,6 +140,25 @@ decltype(auto) last(std::array<T, N> &&xs) {
   return std::move(xs.back());
 }
 
+// indexing
+
+template <template <typename> class C, typename R,
+          std::enable_if_t<detail::is_array<C<R>>::value> * = nullptr>
+auto create_sized(std::ptrdiff_t n) {
+  assert(n == std::ptrdiff_t(fun_traits<C<R>>::size));
+  return C<R>();
+}
+
+template <typename T, std::size_t N>
+decltype(auto) get_elt(const std::array<T, N> &xs, std::ptrdiff_t i) {
+  return xs[i];
+}
+
+template <typename T, std::size_t N, typename T1>
+void set_elt(std::array<T, N> &xs, std::ptrdiff_t i, T1 &&x) {
+  xs[i] = std::forward<T1>(x);
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
@@ -272,8 +291,16 @@ auto mzero() {
 
 // mempty
 
-template <typename T, std::size_t N> bool mempty(const std::array<T, N> &xs) {
+template <typename T, std::size_t N>
+constexpr bool mempty(const std::array<T, N> &xs) {
   return xs.empty();
+}
+
+// msize
+
+template <typename T, std::size_t N>
+constexpr std::size_t msize(const std::array<T, N> &xs) {
+  return xs.size();
 }
 }
 

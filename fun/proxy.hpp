@@ -177,7 +177,9 @@ auto mbind(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
 
 // mextract
 
-template <typename T> decltype(auto) mextract(const funhpc::proxy<T> &xs) {
+// Note: Don't return a reference to a temporary -- cannot use
+// decltype(auto)!
+template <typename T> auto mextract(const funhpc::proxy<T> &xs) {
   assert(bool(xs));
   return *xs.make_local();
 }
@@ -206,6 +208,12 @@ auto mzero() {
 
 template <typename T> bool mempty(const funhpc::proxy<T> &xs) {
   return !bool(xs);
+}
+
+// msize
+
+template <typename T> std::size_t msize(const funhpc::proxy<T> &xs) {
+  return !mempty(xs);
 }
 }
 

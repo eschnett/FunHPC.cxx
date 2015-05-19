@@ -228,6 +228,12 @@ auto msome(T &&x, Ts &&... ys) {
 template <typename T> bool mempty(const std::shared_ptr<T> &xs) {
   return !bool(xs);
 }
+
+// msize
+
+template <typename T> std::size_t msize(const std::shared_ptr<T> &xs) {
+  return !mempty(xs);
+}
 }
 
 #define FUN_SHARED_PTR_HPP_DONE

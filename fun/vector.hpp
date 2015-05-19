@@ -23,7 +23,7 @@ template <typename> struct is_vector : std::false_type {};
 template <typename T, typename Allocator>
 struct is_vector<std::vector<T, Allocator>> : std::true_type {};
 
-template <typename T> using vector1 = std::vector<T>;
+template <typename T> using std_vector = std::vector<T>;
 }
 
 // traits
@@ -55,8 +55,8 @@ template <template <typename, typename> class C, typename F, typename... Args,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  return iotaMap<detail::vector1>(std::forward<F>(f), s,
-                                  std::forward<Args>(args)...);
+  return iotaMap<detail::std_vector>(std::forward<F>(f), s,
+                                     std::forward<Args>(args)...);
 }
 
 // fmap
@@ -156,6 +156,36 @@ decltype(auto) last(std::vector<T, Allocator> &&xs) {
   return std::move(xs.back());
 }
 
+// indexing
+
+template <typename T, typename Allocator>
+decltype(auto) getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
+  return xs[i];
+}
+
+template <typename> class accumulator;
+template <typename T, typename Allocator>
+class accumulator<std::vector<T, Allocator>> {
+  std::vector<T, Allocator> data;
+
+public:
+  accumulator(std::ptrdiff_t n) : data(n) {}
+  T &operator[](std::ptrdiff_t i) { return data[i]; }
+  decltype(auto) finalize() { return std::move(data); }
+  ~accumulator() { assert(data.empty()); }
+};
+
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, std::ptrdiff_t, Args &&...>>
+auto fmapIndexed(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
+  std::ptrdiff_t s = xs.size();
+  typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
+#pragma omp simd
+  for (std::ptrdiff_t i = 0; i < s; ++i)
+    rs[i] = cxx::invoke(f, xs[i], i, args...);
+  return rs;
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
@@ -222,7 +252,7 @@ template <template <typename, typename> class C, typename T,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
 auto munit(T &&x) {
-  return munit<detail::vector1>(std::forward<T>(x));
+  return munit<detail::std_vector>(std::forward<T>(x));
 }
 
 // mjoin
@@ -297,7 +327,7 @@ template <template <typename, typename> class C, typename R,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
 auto mzero() {
-  return mzero<detail::vector1, R>();
+  return mzero<detail::std_vector, R>();
 }
 
 // mplus
@@ -335,7 +365,7 @@ template <template <typename, typename> class C, typename T, typename... Ts,
           std::enable_if_t<
               detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
 auto msome(T &&x, Ts &&... ys) {
-  return msome<detail::vector1>(std::forward<T>(x), std::forward<Ts>(ys)...);
+  return msome<detail::std_vector>(std::forward<T>(x), std::forward<Ts>(ys)...);
 }
 
 // mempty
@@ -343,6 +373,13 @@ auto msome(T &&x, Ts &&... ys) {
 template <typename T, typename Allocator>
 bool mempty(const std::vector<T, Allocator> &xs) {
   return xs.empty();
+}
+
+// msize
+
+template <typename T, typename Allocator>
+std::size_t msize(const std::vector<T, Allocator> &xs) {
+  return xs.size();
 }
 }
 

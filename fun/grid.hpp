@@ -227,6 +227,13 @@ template <template <typename> class C, typename T, std::ptrdiff_t D>
 bool mempty(const adt::grid<C, T, D> &xs) {
   return xs.empty();
 }
+
+// msize
+
+template <template <typename> class C, typename T, std::ptrdiff_t D>
+std::size_t msize(const adt::grid<C, T, D> &xs) {
+  return xs.size();
+}
 }
 
 #define FUN_GRID_HPP_DONE

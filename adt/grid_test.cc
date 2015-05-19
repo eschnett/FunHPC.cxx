@@ -171,7 +171,7 @@ TEST(adt_grid, fmap2) {
   EXPECT_EQ(3 * (10 * double(s10 - 1)) + 1, y10.last());
 }
 
-TEST(adt_grid, fmapTopo) {
+TEST(adt_grid, fmapStencil) {
   std::ptrdiff_t s = 10;
 
   auto g0 = adt::grid<std_vector, double, 0>(
@@ -179,7 +179,7 @@ TEST(adt_grid, fmapTopo) {
         return double(adt::sum(i));
       }, adt::array_fill<std::ptrdiff_t, 0>(s));
   auto x0 = adt::grid<std_vector, double, 0>(
-      typename adt::grid<std_vector, double, 0>::fmapTopo(),
+      typename adt::grid<std_vector, double, 0>::fmapStencil(),
       [](auto x) { return 0.0; }, [](auto x, auto i) { return x; }, g0);
   EXPECT_EQ(x0.size(), g0.size());
   auto maxabs0 =
@@ -200,7 +200,7 @@ TEST(adt_grid, fmapTopo) {
         return double(adt::sum(i)) + 10.0;
       }, adt::array_fill<std::ptrdiff_t, 0>(s));
   auto x1 = adt::grid<std_vector, double, 1>(
-      typename adt::grid<std_vector, double, 1>::fmapTopo(),
+      typename adt::grid<std_vector, double, 1>::fmapStencil(),
       [](auto x, auto bm, auto bp) { return bm - 2.0 * x + bp; },
       [](auto x, auto i) { return x; }, g1, bm1, bp1);
   EXPECT_EQ(x1.size(), g1.size());
@@ -222,11 +222,11 @@ TEST(adt_grid, fmapTopo) {
         return double(adt::sum(i)) + 10.0;
       }, adt::array_fill<std::ptrdiff_t, 1>(s));
   auto x2 = adt::grid<std_vector, double, 2>(
-      typename adt::grid<std_vector, double, 2>::fmapTopo(),
-      [](auto x, auto bm0, auto bp0, auto bm1, auto bp1) {
+      typename adt::grid<std_vector, double, 2>::fmapStencil(),
+      [](auto x, auto bm0, auto bm1, auto bp0, auto bp1) {
         return (bm0 - 2.0 * x + bp0) + (bm1 - 2.0 * x + bp1);
       },
-      [](auto x, auto i) { return x; }, g2, bm2, bp2, bm2, bp2);
+      [](auto x, auto i) { return x; }, g2, bm2, bm2, bp2, bp2);
   EXPECT_EQ(x2.size(), g2.size());
   EXPECT_EQ(x2.shape()[0], g2.shape()[0]);
   EXPECT_EQ(x2.shape()[1], g2.shape()[1]);

@@ -55,14 +55,14 @@ TEST(fun_grid, fmap) {
   EXPECT_EQ(55, zs.last());
 }
 
-TEST(fun_grid, fmapTopo) {
+TEST(fun_grid, fmapStencil) {
   std::ptrdiff_t s = 10;
 
   auto xs0 = iotaMap<grid0>([](const typename grid0<int>::index_type &x) {
     return int(adt::sum(x * x));
   }, typename grid0<int>::index_type{{}});
-  auto ys0 =
-      fmapTopo([](auto x) { return 0; }, [](auto x, auto i) { return x; }, xs0);
+  auto ys0 = fmapStencil([](auto x) { return 0; },
+                         [](auto x, auto i) { return x; }, xs0);
   auto sum0 = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, ys0);
   EXPECT_EQ(0, sum0);
@@ -77,8 +77,8 @@ TEST(fun_grid, fmapTopo) {
     return int(s * s);
   }, typename grid0<int>::index_type{{}});
   auto ys1 =
-      fmapTopo([](auto x, auto bm0, auto bp0) { return bm0 - 2 * x + bp0; },
-               [](auto x, auto i) { return x; }, xs1, bms1, bps1);
+      fmapStencil([](auto x, auto bm0, auto bp0) { return bm0 - 2 * x + bp0; },
+                  [](auto x, auto i) { return x; }, xs1, bms1, bps1);
   auto sum1 = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, ys1);
   EXPECT_EQ(20, sum1);
@@ -92,11 +92,11 @@ TEST(fun_grid, fmapTopo) {
   auto bps2 = iotaMap<grid1>([s](const typename grid1<int>::index_type &x) {
     return int(s * s + adt::sum(x * x));
   }, typename grid1<int>::index_type{{s}});
-  auto ys2 = fmapTopo(
-      [](auto x, auto bm0, auto bp0, auto bm1, auto bp1) {
+  auto ys2 = fmapStencil(
+      [](auto x, auto bm0, auto bm1, auto bp0, auto bp1) {
         return (bm0 - 2 * x + bp0) + (bm1 - 2 * x + bp1);
       },
-      [](auto x, auto i) { return x; }, xs2, bms2, bps2, bms2, bps2);
+      [](auto x, auto i) { return x; }, xs2, bms2, bms2, bps2, bps2);
   auto sum2 = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, ys2);
   EXPECT_EQ(400, sum2);

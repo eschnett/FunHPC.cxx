@@ -70,13 +70,32 @@ auto fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
                             std::forward<Args>(args)...);
 }
 
-// fmapTopo
+// boundary
+
+template <template <typename> class C, typename T, std::ptrdiff_t D,
+          std::enable_if_t<D != 0> * = nullptr>
+auto boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
+  return adt::grid<C, T, D - 1>(typename adt::grid<C, T, D - 1>::boundary(), xs,
+                                i);
+}
+
+// boundaryMap
+
+template <typename F, template <typename> class C, typename T, std::ptrdiff_t D,
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>,
+          std::enable_if_t<D != 0> * = nullptr>
+auto boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
+                 Args &&... args) {
+  return fmap(std::forward<F>(f), boundary(xs, i), std::forward<Args>(args)...);
+}
+
+// fmapStencil
 
 template <typename F, typename G, template <typename> class C, typename T,
           typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, Args...>>
-auto fmapTopo(F &&f, G &&g, const adt::grid<C, T, 0> &xs, Args &&... args) {
-  return adt::grid<C, R, 0>(typename adt::grid<C, R, 0>::fmapTopo(),
+auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 0> &xs, Args &&... args) {
+  return adt::grid<C, R, 0>(typename adt::grid<C, R, 0>::fmapStencil(),
                             std::forward<F>(f), std::forward<G>(g), xs,
                             std::forward<Args>(args)...);
 }
@@ -85,30 +104,30 @@ template <typename F, typename G, template <typename> class C, typename T,
           typename BM0, typename BP0, typename... Args,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
-auto fmapTopo(F &&f, G &&g, const adt::grid<C, T, 1> &xs, BM0 &&bm0, BP0 &&bp0,
-              Args &&... args) {
+auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 1> &xs, BM0 &&bm0,
+                 BP0 &&bp0, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM0>, adt::grid<C, B, 0>>::value, "");
   static_assert(std::is_same<std::decay_t<BP0>, adt::grid<C, B, 0>>::value, "");
-  return adt::grid<C, R, 1>(typename adt::grid<C, R, 1>::fmapTopo(),
+  return adt::grid<C, R, 1>(typename adt::grid<C, R, 1>::fmapStencil(),
                             std::forward<F>(f), std::forward<G>(g), xs,
                             std::forward<BM0>(bm0), std::forward<BP0>(bp0),
                             std::forward<Args>(args)...);
 }
 
 template <typename F, typename G, template <typename> class C, typename T,
-          typename BM0, typename BP0, typename BM1, typename BP1,
+          typename BM0, typename BM1, typename BP0, typename BP1,
           typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, B, B, B, B, Args...>>
-auto fmapTopo(F &&f, G &&g, const adt::grid<C, T, 2> &xs, BM0 &&bm0, BP0 &&bp0,
-              BM1 &&bm1, BP1 &&bp1, Args &&... args) {
+auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 2> &xs, BM0 &&bm0,
+                 BM1 &&bm1, BP0 &&bp0, BP1 &&bp1, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM0>, adt::grid<C, B, 1>>::value, "");
-  static_assert(std::is_same<std::decay_t<BP0>, adt::grid<C, B, 1>>::value, "");
   static_assert(std::is_same<std::decay_t<BM1>, adt::grid<C, B, 1>>::value, "");
+  static_assert(std::is_same<std::decay_t<BP0>, adt::grid<C, B, 1>>::value, "");
   static_assert(std::is_same<std::decay_t<BP1>, adt::grid<C, B, 1>>::value, "");
-  return adt::grid<C, R, 2>(typename adt::grid<C, R, 2>::fmapTopo(),
+  return adt::grid<C, R, 2>(typename adt::grid<C, R, 2>::fmapStencil(),
                             std::forward<F>(f), std::forward<G>(g), xs,
-                            std::forward<BM0>(bm0), std::forward<BP0>(bp0),
-                            std::forward<BM1>(bm1), std::forward<BP1>(bp1),
+                            std::forward<BM0>(bm0), std::forward<BM1>(bm1),
+                            std::forward<BP0>(bp0), std::forward<BP1>(bp1),
                             std::forward<Args>(args)...);
 }
 
@@ -121,6 +140,15 @@ auto foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
              Args &&... args) {
   return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
                     std::forward<Z>(z), std::forward<Args>(args)...);
+}
+
+template <typename F, typename Op, typename Z, template <typename> class C,
+          typename T, std::ptrdiff_t D, typename T2, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+auto foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
+              const adt::grid<C, T2, D> &ys, Args &&... args) {
+  return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
+                     std::forward<Z>(z), ys, std::forward<Args>(args)...);
 }
 
 // munit
@@ -170,7 +198,9 @@ adt::grid<C, R, D> mfoldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
 
 // mzero
 
-template <template <typename> class C, typename R> C<R> mzero() {
+template <template <typename> class C, typename R,
+          std::enable_if_t<detail::is_grid<C<R>>::value> * = nullptr>
+auto mzero() {
   return C<R>();
 }
 

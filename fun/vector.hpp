@@ -97,7 +97,7 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
   return rs;
 }
 
-// fmapTopo
+// fmapStencil
 
 // probably want a datatype for the boundary. should support
 // conversion to const references (as for argument passing), and
@@ -109,8 +109,8 @@ template <typename F, typename G, typename T, typename Allocator, typename BM,
           typename BP, typename... Args,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
-auto fmapTopo(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
-              BP &&bp, Args &&... args) {
+auto fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
+                 BP &&bp, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   std::ptrdiff_t s = xs.size();

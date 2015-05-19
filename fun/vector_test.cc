@@ -53,11 +53,12 @@ TEST(fun_vector, fmap) {
   EXPECT_EQ((s - 1) * s / 2, accum);
 }
 
-TEST(fun_vector, fmapTopo) {
+TEST(fun_vector, fmapStencil) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<std::vector>([](int x) { return x * x; }, s);
-  auto ys = fmapTopo([](auto x, auto bm, auto bp) { return bm - 2 * x + bp; },
-                     [](auto x, auto i) { return x; }, xs, 1, 100);
+  auto ys =
+      fmapStencil([](auto x, auto bm, auto bp) { return bm - 2 * x + bp; },
+                  [](auto x, auto i) { return x; }, xs, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);

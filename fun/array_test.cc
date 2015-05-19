@@ -53,14 +53,15 @@ TEST(fun_array, fmap) {
   EXPECT_EQ((s - 1) * s / 2, accum);
 }
 
-TEST(fun_array, fmapTopo) {
+TEST(fun_array, fmapStencil) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<array10>([](int x) { return x * x; }, s);
-  auto ys =
-      fmapTopo([](auto x, const auto &bl,
-                  const auto &bu) { return get<0>(bl) - 2 * x + get<0>(bu); },
-               [](auto x, auto f, auto d) { return x; }, xs, std::tuple<int>(1),
-               std::tuple<int>(100));
+  auto ys = fmapStencil(
+      [](auto x, const auto &bl, const auto &bu) {
+        return get<0>(bl) - 2 * x + get<0>(bu);
+      },
+      [](auto x, auto f, auto d) { return x; }, xs, std::tuple<int>(1),
+      std::tuple<int>(100));
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);

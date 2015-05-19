@@ -84,14 +84,15 @@ auto fmap2(F &&f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
   return rs;
 }
 
-// fmapTopo
+// fmapStencil
 
 template <
     typename F, typename G, typename T, std::size_t N, typename... Args,
     typename B = cxx::invoke_of_t<G, T, bool, std::ptrdiff_t>,
     typename R = cxx::invoke_of_t<F, T, std::tuple<B>, std::tuple<B>, Args...>>
-auto fmapTopo(F &&f, G &&g, const std::array<T, N> &xs, const std::tuple<B> &bl,
-              const std::tuple<B> &bu, Args &&... args) {
+auto fmapStencil(F &&f, G &&g, const std::array<T, N> &xs,
+                 const std::tuple<B> &bl, const std::tuple<B> &bu,
+                 Args &&... args) {
   std::ptrdiff_t s = N;
   std::array<R, N> rs;
   if (__builtin_expect(s == 1, false)) {

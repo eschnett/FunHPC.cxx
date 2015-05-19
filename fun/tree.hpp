@@ -56,17 +56,17 @@ auto fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
                          xs, ys, std::forward<Args>(args)...);
 }
 
-// fmapTopo
+// fmapStencil
 
 template <typename F, typename G, template <typename> class C, typename T,
           typename BM, typename BP, typename... Args,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
-auto fmapTopo(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
-              Args &&... args) {
+auto fmapStencil(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
+                 Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
-  return adt::tree<C, R>(typename adt::tree<C, R>::fmapTopo(),
+  return adt::tree<C, R>(typename adt::tree<C, R>::fmapStencil(),
                          std::forward<F>(f), std::forward<G>(g), xs,
                          std::forward<BM>(bm), std::forward<BP>(bp),
                          std::forward<Args>(args)...);
@@ -149,7 +149,9 @@ adt::tree<C, R> mfoldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
 
 // mzero
 
-template <template <typename> class C, typename R> C<R> mzero() {
+template <template <typename> class C, typename R,
+          std::enable_if_t<detail::is_tree<C<R>>::value> * = nullptr>
+C<R> mzero() {
   return C<R>();
 }
 

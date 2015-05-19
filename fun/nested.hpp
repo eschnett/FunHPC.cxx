@@ -95,17 +95,17 @@ adt::nested<P, A, R> fmap2(F &&f, const adt::nested<P, A, T> &xss,
                 std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
-// fmapTopo
+// fmapStencil
 
 namespace detail {
-struct nested_fmapTopo : std::tuple<> {
+struct nested_fmapStencil : std::tuple<> {
   template <typename AT, typename F, typename G, typename BM, typename BP,
             typename... Args>
   auto operator()(const AT &xs, F &&f, G &&g, BM &&bm, BP &&bp,
                   Args &&... args) const {
-    return fmapTopo(std::forward<F>(f), std::forward<G>(g), xs,
-                    std::forward<BM>(bm), std::forward<BP>(bp),
-                    std::forward<Args>(args)...);
+    return fmapStencil(std::forward<F>(f), std::forward<G>(g), xs,
+                       std::forward<BM>(bm), std::forward<BP>(bp),
+                       std::forward<Args>(args)...);
   }
 };
 }
@@ -114,11 +114,11 @@ template <typename F, typename G, template <typename> class P,
           template <typename> class A, typename T, typename BM, typename BP,
           typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
-adt::nested<P, A, R> fmapTopo(F &&f, G &&g, const adt::nested<P, A, T> &xss,
-                              BM &&bm, BP &&bp, Args &&... args) {
+adt::nested<P, A, R> fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss,
+                                 BM &&bm, BP &&bp, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
-  return {fmap(detail::nested_fmapTopo(), xss.data, std::forward<F>(f),
+  return {fmap(detail::nested_fmapStencil(), xss.data, std::forward<F>(f),
                std::forward<G>(g), std::forward<BM>(bm), std::forward<BP>(bp),
                std::forward<Args>(args)...)};
 }
@@ -282,7 +282,8 @@ adt::nested<P, A, R> mfoldMap(F &&f, Op &&op, Z &&z,
 
 template <template <typename> class C, typename R,
           template <typename> class P = C<R>::template pointer_constructor,
-          template <typename> class A = C<R>::template array_constructor>
+          template <typename> class A = C<R>::template array_constructor,
+          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
 C<R> mzero() {
   return {mzero<P, A<R>>()};
   // return {munit<P>(mzero<A, R>())};

@@ -342,12 +342,22 @@ public:
     assert(invariant());
   }
 
-  // fmapTopo
+  // boundary
 
-  struct fmapTopo {};
+  struct boundary {};
+
+  grid(boundary, const grid<C, T, D + 1> &xs, std::ptrdiff_t i)
+      : indexing(typename index_space::boundary(), xs.indexing, i),
+        data(xs.data) {
+    assert(invariant());
+  }
+
+  // fmapStencil
+
+  struct fmapStencil {};
 
   template <typename F, typename G, typename T1, typename... Args>
-  grid(fmapTopo, F &&f, G &&g, const grid<C, T1, 0> &xs, Args &&... args)
+  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 0> &xs, Args &&... args)
       : indexing(xs.shape()), data(indexing.size()) {
     static_assert(D == 0, "");
     // typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
@@ -361,8 +371,8 @@ public:
 
   template <typename F, typename G, typename T1, typename BM0, typename BP0,
             typename... Args>
-  grid(fmapTopo, F &&f, G &&g, const grid<C, T1, 1> &xs, BM0 &&bm0, BP0 &&bp0,
-       Args &&... args)
+  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 1> &xs, BM0 &&bm0,
+       BP0 &&bp0, Args &&... args)
       : indexing(xs.shape()), data(indexing.size()) {
     static_assert(D == 1, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
@@ -385,10 +395,10 @@ public:
     assert(invariant());
   }
 
-  template <typename F, typename G, typename T1, typename BM0, typename BP0,
-            typename BM1, typename BP1, typename... Args>
-  grid(fmapTopo, F &&f, G &&g, const grid<C, T1, 2> &xs, BM0 &&bm0, BP0 &&bp0,
-       BM1 &&bm1, BP1 &&bp1, Args &&... args)
+  template <typename F, typename G, typename T1, typename BM0, typename BM1,
+            typename BP0, typename BP1, typename... Args>
+  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 2> &xs, BM0 &&bm0,
+       BM1 &&bm1, BP0 &&bp0, BP1 &&bp1, Args &&... args)
       : indexing(xs.shape()), data(indexing.size()) {
     static_assert(D == 2, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
@@ -396,8 +406,8 @@ public:
         std::is_same<cxx::invoke_of_t<F, T1, B, B, B, B, Args...>, T>::value,
         "");
     static_assert(std::is_same<std::decay_t<BM0>, grid<C, B, 1>>::value, "");
-    static_assert(std::is_same<std::decay_t<BP0>, grid<C, B, 1>>::value, "");
     static_assert(std::is_same<std::decay_t<BM1>, grid<C, B, 1>>::value, "");
+    static_assert(std::is_same<std::decay_t<BP0>, grid<C, B, 1>>::value, "");
     static_assert(std::is_same<std::decay_t<BP1>, grid<C, B, 1>>::value, "");
     auto di0 = array_dir<std::ptrdiff_t, D, 0>();
     auto di1 = array_dir<std::ptrdiff_t, D, 1>();
@@ -405,19 +415,19 @@ public:
       const B &cm0 =
           i[0] == 0 ? bm0.data[bm0.indexing.linear(rmdir<0>(i))]
                     : cxx::invoke(g, xs.data[xs.indexing.linear(i - di0)], 1);
+      const B &cm1 =
+          i[1] == 0 ? bm1.data[bm1.indexing.linear(rmdir<1>(i))]
+                    : cxx::invoke(g, xs.data[xs.indexing.linear(i - di1)], 3);
       const B &cp0 =
           i[0] == xs.indexing.shape()[0] - 1
               ? bp0.data[bp0.indexing.linear(rmdir<0>(i))]
               : cxx::invoke(g, xs.data[xs.indexing.linear(i + di0)], 0);
-      const B &cm1 =
-          i[1] == 0 ? bm1.data[bm1.indexing.linear(rmdir<1>(i))]
-                    : cxx::invoke(g, xs.data[xs.indexing.linear(i - di1)], 3);
       const B &cp1 =
           i[1] == xs.indexing.shape()[1] - 1
               ? bp1.data[bp1.indexing.linear(rmdir<1>(i))]
               : cxx::invoke(g, xs.data[xs.indexing.linear(i + di1)], 2);
       data[indexing.linear(i)] = cxx::invoke(f, xs.data[xs.indexing.linear(i)],
-                                             cm0, cp0, cm1, cp1, args...);
+                                             cm0, cm1, cp0, cp1, args...);
     });
     assert(invariant());
   }
@@ -432,6 +442,21 @@ public:
     indexing.loop([&](const index_type &i) {
       r = cxx::invoke(op, std::move(r),
                       cxx::invoke(f, data[indexing.linear(i)], args...));
+    });
+    return r;
+  }
+
+  template <typename F, typename Op, typename Z, typename T2, typename... Args,
+            typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+  R foldMap2(F &&f, Op &&op, const Z &z, const grid<C, T2, D> &ys,
+             Args &&... args) const {
+    static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
+    assert(ys.shape() == shape());
+    R r(z);
+    indexing.loop([&](const index_type &i) {
+      r = cxx::invoke(op, std::move(r),
+                      cxx::invoke(f, data[indexing.linear(i)],
+                                  ys.data[ys.indexing.linear(i)], args...));
     });
     return r;
   }

@@ -172,20 +172,20 @@ public:
                   "");
   }
 
-  struct fmapTopo {};
+  struct fmapStencil {};
 
 private:
-  struct detail_fmapTopo_f : std::tuple<> {
+  struct detail_fmapStencil_f : std::tuple<> {
     template <typename T1, typename BM, typename BP, typename F, typename G,
               typename... Args>
     auto operator()(const tree<C, T1> &xs, BM &&bm, BP &&bp, F &&f, G &&g,
                     Args &&... args) const {
-      return tree(fmapTopo(), std::forward<F>(f), std::forward<G>(g), xs,
+      return tree(fmapStencil(), std::forward<F>(f), std::forward<G>(g), xs,
                   std::forward<BM>(bm), std::forward<BP>(bp),
                   std::forward<Args>(args)...);
     }
   };
-  template <typename G> struct detail_fmapTopo_g {
+  template <typename G> struct detail_fmapStencil_g {
     G g;
     template <typename Archive> void serialize(Archive &ar) { ar(g); }
     template <typename T1>
@@ -197,16 +197,16 @@ private:
 public:
   template <typename F, typename G, typename T1, typename BM, typename BP,
             typename... Args>
-  tree(fmapTopo, F &&f, G &&g, const tree<C, T1> &xs, BM &&bm, BP &&bp,
+  tree(fmapStencil, F &&f, G &&g, const tree<C, T1> &xs, BM &&bm, BP &&bp,
        Args &&... args)
       : subtrees(xs.subtrees.left()
-                     ? adt::make_left<C<T>, C<tree>>(fun::fmapTopo(
+                     ? adt::make_left<C<T>, C<tree>>(fun::fmapStencil(
                            std::forward<F>(f), std::forward<G>(g),
                            xs.subtrees.get_left(), std::forward<BM>(bm),
                            std::forward<BP>(bp), std::forward<Args>(args)...))
-                     : adt::make_right<C<T>, C<tree>>(fun::fmapTopo(
-                           detail_fmapTopo_f(),
-                           detail_fmapTopo_g<std::decay_t<G>>{g},
+                     : adt::make_right<C<T>, C<tree>>(fun::fmapStencil(
+                           detail_fmapStencil_f(),
+                           detail_fmapStencil_g<std::decay_t<G>>{g},
                            xs.subtrees.get_right(), std::forward<BM>(bm),
                            std::forward<BP>(bp), std::forward<F>(f), g,
                            std::forward<Args>(args)...))) {

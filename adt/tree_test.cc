@@ -104,11 +104,11 @@ TEST(adt_tree, fmap) {
   EXPECT_EQ(1.0, zs.head());
 }
 
-TEST(adt_tree, fmapTopo) {
+TEST(adt_tree, fmapStencil) {
   auto xs = shared_tree<double>(typename shared_tree<double>::iotaMap(),
                                 [](auto i) { return double(i); }, 0, 1000, 1);
   auto ys = shared_tree<double>(
-      typename shared_tree<double>::fmapTopo(),
+      typename shared_tree<double>::fmapStencil(),
       [](auto x, auto bm, auto bp) { return bm - 2.0 * x + bp; },
       [](auto x, auto i) { return x; }, xs, -1.0, 1000.0);
   EXPECT_EQ(xs.size(), ys.size());

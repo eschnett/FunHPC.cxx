@@ -17,24 +17,31 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
 
+// Types
+
+typedef std::ptrdiff_t int_t;
+typedef double real_t;
+
 // Parameters
+
 struct parameters_t {
-  std::ptrdiff_t ncells;
-  const double xmin = 0.0;
-  const double xmax = 1.0;
-  double dx() const { return (xmax - xmin) / ncells; }
+  int_t ncells;
+  const real_t xmin = 0.0;
+  const real_t xmax = 1.0;
+  real_t dx() const { return (xmax - xmin) / ncells; }
 
-  std::ptrdiff_t nsteps;
-  const double tmin = 0.0;
-  std::ptrdiff_t icfl = 1;
-  double dt() const { return dx() / icfl; }
+  int_t nsteps;
+  const real_t tmin = 0.0;
+  const int_t icfl = 1;
+  real_t dt() const { return dx() / icfl; }
 
-  std::ptrdiff_t outinfo_every;
-  std::ptrdiff_t outfile_every;
+  int_t outinfo_every;
+  int_t outfile_every;
   std::string outfile_name;
 };
 
@@ -43,7 +50,7 @@ parameters_t parameters;
 // Norm
 
 struct norm_t {
-  double count, min, max, max_abs, sum, sum2, sum_abs;
+  real_t count, min, max, max_abs, sum, sum2, sum_abs;
   template <typename Archive> void serialize(Archive &ar) {
     ar(count, min, max, max_abs, sum, sum2, sum_abs);
   }
@@ -51,7 +58,7 @@ struct norm_t {
   norm_t()
       : count(0), min(1.0 / 0.0), max(-1.0 / 0.0), max_abs(0), sum(0), sum2(0),
         sum_abs(0) {}
-  norm_t(double x)
+  norm_t(real_t x)
       : count(1), min(x), max(x), max_abs(std::fabs(x)), sum(x),
         sum2(std::pow(x, 2)), sum_abs(std::fabs(x)) {}
   norm_t(const norm_t &other) = default;
@@ -69,10 +76,10 @@ struct norm_t {
     return *this;
   }
   norm_t operator+(const norm_t &other) const { return norm_t(*this) += other; }
-  double avg() const { return sum / count; }
-  double norm1() const { return sum_abs / count; }
-  double norm2() const { return std::sqrt(sum2 / count); }
-  double norm_inf() const { return max_abs; }
+  real_t avg() const { return sum / count; }
+  real_t norm1() const { return sum_abs / count; }
+  real_t norm2() const { return std::sqrt(sum2 / count); }
+  real_t norm_inf() const { return max_abs; }
 };
 
 auto norm_add(const norm_t &x, const norm_t &y) { return x + y; }
@@ -81,8 +88,8 @@ auto norm_zero() { return norm_t(); }
 // Cell
 
 struct cell_t {
-  double x;
-  double u, rho, v;
+  real_t x;
+  real_t u, rho, v;
   template <typename Archive> void serialize(Archive &ar) { ar(x, u, rho, v); }
 };
 
@@ -91,12 +98,12 @@ std::ostream &operator<<(std::ostream &os, const cell_t &c) {
             << " v=" << c.v << "}";
 }
 
-auto cell_axpy(const cell_t &y, const cell_t &x, double alpha) {
+auto cell_axpy(const cell_t &y, const cell_t &x, real_t alpha) {
   return cell_t{y.x, alpha * x.u + y.u, alpha * x.rho + y.rho,
                 alpha * x.v + y.v};
 }
 
-auto cell_analytic(double t, double x) {
+auto cell_analytic(real_t t, real_t x) {
   // Standing wave: u(t,x) = cos(k t) sin(k x) with k = 2\pi
   auto k = 2 * M_PI / (parameters.xmax - parameters.xmin);
   auto u = std::cos(k * t) * std::sin(k * x);
@@ -105,9 +112,9 @@ auto cell_analytic(double t, double x) {
   return cell_t{x, u, rho, v};
 }
 
-auto cell_init(double t, double x) { return cell_analytic(t, x); }
+auto cell_init(real_t t, real_t x) { return cell_analytic(t, x); }
 
-auto cell_error(const cell_t &c, double t) {
+auto cell_error(const cell_t &c, real_t t) {
   auto a = cell_analytic(t, c.x);
   return cell_axpy(c, a, -1.0);
 }
@@ -121,12 +128,12 @@ auto cell_energy(const cell_t &c) {
 }
 
 // Note: These Dirichlet boundaries are unstable
-auto cell_boundary_dirichlet(double t, std::ptrdiff_t i) {
+auto cell_boundary_dirichlet(real_t t, int_t i) {
   return cell_analytic(t, i == 0 ? parameters.xmin - 0.5 * parameters.dx()
                                  : parameters.xmax + 0.5 * parameters.dx());
 }
 
-auto cell_boundary_reflecting(const cell_t &c, std::ptrdiff_t i) {
+auto cell_boundary_reflecting(const cell_t &c, int_t i) {
   return cell_t{i == 0 ? 2 * parameters.xmin - c.x : 2 * parameters.xmax - c.x,
                 -c.u, -c.rho, c.v};
 }
@@ -147,7 +154,7 @@ using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
 template <typename T> using proxy_tree = adt::tree<proxy_vector, T>;
 
 struct grid_t {
-  double time;
+  real_t time;
   proxy_tree<cell_t> cells;
 };
 
@@ -159,14 +166,14 @@ std::ostream &operator<<(std::ostream &os, const grid_t &g) {
   return os;
 }
 
-auto grid_axpy(const grid_t &y, const grid_t &x, double alpha) {
+auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
   return grid_t{alpha * x.time + y.time,
                 fun::fmap2(cell_axpy, y.cells, x.cells, alpha)};
 }
 
-auto grid_init(double t) {
-  return grid_t{t, fun::iotaMap<proxy_tree>([t](std::ptrdiff_t i) {
-    double x = parameters.xmin + parameters.dx() * (double(i) + 0.5);
+auto grid_init(real_t t) {
+  return grid_t{t, fun::iotaMap<proxy_tree>([t](int_t i) {
+    real_t x = parameters.xmin + parameters.dx() * (real_t(i) + 0.5);
     return cell_init(t, x);
   }, parameters.ncells)};
 }
@@ -180,31 +187,32 @@ auto grid_norm(const grid_t &g) {
 }
 
 auto grid_energy(const grid_t &g) {
-  return fun::foldMap(cell_energy, std::plus<double>(), 0.0, g.cells);
+  return fun::foldMap(cell_energy, std::plus<real_t>(), 0.0, g.cells);
 }
 
-auto grid_boundary(const grid_t &g, std::ptrdiff_t i) {
+auto grid_boundary(const grid_t &g, int_t i) {
   // return cell_boundary_dirichlet(g.time, i);
   return cell_boundary_reflecting(
       i == 0 ? fun::head(g.cells) : fun::last(g.cells), i);
 }
 
-auto cell_get_face(const cell_t &c, std::ptrdiff_t i) { return c; }
+auto cell_get_face(const cell_t &c, int_t i) { return c; }
 auto grid_rhs(const grid_t &g) {
-  return grid_t{1.0, fun::fmapTopo(cell_rhs, cell_get_face, g.cells,
-                                   grid_boundary(g, 0), grid_boundary(g, 1))};
+  return grid_t{1.0,
+                fun::fmapStencil(cell_rhs, cell_get_face, g.cells,
+                                 grid_boundary(g, 0), grid_boundary(g, 1))};
 }
 
 // State
 
 struct state_t {
-  std::ptrdiff_t iter;
+  int_t iter;
   grid_t state;
   grid_t error;
   qthread::shared_future<norm_t> fnorm;
-  qthread::shared_future<double> fenergy;
+  qthread::shared_future<real_t> fenergy;
   grid_t rhs;
-  state_t(std::ptrdiff_t iter, const grid_t &state)
+  state_t(int_t iter, const grid_t &state)
       : iter(iter), state(state), error(grid_error(state)),
         fnorm(qthread::async(grid_norm, error)),
         fenergy(qthread::async(grid_energy, state)), rhs(grid_rhs(state)) {}
@@ -235,7 +243,7 @@ int info_output(int token, const state_t &s) {
 }
 
 struct cell_to_ostreamer {
-  double t;
+  real_t t;
   template <typename Archive> void serialize(Archive &ar) { ar(t); }
   auto operator()(const cell_t &cs, const cell_t &ce) const {
     fun::ostreamer ostr;

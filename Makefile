@@ -193,7 +193,8 @@ FUNHPC_EXAMPLE_SRCS =				\
 	examples/fibonacci.cc			\
 	examples/hello.cc			\
 	examples/pingpong.cc			\
-	examples/wave1d.cc
+	examples/wave1d.cc			\
+	examples/wave3d.cc
 HPX_EXAMPLE_SRCS =				\
 	examples/benchmark_hpx.cc		\
 	examples/hello_hpx.cc
@@ -293,6 +294,8 @@ pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 wave1d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave1d.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+wave3d: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/wave3d.o
+	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 ### hpx ###
 
@@ -347,7 +350,7 @@ clean:
 	$(RM) $(ALL_SRCS:%.cc=%.o) $(ALL_SRCS:%.cc=%.d)
 	$(RM) selftest selftest-funhpc
 	$(RM) $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
-	$(RM) wave1d.tsv
+	$(RM) wave1d.tsv wave3d.tsv
 .PHONY: clean
 
 distclean: clean

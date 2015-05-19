@@ -27,3 +27,5 @@ benchmark_hpx
 adt/OLD
 cxx/OLD
 fun/OLD
+wave3d
+wave3d.tsv

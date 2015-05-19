@@ -61,13 +61,13 @@ auto fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
 template <typename F, typename G, template <typename> class C, typename T,
           typename BM, typename BP, typename... Args,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>>
 auto fmapStencil(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
                  Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   return adt::tree<C, R>(typename adt::tree<C, R>::fmapStencil(),
-                         std::forward<F>(f), std::forward<G>(g), xs,
+                         std::forward<F>(f), std::forward<G>(g), xs, 0b11,
                          std::forward<BM>(bm), std::forward<BP>(bp),
                          std::forward<Args>(args)...);
 }

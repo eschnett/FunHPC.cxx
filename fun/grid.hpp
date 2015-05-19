@@ -93,7 +93,7 @@ auto boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
 
 template <typename F, typename G, template <typename> class C, typename T,
           typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+          typename R = cxx::invoke_of_t<F, T, std::size_t, Args...>>
 auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 0> &xs, Args &&... args) {
   return adt::grid<C, R, 0>(typename adt::grid<C, R, 0>::fmapStencil(),
                             std::forward<F>(f), std::forward<G>(g), xs,
@@ -103,7 +103,7 @@ auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 0> &xs, Args &&... args) {
 template <typename F, typename G, template <typename> class C, typename T,
           typename BM0, typename BP0, typename... Args,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename R = cxx::invoke_of_t<F, T, B, B, Args...>>
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>>
 auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 1> &xs, BM0 &&bm0,
                  BP0 &&bp0, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM0>, adt::grid<C, B, 0>>::value, "");
@@ -117,7 +117,7 @@ auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 1> &xs, BM0 &&bm0,
 template <typename F, typename G, template <typename> class C, typename T,
           typename BM0, typename BM1, typename BP0, typename BP1,
           typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename R = cxx::invoke_of_t<F, T, B, B, B, B, Args...>>
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>>
 auto fmapStencil(F &&f, G &&g, const adt::grid<C, T, 2> &xs, BM0 &&bm0,
                  BM1 &&bm1, BP0 &&bp0, BP1 &&bp1, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM0>, adt::grid<C, B, 1>>::value, "");

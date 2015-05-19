@@ -138,7 +138,8 @@ auto cell_boundary_reflecting(const cell_t &c, int_t i) {
                 -c.u, -c.rho, c.v};
 }
 
-auto cell_rhs(const cell_t &c, const cell_t &bm, const cell_t &bp) {
+auto cell_rhs(const cell_t &c, size_t bdirs, const cell_t &bm,
+              const cell_t &bp) {
   auto dx = parameters.dx();
   auto u_rhs = c.rho;
   auto rho_rhs = (-0.5 * bm.v + 0.5 * bp.v) / dx;

@@ -56,9 +56,9 @@ TEST(fun_vector, fmap) {
 TEST(fun_vector, fmapStencil) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<std::vector>([](int x) { return x * x; }, s);
-  auto ys =
-      fmapStencil([](auto x, auto bm, auto bp) { return bm - 2 * x + bp; },
-                  [](auto x, auto i) { return x; }, xs, 1, 100);
+  auto ys = fmapStencil(
+      [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
+      [](auto x, auto i) { return x; }, xs, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);

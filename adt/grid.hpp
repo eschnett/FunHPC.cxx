@@ -361,10 +361,13 @@ public:
       : indexing(xs.shape()), data(indexing.size()) {
     static_assert(D == 0, "");
     // typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
-    static_assert(std::is_same<cxx::invoke_of_t<F, T1, Args...>, T>::value, "");
+    static_assert(
+        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, Args...>, T>::value,
+        "");
     indexing.loop([&](const index_type &i) {
+      std::size_t bdirs = 0;
       data[indexing.linear(i)] =
-          cxx::invoke(f, xs.data[xs.indexing.linear(i)], args...);
+          cxx::invoke(f, xs.data[xs.indexing.linear(i)], bdirs, args...);
     });
     assert(invariant());
   }
@@ -377,20 +380,24 @@ public:
     static_assert(D == 1, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
     static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, B, B, Args...>, T>::value, "");
+        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...>,
+                     T>::value,
+        "");
     static_assert(std::is_same<std::decay_t<BM0>, grid<C, B, 0>>::value, "");
     static_assert(std::is_same<std::decay_t<BP0>, grid<C, B, 0>>::value, "");
     auto di = xs.indexing.linear(array_dir<std::ptrdiff_t, D, 0>());
     indexing.loop([&](const index_type &i) {
+      bool isbm0 = i[0] == 0;
+      bool isbp0 = i[0] == xs.indexing.shape()[0] - 1;
+      std::size_t bdirs = (isbm0 << 0) | (isbp0 << 1);
       const B &cm0 =
-          i[0] == 0 ? bm0.data[bm0.indexing.linear(rmdir<0>(i))]
-                    : cxx::invoke(g, xs.data[xs.indexing.linear(i - di)], 1);
+          isbm0 ? bm0.data[bm0.indexing.linear(rmdir<0>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i - di)], 1);
       const B &cp0 =
-          i[0] == xs.indexing.shape()[0] - 1
-              ? bp0.data[bp0.indexing.linear(rmdir<0>(i))]
-              : cxx::invoke(g, xs.data[xs.indexing.linear(i + di)], 0);
-      data[indexing.linear(i)] =
-          cxx::invoke(f, xs.data[xs.indexing.linear(i)], cm0, cp0, args...);
+          isbp0 ? bp0.data[bp0.indexing.linear(rmdir<0>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i + di)], 0);
+      data[indexing.linear(i)] = cxx::invoke(f, xs.data[xs.indexing.linear(i)],
+                                             bdirs, cm0, cp0, args...);
     });
     assert(invariant());
   }
@@ -403,7 +410,8 @@ public:
     static_assert(D == 2, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
     static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, B, B, B, B, Args...>, T>::value,
+        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, B, B, Args...>,
+                     T>::value,
         "");
     static_assert(std::is_same<std::decay_t<BM0>, grid<C, B, 1>>::value, "");
     static_assert(std::is_same<std::decay_t<BM1>, grid<C, B, 1>>::value, "");
@@ -412,22 +420,27 @@ public:
     auto di0 = array_dir<std::ptrdiff_t, D, 0>();
     auto di1 = array_dir<std::ptrdiff_t, D, 1>();
     indexing.loop([&](const index_type &i) {
+      bool isbm0 = i[0] == 0;
+      bool isbm1 = i[1] == 0;
+      bool isbp0 = i[0] == xs.indexing.shape()[0] - 1;
+      bool isbp1 = i[1] == xs.indexing.shape()[1] - 1;
+      std::size_t bdirs =
+          (isbm0 << 0) | (isbm1 << 2) | (isbp0 << 1) | (isbp1 << 3);
       const B &cm0 =
-          i[0] == 0 ? bm0.data[bm0.indexing.linear(rmdir<0>(i))]
-                    : cxx::invoke(g, xs.data[xs.indexing.linear(i - di0)], 1);
+          isbm0 ? bm0.data[bm0.indexing.linear(rmdir<0>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i - di0)], 1);
       const B &cm1 =
-          i[1] == 0 ? bm1.data[bm1.indexing.linear(rmdir<1>(i))]
-                    : cxx::invoke(g, xs.data[xs.indexing.linear(i - di1)], 3);
+          isbm1 ? bm1.data[bm1.indexing.linear(rmdir<1>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i - di1)], 3);
       const B &cp0 =
-          i[0] == xs.indexing.shape()[0] - 1
-              ? bp0.data[bp0.indexing.linear(rmdir<0>(i))]
-              : cxx::invoke(g, xs.data[xs.indexing.linear(i + di0)], 0);
+          isbp0 ? bp0.data[bp0.indexing.linear(rmdir<0>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i + di0)], 0);
       const B &cp1 =
-          i[1] == xs.indexing.shape()[1] - 1
-              ? bp1.data[bp1.indexing.linear(rmdir<1>(i))]
-              : cxx::invoke(g, xs.data[xs.indexing.linear(i + di1)], 2);
-      data[indexing.linear(i)] = cxx::invoke(f, xs.data[xs.indexing.linear(i)],
-                                             cm0, cm1, cp0, cp1, args...);
+          isbp1 ? bp1.data[bp1.indexing.linear(rmdir<1>(i))]
+                : cxx::invoke(g, xs.data[xs.indexing.linear(i + di1)], 2);
+      data[indexing.linear(i)] =
+          cxx::invoke(f, xs.data[xs.indexing.linear(i)], bdirs, cm0, cm1, cp0,
+                      cp1, args...);
     });
     assert(invariant());
   }

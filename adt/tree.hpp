@@ -175,13 +175,21 @@ public:
   struct fmapStencil {};
 
 private:
+  struct detail_fmapStencil_left_f : std::tuple<> {
+    template <typename T1, typename BM, typename BP, typename F,
+              typename... Args>
+    auto operator()(const T1 &x, std::size_t bdirs, BM &&bm, BP &&bp, F &&f,
+                    std::size_t bdirmask, Args &&... args) {
+      return cxx::invoke(f, x, bdirmask & bdirs, bm, bp, args...);
+    }
+  };
   struct detail_fmapStencil_f : std::tuple<> {
     template <typename T1, typename BM, typename BP, typename F, typename G,
               typename... Args>
-    auto operator()(const tree<C, T1> &xs, BM &&bm, BP &&bp, F &&f, G &&g,
-                    Args &&... args) const {
+    auto operator()(const tree<C, T1> &xs, std::size_t bdirs, BM &&bm, BP &&bp,
+                    F &&f, G &&g, std::size_t bdirmask, Args &&... args) const {
       return tree(fmapStencil(), std::forward<F>(f), std::forward<G>(g), xs,
-                  std::forward<BM>(bm), std::forward<BP>(bp),
+                  bdirmask & bdirs, std::forward<BM>(bm), std::forward<BP>(bp),
                   std::forward<Args>(args)...);
     }
   };
@@ -197,22 +205,25 @@ private:
 public:
   template <typename F, typename G, typename T1, typename BM, typename BP,
             typename... Args>
-  tree(fmapStencil, F &&f, G &&g, const tree<C, T1> &xs, BM &&bm, BP &&bp,
-       Args &&... args)
+  tree(fmapStencil, F &&f, G &&g, const tree<C, T1> &xs, std::size_t bdirmask,
+       BM &&bm, BP &&bp, Args &&... args)
       : subtrees(xs.subtrees.left()
                      ? adt::make_left<C<T>, C<tree>>(fun::fmapStencil(
-                           std::forward<F>(f), std::forward<G>(g),
+                           detail_fmapStencil_left_f(), std::forward<G>(g),
                            xs.subtrees.get_left(), std::forward<BM>(bm),
-                           std::forward<BP>(bp), std::forward<Args>(args)...))
+                           std::forward<BP>(bp), std::forward<F>(f), bdirmask,
+                           std::forward<Args>(args)...))
                      : adt::make_right<C<T>, C<tree>>(fun::fmapStencil(
                            detail_fmapStencil_f(),
                            detail_fmapStencil_g<std::decay_t<G>>{g},
                            xs.subtrees.get_right(), std::forward<BM>(bm),
                            std::forward<BP>(bp), std::forward<F>(f), g,
-                           std::forward<Args>(args)...))) {
+                           bdirmask, std::forward<Args>(args)...))) {
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
     static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, B, B, Args...>, T>::value, "");
+        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...>,
+                     T>::value,
+        "");
     static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
     static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   }

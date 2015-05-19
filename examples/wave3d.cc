@@ -180,7 +180,8 @@ auto cell_boundary_reflecting(const cell_t &c, int_t i) {
 
 auto cell_get_face(const cell_t &c, int_t i) { return c; }
 
-template <typename... Bnds> auto cell_rhs(const cell_t &c, Bnds &&... bnds) {
+template <typename... Bnds>
+auto cell_rhs(const cell_t &c, std::size_t bdirs, Bnds &&... bnds) {
   static_assert(sizeof...(Bnds) == 2 * dim, "");
   static_assert(cxx::all_of_type<
                     std::is_same<std::decay_t<Bnds>, cell_t>::value...>::value,
@@ -202,7 +203,7 @@ template <typename... Bnds> auto cell_rhs(const cell_t &c, Bnds &&... bnds) {
 
 template <typename... Bnds>
 auto get_cell_rhs(const std::tuple<Bnds...> &)
-    -> cell_t (*)(const cell_t &, const Bnds &...);
+    -> cell_t (*)(const cell_t &, std::size_t, const Bnds &...);
 typedef decltype(
     get_cell_rhs((std::declval<cxx::ntuple<cell_t, 2 * dim>>()))) cell_rhs_t;
 

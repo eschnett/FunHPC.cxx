@@ -1,5 +1,4 @@
 #include <adt/array.hpp>
-#include <adt/grid.hpp>
 #include <cxx/apply.hpp>
 #include <cxx/tuple.hpp>
 #include <cxx/utility.hpp>
@@ -11,10 +10,11 @@
 #include <funhpc/main.hpp>
 #include <funhpc/rexec.hpp>
 
-#include <fun/grid.hpp>
+// These include files need to come after all other fun/*.hpp include
+// files, and they need to be in this particular order
 #include <fun/nested.hpp>
+#include <fun/grid.hpp>
 #include <fun/tree.hpp>
-
 #include <fun/fun.hpp>
 
 #include <cereal/types/memory.hpp>
@@ -210,11 +210,13 @@ typedef decltype(
 // Grid
 
 #warning "TODO: use tree"
-#warning "TODO: use grid"
 template <typename T> using std_vector = std::vector<T>;
-template <typename T, int_t D> using vector_grid = adt::grid<std_vector, T, D>;
-// template <typename T>
-// using proxy_grid = adt::nested<funhpc::proxy, std_vector, T>;
+template <typename T>
+using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
+// template <typename T, int_t D> using vector_grid = adt::grid<std_vector, T,
+// D>;
+template <typename T, int_t D>
+using vector_grid = adt::grid<proxy_vector, T, D>;
 // template <typename T> using proxy_tree = adt::tree<proxy_grid, T>;
 
 template <typename T> using storage_t = vector_grid<T, dim>;

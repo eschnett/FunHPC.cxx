@@ -21,7 +21,7 @@ namespace std {
 #define MAKEOP(op)                                                             \
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(op std::declval<T>())>>         \
-  auto operator op(const std::array<T, N> &x) {                                \
+  constexpr auto operator op(const std::array<T, N> &x) {                      \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = op x[i];                                                          \
@@ -37,7 +37,8 @@ MAKEOP(!)
   template <typename T, std::size_t N, typename U,                             \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<U>())>>     \
-  auto operator op(const std::array<T, N> &x, const std::array<U, N> &y) {     \
+  constexpr auto operator op(const std::array<T, N> &x,                        \
+                             const std::array<U, N> &y) {                      \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y[i];                                                     \
@@ -48,7 +49,7 @@ MAKEOP(!)
       typename R =                                                             \
           std::decay_t<decltype(std::declval<T>() op std::declval<U>())>,      \
       std::enable_if_t<!std::is_base_of<std::ios_base, T>::value> * = nullptr> \
-  auto operator op(const T &x, const std::array<U, N> &y) {                    \
+  constexpr auto operator op(const T &x, const std::array<U, N> &y) {          \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x op y[i];                                                        \
@@ -57,7 +58,7 @@ MAKEOP(!)
   template <typename T, std::size_t N, typename U,                             \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<U>())>>     \
-  auto operator op(const std::array<T, N> &x, const U &y) {                    \
+  constexpr auto operator op(const std::array<T, N> &x, const U &y) {          \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y;                                                        \
@@ -162,7 +163,7 @@ MAKEFUN(min)
   template <typename T, std::size_t N, typename U,                             \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<U>())>>     \
-  auto f(const std::array<T, N> &x, const std::array<U, N> &y) {               \
+  constexpr auto f(const std::array<T, N> &x, const std::array<U, N> &y) {     \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y[i];                                                     \
@@ -171,7 +172,7 @@ MAKEFUN(min)
   template <typename T, std::size_t N, typename U,                             \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<U>())>>     \
-  auto f(const T &x, const std::array<U, N> &y) {                              \
+  constexpr auto f(const T &x, const std::array<U, N> &y) {                    \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x op y[i];                                                        \
@@ -180,7 +181,7 @@ MAKEFUN(min)
   template <typename T, std::size_t N, typename U,                             \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<U>())>>     \
-  auto f(const std::array<T, N> &x, const U &y) {                              \
+  constexpr auto f(const std::array<T, N> &x, const U &y) {                    \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y;                                                        \
@@ -194,21 +195,20 @@ MAKEFUNOP(gt, > )
 MAKEFUNOP(ge, >= )
 #undef MAKEFUNOP
 
-template <typename T, std::size_t N> /*constexpr*/ inline auto array_zero() {
+template <typename T, std::size_t N> constexpr auto array_zero() {
   std::array<T, N> r;
   r.fill(T(0));
   return r;
 }
 
 template <typename T, std::size_t N, typename U>
-/*constexpr*/ inline auto array_fill(const U &x) {
+constexpr auto array_set(const U &x) {
   std::array<T, N> r;
   r.fill(x);
   return r;
 }
 
-template <typename T, std::size_t N, std::size_t i>
-/*constexpr*/ inline auto array_dir() {
+template <typename T, std::size_t N, std::size_t i> constexpr auto array_dir() {
   static_assert(i >= 0 && i < N, "");
   std::array<T, N> r;
   r.fill(T(0));
@@ -216,7 +216,7 @@ template <typename T, std::size_t N, std::size_t i>
   return r;
 }
 
-template <typename T, std::size_t N> inline auto array_dir(std::size_t i) {
+template <typename T, std::size_t N> constexpr auto array_dir(std::size_t i) {
   assert(i >= 0 && i < N);
   std::array<T, N> r;
   r.fill(T(0));
@@ -225,7 +225,7 @@ template <typename T, std::size_t N> inline auto array_dir(std::size_t i) {
 }
 
 template <std::size_t i, typename T, std::size_t N>
-auto rmdir(const std::array<T, N> &x) {
+constexpr auto rmdir(const std::array<T, N> &x) {
   static_assert(i >= 0 && i < N, "");
   std::array<T, N - 1> r;
   for (std::size_t j = 0; j < N - 1; ++j)
@@ -234,7 +234,7 @@ auto rmdir(const std::array<T, N> &x) {
 }
 
 template <typename T, std::size_t N>
-auto rmdir(const std::array<T, N> &x, std::size_t i) {
+constexpr auto rmdir(const std::array<T, N> &x, std::size_t i) {
   assert(i >= 0 && i < N);
   std::array<T, N - 1> r;
   for (std::size_t j = 0; j < N - 1; ++j)
@@ -243,7 +243,7 @@ auto rmdir(const std::array<T, N> &x, std::size_t i) {
 }
 
 template <std::size_t i, typename T, std::size_t N, typename U>
-auto update(const std::array<T, N> &x, const U &y) {
+constexpr auto update(const std::array<T, N> &x, const U &y) {
   static_assert(i >= 0 && i < N, "");
   std::array<T, N> r(x);
   std::get<i>(r) = y;
@@ -251,7 +251,7 @@ auto update(const std::array<T, N> &x, const U &y) {
 }
 
 template <typename T, std::size_t N, typename U>
-auto update(const std::array<T, N> &x, std::size_t i, const U &y) {
+constexpr auto update(const std::array<T, N> &x, std::size_t i, const U &y) {
   assert(i >= 0 && i < N);
   std::array<T, N> r(x);
   r[i] = y;
@@ -283,7 +283,7 @@ MAKELIM(long double)
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(std::declval<T>()               \
                                                    op std::declval<T>())>>     \
-  R name(const std::array<T, N> &xs) {                                         \
+  constexpr R name(const std::array<T, N> &xs) {                               \
     R r(z);                                                                    \
     for (const auto &x : xs)                                                   \
       r = std::move(r) op x;                                                   \
@@ -299,7 +299,7 @@ MAKEREDOP(any, ||, false)
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(                                \
                 (f)(std::declval<T>(), std::declval<T>()))>>                   \
-  R name(const std::array<T, N> &xs) {                                         \
+  constexpr R name(const std::array<T, N> &xs) {                               \
     R r(z);                                                                    \
     for (const auto &x : xs)                                                   \
       r = (f)(std::move(r), x);                                                \

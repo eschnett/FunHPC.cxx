@@ -1,6 +1,7 @@
 #ifndef ADT_ARRAY_HPP
 #define ADT_ARRAY_HPP
 
+#include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cereal/types/array.hpp>
@@ -115,48 +116,64 @@ MAKEOP(>>= )
 
 namespace adt {
 
-#define MAKEFUN(f)                                                             \
+#define MAKEFUN(f, impl)                                                       \
   template <typename T, std::size_t N,                                         \
-            typename R = std::decay_t<decltype(std::f(std::declval<T>()))>>    \
-  auto f(const std::array<T, N> &x) {                                          \
+            typename R = std::decay_t<decltype(impl(std::declval<T>()))>>      \
+  constexpr auto f(const std::array<T, N> &x) {                                \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
-      r[i] = std::f(x[i]);                                                     \
+      r[i] = impl(x[i]);                                                       \
     return r;                                                                  \
   }
-MAKEFUN(abs)
+MAKEFUN(abs, std::abs)
 #undef MAKEFUN
 
-#define MAKEFUN(f)                                                             \
-  template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(                                \
-                std::f(std::declval<T>(), std::declval<U>()))>>                \
-  auto f(const std::array<T, N> &x, const std::array<U, N> &y) {               \
+#define MAKEFUN(f, field)                                                      \
+  template <typename T, std::size_t N,                                         \
+            typename R = std::decay_t<decltype(std::declval<T>().field)>>      \
+  constexpr auto f(const std::array<T, N> &x) {                                \
     std::array<R, N> r;                                                        \
     for (std::size_t i = 0; i < N; ++i)                                        \
-      r[i] = std::f(x[i], y[i]);                                               \
-    return r;                                                                  \
-  }                                                                            \
-  template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(                                \
-                std::f(std::declval<T>(), std::declval<U>()))>>                \
-  auto f(const T &x, const std::array<U, N> &y) {                              \
-    std::array<R, N> r;                                                        \
-    for (std::size_t i = 0; i < N; ++i)                                        \
-      r[i] = std::f(x, y[i]);                                                  \
-    return r;                                                                  \
-  }                                                                            \
-  template <typename T, std::size_t N, typename U,                             \
-            typename R = std::decay_t<decltype(                                \
-                std::f(std::declval<T>(), std::declval<U>()))>>                \
-  auto f(const std::array<T, N> &x, const U &y) {                              \
-    std::array<R, N> r;                                                        \
-    for (std::size_t i = 0; i < N; ++i)                                        \
-      r[i] = std::f(x[i], y);                                                  \
+      r[i] = x[i].field;                                                       \
     return r;                                                                  \
   }
-MAKEFUN(max)
-MAKEFUN(min)
+MAKEFUN(div_quot, quot)
+MAKEFUN(div_rem, rem)
+#undef MAKEFUN
+
+#define MAKEFUN(f, impl)                                                       \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(                                \
+                impl(std::declval<T>(), std::declval<U>()))>>                  \
+  constexpr auto f(const std::array<T, N> &x, const std::array<U, N> &y) {     \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = impl(x[i], y[i]);                                                 \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(                                \
+                impl(std::declval<T>(), std::declval<U>()))>>                  \
+  constexpr auto f(const T &x, const std::array<U, N> &y) {                    \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = impl(x, y[i]);                                                    \
+    return r;                                                                  \
+  }                                                                            \
+  template <typename T, std::size_t N, typename U,                             \
+            typename R = std::decay_t<decltype(                                \
+                impl(std::declval<T>(), std::declval<U>()))>>                  \
+  constexpr auto f(const std::array<T, N> &x, const U &y) {                    \
+    std::array<R, N> r;                                                        \
+    for (std::size_t i = 0; i < N; ++i)                                        \
+      r[i] = impl(x[i], y);                                                    \
+    return r;                                                                  \
+  }
+MAKEFUN(max, std::max)
+MAKEFUN(min, std::min)
+MAKEFUN(div_floor, cxx::div_floor)
+MAKEFUN(div_ceil, cxx::div_ceil)
+MAKEFUN(div_exact, cxx::div_exact)
 #undef MAKEFUN
 
 #define MAKEFUNOP(f, op)                                                       \

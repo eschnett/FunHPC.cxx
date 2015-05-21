@@ -210,17 +210,24 @@ typedef decltype(
 // Grid
 
 #warning "TODO: use tree"
+
 template <typename T> using std_vector = std::vector<T>;
-template <typename T>
-using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
-// template <typename T, int_t D> using vector_grid = adt::grid<std_vector, T,
+
+template <typename T> using vector_grid = adt::grid<std_vector, T, dim>;
+
+// template <typename T>
+// using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
+// template <typename T, int_t D> using proxy_grid = adt::grid<proxy_vector, T,
 // D>;
-template <typename T, int_t D>
-using vector_grid = adt::grid<proxy_vector, T, D>;
+
+template <typename T> using vector_grid_tree = adt::tree<vector_grid, T>;
+
 // template <typename T> using proxy_tree = adt::tree<proxy_grid, T>;
 
-template <typename T> using storage_t = vector_grid<T, dim>;
-template <typename T> using boundary_t = vector_grid<T, dim - 1>;
+template <typename T> using storage_t = vector_grid_tree<T>;
+template <typename T>
+using boundary_t =
+    typename fun::boundary_type<storage_t<T>>::template constructor<T>;
 
 struct grid_t {
   real_t time;

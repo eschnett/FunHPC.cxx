@@ -157,6 +157,22 @@ public:
                   : cxx::invoke(std::forward<FR>(fr), get_right(),
                                 std::forward<Args>(args)...);
   }
+
+  template <typename FL, typename FR, typename... Args>
+  auto transform(FL &&fl, FR &&fr, Args &&... args) const {
+    typedef cxx::invoke_of_t<FL, L, Args...> RL;
+    typedef cxx::invoke_of_t<FR, R, Args...> RR;
+    return left()
+               ? make_left<RL, RR>(cxx::invoke(std::forward<FL>(fl), get_left(),
+                                               std::forward<Args>(args)...))
+               : make_right<RL, RR>(cxx::invoke(std::forward<FR>(fr),
+                                                get_right(),
+                                                std::forward<Args>(args)...));
+  }
+
+  auto flip() const {
+    return left() ? make_right<R, L>(get_left()) : make_left<R, L>(get_right());
+  }
 };
 template <typename L, typename R> void swap(either<L, R> &x, either<L, R> &y) {
   x.swap(y);

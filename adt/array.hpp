@@ -218,6 +218,12 @@ template <typename T, std::size_t N> constexpr auto array_zero() {
   return r;
 }
 
+template <typename T, std::size_t N> constexpr auto array_one() {
+  std::array<T, N> r;
+  r.fill(T(1));
+  return r;
+}
+
 template <typename T, std::size_t N, typename U>
 constexpr auto array_set(const U &x) {
   std::array<T, N> r;
@@ -236,6 +242,49 @@ template <typename T, std::size_t N, std::size_t i> constexpr auto array_dir() {
 template <typename T, std::size_t N> constexpr auto array_dir(std::size_t i) {
   assert(i >= 0 && i < N);
   std::array<T, N> r;
+  r.fill(T(0));
+  r[i] = T(1);
+  return r;
+}
+
+namespace detail {
+// See detail::is_array in <fun/array.hpp>
+template <typename> struct is_std_array : std::false_type {};
+template <typename T, std::size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
+}
+
+template <typename AT,
+          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+constexpr auto zero() {
+  AT r;
+  typedef typename AT::value_type T;
+  r.fill(T(0));
+  return r;
+}
+
+template <typename AT,
+          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+constexpr auto one() {
+  AT r;
+  typedef typename AT::value_type T;
+  r.fill(T(1));
+  return r;
+}
+
+template <typename AT,
+          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+constexpr auto set(const typename AT::value_type &x) {
+  AT r;
+  r.fill(x);
+  return r;
+}
+
+template <typename AT,
+          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+constexpr auto dir(std::size_t i) {
+  AT r;
+  typedef typename AT::value_type T;
   r.fill(T(0));
   r[i] = T(1);
   return r;

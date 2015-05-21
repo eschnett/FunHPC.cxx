@@ -400,6 +400,10 @@ std::string to_string(const std::array<T, N> &x) {
 }
 }
 
+namespace adt {
+template <std::size_t D> using index_t = std::array<std::ptrdiff_t, D>;
+}
+
 #define ADT_ARRAY_HPP_DONE
 #endif // #ifdef ADT_ARRAY_HPP
 #ifndef ADT_ARRAY_HPP_DONE

@@ -56,9 +56,13 @@ class concrete_task final : public abstract_task<R> {
                 "");
   F f;
   std::tuple<Args...> args;
+#ifndef NDEBUG
+  bool did_call = false;
+#endif
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
+    assert(!did_call);
     ar(cereal::base_class<abstract_task<R>>(this), f, args);
   }
   static cereal_register_t<concrete_task> cereal_register;
@@ -72,6 +76,10 @@ public:
   virtual ~concrete_task() {}
   virtual R operator()() {
     // TODO: Check that the task is executed at most once
+    assert(!did_call);
+#ifndef NDEBUG
+    did_call = true;
+#endif
     return R(cxx::apply(std::move(f), std::move(args)));
   }
   static void register_type() { (void)cereal_register; }

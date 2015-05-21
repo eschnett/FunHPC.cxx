@@ -41,11 +41,11 @@ TEST(adt_tree, basic) {
   EXPECT_EQ(1, t1.size());
   auto t2 = vector_tree<double>(2.0);
   EXPECT_EQ(1, t2.size());
-  auto t3 = vector_tree<double>(t0, t1, t2);
+  auto t3 = vector_tree<double>(fun::msome<std_vector>(t0, t1, t2));
   EXPECT_EQ(2, t3.size());
-  auto t4 = vector_tree<double>(t2, t3);
+  auto t4 = vector_tree<double>(fun::msome<std_vector>(t2, t3));
   EXPECT_EQ(3, t4.size());
-  auto t5 = vector_tree<double>(t0, t1, t4);
+  auto t5 = vector_tree<double>(fun::msome<std_vector>(t0, t1, t4));
   EXPECT_EQ(4, t5.size());
 }
 
@@ -70,11 +70,11 @@ TEST(adt_tree, basic_nested) {
   EXPECT_EQ(1, t1.size());
   auto t2 = shared_tree<double>(2.0);
   EXPECT_EQ(1, t2.size());
-  auto t3 = shared_tree<double>(t0, t1, t2);
+  auto t3 = shared_tree<double>(fun::msome<shared_vector>(t0, t1, t2));
   EXPECT_EQ(2, t3.size());
-  auto t4 = shared_tree<double>(t2, t3);
+  auto t4 = shared_tree<double>(fun::msome<shared_vector>(t2, t3));
   EXPECT_EQ(3, t4.size());
-  auto t5 = shared_tree<double>(t0, t1, t4);
+  auto t5 = shared_tree<double>(fun::msome<shared_vector>(t0, t1, t4));
   EXPECT_EQ(4, t5.size());
 }
 

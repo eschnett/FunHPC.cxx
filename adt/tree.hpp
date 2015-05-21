@@ -1,6 +1,7 @@
 #ifndef ADT_TREE_HPP
 #define ADT_TREE_HPP
 
+#include <adt/array.hpp>
 #include <adt/either.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
@@ -16,8 +17,7 @@
 namespace adt {
 
 template <template <typename> class C, typename T> class tree {
-  // data Tree a = Node [(Tree a, a)] | Empty
-  // data Tree a = Node (C (Tree a, a)) | Empty
+  // data Tree a = Leaf (C a) | Node (C (Tree a))
 
   template <template <typename> class C1, typename T1> friend class tree;
 
@@ -30,7 +30,7 @@ template <template <typename> class C, typename T> class tree {
   template <typename Archive> void serialize(Archive &ar) { ar(subtrees); }
 
 public:
-  template <typename U> using constructor = C<U>;
+  template <typename U> using array_constructor = C<U>;
   typedef T value_type;
 
   tree() : subtrees(adt::make_left<C<T>, C<tree>>(fun::mzero<C, T>())) {}
@@ -38,9 +38,9 @@ public:
       : subtrees(adt::make_left<C<T>, C<tree>>(fun::munit<C>(x))) {}
   tree(T &&x)
       : subtrees(adt::make_left<C<T>, C<tree>>(fun::munit<C>(std::move(x)))) {}
-  template <typename... Ts>
-  tree(const T &x, const Ts &... ys)
-      : subtrees(adt::make_left<C<T>, C<tree>>(fun::msome<C>(x, ys...))) {}
+
+  tree(const C<T> &xs) : subtrees(adt::make_left<C<T>, C<tree>>(xs)) {}
+  tree(C<T> &&xs) : subtrees(adt::make_left<C<T>, C<tree>>(std::move(xs))) {}
 
   tree(const tree &other) : subtrees(other.subtrees) {}
   tree(tree &&other) : subtrees() { swap(other); }
@@ -58,12 +58,12 @@ public:
     swap(subtrees, other.subtrees);
   }
 
-  template <typename... Ts>
-  tree(const tree &xs, const tree &ys, const tree<C, Ts> &... zss)
-      : subtrees(
-            adt::make_right<C<T>, C<tree>>(fun::msome<C>(xs, ys, zss...))) {}
+  tree(const C<tree> &xss) : subtrees(adt::make_right<C<T>, C<tree>>(xss)) {}
+  tree(C<tree> &&xss)
+      : subtrees(adt::make_right<C<T>, C<tree>>(std::move(xss))) {}
 
   bool invariant() const {
+    // TODO: Check that subtrees don't have empty leaves
     return subtrees.left() ? subtrees.get_left().size() <= max_leaf_size
                            : subtrees.get_right().size() > 1 &&
                                  subtrees.get_right().size() <= max_branch_size;
@@ -73,6 +73,10 @@ public:
     return subtrees.left() && fun::mempty(subtrees.get_left());
   }
 
+  // Note: We cannot return const T& since we don't know the return
+  // type of fun::head. We cannot use decltype(auto) since the
+  // function is recursive. We cannot use decltype(fun::head(...))
+  // since fun::head may not exist for the container C.
   T head() const {
     return subtrees.left() ? fun::head(subtrees.get_left())
                            : fun::head(subtrees.get_right()).head();
@@ -84,51 +88,159 @@ public:
 
   std::size_t size() const {
     return foldMap([](auto) { return std::size_t(1); },
-                   [](auto x, auto y) { return x + y; }, 0);
+                   std::plus<std::size_t>(), 0);
   }
 
   struct iotaMap {};
+
+private:
+  static constexpr auto range_count(std::ptrdiff_t imin, std::ptrdiff_t imax,
+                                    std::ptrdiff_t istep) {
+    assert(istep > 0);
+    return std::max(ptrdiff_t(0), cxx::div_floor(imax - imin, istep).quot);
+  }
+
+  static constexpr auto range_stride(std::ptrdiff_t icount) {
+    assert(icount > 1);
+    std::ptrdiff_t istride = 1;
+    std::ptrdiff_t nsteps = cxx::div_ceil(icount, istride).quot;
+    while (nsteps > max_branch_size) {
+      istride *= max_branch_size;
+      nsteps = cxx::div_ceil(icount, istride).quot;
+    }
+    assert(nsteps > 1);
+    assert(istride >= 1);
+    assert(istride < icount);
+    assert(istride * max_branch_size >= icount);
+    return istride;
+  }
+
+  static constexpr auto range_steps(std::ptrdiff_t icount) {
+    return cxx::div_ceil(icount, range_stride(icount)).quot;
+  }
+
+  struct detail_iotaMap_leaf : std::tuple<> {
+    template <typename F, typename... Args>
+    auto operator()(std::ptrdiff_t i, std::ptrdiff_t imin, std::ptrdiff_t istep,
+                    F &&f, Args &&... args) const {
+      return cxx::invoke(std::forward<F>(f), imin + i * istep,
+                         std::forward<Args>(args)...);
+    }
+  };
+
+  struct detail_iotaMap_branch : std::tuple<> {
+    template <typename F, typename... Args>
+    auto operator()(std::ptrdiff_t i, std::ptrdiff_t parent_imin,
+                    std::ptrdiff_t parent_imax, std::ptrdiff_t parent_istride,
+                    std::ptrdiff_t istep, F &&f, Args &&... args) const {
+      std::ptrdiff_t imin = parent_imin + i * parent_istride;
+      std::ptrdiff_t imax = std::min(parent_imax, imin + parent_istride);
+      return tree(iotaMap(), std::forward<F>(f), imin, imax, istep,
+                  std::forward<Args>(args)...);
+    }
+  };
+
+public:
   template <typename F, typename... Args>
   tree(iotaMap, F &&f, std::ptrdiff_t imin, std::ptrdiff_t imax,
-       std::ptrdiff_t istep, Args &&... args) {
+       std::ptrdiff_t istep, Args &&... args)
+      : subtrees(
+            range_count(imin, imax, istep) <= max_leaf_size
+                ? adt::make_left<C<T>, C<tree>>(fun::iotaMap<C>(
+                      detail_iotaMap_leaf(), range_count(imin, imax, istep),
+                      imin, istep, std::forward<F>(f),
+                      std::forward<Args>(args)...))
+                : adt::make_right<C<T>, C<tree>>(fun::iotaMap<C>(
+                      detail_iotaMap_branch(),
+                      range_steps(range_count(imin, imax, istep)), imin, imax,
+                      range_stride(range_count(imin, imax, istep)) * istep,
+                      istep, std::forward<F>(f),
+                      std::forward<Args>(args)...))) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
         "");
-    std::ptrdiff_t icount = cxx::div_ceil(imax - imin, istep).quot;
-    assert(icount >= 0);
-    if (icount <= max_leaf_size) {
-      subtrees = adt::make_left<C<T>, C<tree>>(fun::iotaMap<C>(
-          [imin, istep](std::ptrdiff_t i, auto &&f, auto &&... args) {
-            return cxx::invoke(f, imin + i * istep, args...);
-          },
-          icount, std::forward<F>(f), std::forward<Args>(args)...));
-    } else {
-      std::ptrdiff_t stride = max_leaf_size;
-      std::ptrdiff_t num_subtrees = cxx::div_ceil(icount, max_leaf_size).quot;
-      while (num_subtrees > max_branch_size) {
-        stride *= max_branch_size;
-        num_subtrees = cxx::div_ceil(num_subtrees, max_branch_size).quot;
-      }
-      assert(num_subtrees > 1 && num_subtrees <= max_branch_size);
-      subtrees = adt::make_right<C<T>, C<tree>>(fun::iotaMap<C>(
-          [ imin, imax, istep, istride = stride * istep ](
-              std::ptrdiff_t i, auto &&f, auto &&... args) {
-            std::ptrdiff_t imin1 = imin + i * istride;
-            std::ptrdiff_t imax1 = std::min(imax, imin1 + istride);
-            assert(imin1 < imax);
-            return tree(iotaMap(), f, imin1, imax1, istep, args...);
-          },
-          num_subtrees, std::forward<F>(f), std::forward<Args>(args)...));
+  }
+
+private:
+  template <std::size_t D>
+  static constexpr auto range_count(const index_t<D> &imin,
+                                    const index_t<D> &imax,
+                                    const index_t<D> &istep) {
+    assert(adt::all(adt::ge(istep, 0)));
+    return adt::max(adt::array_zero<std::ptrdiff_t, D>(),
+                    adt::div_quot(adt::div_floor(imax - imin, istep)));
+  }
+
+  template <std::size_t D>
+  static constexpr auto range_stride(const index_t<D> &icount) {
+    assert(adt::all(adt::ge(icount, 1)));
+    auto istride = adt::one<index_t<D>>();
+    auto nsteps = adt::prod(adt::div_quot(adt::div_ceil(icount, istride)));
+    while (nsteps > max_branch_size) {
+      istride *= max_branch_size;
+      nsteps = adt::prod(adt::div_quot(adt::div_ceil(icount, istride)));
     }
+    assert(nsteps > 1);
+    assert(adt::all(adt::ge(istride, 1)));
+    assert(adt::all(adt::lt(istride, icount)));
+    assert(adt::all(adt::ge(istride * max_branch_size, icount)));
+    return istride;
+  }
+
+  template <std::size_t D>
+  static constexpr auto range_steps(const index_t<D> &icount) {
+    return adt::div_quot(adt::div_ceil(icount, range_stride(icount)));
+  }
+
+  struct detail_iotaMap1_leaf : std::tuple<> {
+    template <std::size_t D, typename F, typename... Args>
+    auto operator()(const index_t<D> &i, const index_t<D> &imin,
+                    const index_t<D> &istep, F &&f, Args &&... args) const {
+      return cxx::invoke(std::forward<F>(f), imin + i * istep,
+                         std::forward<Args>(args)...);
+    }
+  };
+
+  struct detail_iotaMap1_branch : std::tuple<> {
+    template <std::size_t D, typename F, typename... Args>
+    auto operator()(const index_t<D> &i, const index_t<D> &parent_imin,
+                    const index_t<D> &parent_imax,
+                    const index_t<D> &parent_istride, const index_t<D> &istep,
+                    F &&f, Args &&... args) const {
+      const index_t<D> imin = parent_imin + i * parent_istride;
+      const index_t<D> imax = adt::min(parent_imax, imin + parent_istride);
+      return tree(iotaMap(), std::forward<F>(f), imin, imax, istep,
+                  std::forward<Args>(args)...);
+    }
+  };
+
+public:
+  template <typename F, std::size_t D, typename... Args>
+  tree(iotaMap, F &&f, const index_t<D> &imin, const index_t<D> &imax,
+       const index_t<D> &istep, Args &&... args)
+      : subtrees(
+            adt::prod(range_count(imin, imax, istep)) <= max_leaf_size
+                ? adt::make_left<C<T>, C<tree>>(fun::iotaMap<C>(
+                      detail_iotaMap1_leaf(), range_count(imin, imax, istep),
+                      imin, istep, std::forward<F>(f),
+                      std::forward<Args>(args)...))
+                : adt::make_right<C<T>, C<tree>>(fun::iotaMap<C>(
+                      detail_iotaMap1_branch(),
+                      range_steps(range_count(imin, imax, istep)), imin, imax,
+                      range_stride(range_count(imin, imax, istep)) * istep,
+                      istep, std::forward<F>(f),
+                      std::forward<Args>(args)...))) {
+    static_assert(
+        std::is_same<cxx::invoke_of_t<F, index_t<D>, Args...>, T>::value, "");
   }
 
   struct fmap {};
 
 private:
-  template <typename T1> struct detail_fmap : std::tuple<> {
-    template <typename F, typename... Args>
-    auto operator()(const tree<C, T1> &xs, F &&f, Args &&... args) {
-      return tree(fmap(), f, xs, args...);
+  struct detail_fmap : std::tuple<> {
+    template <typename T1, typename F, typename... Args>
+    auto operator()(const tree<C, T1> &xs, F &&f, Args &&... args) const {
+      return tree(fmap(), std::forward<F>(f), xs, std::forward<Args>(args)...);
     }
   };
 
@@ -140,7 +252,7 @@ public:
                            fun::fmap(std::forward<F>(f), xs.subtrees.get_left(),
                                      std::forward<Args>(args)...))
                      : adt::make_right<C<T>, C<tree>>(fun::fmap(
-                           detail_fmap<T1>(), xs.subtrees.get_right(),
+                           detail_fmap(), xs.subtrees.get_right(),
                            std::forward<F>(f), std::forward<Args>(args)...))) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, Args...>, T>::value, "");
   }
@@ -148,11 +260,12 @@ public:
   struct fmap2 {};
 
 private:
-  template <typename T1, typename T2> struct detail_fmap2 : std::tuple<> {
-    template <typename F, typename... Args>
+  struct detail_fmap2 : std::tuple<> {
+    template <typename T1, typename T2, typename F, typename... Args>
     auto operator()(const tree<C, T1> &xs, const tree<C, T2> &ys, F &&f,
                     Args &&... args) const {
-      return tree(fmap2(), f, xs, ys, args...);
+      return tree(fmap2(), std::forward<F>(f), xs, ys,
+                  std::forward<Args>(args)...);
     }
   };
 
@@ -165,12 +278,57 @@ public:
                            std::forward<F>(f), xs.subtrees.get_left(),
                            ys.subtrees.get_left(), std::forward<Args>(args)...))
                      : adt::make_right<C<T>, C<tree>>(fun::fmap2(
-                           detail_fmap2<T1, T2>(), xs.subtrees.get_right(),
+                           detail_fmap2(), xs.subtrees.get_right(),
                            ys.subtrees.get_right(), std::forward<F>(f),
                            std::forward<Args>(args)...))) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, T2, Args...>, T>::value,
                   "");
   }
+
+  struct boundary {};
+
+  template <template <typename> class C1>
+  tree(boundary, const tree<C1, T> &xs, std::ptrdiff_t i)
+      : subtrees(
+            xs.subtrees.left()
+                ? adt::make_left<C<T>, C<tree>>(
+                      fun::boundary(xs.subtrees.get_left(), i))
+                : adt::make_right<C<T>, C<tree>>(
+                      // TODO: Use boundaryMap instead
+                      fun::fmap([](const tree<C1, T> &xs, std::ptrdiff_t i) {
+                        return tree(boundary(), xs, i);
+                      }, fun::boundary(xs.subtrees.get_right(), i), i))) {
+    static_assert(
+        std::is_same<
+            typename fun::fun_traits<C1<T>>::template boundary_constructor<T>,
+            C<T>>::value,
+        "");
+  }
+
+  struct boundaryMap {};
+
+private:
+  struct boundaryMap_branch {
+    template <typename T1, typename F, typename... Args>
+    auto operator()(const T1 &xs, F &&f, std::ptrdiff_t i,
+                    Args &&... args) const {
+      return tree(boundaryMap(), std::forward<F>(f), xs, i,
+                  std::forward<Args>(args)...);
+    }
+  };
+
+public:
+  template <typename F, template <typename> class C1, typename T1,
+            typename... Args>
+  tree(boundaryMap, F &&f, const tree<C1, T1> &xs, std::ptrdiff_t i,
+       Args &&... args)
+      : subtrees(
+            xs.subtrees.left()
+                ? fun::boundaryMap(std::forward<F>(f), xs.subtrees.get_left(),
+                                   i, std::forward<Args>(args)...)
+                : fun::boundaryMap(boundaryMap_branch(), xs.subtrees.right(), i,
+                                   std::forward<F>(f), i,
+                                   std::forward<Args>(args)...)) {}
 
   struct fmapStencil {};
 
@@ -179,8 +337,10 @@ private:
     template <typename T1, typename BM, typename BP, typename F,
               typename... Args>
     auto operator()(const T1 &x, std::size_t bdirs, BM &&bm, BP &&bp, F &&f,
-                    std::size_t bdirmask, Args &&... args) {
-      return cxx::invoke(f, x, bdirmask & bdirs, bm, bp, args...);
+                    std::size_t bdirmask, Args &&... args) const {
+      return cxx::invoke(std::forward<F>(f), x, bdirmask & bdirs,
+                         std::forward<BM>(bm), std::forward<BP>(bp),
+                         std::forward<Args>(args)...);
     }
   };
   struct detail_fmapStencil_f : std::tuple<> {

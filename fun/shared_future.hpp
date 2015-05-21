@@ -32,11 +32,12 @@ template <typename T> struct fun_traits<qthread::shared_future<T>> {
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = std::decay_t<cxx::invoke_of_t<
-              std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
-          std::enable_if_t<detail::is_shared_future<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_shared_future<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  if (!s)
+  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
+                                        std::decay_t<Args>...>> R;
+  assert(s <= 1);
+  if (__builtin_expect(s == 0, false))
     return qthread::shared_future<R>();
   return qthread::async(std::forward<F>(f), std::ptrdiff_t(0),
                         std::forward<Args>(args)...).share();
@@ -86,9 +87,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
   bool s = xs.valid();
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(
-      std::forward<Op>(op), std::forward<Z>(z),
-      cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
@@ -104,9 +103,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
   assert(ys.valid() == s);
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
+                     std::forward<Args>(args)...);
 }
 
 // munit

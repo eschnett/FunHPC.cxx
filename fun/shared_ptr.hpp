@@ -1,6 +1,7 @@
 #ifndef FUN_SHARED_PTR_HPP
 #define FUN_SHARED_PTR_HPP
 
+#include <adt/array.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cassert>
@@ -31,11 +32,10 @@ template <typename T> struct fun_traits<std::shared_ptr<T>> {
 
 // iotaMap
 
-template <
-    template <typename> class C, typename F, typename... Args,
-    typename R = std::decay_t<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>>,
-    std::enable_if_t<detail::is_shared_ptr<C<R>>::value> * = nullptr>
+template <template <typename> class C, typename F, typename... Args,
+          std::enable_if_t<detail::is_shared_ptr<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef std::decay_t<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>> R;
   assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return std::shared_ptr<R>();
@@ -88,9 +88,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
   bool s = bool(xs);
   if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
-  return cxx::invoke(
-      std::forward<Op>(op), std::forward<Z>(z),
-      cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
@@ -101,9 +99,8 @@ R foldMap(F &&f, Op &&op, Z &&z, std::shared_ptr<T> &&xs, Args &&... args) {
   bool s = bool(xs);
   if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), std::move(*xs),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), std::move(*xs),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
@@ -117,9 +114,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
   assert(bool(ys) == s);
   if (__builtin_expect(!s, false))
     return std::forward<Z>(z);
-  return cxx::invoke(
-      std::forward<Op>(op), std::forward<Z>(z),
-      cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...);
 }
 
 // munit

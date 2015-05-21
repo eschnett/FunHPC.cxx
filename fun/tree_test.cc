@@ -3,10 +3,7 @@
 #include <fun/topology.hpp>
 #include <fun/vector.hpp>
 
-#include <adt/nested.hpp>
 #include <fun/nested.hpp>
-
-#include <adt/tree.hpp>
 #include <fun/tree.hpp>
 
 #include <gtest/gtest.h>
@@ -22,6 +19,8 @@ using future_vector = adt::nested<qthread::shared_future, std_vector, T>;
 template <typename T> using shared_tree = adt::tree<shared_vector, T>;
 template <typename T> using future_tree = adt::tree<future_vector, T>;
 }
+
+#warning "TODO: Test trees of grids"
 
 TEST(fun_tree, iotaMap) {
   std::ptrdiff_t s = 10;
@@ -47,6 +46,28 @@ TEST(fun_tree, fmap) {
   auto zs = fmap2([](auto x, auto y) { return x + y; }, xs, ys);
   EXPECT_EQ(19, zs.last());
 }
+
+TEST(fun_tree, boundary) {
+  std::ptrdiff_t s = 10;
+
+  typedef typename fun::fun_traits<shared_tree<int>>::index_type index_type;
+  auto xs1 = iotaMap<shared_tree>([](const index_type &x) {
+    return int(adt::sum(x * x));
+  }, index_type{{s}});
+  typedef fun::fun_traits<shared_tree<int>>::template boundary_constructor<int>
+      shared_tree_bnd;
+  std::array<shared_tree_bnd, 2> bxs1;
+  for (std::ptrdiff_t i = 0; i < 2; ++i) {
+    bxs1[i] = fun::boundary(xs1, i);
+    EXPECT_EQ(fun::msize(bxs1[i]), 1);
+  }
+  EXPECT_EQ(fun::mextract(bxs1[0]), 0);
+  EXPECT_EQ(fun::mextract(bxs1[1]), (s - 1) * (s - 1));
+
+#warning "TODO: test other tree types"
+}
+
+#warning "TODO: test fmapBoundary"
 
 TEST(fun_tree, fmapStencil) {
   std::ptrdiff_t s = 10;

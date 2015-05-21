@@ -3,10 +3,7 @@
 #include <fun/topology.hpp>
 #include <fun/vector.hpp>
 
-#include <adt/nested.hpp>
 #include <fun/nested.hpp>
-
-#include <adt/grid.hpp>
 #include <fun/grid.hpp>
 
 #include <gtest/gtest.h>
@@ -54,6 +51,27 @@ TEST(fun_grid, fmap) {
   auto zs = fmap2([](auto x, auto y) { return x + y; }, xs, ys);
   EXPECT_EQ(55, zs.last());
 }
+
+TEST(fun_grid, boundary) {
+  std::ptrdiff_t s = 10;
+
+  auto xs1 = iotaMap<grid1>([](const typename grid1<int>::index_type &x) {
+    return int(adt::sum(x * x));
+  }, typename grid1<int>::index_type{{s}});
+  typedef fun::fun_traits<grid1<int>>::template boundary_constructor<int>
+      bgrid1;
+  std::array<bgrid1, 2> bxs1;
+  for (std::ptrdiff_t i = 0; i < 2; ++i) {
+    bxs1[i] = fun::boundary(xs1, i);
+    EXPECT_EQ(fun::msize(bxs1[i]), 1);
+  }
+  EXPECT_EQ(fun::mextract(bxs1[0]), 0);
+  EXPECT_EQ(fun::mextract(bxs1[1]), (s - 1) * (s - 1));
+
+#warning "TODO: test higher dimensions"
+}
+
+#warning "TODO: test fmapBoundary"
 
 TEST(fun_grid, fmapStencil) {
   std::ptrdiff_t s = 10;

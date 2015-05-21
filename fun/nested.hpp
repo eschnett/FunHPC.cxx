@@ -1,6 +1,7 @@
 #ifndef FUN_NESTED_HPP
 #define FUN_NESTED_HPP
 
+#include <adt/array.hpp>
 #include <adt/nested.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/topology.hpp>
@@ -29,6 +30,11 @@ template <template <typename> class P, template <typename> class A, typename T>
 struct fun_traits<adt::nested<P, A, T>> {
   template <typename U> using constructor = adt::nested<P, A, U>;
   typedef T value_type;
+  // static constexpr std::ptrdiff_t rank = fun_traits<A<T>>::rank;
+  typedef typename fun_traits<A<T>>::index_type index_type;
+  template <typename U>
+  using boundary_constructor =
+      adt::nested<P, fun_traits<A<T>>::template boundary_constructor, U>;
 };
 
 // iotaMap
@@ -38,20 +44,42 @@ template <template <typename> class A> struct nested_iotaMap : std::tuple<> {
   template <typename F, typename... Args>
   auto operator()(std::ptrdiff_t i, std::ptrdiff_t s, F &&f,
                   Args &&... args) const {
-    return iotaMap<A>(f, s, args...);
+    return iotaMap<A>(std::forward<F>(f), s, std::forward<Args>(args)...);
   }
 };
 }
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = std::decay_t<cxx::invoke_of_t<
-              std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
-          template <typename> class P = C<R>::template pointer_constructor,
-          template <typename> class A = C<R>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
-C<R> iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  return {iotaMap<P>(detail::nested_iotaMap<A>(), std::ptrdiff_t(1), s,
-                     std::forward<F>(f), std::forward<Args>(args)...)};
+          template <typename> class P = C<int>::template pointer_constructor,
+          template <typename> class A = C<int>::template array_constructor,
+          std::enable_if_t<detail::is_nested<C<int>>::value> * = nullptr>
+auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
+                                        std::decay_t<Args>...>> R;
+  return C<R>{iotaMap<P>(detail::nested_iotaMap<A>(), std::ptrdiff_t(1), s,
+                         std::forward<F>(f), std::forward<Args>(args)...)};
+}
+
+namespace detail {
+template <template <typename> class A> struct nested_iotaMap1 : std::tuple<> {
+  template <std::size_t D, typename F, typename... Args>
+  auto operator()(std::ptrdiff_t i, const adt::index_t<D> &s, F &&f,
+                  Args &&... args) const {
+    return iotaMap<A>(std::forward<F>(f), s, std::forward<Args>(args)...);
+  }
+};
+}
+
+template <template <typename> class C, typename F, std::size_t D,
+          typename... Args,
+          template <typename> class P = C<int>::template pointer_constructor,
+          template <typename> class A = C<int>::template array_constructor,
+          std::enable_if_t<detail::is_nested<C<int>>::value> * = nullptr>
+auto iotaMap(F &&f, const adt::index_t<D> &s, Args &&... args) {
+  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, adt::index_t<D>,
+                                        std::decay_t<Args>...>> R;
+  return C<R>{iotaMap<P>(detail::nested_iotaMap1<A>(), std::ptrdiff_t(1), s,
+                         std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
 // fmap
@@ -159,6 +187,21 @@ template <template <typename> class P, template <typename> class A, typename T>
 decltype(auto) last(const adt::nested<P, A, T> &xss) {
   return mextract(fmap(detail::nested_last<A, T>(), xss.data));
 }
+
+// boundary
+
+template <template <typename> class P, template <typename> class A, typename T>
+auto boundary(const adt::nested<P, A, T> &xs, std::ptrdiff_t i) {
+  typedef typename fun_traits<A<T>>::template boundary_constructor<T> BAT;
+  typedef BAT (*boundary_t)(const A<T> &, std::ptrdiff_t);
+  typedef typename fun_traits<
+      adt::nested<P, A, T>>::template boundary_constructor<T> NPBAT;
+  return NPBAT{fmap((boundary_t)boundary, xs.data, i)};
+}
+
+// boudaryMap
+
+#warning "TODO: boundaryMap"
 
 // indexing
 
@@ -299,7 +342,7 @@ adt::nested<P, A, R> mbind(F &&f, const adt::nested<P, A, T> &xss,
 // mextract
 
 template <template <typename> class P, template <typename> class A, typename T>
-auto mextract(const adt::nested<P, A, T> &xss) {
+decltype(auto) mextract(const adt::nested<P, A, T> &xss) {
   return mextract(mextract(xss.data));
 }
 

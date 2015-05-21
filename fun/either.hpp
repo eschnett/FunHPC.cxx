@@ -32,10 +32,10 @@ template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          typename L = typename C<R>::left_type,
-          std::enable_if_t<detail::is_either<C<R>>::value> * = nullptr>
+          typename L = typename C<int>::left_type,
+          std::enable_if_t<detail::is_either<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   assert(s <= 1);
   if (s == 0)
     return adt::either<L, R>();
@@ -88,9 +88,8 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs, Args &&... args) {
   bool s = xs.right();
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.get_right(),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get_right(),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
@@ -100,9 +99,8 @@ R foldMap(F &&f, Op &&op, Z &&z, adt::either<L, T> &&xs, Args &&... args) {
   bool s = xs.right();
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), std::move(xs.get_right()),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), std::move(xs.get_right()),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
@@ -115,9 +113,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
   assert(ys.right() == s);
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.get_right(),
-                                 ys.get_right(), std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get_right(), ys.get_right(),
+                     std::forward<Args>(args)...);
 }
 
 // munit

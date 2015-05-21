@@ -31,9 +31,9 @@ template <typename T> struct fun_traits<adt::maybe<T>> {
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<detail::is_maybe<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_maybe<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   assert(s <= 1);
   if (s == 0)
     return adt::maybe<R>();
@@ -86,9 +86,8 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
   bool s = xs.just();
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.get_just(),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get_just(),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
@@ -98,9 +97,8 @@ R foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
   bool s = xs.just();
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), std::move(xs.get_just()),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), std::move(xs.get_just()),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
@@ -113,9 +111,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
   assert(ys.just() == s);
   if (!s)
     return std::forward<Z>(z);
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.get_just(),
-                                 ys.get_just(), std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.get_just(), ys.get_just(),
+                     std::forward<Args>(args)...);
 }
 
 // munit

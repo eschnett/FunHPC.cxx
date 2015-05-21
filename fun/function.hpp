@@ -34,10 +34,9 @@ template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
-                                        std::decay_t<Args>...>,
-          std::enable_if_t<detail::is_function<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_function<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   typedef typename C<R>::argument_type A;
   assert(s <= 1);
   if (s == 0)

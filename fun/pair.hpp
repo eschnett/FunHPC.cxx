@@ -31,10 +31,10 @@ template <typename T, typename L> struct fun_traits<std::pair<L, T>> {
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          typename L = typename C<R>::first_type,
-          std::enable_if_t<detail::is_pair<C<R>>::value> * = nullptr>
+          typename L = typename C<int>::first_type,
+          std::enable_if_t<detail::is_pair<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   assert(s == 1);
   return std::pair<L, R>(L(), cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
                                           std::forward<Args>(args)...));
@@ -72,18 +72,16 @@ template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
 R foldMap(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return cxx::invoke(
-      std::forward<Op>(op), std::forward<Z>(z),
-      cxx::invoke(std::forward<F>(f), xs.second, std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.second,
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
           typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
 R foldMap(F &&f, Op &&op, Z &&z, std::pair<L, T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), std::move(xs.second),
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), std::move(xs.second),
+                     std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
@@ -92,9 +90,8 @@ template <typename F, typename Op, typename Z, typename T, typename L,
 R foldMap2(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
            const std::pair<L, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                     cxx::invoke(std::forward<F>(f), xs.second, ys.second,
-                                 std::forward<Args>(args)...));
+  return cxx::invoke(std::forward<F>(f), xs.second, ys.second,
+                     std::forward<Args>(args)...);
 }
 
 // munit

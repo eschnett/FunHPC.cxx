@@ -1,7 +1,9 @@
 #ifndef FUN_VECTOR_HPP
 #define FUN_VECTOR_HPP
 
+#include <adt/array.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/idtype.hpp>
 #include <fun/topology.hpp>
 
 #include <cassert>
@@ -35,14 +37,16 @@ struct fun_traits<std::vector<T, Allocator>> {
   using constructor =
       std::vector<U, typename Allocator::template rebind<U>::other>;
   typedef T value_type;
+  typedef adt::index_t<1> index_type;
+  template <typename U> using boundary_constructor = adt::idtype<U>;
 };
 
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<detail::is_vector<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_vector<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   C<R> rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -50,12 +54,38 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   return rs;
 }
 
-template <template <typename, typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<
-              detail::is_vector<C<R, std::allocator<R>>>::value> * = nullptr>
+template <
+    template <typename, typename> class C, typename F, typename... Args,
+    std::enable_if_t<detail::is_vector<C<int, std::allocator<int>>>::value> * =
+        nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   return iotaMap<detail::std_vector>(std::forward<F>(f), s,
+                                     std::forward<Args>(args)...);
+}
+
+namespace detail {
+struct vector_iotaMap_wrapper {
+  template <typename F, typename... Args>
+  auto operator()(std::ptrdiff_t i, F &&f, Args &&... args) const {
+    return cxx::invoke(std::forward<F>(f), adt::set<adt::index_t<1>>(i),
+                       std::forward<Args>(args)...);
+  }
+};
+}
+
+template <template <typename> class C, typename F, typename... Args,
+          std::enable_if_t<detail::is_vector<C<int>>::value> * = nullptr>
+auto iotaMap(F &&f, adt::index_t<1> s, Args &&... args) {
+  return iotaMap<C>(detail::vector_iotaMap_wrapper(), s[0], std::forward<F>(f),
+                    std::forward<Args>(args)...);
+}
+
+template <
+    template <typename, typename> class C, typename F, typename... Args,
+    std::enable_if_t<detail::is_vector<C<int, std::allocator<int>>>::value> * =
+        nullptr>
+auto iotaMap(F &&f, adt::index_t<1> s, Args &&... args) {
+  return iotaMap<detail::std_vector>(std::forward<F>(f), s[0],
                                      std::forward<Args>(args)...);
 }
 
@@ -156,6 +186,24 @@ decltype(auto) last(std::vector<T, Allocator> &&xs) {
   return std::move(xs.back());
 }
 
+// boundary
+
+template <typename T, typename Allocator,
+          template <typename> class BC = fun_traits<
+              std::vector<T, Allocator>>::template boundary_constructor>
+auto boundary(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
+  assert(i >= 0 && i < 2);
+  return munit<BC>(i == 0 ? head(xs) : last(xs));
+}
+
+// boundaryMap
+
+template <typename F, typename T, typename Allocator, typename... Args>
+auto boundaryMap(F &&f, const std::vector<T, Allocator> &xs, std::ptrdiff_t i,
+                 Args &&... args) {
+  return fmap(std::forward<F>(f), boundary(xs, i), std::forward<Args>(args)...);
+}
+
 // indexing
 
 template <typename T, typename Allocator>
@@ -176,7 +224,7 @@ public:
 };
 
 template <typename F, typename T, typename Allocator, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, std::ptrdiff_t, Args &&...>>
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args &...>>
 auto fmapIndexed(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   typename fun_traits<std::vector<T, Allocator>>::template constructor<R> rs(s);
@@ -189,7 +237,7 @@ auto fmapIndexed(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>>
 auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
              Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
@@ -205,7 +253,7 @@ auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>>
 auto foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
              Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");

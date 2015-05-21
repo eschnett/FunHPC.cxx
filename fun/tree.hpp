@@ -27,16 +27,30 @@ template <template <typename> class C, typename T>
 struct fun_traits<adt::tree<C, T>> {
   template <typename U> using constructor = adt::tree<C, U>;
   typedef T value_type;
+  // static constexpr std::ptrdiff_t rank = fun_traits<C<T>>::rank;
+  typedef typename fun_traits<C<T>>::index_type index_type;
+  template <typename U>
+  using boundary_constructor =
+      adt::tree<fun_traits<C<U>>::template boundary_constructor, U>;
 };
 
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<detail::is_tree<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_tree<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   return C<R>(typename C<R>::iotaMap(), std::forward<F>(f), 0, s, 1,
               std::forward<Args>(args)...);
+}
+
+template <template <typename> class C, typename F, typename... Args,
+          typename Index = typename fun_traits<C<int>>::index_type,
+          std::enable_if_t<detail::is_tree<C<int>>::value> * = nullptr>
+auto iotaMap(F &&f, const Index &s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, Index, Args...> R;
+  return C<R>(typename C<R>::iotaMap(), std::forward<F>(f), adt::zero<Index>(),
+              s, adt::one<Index>(), std::forward<Args>(args)...);
 }
 
 // fmap
@@ -54,6 +68,27 @@ auto fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
            Args &&... args) {
   return adt::tree<C, R>(typename adt::tree<C, R>::fmap2(), std::forward<F>(f),
                          xs, ys, std::forward<Args>(args)...);
+}
+
+// boundary
+
+template <template <typename> class C, typename T,
+          template <typename> class TBC =
+              fun_traits<adt::tree<C, T>>::template boundary_constructor>
+auto boundary(const adt::tree<C, T> &xs, std::ptrdiff_t i) {
+  return TBC<T>(typename TBC<T>::boundary(), xs, i);
+}
+
+// boundaryMap
+
+template <typename F, template <typename> class C, typename T, typename... Args,
+          template <typename>
+          class BC = fun_traits<adt::tree<C, T>>::template boundary_constructor,
+          typename R = cxx::invoke_of_t<F, T, Args...>>
+auto boundaryMap(F &&f, const adt::tree<C, T> &xs, std::ptrdiff_t i,
+                 Args &&... args) {
+  return BC<R>(typename BC<R>::boundaryMap(), std::forward<F>(f), xs, i,
+               std::forward<Args>(args)...);
 }
 
 // fmapStencil
@@ -75,14 +110,21 @@ auto fmapStencil(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
 // head, last
 
 template <template <typename> class C, typename T>
-auto head(const adt::tree<C, T> &xs) {
+decltype(auto) head(const adt::tree<C, T> &xs) {
   return xs.head();
 }
 
 template <template <typename> class C, typename T>
-auto last(const adt::tree<C, T> &xs) {
+decltype(auto) last(const adt::tree<C, T> &xs) {
   return xs.last();
 }
+
+// // indexing
+//
+// template <template <typename> class C, typename T>
+// decltype(auto) getIndex(const adt::tree<C, T> &xs,std::ptrdiff_t i) {
+//   return xs.getIndex(i);
+// }
 
 // foldMap
 
@@ -160,7 +202,7 @@ C<R> mzero() {
 template <template <typename> class C, typename T, typename... Ts>
 adt::tree<C, T> mplus(const adt::tree<C, T> &xss,
                       const adt::tree<C, Ts> &... yss) {
-  return adt::tree<C, T>(xss, yss...);
+  return adt::tree<C, T>(fun::msome<C>(xss, yss...));
 }
 
 // msome
@@ -169,7 +211,8 @@ template <template <typename> class C, typename T, typename... Ts,
           typename R = std::decay_t<T>,
           std::enable_if_t<detail::is_tree<C<R>>::value> * = nullptr>
 C<R> msome(T &&x, Ts &&... ys) {
-  return C<R>{std::forward<T>(x), std::forward<Ts>(ys)...};
+  return C<R>(msome<C<R>::template array_constructor>(std::forward<T>(x),
+                                                      std::forward<Ts>(ys)...));
 }
 
 // mempty
@@ -177,6 +220,13 @@ C<R> msome(T &&x, Ts &&... ys) {
 template <template <typename> class C, typename T>
 bool mempty(const adt::tree<C, T> &xs) {
   return xs.empty();
+}
+
+// msize
+
+template <template <typename> class C, typename T>
+std::size_t msize(const adt::tree<C, T> &xs) {
+  return xs.size();
 }
 }
 

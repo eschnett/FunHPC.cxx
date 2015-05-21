@@ -29,23 +29,24 @@ struct fun_traits<adt::grid<C, T, D>> {
   typedef T value_type;
   static constexpr std::ptrdiff_t rank = D;
   typedef typename adt::grid<C, T, D>::index_type index_type;
+  template <typename U> using boundary_constructor = adt::grid<C, U, D - 1>;
 };
 
 // iotaMap
 
 template <template <typename> class C, typename F, typename... Args,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          std::enable_if_t<detail::is_grid<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_grid<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   return C<R>(typename C<R>::iotaMap(), std::forward<F>(f), s,
               std::forward<Args>(args)...);
 }
 
 template <template <typename> class C, typename F, typename... Args,
-          typename Ind = typename fun_traits<C<int>>::index_type,
-          typename R = cxx::invoke_of_t<F, Ind, Args...>,
-          std::enable_if_t<detail::is_grid<C<R>>::value> * = nullptr>
-auto iotaMap(F &&f, const Ind &s, Args &&... args) {
+          typename Index = typename fun_traits<C<int>>::index_type,
+          std::enable_if_t<detail::is_grid<C<int>>::value> * = nullptr>
+auto iotaMap(F &&f, const Index &s, Args &&... args) {
+  typedef cxx::invoke_of_t<F, Index, Args...> R;
   return C<R>(typename C<R>::iotaMap(), std::forward<F>(f), s,
               std::forward<Args>(args)...);
 }
@@ -73,10 +74,11 @@ auto fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
 // boundary
 
 template <template <typename> class C, typename T, std::ptrdiff_t D,
+          template <typename> class BC =
+              fun_traits<adt::grid<C, T, D>>::template boundary_constructor,
           std::enable_if_t<D != 0> * = nullptr>
 auto boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
-  return adt::grid<C, T, D - 1>(typename adt::grid<C, T, D - 1>::boundary(), xs,
-                                i);
+  return BC<T>(typename BC<T>::boundary(), xs, i);
 }
 
 // boundaryMap
@@ -156,7 +158,7 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
 template <template <typename> class C, typename T, typename R = std::decay_t<T>,
           std::enable_if_t<detail::is_grid<C<R>>::value> * = nullptr>
 C<R> munit(T &&x) {
-  return C<R>(adt::array_fill<std::ptrdiff_t, fun_traits<C<R>>::rank>(1),
+  return C<R>(adt::array_set<std::ptrdiff_t, fun_traits<C<R>>::rank>(1),
               munit<C<R>::template storage_constructor>(std::forward<T>(x)));
 }
 

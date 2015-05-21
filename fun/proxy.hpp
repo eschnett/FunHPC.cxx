@@ -35,10 +35,10 @@ template <typename T> struct fun_traits<funhpc::proxy<T>> {
 
 // TODO: use remote
 template <template <typename> class C, typename F, typename... Args,
-          typename R = std::decay_t<cxx::invoke_of_t<
-              std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
-          std::enable_if_t<detail::is_proxy<C<R>>::value> * = nullptr>
+          std::enable_if_t<detail::is_proxy<C<int>>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
+                                        std::decay_t<Args>...>> R;
   assert(s == 1);
   return funhpc::local(std::forward<F>(f), std::ptrdiff_t(0),
                        std::forward<Args>(args)...);
@@ -95,14 +95,11 @@ auto fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
 // foldMap
 
 namespace detail {
-template <typename T> struct proxy_foldMap : std::tuple<> {
-  template <typename F, typename Op, typename Z, typename... Args>
-  auto operator()(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
-                  Args &&... args) const {
+struct proxy_foldMap : std::tuple<> {
+  template <typename F, typename T, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs, Args &&... args) const {
     assert(bool(xs) && xs.proc_ready() && xs.local());
-    return cxx::invoke(
-        std::forward<Op>(op), std::forward<Z>(z),
-        cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...));
+    return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
 }
@@ -115,22 +112,20 @@ R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
   assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       detail::proxy_foldMap<T>(), std::forward<F>(f),
-                       std::forward<Op>(op), std::forward<Z>(z), xs,
+                       detail::proxy_foldMap(), std::forward<F>(f), xs,
                        std::forward<Args>(args)...).get();
 }
 
 namespace detail {
-template <typename T, typename T2> struct proxy_foldMap2 : std::tuple<> {
-  template <typename F, typename Op, typename Z, typename... Args>
-  auto operator()(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
+struct proxy_foldMap2 : std::tuple<> {
+  template <typename F, typename T, typename T2, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs,
                   const funhpc::proxy<T2> &ys, Args &&... args) const {
     assert(bool(xs) && xs.proc_ready() && xs.local());
     assert(bool(ys));
     auto ysl = ys.make_local();
-    return cxx::invoke(std::forward<Op>(op), std::forward<Z>(z),
-                       cxx::invoke(std::forward<F>(f), *xs, *ysl,
-                                   std::forward<Args>(args)...));
+    return cxx::invoke(std::forward<F>(f), *xs, *ysl,
+                       std::forward<Args>(args)...);
   }
 };
 }
@@ -145,8 +140,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
   assert(bool(ys) == s);
   assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
-                       detail::proxy_foldMap2<T, T2>(), std::forward<F>(f),
-                       std::forward<Op>(op), std::forward<Z>(z), xs, ys,
+                       detail::proxy_foldMap2(), std::forward<F>(f), xs, ys,
                        std::forward<Args>(args)...).get();
 }
 
@@ -191,9 +185,8 @@ template <typename F, typename Op, typename Z, typename T, typename... Args,
               cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
               Args &&... args) {
-  return funhpc::remote(xs.get_proc_future(), detail::proxy_foldMap<T>(),
-                        std::forward<F>(f), std::forward<Op>(op),
-                        std::forward<Z>(z), xs, std::forward<Args>(args)...);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_foldMap(),
+                        std::forward<F>(f), xs, std::forward<Args>(args)...);
 }
 
 // mzero

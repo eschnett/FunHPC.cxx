@@ -37,28 +37,28 @@ TEST(adt_grid, iotaMap) {
   auto g0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   EXPECT_EQ(0 * double(s - 1), g0.last());
   auto g1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   EXPECT_EQ(1 * double(s - 1), g1.last());
   auto g2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 2>(s));
+      }, adt::array_set<std::ptrdiff_t, 2>(s));
   EXPECT_EQ(2 * double(s - 1), g2.last());
   auto g3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 3>(s));
+      }, adt::array_set<std::ptrdiff_t, 3>(s));
   EXPECT_EQ(3 * double(s - 1), g3.last());
   std::ptrdiff_t s10 = 2;
   auto g10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 10>(s10));
+      }, adt::array_set<std::ptrdiff_t, 10>(s10));
   EXPECT_EQ(10 * double(s10 - 1), g10.last());
 }
 
@@ -67,7 +67,7 @@ TEST(adt_grid, fmap) {
   auto g0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto x0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::fmap(),
       [](auto x) { return 2 * x + 1; }, g0);
@@ -75,7 +75,7 @@ TEST(adt_grid, fmap) {
   auto g1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto x1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::fmap(),
       [](auto x) { return 2 * x + 1; }, g1);
@@ -83,7 +83,7 @@ TEST(adt_grid, fmap) {
   auto g2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 2>(s));
+      }, adt::array_set<std::ptrdiff_t, 2>(s));
   auto x2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::fmap(),
       [](auto x) { return 2 * x + 1; }, g2);
@@ -91,7 +91,7 @@ TEST(adt_grid, fmap) {
   auto g3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 3>(s));
+      }, adt::array_set<std::ptrdiff_t, 3>(s));
   auto x3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::fmap(),
       [](auto x) { return 2 * x + 1; }, g3);
@@ -100,7 +100,7 @@ TEST(adt_grid, fmap) {
   auto g10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 10>(s10));
+      }, adt::array_set<std::ptrdiff_t, 10>(s10));
   auto x10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::fmap(),
       [](auto x) { return 2 * x + 1; }, g10);
@@ -112,7 +112,7 @@ TEST(adt_grid, fmap2) {
   auto g0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto x0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::fmap(),
       [](auto x) { return 2 * x + 1; }, g0);
@@ -124,7 +124,7 @@ TEST(adt_grid, fmap2) {
   auto g1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto x1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::fmap(),
       [](auto x) { return 2 * x + 1; }, g1);
@@ -136,7 +136,7 @@ TEST(adt_grid, fmap2) {
   auto g2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 2>(s));
+      }, adt::array_set<std::ptrdiff_t, 2>(s));
   auto x2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::fmap(),
       [](auto x) { return 2 * x + 1; }, g2);
@@ -148,7 +148,7 @@ TEST(adt_grid, fmap2) {
   auto g3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 3>(s));
+      }, adt::array_set<std::ptrdiff_t, 3>(s));
   auto x3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::fmap(),
       [](auto x) { return 2 * x + 1; }, g3);
@@ -161,7 +161,7 @@ TEST(adt_grid, fmap2) {
   auto g10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 10>(s10));
+      }, adt::array_set<std::ptrdiff_t, 10>(s10));
   auto x10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::fmap(),
       [](auto x) { return 2 * x + 1; }, g10);
@@ -177,7 +177,7 @@ TEST(adt_grid, fmapStencil) {
   auto g0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto x0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::fmapStencil(),
       [](auto x, auto bdirs) { return 0.0; }, [](auto x, auto i) { return x; },
@@ -191,15 +191,15 @@ TEST(adt_grid, fmapStencil) {
   auto g1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto bm1 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i)) - 1.0;
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto bp1 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto i) {
         return double(adt::sum(i)) + 10.0;
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto x1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::fmapStencil(),
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2.0 * x + bp; },
@@ -213,15 +213,15 @@ TEST(adt_grid, fmapStencil) {
   auto g2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::iotaMap(), [](auto i) {
         return double(adt::sum(i));
-      }, adt::array_fill<std::ptrdiff_t, 2>(s));
+      }, adt::array_set<std::ptrdiff_t, 2>(s));
   auto bm2 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i)) - 1.0;
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto bp2 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto i) {
         return double(adt::sum(i)) + 10.0;
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto x2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::fmapStencil(),
       [](auto x, auto bdirs, auto bm0, auto bm1, auto bp0, auto bp1) {
@@ -242,7 +242,7 @@ TEST(adt_grid, foldMap) {
   auto g0 = adt::grid<std_vector, double, 0>(
       typename adt::grid<std_vector, double, 0>::iotaMap(), [](auto x) {
         return double(adt::sum(x));
-      }, adt::array_fill<std::ptrdiff_t, 0>(s));
+      }, adt::array_set<std::ptrdiff_t, 0>(s));
   auto r0 = g0.foldMap([](auto x) { return x; },
                        [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r0), double>::value));
@@ -250,7 +250,7 @@ TEST(adt_grid, foldMap) {
   auto g1 = adt::grid<std_vector, double, 1>(
       typename adt::grid<std_vector, double, 1>::iotaMap(), [](auto x) {
         return double(adt::sum(x));
-      }, adt::array_fill<std::ptrdiff_t, 1>(s));
+      }, adt::array_set<std::ptrdiff_t, 1>(s));
   auto r1 = g1.foldMap([](auto x) { return x; },
                        [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r1), double>::value));
@@ -258,7 +258,7 @@ TEST(adt_grid, foldMap) {
   auto g2 = adt::grid<std_vector, double, 2>(
       typename adt::grid<std_vector, double, 2>::iotaMap(), [](auto x) {
         return double(adt::sum(x));
-      }, adt::array_fill<std::ptrdiff_t, 2>(s));
+      }, adt::array_set<std::ptrdiff_t, 2>(s));
   auto r2 = g2.foldMap([](auto x) { return x; },
                        [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r2), double>::value));
@@ -266,7 +266,7 @@ TEST(adt_grid, foldMap) {
   auto g3 = adt::grid<std_vector, double, 3>(
       typename adt::grid<std_vector, double, 3>::iotaMap(), [](auto x) {
         return double(adt::sum(x));
-      }, adt::array_fill<std::ptrdiff_t, 3>(s));
+      }, adt::array_set<std::ptrdiff_t, 3>(s));
   auto r3 = g3.foldMap([](auto x) { return x; },
                        [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r3), double>::value));
@@ -275,7 +275,7 @@ TEST(adt_grid, foldMap) {
   auto g10 = adt::grid<std_vector, double, 10>(
       typename adt::grid<std_vector, double, 10>::iotaMap(), [](auto x) {
         return double(adt::sum(x));
-      }, adt::array_fill<std::ptrdiff_t, 10>(s10));
+      }, adt::array_set<std::ptrdiff_t, 10>(s10));
   auto r10 = g10.foldMap([](auto x) { return x; },
                          [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r10), double>::value));

@@ -17,7 +17,7 @@ namespace detail {
 
 template <std::ptrdiff_t D> class index_space {
 public:
-  typedef std::array<std::ptrdiff_t, D> index_type;
+  typedef adt::index_t<D> index_type;
 
 private:
   index_type m_shape;
@@ -191,7 +191,7 @@ public:
   }
 
   friend std::ostream &operator<<(std::ostream &os, const index_space &is) {
-    std::array<std::ptrdiff_t, D + 1> strides;
+    adt::index_t<D + 1> strides;
     for (std::ptrdiff_t d = 0; d <= D; ++d)
       strides[d] = is.stride(d);
     return os << "index_space{m_shape=" << is.m_shape
@@ -228,7 +228,7 @@ private:
 public:
   bool empty() const { return indexing.empty(); }
   std::size_t size() const { return indexing.size(); }
-  std::array<std::ptrdiff_t, D> shape() const { return indexing.shape(); }
+  index_type shape() const { return indexing.shape(); }
 
 private:
   bool invariant0() const {

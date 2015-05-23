@@ -1,19 +1,37 @@
 #ifndef ADT_NESTED_HPP
 #define ADT_NESTED_HPP
 
+#include <adt/dummy.hpp>
+
 #include <cereal/access.hpp>
 
+#include <type_traits>
 #include <vector>
 
 namespace adt {
 
-// nested<P,A,T> = P<A<T>>
-template <template <typename> class P, template <typename> class A, typename T>
-struct nested {
-  template <typename U> using pointer_constructor = P<U>;
-  template <typename U> using array_constructor = A<U>;
+template <typename P, typename A, typename T> struct nested {
+  // nested<P,A,T> = P<A<T>>
+
+  static_assert(
+      std::is_same<typename fun::fun_traits<P>::value_type, adt::dummy>::value,
+      "");
+  static_assert(
+      std::is_same<typename fun::fun_traits<A>::value_type, adt::dummy>::value,
+      "");
+
+  typedef P pointer_dummy;
+  template <typename U>
+  using pointer_constructor =
+      typename fun::fun_traits<P>::template constructor<U>;
+  typedef A array_dummy;
+  template <typename U>
+  using array_constructor =
+      typename fun::fun_traits<A>::template constructor<U>;
   typedef T value_type;
-  P<A<T>> data;
+
+  pointer_constructor<array_constructor<T>> data;
+
   template <typename Archive> void serialize(Archive &ar) { ar(data); }
 };
 }

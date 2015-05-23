@@ -102,7 +102,9 @@ endif
 
 HDRS =						\
 	adt/array.hpp				\
+	adt/dummy.hpp				\
 	adt/either.hpp				\
+	adt/empty.hpp				\
 	adt/grid.hpp				\
 	adt/idtype.hpp				\
 	adt/maybe.hpp				\
@@ -117,6 +119,7 @@ HDRS =						\
 	cxx/utility.hpp				\
 	fun/array.hpp				\
 	fun/either.hpp				\
+	fun/empty.hpp				\
 	fun/fun.hpp				\
 	fun/function.hpp			\
 	fun/grid.hpp				\
@@ -127,7 +130,6 @@ HDRS =						\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
-	fun/topology.hpp			\
 	fun/tree.hpp				\
 	fun/vector.hpp				\
 	funhpc/async.hpp			\
@@ -150,7 +152,9 @@ FUNHPC_SRCS =					\
 	funhpc/server.cc
 TEST_SRCS =					\
 	adt/array_test.cc			\
+	adt/dummy_test.cc			\
 	adt/either_test.cc			\
+	adt/empty_test.cc			\
 	adt/grid_test.cc			\
 	adt/idtype_test.cc			\
 	adt/maybe_test.cc			\
@@ -163,6 +167,7 @@ TEST_SRCS =					\
 	cxx/utility_test.cc			\
 	fun/array_test.cc			\
 	fun/either_test.cc			\
+	fun/empty_test.cc			\
 	fun/fun_test.cc				\
 	fun/function_test.cc			\
 	fun/grid_test.cc			\

@@ -212,38 +212,38 @@ MAKEFUNOP(gt, > )
 MAKEFUNOP(ge, >= )
 #undef MAKEFUNOP
 
-template <typename T, std::size_t N> constexpr auto array_zero() {
-  std::array<T, N> r;
-  r.fill(T(0));
+template <typename R, std::size_t N> constexpr auto array_zero() {
+  std::array<R, N> r;
+  r.fill(R(0));
   return r;
 }
 
-template <typename T, std::size_t N> constexpr auto array_one() {
-  std::array<T, N> r;
-  r.fill(T(1));
+template <typename R, std::size_t N> constexpr auto array_one() {
+  std::array<R, N> r;
+  r.fill(R(1));
   return r;
 }
 
-template <typename T, std::size_t N, typename U>
-constexpr auto array_set(const U &x) {
-  std::array<T, N> r;
-  r.fill(x);
+template <typename R, std::size_t N, typename T>
+constexpr auto array_set(T &&x) {
+  std::array<R, N> r;
+  r.fill(std::forward<T>(x));
   return r;
 }
 
-template <typename T, std::size_t N, std::size_t i> constexpr auto array_dir() {
+template <typename R, std::size_t N, std::size_t i> constexpr auto array_dir() {
   static_assert(i >= 0 && i < N, "");
-  std::array<T, N> r;
-  r.fill(T(0));
-  std::get<i>(r) = T(1);
+  std::array<R, N> r;
+  r.fill(R(0));
+  std::get<i>(r) = R(1);
   return r;
 }
 
-template <typename T, std::size_t N> constexpr auto array_dir(std::size_t i) {
+template <typename R, std::size_t N> constexpr auto array_dir(std::size_t i) {
   assert(i >= 0 && i < N);
-  std::array<T, N> r;
-  r.fill(T(0));
-  r[i] = T(1);
+  std::array<R, N> r;
+  r.fill(R(0));
+  r[i] = R(1);
   return r;
 }
 
@@ -254,39 +254,39 @@ template <typename T, std::size_t N>
 struct is_std_array<std::array<T, N>> : std::true_type {};
 }
 
-template <typename AT,
-          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+template <typename AR,
+          std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr auto zero() {
-  AT r;
-  typedef typename AT::value_type T;
-  r.fill(T(0));
+  AR r;
+  typedef typename AR::value_type R;
+  r.fill(R(0));
   return r;
 }
 
-template <typename AT,
-          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+template <typename AR,
+          std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr auto one() {
-  AT r;
-  typedef typename AT::value_type T;
-  r.fill(T(1));
+  AR r;
+  typedef typename AR::value_type R;
+  r.fill(R(1));
   return r;
 }
 
-template <typename AT,
-          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
-constexpr auto set(const typename AT::value_type &x) {
-  AT r;
-  r.fill(x);
+template <typename AR, typename T,
+          std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
+constexpr auto set(T &&x) {
+  AR r;
+  r.fill(std::forward<T>(x));
   return r;
 }
 
-template <typename AT,
-          std::enable_if<detail::is_std_array<AT>::value> * = nullptr>
+template <typename AR,
+          std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr auto dir(std::size_t i) {
-  AT r;
-  typedef typename AT::value_type T;
-  r.fill(T(0));
-  r[i] = T(1);
+  AR r;
+  typedef typename AR::value_type R;
+  r.fill(R(0));
+  r[i] = R(1);
   return r;
 }
 
@@ -309,18 +309,18 @@ constexpr auto rmdir(const std::array<T, N> &x, std::size_t i) {
 }
 
 template <std::size_t i, typename T, std::size_t N, typename U>
-constexpr auto update(const std::array<T, N> &x, const U &y) {
+constexpr auto update(const std::array<T, N> &x, U &&y) {
   static_assert(i >= 0 && i < N, "");
   std::array<T, N> r(x);
-  std::get<i>(r) = y;
+  std::get<i>(r) = std::forward<U>(y);
   return r;
 }
 
 template <typename T, std::size_t N, typename U>
-constexpr auto update(const std::array<T, N> &x, std::size_t i, const U &y) {
+constexpr auto update(const std::array<T, N> &x, std::size_t i, U &&y) {
   assert(i >= 0 && i < N);
   std::array<T, N> r(x);
-  r[i] = y;
+  r[i] = std::forward<U>(y);
   return r;
 }
 

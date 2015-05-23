@@ -4,27 +4,27 @@
 
 using namespace fun;
 
-template <typename R> using function1 = std::function<R(int)>;
+template <typename R> using std_function = std::function<R(int)>;
 
 TEST(fun_function, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<function1>([](int x) { return x; }, s);
-  static_assert(std::is_same<decltype(rs), function1<int>>::value, "");
+  auto rs = iotaMap<std_function<adt::dummy>>([](int x) { return x; }, s);
+  static_assert(std::is_same<decltype(rs), std_function<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, rs(42));
 
-  auto rs0 = iotaMap<function1>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<std_function<adt::dummy>>([](int x) { return x; }, 0);
   EXPECT_FALSE(bool(rs0));
 
-  auto rs1 =
-      iotaMap<function1>([](int x, int y) { return double(x + y); }, s, -1);
-  static_assert(std::is_same<decltype(rs1), function1<double>>::value, "");
+  auto rs1 = iotaMap<std_function<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
+  static_assert(std::is_same<decltype(rs1), std_function<double>>::value, "");
   EXPECT_TRUE(bool(rs1));
   EXPECT_EQ(-1, rs1(42));
 }
 
 TEST(fun_function, fmap) {
-  function1<int> xs = [](int) { return 0; };
+  std_function<int> xs = [](int) { return 0; };
 
   auto rs = fmap([](int i) { return i + 1; }, xs);
   EXPECT_TRUE(bool(rs));
@@ -44,12 +44,12 @@ TEST(fun_function, fmap) {
 }
 
 TEST(fun_function, monad) {
-  auto x1 = munit<function1>(1);
-  static_assert(std::is_same<decltype(x1), function1<int>>::value, "");
+  auto x1 = munit<std_function<adt::dummy>>(1);
+  static_assert(std::is_same<decltype(x1), std_function<int>>::value, "");
   EXPECT_TRUE(bool(x1));
   EXPECT_EQ(1, x1(42));
 
-  auto xx1 = munit<function1>(x1);
+  auto xx1 = munit<std_function<adt::dummy>>(x1);
   EXPECT_TRUE(bool(xx1));
   EXPECT_TRUE(bool(xx1(42)));
   EXPECT_EQ(1, xx1(42)(42));
@@ -57,9 +57,10 @@ TEST(fun_function, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1(42), x1j(42));
 
-  auto x2 =
-      mbind([](auto x, auto c) { return munit<function1>(x + c); }, x1, 1);
-  static_assert(std::is_same<decltype(x2), function1<int>>::value, "");
+  auto x2 = mbind([](auto x, auto c) {
+    return munit<std_function<adt::dummy>>(x + c);
+  }, x1, 1);
+  static_assert(std::is_same<decltype(x2), std_function<int>>::value, "");
   EXPECT_TRUE(bool(x2));
   EXPECT_EQ(2, x2(42));
 
@@ -71,8 +72,8 @@ TEST(fun_function, monad) {
                0, std::function<int(int)>([](int x) { return x; }));
   EXPECT_EQ(42, r2(42));
 
-  auto x0 = mzero<function1, int>();
-  static_assert(std::is_same<decltype(x0), function1<int>>::value, "");
+  auto x0 = mzero<std_function<adt::dummy>, int>();
+  static_assert(std::is_same<decltype(x0), std_function<int>>::value, "");
   EXPECT_FALSE(bool(x0));
 
   auto x11 = mplus(x1);

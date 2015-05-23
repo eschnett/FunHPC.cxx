@@ -8,11 +8,12 @@ template <typename T> using pair1 = std::pair<char, T>;
 
 TEST(fun_pair, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<pair1>([](int x) { return x; }, s);
+  auto rs = iotaMap<pair1<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), pair1<int>>::value, "");
   EXPECT_EQ(0, rs.second);
 
-  auto rs1 = iotaMap<pair1>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<pair1<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), pair1<double>>::value, "");
   EXPECT_EQ(-1, rs1.second);
 }
@@ -36,7 +37,7 @@ TEST(fun_pair, fmap) {
 
 TEST(fun_pair, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<pair1>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<pair1<adt::dummy>>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -56,17 +57,18 @@ TEST(fun_pair, foldMap) {
 }
 
 TEST(fun_pair, monad) {
-  auto x1 = munit<pair1>(1);
+  auto x1 = munit<pair1<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), pair1<int>>::value, "");
   EXPECT_EQ(1, x1.second);
 
-  auto xx1 = munit<pair1>(x1);
+  auto xx1 = munit<pair1<adt::dummy>>(x1);
   EXPECT_EQ(1, xx1.second.second);
 
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) { return munit<pair1>(x + c); }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<pair1<adt::dummy>>(x + c); }, x1, 1);
   static_assert(std::is_same<decltype(x2), pair1<int>>::value, "");
   EXPECT_EQ(2, x2.second);
 

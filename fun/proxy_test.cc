@@ -8,13 +8,13 @@ using namespace fun;
 
 TEST(fun_proxy, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<funhpc::proxy>([](int x) { return x; }, s);
+  auto rs = iotaMap<funhpc::proxy<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), funhpc::proxy<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, *rs);
 
-  auto rs1 =
-      iotaMap<funhpc::proxy>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<funhpc::proxy<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), funhpc::proxy<double>>::value, "");
   EXPECT_TRUE(bool(rs1));
   EXPECT_EQ(-1, *rs1);
@@ -61,7 +61,7 @@ int sq(int x) { return x * x; }
 
 TEST(fun_proxy, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<funhpc::proxy>(id, s);
+  auto xs = iotaMap<funhpc::proxy<adt::dummy>>(id, s);
   auto ys = xs;
 
   auto sum = foldMap(id, add, 0, xs);
@@ -78,16 +78,18 @@ TEST(fun_proxy, foldMap) {
 }
 
 namespace {
-auto mkproxy_add(int x, int y) { return munit<funhpc::proxy>(x + y); }
+auto mkproxy_add(int x, int y) {
+  return munit<funhpc::proxy<adt::dummy>>(x + y);
+}
 }
 
 TEST(fun_proxy, monad) {
-  auto x1 = munit<funhpc::proxy>(1);
+  auto x1 = munit<funhpc::proxy<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), funhpc::proxy<int>>::value, "");
   EXPECT_TRUE(bool(x1));
   EXPECT_EQ(1, *x1);
 
-  auto xx1 = munit<funhpc::proxy>(x1);
+  auto xx1 = munit<funhpc::proxy<adt::dummy>>(x1);
   EXPECT_TRUE(bool(xx1));
   EXPECT_TRUE(bool(*xx1));
   EXPECT_EQ(1, **xx1);

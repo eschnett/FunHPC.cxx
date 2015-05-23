@@ -6,12 +6,12 @@ using namespace fun;
 
 TEST(fun_idtype, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<adt::idtype>([](int x) { return x; }, s);
+  auto rs = iotaMap<adt::idtype<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), adt::idtype<int>>::value, "");
   EXPECT_EQ(0, rs.get());
 
-  auto rs1 =
-      iotaMap<adt::idtype>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<adt::idtype<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), adt::idtype<double>>::value, "");
   EXPECT_EQ(-1, rs1.get());
 }
@@ -35,7 +35,7 @@ TEST(fun_idtype, fmap) {
 
 TEST(fun_idtype, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<adt::idtype>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<adt::idtype<adt::dummy>>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -55,18 +55,19 @@ TEST(fun_idtype, foldMap) {
 }
 
 TEST(fun_idtype, monad) {
-  auto x1 = munit<adt::idtype>(1);
+  auto x1 = munit<adt::idtype<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), adt::idtype<int>>::value, "");
   EXPECT_EQ(1, x1.get());
 
-  auto xx1 = munit<adt::idtype>(x1);
+  auto xx1 = munit<adt::idtype<adt::dummy>>(x1);
   EXPECT_EQ(1, xx1.get().get());
 
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 =
-      mbind([](auto x, auto c) { return munit<adt::idtype>(x + c); }, x1, 1);
+  auto x2 = mbind([](auto x, auto c) {
+    return munit<adt::idtype<adt::dummy>>(x + c);
+  }, x1, 1);
   static_assert(std::is_same<decltype(x2), adt::idtype<int>>::value, "");
   EXPECT_EQ(2, x2.get());
 

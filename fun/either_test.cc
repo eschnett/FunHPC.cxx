@@ -8,16 +8,16 @@ template <typename T> using either1 = adt::either<char, T>;
 
 TEST(fun_either, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<either1>([](int x) { return x; }, s);
+  auto rs = iotaMap<either1<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), either1<int>>::value, "");
   EXPECT_TRUE(rs.right());
   EXPECT_EQ(0, rs.get_right());
 
-  auto rs0 = iotaMap<either1>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<either1<adt::dummy>>([](int x) { return x; }, 0);
   EXPECT_FALSE(rs0.right());
 
-  auto rs1 =
-      iotaMap<either1>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<either1<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), either1<double>>::value, "");
   EXPECT_TRUE(rs1.right());
   EXPECT_EQ(-1, rs1.get_right());
@@ -45,7 +45,7 @@ TEST(fun_either, fmap) {
 
 TEST(fun_either, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<either1>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<either1<adt::dummy>>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -65,12 +65,12 @@ TEST(fun_either, foldMap) {
 }
 
 TEST(fun_either, monad) {
-  auto x1 = munit<either1>(1);
+  auto x1 = munit<either1<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), either1<int>>::value, "");
   EXPECT_TRUE(x1.right());
   EXPECT_EQ(1, x1.get_right());
 
-  auto xx1 = munit<either1>(x1);
+  auto xx1 = munit<either1<adt::dummy>>(x1);
   EXPECT_TRUE(xx1.right());
   EXPECT_TRUE(xx1.get_right().right());
   EXPECT_EQ(1, xx1.get_right().get_right());
@@ -78,7 +78,8 @@ TEST(fun_either, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) { return munit<either1>(x + c); }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<either1<adt::dummy>>(x + c); }, x1, 1);
   static_assert(std::is_same<decltype(x2), either1<int>>::value, "");
   EXPECT_TRUE(x2.right());
   EXPECT_EQ(2, x2.get_right());
@@ -90,7 +91,7 @@ TEST(fun_either, monad) {
                      [](auto x, auto y) { return x + y; }, 0, x1);
   EXPECT_EQ(r, mextract(r1));
 
-  auto x0 = mzero<either1, int>();
+  auto x0 = mzero<either1<adt::dummy>, int>();
   static_assert(std::is_same<decltype(x0), either1<int>>::value, "");
   EXPECT_FALSE(x0.right());
 

@@ -1,6 +1,6 @@
+#include <adt/dummy.hpp>
 #include <fun/proxy.hpp>
 #include <fun/shared_future.hpp>
-#include <fun/topology.hpp>
 #include <fun/vector.hpp>
 #include <funhpc/main.hpp>
 #include <funhpc/rexec.hpp>
@@ -149,10 +149,10 @@ auto cell_rhs(const cell_t &c, size_t bdirs, const cell_t &bm,
 
 // Grid
 
-template <typename T> using std_vector = std::vector<T>;
 template <typename T>
-using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
-template <typename T> using proxy_tree = adt::tree<proxy_vector, T>;
+using proxy_vector =
+    adt::nested<funhpc::proxy<adt::dummy>, std::vector<adt::dummy>, T>;
+template <typename T> using proxy_tree = adt::tree<proxy_vector<adt::dummy>, T>;
 
 struct grid_t {
   real_t time;
@@ -173,7 +173,7 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<proxy_tree>([t](int_t i) {
+  return grid_t{t, fun::iotaMap<proxy_tree<adt::dummy>>([t](int_t i) {
     real_t x = parameters.xmin + parameters.dx() * (real_t(i) + 0.5);
     return cell_init(t, x);
   }, parameters.ncells)};

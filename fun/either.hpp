@@ -1,6 +1,7 @@
 #ifndef FUN_EITHER_HPP
 #define FUN_EITHER_HPP
 
+#include <adt/dummy.hpp>
 #include <adt/either.hpp>
 #include <cxx/invoke.hpp>
 
@@ -26,16 +27,19 @@ struct is_either<adt::either<L, R>> : std::true_type {};
 template <typename> struct fun_traits;
 template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
   template <typename U> using constructor = adt::either<L, U>;
+  typedef constructor<adt::dummy> dummy;
   typedef R value_type;
+
+  typedef L left_type;
 };
 
 // iotaMap
 
-template <template <typename> class C, typename F, typename... Args,
-          typename L = typename C<int>::left_type,
-          std::enable_if_t<detail::is_either<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_either<C>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
+  typedef typename C::left_type L;
   assert(s <= 1);
   if (s == 0)
     return adt::either<L, R>();
@@ -45,35 +49,36 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 
 // fmap
 
-template <typename F, typename T, typename L, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename L, typename... Args>
 auto fmap(F &&f, const adt::either<L, T> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> R;
   bool s = xs.right();
   if (!s)
-    return adt::either<L, R>();
+    return adt::make_left<L, R>(xs.get_left());
   return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f), xs.get_right(),
                                            std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename L, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename L, typename... Args>
 auto fmap(F &&f, adt::either<L, T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> R;
   bool s = xs.right();
   if (!s)
-    return adt::either<L, R>();
+    return adt::make_left<L, R>(xs.get_left());
   return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f),
                                            std::move(xs.get_right()),
                                            std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename L, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
-auto fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L, T2> &ys,
+template <typename F, typename T, typename L, typename T2, typename L2,
+          typename... Args>
+auto fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L2, T2> &ys,
            Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
   bool s = xs.right();
   assert(ys.right() == s);
   if (!s)
-    return adt::either<L, R>();
+    return adt::make_left<L, R>(xs.get_left());
   return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f), xs.get_right(),
                                            ys.get_right(),
                                            std::forward<Args>(args)...));
@@ -82,8 +87,10 @@ auto fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L, T2> &ys,
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename L,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs, Args &&... args) {
+          typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
+             Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   if (!s)
@@ -93,8 +100,9 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, adt::either<L, T> &&xs, Args &&... args) {
+          typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, adt::either<L, T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   if (!s)
@@ -104,10 +112,10 @@ R foldMap(F &&f, Op &&op, Z &&z, adt::either<L, T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
-          typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
-           const adt::either<L, T2> &ys, Args &&... args) {
+          typename T2, typename... Args>
+auto foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
+              const adt::either<L, T2> &ys, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, T2, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
   assert(ys.right() == s);
@@ -119,18 +127,19 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
 
 // munit
 
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          typename L = typename C<R>::left_type,
-          std::enable_if_t<detail::is_either<C<R>>::value> * = nullptr>
+template <typename C, typename T,
+          std::enable_if_t<detail::is_either<C>::value> * = nullptr>
 auto munit(T &&x) {
+  typedef std::decay_t<T> R;
+  typedef typename C::left_type L;
   return adt::make_right<L, R>(std::forward<T>(x));
 }
 
 // mbind
 
-template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename L, typename... Args>
 auto mbind(F &&f, const adt::either<L, T> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_either<CR>::value, "");
   if (!xs.right())
     return CR();
@@ -138,9 +147,9 @@ auto mbind(F &&f, const adt::either<L, T> &xs, Args &&... args) {
                      std::forward<Args>(args)...);
 }
 
-template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename L, typename... Args>
 auto mbind(F &&f, adt::either<L, T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_either<CR>::value, "");
   if (!xs.right())
     return CR();
@@ -175,21 +184,21 @@ decltype(auto) mextract(const adt::either<L, T> &xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename T, typename L,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename... Args>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
               Args &&... args) {
-  return munit<fun_traits<adt::either<L, T>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
-              std::forward<Args>(args)...));
+  typedef typename fun_traits<adt::either<L, T>>::dummy C;
+  return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
+                          std::forward<Z>(z), xs, std::forward<Args>(args)...));
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          typename L = typename C<R>::left_type,
-          std::enable_if_t<detail::is_either<C<R>>::value> * = nullptr>
+template <typename C, typename R,
+          std::enable_if_t<detail::is_either<C>::value> * = nullptr>
 auto mzero() {
-  return adt::either<L, R>();
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR();
 }
 
 // mplus
@@ -218,6 +227,13 @@ auto mplus(adt::either<L, T> &&xs, adt::either<L, Ts> &&... yss) {
 
 template <typename T, typename L> bool mempty(const adt::either<L, T> &xs) {
   return !xs.right();
+}
+
+// msize
+
+template <typename T, typename L>
+std::size_t msize(const adt::either<L, T> &xs) {
+  return !mempty(xs);
 }
 }
 

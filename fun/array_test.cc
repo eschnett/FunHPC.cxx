@@ -13,14 +13,14 @@ template <typename T> using array10 = std::array<T, 10>;
 
 TEST(fun_array, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iotaMap<array10>([](int x) { return x; }, s);
+  auto rs = iotaMap<array10<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), std::array<int, 10>>::value, "");
   EXPECT_EQ(s, rs.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i, rs[i]);
 
-  auto rs1 =
-      iotaMap<array10>([](auto x, auto y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<array10<adt::dummy>>(
+      [](auto x, auto y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), std::array<double, 10>>::value, "");
   EXPECT_EQ(s, rs1.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -55,13 +55,10 @@ TEST(fun_array, fmap) {
 
 TEST(fun_array, fmapStencil) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<array10>([](int x) { return x * x; }, s);
-  auto ys = fmapStencil(
-      [](auto x, const auto &bl, const auto &bu) {
-        return get<0>(bl) - 2 * x + get<0>(bu);
-      },
-      [](auto x, auto f, auto d) { return x; }, xs, std::tuple<int>(1),
-      std::tuple<int>(100));
+  auto xs = iotaMap<array10<adt::dummy>>([](int x) { return x * x; }, s);
+  auto ys = fmapStencil([](auto x, std::size_t bdir, const auto &bm,
+                           const auto &bp) { return bm - 2 * x + bp; },
+                        [](auto x, auto i) { return x; }, xs, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
@@ -69,7 +66,7 @@ TEST(fun_array, fmapStencil) {
 
 TEST(fun_array, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<array10>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<array10<adt::dummy>>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -89,12 +86,12 @@ TEST(fun_array, foldMap) {
 }
 
 TEST(fun_array, monad) {
-  auto x1 = munit<array10>(1);
+  auto x1 = munit<array10<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), std::array<int, 10>>::value, "");
   EXPECT_EQ(10, x1.size());
   EXPECT_EQ(1, x1[0]);
 
-  auto xx1 = munit<array10>(x1);
+  auto xx1 = munit<array10<adt::dummy>>(x1);
   EXPECT_EQ(10, xx1.size());
   EXPECT_EQ(10, xx1[0].size());
   EXPECT_EQ(1, xx1[0][0]);
@@ -102,7 +99,8 @@ TEST(fun_array, monad) {
   auto x1j = mjoin(xx1);
   // EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) { return munit<array10>(x + c); }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<array10<adt::dummy>>(x + c); }, x1, 1);
   static_assert(std::is_same<decltype(x2), std::array<int, 100>>::value, "");
   EXPECT_EQ(100, x2.size());
   EXPECT_EQ(2, x2[0]);
@@ -115,7 +113,7 @@ TEST(fun_array, monad) {
   EXPECT_EQ(10, r1.size());
   EXPECT_EQ(r1.size() * r, mextract(r1));
 
-  auto x0 = mzero<array0, int>();
+  auto x0 = mzero<array0<adt::dummy>, int>();
   static_assert(std::is_same<decltype(x0), std::array<int, 0>>::value, "");
   EXPECT_TRUE(x0.empty());
 

@@ -2,9 +2,10 @@
 #define FUN_NESTED_HPP
 
 #include <adt/array.hpp>
-#include <adt/nested.hpp>
+#include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
-#include <fun/topology.hpp>
+
+#include <adt/nested.hpp>
 
 #include <cereal/access.hpp>
 #include <cereal/types/tuple.hpp>
@@ -19,28 +20,29 @@ namespace fun {
 
 namespace detail {
 template <typename> struct is_nested : std::false_type {};
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 struct is_nested<adt::nested<P, A, T>> : std::true_type {};
 }
 
 // traits
 
 template <typename> struct fun_traits;
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 struct fun_traits<adt::nested<P, A, T>> {
   template <typename U> using constructor = adt::nested<P, A, U>;
+  typedef constructor<adt::dummy> dummy;
   typedef T value_type;
-  // static constexpr std::ptrdiff_t rank = fun_traits<A<T>>::rank;
-  typedef typename fun_traits<A<T>>::index_type index_type;
-  template <typename U>
-  using boundary_constructor =
-      adt::nested<P, fun_traits<A<T>>::template boundary_constructor, U>;
+
+  static constexpr std::ptrdiff_t rank = fun_traits<A>::rank;
+  typedef typename fun_traits<A>::index_type index_type;
+  typedef adt::nested<P, typename fun_traits<A>::boundary_dummy, adt::dummy>
+      boundary_dummy;
 };
 
 // iotaMap
 
 namespace detail {
-template <template <typename> class A> struct nested_iotaMap : std::tuple<> {
+template <typename A> struct nested_iotaMap : std::tuple<> {
   template <typename F, typename... Args>
   auto operator()(std::ptrdiff_t i, std::ptrdiff_t s, F &&f,
                   Args &&... args) const {
@@ -49,19 +51,20 @@ template <template <typename> class A> struct nested_iotaMap : std::tuple<> {
 };
 }
 
-template <template <typename> class C, typename F, typename... Args,
-          template <typename> class P = C<int>::template pointer_constructor,
-          template <typename> class A = C<int>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_nested<C>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
                                         std::decay_t<Args>...>> R;
-  return C<R>{iotaMap<P>(detail::nested_iotaMap<A>(), std::ptrdiff_t(1), s,
-                         std::forward<F>(f), std::forward<Args>(args)...)};
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  typedef typename C::pointer_dummy P;
+  typedef typename C::array_dummy A;
+  return CR{iotaMap<P>(detail::nested_iotaMap<A>(), std::ptrdiff_t(1), s,
+                       std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
 namespace detail {
-template <template <typename> class A> struct nested_iotaMap1 : std::tuple<> {
+template <typename A> struct nested_iotaMap1 : std::tuple<> {
   template <std::size_t D, typename F, typename... Args>
   auto operator()(std::ptrdiff_t i, const adt::index_t<D> &s, F &&f,
                   Args &&... args) const {
@@ -70,57 +73,52 @@ template <template <typename> class A> struct nested_iotaMap1 : std::tuple<> {
 };
 }
 
-template <template <typename> class C, typename F, std::size_t D,
-          typename... Args,
-          template <typename> class P = C<int>::template pointer_constructor,
-          template <typename> class A = C<int>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<int>>::value> * = nullptr>
+template <typename C, typename F, std::size_t D, typename... Args,
+          std::enable_if_t<detail::is_nested<C>::value> * = nullptr>
 auto iotaMap(F &&f, const adt::index_t<D> &s, Args &&... args) {
   typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, adt::index_t<D>,
                                         std::decay_t<Args>...>> R;
-  return C<R>{iotaMap<P>(detail::nested_iotaMap1<A>(), std::ptrdiff_t(1), s,
-                         std::forward<F>(f), std::forward<Args>(args)...)};
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  typedef typename C::pointer_dummy P;
+  typedef typename C::array_dummy A;
+  return CR{iotaMap<P>(detail::nested_iotaMap1<A>(), std::ptrdiff_t(1), s,
+                       std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
 // fmap
 
 namespace detail {
-template <template <typename> class A, typename T>
 struct nested_fmap : std::tuple<> {
-  template <typename F, typename... Args>
-  auto operator()(const A<T> &xs, F &&f, Args &&... args) const {
+  template <typename AT, typename F, typename... Args>
+  auto operator()(const AT &xs, F &&f, Args &&... args) const {
     return fmap(f, xs, args...);
   }
 };
 }
 
-template <typename F, template <typename> class P, template <typename> class A,
-          typename T, typename... Args,
+template <typename F, typename P, typename A, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 adt::nested<P, A, R> fmap(F &&f, const adt::nested<P, A, T> &xss,
                           Args &&... args) {
-  return {fmap(detail::nested_fmap<A, T>(), xss.data, std::forward<F>(f),
+  return {fmap(detail::nested_fmap(), xss.data, std::forward<F>(f),
                std::forward<Args>(args)...)};
 }
 
 namespace detail {
-template <template <typename> class A, typename T, typename T2>
 struct nested_fmap2 : std::tuple<> {
-  template <typename F, typename... Args>
-  auto operator()(const A<T> &xs, const A<T2> &ys, F &&f,
-                  Args &&... args) const {
+  template <typename AT, typename AT2, typename F, typename... Args>
+  auto operator()(const AT &xs, const AT2 &ys, F &&f, Args &&... args) const {
     return fmap2(f, xs, ys, args...);
   }
 };
 }
 
-template <typename F, template <typename> class P, template <typename> class A,
-          typename T, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+template <typename F, typename P, typename A, typename T, typename T2,
+          typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 adt::nested<P, A, R> fmap2(F &&f, const adt::nested<P, A, T> &xss,
                            const adt::nested<P, A, T2> &yss, Args &&... args) {
-  return {fmap2(detail::nested_fmap2<A, T, T2>(), xss.data, yss.data,
-                std::forward<F>(f), std::forward<Args>(args)...)};
+  return {fmap2(detail::nested_fmap2(), xss.data, yss.data, std::forward<F>(f),
+                std::forward<Args>(args)...)};
 }
 
 // fmapStencil
@@ -138,9 +136,9 @@ struct nested_fmapStencil : std::tuple<> {
 };
 }
 
-template <typename F, typename G, template <typename> class P,
-          template <typename> class A, typename T, typename BM, typename BP,
-          typename... Args, typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+template <typename F, typename G, typename P, typename A, typename T,
+          typename BM, typename BP, typename... Args,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>>
 adt::nested<P, A, R> fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss,
                                  BM &&bm, BP &&bp, Args &&... args) {
@@ -154,14 +152,16 @@ adt::nested<P, A, R> fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss,
 // head, last
 
 namespace detail {
-template <template <typename> class A, typename T>
 struct nested_head : std::tuple<> {
-  auto operator()(const A<T> &xs) const { return head(xs); }
+  template <typename AT> auto operator()(const AT &xs) const {
+    return head(xs);
+  }
 };
 
-template <template <typename> class A, typename T>
 struct nested_last : std::tuple<> {
-  auto operator()(const A<T> &xs) const { return last(xs); }
+  template <typename AT> auto operator()(const AT &xs) const {
+    return last(xs);
+  }
 };
 }
 
@@ -169,58 +169,63 @@ struct nested_last : std::tuple<> {
 // head or mextract on the proxy would copy the whole data structure
 // to the local process, which would be prohibitively expensive.
 
-// Note: The call to fmap creates a temporary, and mextract returns a
-// reference to the content of this temporary. It appears that Clang
-// extends the lifetime of this temporary (maybe accidentally?), while
-// GCC does not. Hence we need to return a value and not a reference.
-
-// Note: The above should now be fixed by correcting proxy's mextract.
-
 // Note: Why not use foldMap instead of mextract(fmap)?
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 decltype(auto) head(const adt::nested<P, A, T> &xss) {
-  return mextract(fmap(detail::nested_head<A, T>(), xss.data));
+  return mextract(fmap(detail::nested_head(), xss.data));
 }
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 decltype(auto) last(const adt::nested<P, A, T> &xss) {
-  return mextract(fmap(detail::nested_last<A, T>(), xss.data));
+  return mextract(fmap(detail::nested_last(), xss.data));
 }
 
 // boundary
 
-template <template <typename> class P, template <typename> class A, typename T>
+namespace detail {
+struct nested_boundary {
+  template <typename AT> auto operator()(const AT &xs, std::ptrdiff_t i) const {
+    return boundary(xs, i);
+  }
+};
+}
+
+template <typename P, typename A, typename T>
 auto boundary(const adt::nested<P, A, T> &xs, std::ptrdiff_t i) {
-  typedef typename fun_traits<A<T>>::template boundary_constructor<T> BAT;
-  typedef BAT (*boundary_t)(const A<T> &, std::ptrdiff_t);
-  typedef typename fun_traits<
-      adt::nested<P, A, T>>::template boundary_constructor<T> NPBAT;
-  return NPBAT{fmap((boundary_t)boundary, xs.data, i)};
+  typedef typename fun_traits<adt::nested<P, A, T>>::boundary_dummy BNPA;
+  typedef typename fun_traits<BNPA>::template constructor<T> BNPAT;
+  return BNPAT{fmap(detail::nested_boundary(), xs.data, i)};
 }
 
 // boudaryMap
 
-#warning "TODO: boundaryMap"
+template <typename F, typename P, typename A, typename T, typename... Args>
+auto boundaryMap(F &&f, const adt::nested<P, A, T> &xs, std::ptrdiff_t i,
+                 Args &&... args) {
+  return fmap(std::forward<F>(f), boundary(xs, i), std::forward<Args>(args)...);
+}
 
 // indexing
 
 namespace detail {
-template <template <typename> class A, typename T>
 struct nested_getIndex : std::tuple<> {
-  auto operator()(const A<T> &xs, std::ptrdiff_t i) const { return xs[i]; }
+  template <typename AT> auto operator()(const AT &xs, std::ptrdiff_t i) const {
+    return xs[i];
+  }
 };
 }
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 decltype(auto) getIndex(const adt::nested<P, A, T> &xs, std::ptrdiff_t i) {
-  return mextract(fmap(detail::nested_getIndex<A, T>(), xs.data, i));
+  return mextract(fmap(detail::nested_getIndex(), xs.data, i));
 }
 
 template <typename> class accumulator;
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 class accumulator<adt::nested<P, A, T>> {
-  accumulator<A<T>> data;
+  typedef typename fun_traits<adt::nested<P, A, T>>::template constructor<T> AT;
+  accumulator<AT> data;
 
 public:
   accumulator(std::ptrdiff_t n) : data(n) {}
@@ -238,8 +243,7 @@ struct nested_fmapIndexed : std::tuple<> {
 };
 }
 
-template <typename F, template <typename> class P, template <typename> class A,
-          typename T, typename... Args,
+template <typename F, typename P, typename A, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>>
 adt::nested<P, A, R> fmapIndexed(F &&f, const adt::nested<P, A, T> &xss,
                                  Args &&... args) {
@@ -250,32 +254,30 @@ adt::nested<P, A, R> fmapIndexed(F &&f, const adt::nested<P, A, T> &xss,
 // foldMap
 
 namespace detail {
-template <template <typename> class A, typename T>
 struct nested_foldMap : std::tuple<> {
-  template <typename F, typename Op, typename Z, typename... Args>
-  auto operator()(const A<T> &xs, F &&f, Op &&op, Z &&z,
-                  Args &&... args) const {
+  template <typename AT, typename F, typename Op, typename Z, typename... Args>
+  auto operator()(const AT &xs, F &&f, Op &&op, Z &&z, Args &&... args) const {
     return foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z),
                    xs, std::forward<Args>(args)...);
   }
 };
 }
 
-template <typename F, typename Op, typename Z, template <typename> class P,
-          template <typename> class A, typename T, typename... Args,
+template <typename F, typename Op, typename Z, typename P, typename A,
+          typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 R foldMap(F &&f, Op &&op, Z &&z, const adt::nested<P, A, T> &xss,
           Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return foldMap(detail::nested_foldMap<A, T>(), op, z, xss.data,
-                 std::forward<F>(f), op, z, std::forward<Args>(args)...);
+  return foldMap(detail::nested_foldMap(), op, z, xss.data, std::forward<F>(f),
+                 op, z, std::forward<Args>(args)...);
 }
 
 namespace detail {
-template <template <typename> class A, typename T, typename T2>
 struct nested_foldMap2 : std::tuple<> {
-  template <typename F, typename Op, typename Z, typename... Args>
-  auto operator()(const A<T> &xs, const A<T2> &ys, F &&f, Op &&op, Z &&z,
+  template <typename AT, typename AT2, typename F, typename Op, typename Z,
+            typename... Args>
+  auto operator()(const AT &xs, const AT2 &ys, F &&f, Op &&op, Z &&z,
                   Args &&... args) const {
     return foldMap2(std::forward<F>(f), std::forward<Op>(op),
                     std::forward<Z>(z), xs, ys, std::forward<Args>(args)...);
@@ -283,55 +285,51 @@ struct nested_foldMap2 : std::tuple<> {
 };
 }
 
-template <typename F, typename Op, typename Z, template <typename> class P,
-          template <typename> class A, typename T, typename T2,
-          typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+template <typename F, typename Op, typename Z, typename P, typename A,
+          typename T, typename T2, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::nested<P, A, T> &xss,
            const adt::nested<P, A, T2> &yss, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  return foldMap2(detail::nested_foldMap2<A, T, T2>(), op, z, xss.data,
-                  yss.data, std::forward<F>(f), op, z,
-                  std::forward<Args>(args)...);
+  return foldMap2(detail::nested_foldMap2(), op, z, xss.data, yss.data,
+                  std::forward<F>(f), op, z, std::forward<Args>(args)...);
 }
 
 // munit
 
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          template <typename> class P = C<R>::template pointer_constructor,
-          template <typename> class A = C<R>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
-C<R> munit(T &&x) {
-  return {munit<P>(munit<A>(std::forward<T>(x)))};
+template <typename C, typename T, typename R = std::decay_t<T>,
+          std::enable_if_t<detail::is_nested<C>::value> * = nullptr>
+auto munit(T &&x) {
+  typedef typename C::pointer_dummy P;
+  typedef typename C::array_dummy A;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR{munit<P>(munit<A>(std::forward<T>(x)))};
 }
 
 // mjoin
 
 namespace detail {
-template <template <typename> class P, template <typename> class A, typename T>
 struct nested_mextract : std::tuple<> {
-  auto operator()(const adt::nested<P, A, T> &xss) const {
+  template <typename NPAT> auto operator()(const NPAT &xss) const {
     return mextract(xss.data);
   }
 };
-
-template <template <typename> class P, template <typename> class A, typename T>
 struct nested_mjoin : std::tuple<> {
-  auto operator()(const A<adt::nested<P, A, T>> &xsss) const {
-    return mjoin(fmap(nested_mextract<P, A, T>(), xsss));
+  template <typename ANPAT> auto operator()(const ANPAT &xsss) const {
+    return mjoin(fmap(nested_mextract(), xsss));
   }
 };
 }
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 adt::nested<P, A, T>
 mjoin(const adt::nested<P, A, adt::nested<P, A, T>> &xssss) {
-  return {fmap(detail::nested_mjoin<P, A, T>(), xssss.data)};
+  return {fmap(detail::nested_mjoin(), xssss.data)};
 }
 
 // mbind
 
-template <typename F, template <typename> class P, template <typename> class A,
-          typename T, typename... Args,
+template <typename F, typename P, typename A, typename T, typename... Args,
           typename CR = cxx::invoke_of_t<F, T, Args...>,
           typename R = typename CR::value_type>
 adt::nested<P, A, R> mbind(F &&f, const adt::nested<P, A, T> &xss,
@@ -341,7 +339,7 @@ adt::nested<P, A, R> mbind(F &&f, const adt::nested<P, A, T> &xss,
 
 // mextract
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 decltype(auto) mextract(const adt::nested<P, A, T> &xss) {
   return mextract(mextract(xss.data));
 }
@@ -349,72 +347,72 @@ decltype(auto) mextract(const adt::nested<P, A, T> &xss) {
 // mfoldMap
 
 namespace detail {
-template <template <typename> class A, typename T>
 struct nested_mfoldMap : std::tuple<> {
-  template <typename F, typename Op, typename Z, typename... Args>
-  auto operator()(const A<T> &xs, F &&f, Op &&op, Z &&z,
-                  Args &&... args) const {
+  template <typename AT, typename F, typename Op, typename Z, typename... Args>
+  auto operator()(const AT &xs, F &&f, Op &&op, Z &&z, Args &&... args) const {
     return mfoldMap(f, op, z, xs, args...);
   }
 };
 }
 
-template <typename F, typename Op, typename Z, template <typename> class P,
-          template <typename> class A, typename T, typename... Args,
+template <typename F, typename Op, typename Z, typename P, typename A,
+          typename T, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
 adt::nested<P, A, R> mfoldMap(F &&f, Op &&op, Z &&z,
                               const adt::nested<P, A, T> &xss,
                               Args &&... args) {
-  return {fmap(detail::nested_mfoldMap<A, T>(), xss.data, std::forward<F>(f),
+  return {fmap(detail::nested_mfoldMap(), xss.data, std::forward<F>(f),
                std::forward<Op>(op), std::forward<Z>(z),
                std::forward<Args>(args)...)};
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          template <typename> class P = C<R>::template pointer_constructor,
-          template <typename> class A = C<R>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
-C<R> mzero() {
-  return {mzero<P, A<R>>()};
-  // return {munit<P>(mzero<A, R>())};
+template <typename C, typename R,
+          std::enable_if_t<detail::is_nested<C>::value> * = nullptr>
+auto mzero() {
+  typedef typename C::pointer_dummy P;
+  typedef typename C::array_dummy A;
+  typedef typename fun_traits<A>::template constructor<R> AR;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR{mzero<P, AR>()};
 }
 
 // mplus
 
-template <template <typename> class P, template <typename> class A, typename T,
-          typename... Ts>
+template <typename P, typename A, typename T, typename... Ts>
 adt::nested<P, A, T> mplus(const adt::nested<P, A, T> &xss,
                            const adt::nested<P, A, Ts> &... yss) {
-  return {munit<P, A<T>>(
+  typedef typename adt::nested<P, A, T>::template array_constructor<T> AT;
+  return {munit<P, AT>(
       mplus(mempty(xss.data) ? mzero<A, T>() : mextract(xss.data),
             mempty(yss.data) ? mzero<A, T>() : mextract(yss.data)...))};
 }
 
 // msome
 
-template <template <typename> class C, typename T, typename... Ts,
-          typename R = std::decay_t<T>,
-          template <typename> class P = C<R>::template pointer_constructor,
-          template <typename> class A = C<R>::template array_constructor,
-          std::enable_if_t<detail::is_nested<C<R>>::value> * = nullptr>
-C<R> msome(T &&x, Ts &&... ys) {
-  return {munit<P>(msome<A>(std::forward<T>(x), std::forward<Ts>(ys)...))};
+template <typename C, typename T, typename... Ts, typename R = std::decay_t<T>,
+          std::enable_if_t<detail::is_nested<C>::value> * = nullptr>
+auto msome(T &&x, Ts &&... ys) {
+  typedef typename C::pointer_dummy P;
+  typedef typename C::array_dummy A;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR{munit<P>(msome<A>(std::forward<T>(x), std::forward<Ts>(ys)...))};
 }
 
 // mempty
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 bool mempty(const adt::nested<P, A, T> &xss) {
   return mempty(xss.data);
 }
 
 // msize
 
-template <template <typename> class P, template <typename> class A, typename T>
+template <typename P, typename A, typename T>
 std::size_t msize(const adt::nested<P, A, T> &xss) {
-  return mempty(xss.data) ? 0 : foldMap((std::size_t (*)(const A<T> &))msize,
+  typedef typename adt::nested<P, A, T>::template array_constructor<T> AT;
+  return mempty(xss.data) ? 0 : foldMap((std::size_t (*)(const AT &))msize,
                                         std::plus<std::size_t>(), 0, xss.data);
 }
 }

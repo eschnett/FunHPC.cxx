@@ -1,6 +1,7 @@
 #ifndef FUN_FUNCTION_HPP
 #define FUN_FUNCTION_HPP
 
+#include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cassert>
@@ -17,10 +18,6 @@ namespace detail {
 template <typename> struct is_function : std::false_type {};
 template <typename R, typename A>
 struct is_function<std::function<R(A)>> : std::true_type {};
-
-template <typename A> struct function1 {
-  template <typename R> using constructor = std::function<R(A)>;
-};
 }
 
 // traits
@@ -28,20 +25,25 @@ template <typename A> struct function1 {
 template <typename> struct fun_traits;
 template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
   template <typename U> using constructor = std::function<U(A)>;
+  typedef constructor<adt::dummy> dummy;
   typedef R value_type;
+
+  // typedef A argument_type;
 };
 
 // iotaMap
 
-template <template <typename> class C, typename F, typename... Args,
-          std::enable_if_t<detail::is_function<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_function<C>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
-  typedef typename C<R>::argument_type A;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  typedef typename C::argument_type A;
   assert(s <= 1);
   if (s == 0)
-    return C<R>();
-  C<R> rs = [ f = std::forward<F>(f), args... ](const A &) {
+    return CR();
+  // TODO: Make this serializable
+  CR rs = [ f = std::forward<F>(f), args... ](const A &) {
     return cxx::invoke(f, std::ptrdiff_t(0), args...);
   };
   return rs;
@@ -49,32 +51,31 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 
 // fmap
 
-template <
-    typename F, typename T, typename A, typename... Args,
-    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>,
-    template <typename> class C = detail::function1<A>::template constructor>
+template <typename F, typename T, typename A, typename... Args>
 auto fmap(F &&f, const std::function<T(A)> &xs, Args &&... args) {
+  typedef typename fun_traits<std::function<T(A)>>::dummy C;
+  typedef cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...> R;
+  typedef typename fun_traits<C>::template constructor<R> CR;
   bool s = bool(xs);
   if (!s)
-    return C<R>();
-  C<R> rs = [ f = std::forward<F>(f), xs, args... ](const A &a) {
+    return CR();
+  CR rs = [ f = std::forward<F>(f), xs, args... ](const A &a) {
     return cxx::invoke(f, cxx::invoke(xs, a), args...);
   };
   return rs;
 }
 
-template <typename F, typename T, typename A, typename T2, typename... Args,
-          typename R =
-              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>,
-          template <typename>
-          class C = detail::function1<A>::template constructor>
+template <typename F, typename T, typename A, typename T2, typename... Args>
 auto fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
            Args &&... args) {
+  typedef typename fun_traits<std::function<T(A)>>::dummy C;
+  typedef cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...> R;
+  typedef typename fun_traits<C>::template constructor<R> CR;
   bool s = bool(xs);
   assert(bool(ys) == s);
   if (!s)
-    return C<R>();
-  C<R> rs = [ f = std::forward<F>(f), xs, ys, args... ](const A &a) {
+    return CR();
+  CR rs = [ f = std::forward<F>(f), xs, ys, args... ](const A &a) {
     return cxx::invoke(f, cxx::invoke(xs, a), cxx::invoke(ys, a), args...);
   };
   return rs;
@@ -82,21 +83,21 @@ auto fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
 
 // munit
 
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          std::enable_if_t<detail::is_function<C<R>>::value> * = nullptr>
+template <typename C, typename T, typename R = std::decay_t<T>,
+          std::enable_if_t<detail::is_function<C>::value> * = nullptr>
 auto munit(T &&x) {
-  typedef typename C<R>::argument_type A;
-  C<R> rs = [x = std::forward<T>(x)](const A &) { return x; };
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  typedef typename C::argument_type A;
+  CR rs = [x = std::forward<T>(x)](const A &) { return x; };
   return rs;
 }
 
 // mbind
 // (a -> (x -> b)) -> (x -> a) -> (x -> b)
 
-template <
-    typename F, typename T, typename A, typename... Args,
-    typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
+template <typename F, typename T, typename A, typename... Args>
 auto mbind(F &&f, const std::function<T(A)> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...> CR;
   static_assert(detail::is_function<CR>::value, "");
   if (!bool(xs))
     return CR();
@@ -122,26 +123,24 @@ auto mjoin(const std::function<std::function<T(A)>(A)> &xss) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename T, typename A,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename... Args>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const std::function<T(A)> &xs,
               Args &&... args) {
-  return std::function<R(A)>([
-    f = std::forward<F>(f),
-    op = std::forward<Op>(op),
-    z = std::forward<Z>(z),
-    xs,
-    args...
-  ](const A &a) mutable {
-    return cxx::invoke(op, z, cxx::invoke(f, xs(a), args...));
+  typedef typename fun_traits<std::function<T(A)>>::dummy C;
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR([ f = std::forward<F>(f), xs, args... ](const A &a) {
+    return cxx::invoke(f, xs(a), args...);
   });
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          std::enable_if_t<detail::is_function<C<R>>::value> * = nullptr>
+template <typename C, typename R,
+          std::enable_if_t<detail::is_function<C>::value> * = nullptr>
 auto mzero() {
-  return C<R>();
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  return CR();
 }
 
 // mplus

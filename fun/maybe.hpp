@@ -1,6 +1,7 @@
 #ifndef FUN_MAYBE_HPP
 #define FUN_MAYBE_HPP
 
+#include <adt/dummy.hpp>
 #include <adt/maybe.hpp>
 #include <cxx/invoke.hpp>
 
@@ -25,13 +26,14 @@ template <typename T> struct is_maybe<adt::maybe<T>> : std::true_type {};
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<adt::maybe<T>> {
   template <typename U> using constructor = adt::maybe<U>;
+  typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };
 
 // iotaMap
 
-template <template <typename> class C, typename F, typename... Args,
-          std::enable_if_t<detail::is_maybe<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
   assert(s <= 1);
@@ -43,9 +45,9 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 
 // fmap
 
-template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename... Args>
 auto fmap(F &&f, const adt::maybe<T> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> R;
   bool s = xs.just();
   if (!s)
     return adt::maybe<R>();
@@ -53,9 +55,9 @@ auto fmap(F &&f, const adt::maybe<T> &xs, Args &&... args) {
                                        std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename... Args>
 auto fmap(F &&f, adt::maybe<T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> R;
   bool s = xs.just();
   if (!s)
     return adt::maybe<R>();
@@ -64,10 +66,10 @@ auto fmap(F &&f, adt::maybe<T> &&xs, Args &&... args) {
                                        std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+template <typename F, typename T, typename T2, typename... Args>
 auto fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
            Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
   bool s = xs.just();
   assert(ys.just() == s);
   if (!s)
@@ -79,9 +81,9 @@ auto fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
 
 // foldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
@@ -90,9 +92,9 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
                      std::forward<Args>(args)...);
 }
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
@@ -102,10 +104,10 @@ R foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
-           const adt::maybe<T2> &ys, Args &&... args) {
+          typename... Args>
+auto foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
+              const adt::maybe<T2> &ys, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, T2, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   assert(ys.just() == s);
@@ -117,17 +119,18 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
 
 // munit
 
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          std::enable_if_t<detail::is_maybe<C<R>>::value> * = nullptr>
-auto munit(T &&x) {
+template <typename C, typename T,
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
+constexpr auto munit(T &&x) {
+  typedef std::decay_t<T> R;
   return adt::make_just<R>(std::forward<T>(x));
 }
 
 // mbind
 
-template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename... Args>
 auto mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_maybe<CR>::value, "");
   if (!xs.just())
     return CR();
@@ -135,9 +138,9 @@ auto mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
                      std::forward<Args>(args)...);
 }
 
-template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, typename... Args>
 auto mbind(F &&f, adt::maybe<T> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_maybe<CR>::value, "");
   if (!xs.just())
     return CR();
@@ -161,33 +164,33 @@ template <typename T> auto mjoin(adt::maybe<adt::maybe<T>> &&xss) {
 
 // mextract
 
-template <typename T> decltype(auto) mextract(const adt::maybe<T> &xs) {
+template <typename T>
+constexpr decltype(auto) mextract(const adt::maybe<T> &xs) {
   assert(xs.just());
   return xs.get_just();
 }
 
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+template <typename F, typename Op, typename Z, typename T, typename... Args>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
-  return munit<adt::maybe>(foldMap(std::forward<F>(f), std::forward<Op>(op),
-                                   std::forward<Z>(z), xs,
-                                   std::forward<Args>(args)...));
+  typedef typename fun_traits<adt::maybe<T>>::dummy C;
+  return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
+                          std::forward<Z>(z), xs, std::forward<Args>(args)...));
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          std::enable_if_t<detail::is_maybe<C<R>>::value> * = nullptr>
-auto mzero() {
+template <typename C, typename R,
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
+constexpr auto mzero() {
   return adt::maybe<R>();
 }
 
 // mplus
 
 template <typename T, typename... Ts>
-auto mplus(const adt::maybe<T> &xs, const adt::maybe<Ts> &... yss) {
+constexpr auto mplus(const adt::maybe<T> &xs, const adt::maybe<Ts> &... yss) {
   if (xs.just())
     return xs;
   for (auto pys : std::initializer_list<const adt::maybe<T> *>{&yss...})
@@ -197,7 +200,7 @@ auto mplus(const adt::maybe<T> &xs, const adt::maybe<Ts> &... yss) {
 }
 
 template <typename T, typename... Ts>
-auto mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
+constexpr auto mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
   if (xs.just())
     return std::move(xs);
   for (auto pys : std::initializer_list<adt::maybe<T> *>{&yss...})
@@ -208,13 +211,13 @@ auto mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
 
 // mempty
 
-template <typename T> bool mempty(const adt::maybe<T> &xs) {
+template <typename T> constexpr bool mempty(const adt::maybe<T> &xs) {
   return !xs.just();
 }
 
 // msize
 
-template <typename T> std::size_t msize(const adt::maybe<T> &xs) {
+template <typename T> constexpr std::size_t msize(const adt::maybe<T> &xs) {
   return !mempty(xs);
 }
 }

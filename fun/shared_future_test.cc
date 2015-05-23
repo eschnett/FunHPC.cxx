@@ -9,14 +9,15 @@ TEST(fun_shared_future, iotaMap) {
   qthread_initialize();
 
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<qthread::shared_future>([](int x) { return x; }, s);
+  auto rs =
+      iotaMap<qthread::shared_future<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), qthread::shared_future<int>>::value,
                 "");
   EXPECT_TRUE(rs.valid());
   // EXPECT_FALSE(rs.ready());
   EXPECT_EQ(0, rs.get());
 
-  auto rs1 = iotaMap<qthread::shared_future>(
+  auto rs1 = iotaMap<qthread::shared_future<adt::dummy>>(
       [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(
       std::is_same<decltype(rs1), qthread::shared_future<double>>::value, "");
@@ -25,7 +26,8 @@ TEST(fun_shared_future, iotaMap) {
 }
 
 TEST(fun_shared_future, fmap) {
-  auto xs = iotaMap<qthread::shared_future>([](int x) { return x; }, 1);
+  auto xs =
+      iotaMap<qthread::shared_future<adt::dummy>>([](int x) { return x; }, 1);
 
   auto rs = fmap([](int i) { return i + 1; }, xs);
   EXPECT_TRUE(rs.valid());
@@ -52,7 +54,8 @@ TEST(fun_shared_future, fmap) {
 
 TEST(fun_shared_future, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<qthread::shared_future>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<qthread::shared_future<adt::dummy>>(
+      [](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -72,13 +75,13 @@ TEST(fun_shared_future, foldMap) {
 }
 
 TEST(fun_shared_future, monad) {
-  auto x1 = munit<qthread::shared_future>(1);
+  auto x1 = munit<qthread::shared_future<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), qthread::shared_future<int>>::value,
                 "");
   EXPECT_TRUE(x1.valid());
   EXPECT_EQ(1, x1.get());
 
-  auto xx1 = munit<qthread::shared_future>(x1);
+  auto xx1 = munit<qthread::shared_future<adt::dummy>>(x1);
   EXPECT_TRUE(xx1.valid());
   EXPECT_TRUE(xx1.get().valid());
   EXPECT_EQ(1, xx1.get().get());
@@ -87,7 +90,7 @@ TEST(fun_shared_future, monad) {
   EXPECT_EQ(x1.get(), x1j.get());
 
   auto x2 = mbind([](auto x, auto c) {
-    return munit<qthread::shared_future>(x + c);
+    return munit<qthread::shared_future<adt::dummy>>(x + c);
   }, x1, 1);
   static_assert(std::is_same<decltype(x2), qthread::shared_future<int>>::value,
                 "");

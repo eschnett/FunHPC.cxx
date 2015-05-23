@@ -1,11 +1,11 @@
 #include <adt/array.hpp>
+#include <adt/dummy.hpp>
 #include <cxx/apply.hpp>
 #include <cxx/tuple.hpp>
 #include <cxx/utility.hpp>
 #include <fun/array.hpp>
 #include <fun/proxy.hpp>
 #include <fun/shared_future.hpp>
-#include <fun/topology.hpp>
 #include <fun/vector.hpp>
 #include <funhpc/main.hpp>
 #include <funhpc/rexec.hpp>
@@ -41,13 +41,13 @@ constexpr int dim = 1;
 typedef std::array<int_t, dim> vint_t;
 typedef std::array<real_t, dim> vreal_t;
 
-const vint_t vizero = adt::array_zero<ptrdiff_t, dim>();
-const vint_t vione = adt::array_fill<ptrdiff_t, dim>(1);
-inline vint_t vidir(int_t d) { return adt::array_dir<int_t, dim>(d); }
+const vint_t vizero = adt::zero<vint_t>();
+const vint_t vione = adt::one<vint_t>();
+inline vint_t vidir(int_t d) { return adt::dir<vint_t>(d); }
 
-const vreal_t vzero = adt::array_zero<real_t, dim>();
-const vreal_t vone = adt::array_fill<real_t, dim>(1.0);
-inline vreal_t vdir(int_t d) { return adt::array_dir<real_t, dim>(d); }
+const vreal_t vzero = adt::zero<vreal_t>();
+const vreal_t vone = adt::one<vreal_t>();
+inline vreal_t vdir(int_t d) { return adt::dir<vreal_t>(d); }
 
 // Parameters
 
@@ -211,23 +211,25 @@ typedef decltype(
 
 #warning "TODO: use tree"
 
-template <typename T> using std_vector = std::vector<T>;
-
-template <typename T> using vector_grid = adt::grid<std_vector, T, dim>;
+template <typename T>
+using vector_grid = adt::grid<std::vector<adt::dummy>, T, dim>;
 
 // template <typename T>
 // using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
 // template <typename T, int_t D> using proxy_grid = adt::grid<proxy_vector, T,
 // D>;
 
-template <typename T> using vector_grid_tree = adt::tree<vector_grid, T>;
+template <typename T>
+using vector_grid_tree = adt::tree<vector_grid<adt::dummy>, T>;
 
 // template <typename T> using proxy_tree = adt::tree<proxy_grid, T>;
 
-template <typename T> using storage_t = vector_grid_tree<T>;
+template <typename T> using storage_t = vector_grid<T>;
+// template <typename T> using storage_t = vector_grid_tree<T>;
+
 template <typename T>
-using boundary_t =
-    typename fun::boundary_type<storage_t<T>>::template constructor<T>;
+using boundary_t = typename fun::fun_traits<typename fun::fun_traits<
+    storage_t<adt::dummy>>::boundary_dummy>::template constructor<T>;
 
 struct grid_t {
   real_t time;
@@ -248,7 +250,7 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<storage_t>([t](vint_t i) {
+  return grid_t{t, fun::iotaMap<storage_t<adt::dummy>>([t](vint_t i) {
     vreal_t x = parameters.xmin +
                 parameters.dx() *
                     (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);

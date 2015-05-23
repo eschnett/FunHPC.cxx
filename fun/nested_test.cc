@@ -1,11 +1,10 @@
 #include <fun/shared_future.hpp>
 #include <fun/shared_ptr.hpp>
 #include <fun/vector.hpp>
-#include <qthread/future.hpp>
-
-#include <adt/nested.hpp>
 #include <fun/nested.hpp>
 #include <fun/fun.hpp>
+
+#include <qthread/future.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/memory.hpp>
@@ -18,14 +17,16 @@
 using namespace fun;
 
 namespace {
-template <typename T> using vector1 = std::vector<T>;
-template <typename T> using nested1 = adt::nested<std::shared_ptr, vector1, T>;
 template <typename T>
-using nested2 = adt::nested<qthread::shared_future, vector1, T>;
+using nested1 =
+    adt::nested<std::shared_ptr<adt::dummy>, std::vector<adt::dummy>, T>;
+template <typename T>
+using nested2 =
+    adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
 }
 
 TEST(fun_nested, iotaMap) {
-  auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested1<adt::dummy>>([](auto x) { return double(x); }, 10);
   static_assert(std::is_same<decltype(xs), nested1<double>>::value, "");
   EXPECT_TRUE(bool(xs.data));
   EXPECT_EQ(10, xs.data->size());
@@ -35,7 +36,7 @@ TEST(fun_nested, iotaMap) {
 TEST(fun_nested, iotaMap2) {
   qthread_initialize();
 
-  auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested2<adt::dummy>>([](auto x) { return double(x); }, 10);
   static_assert(std::is_same<decltype(xs), nested2<double>>::value, "");
   EXPECT_TRUE(xs.data.valid());
   EXPECT_EQ(10, xs.data.get().size());
@@ -43,7 +44,7 @@ TEST(fun_nested, iotaMap2) {
 }
 
 TEST(fun_nested, fmap) {
-  auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested1<adt::dummy>>([](auto x) { return double(x); }, 10);
   auto ys = fmap([](auto x) { return x + 1.0; }, xs);
   EXPECT_TRUE(bool(ys.data));
   EXPECT_EQ(10, ys.data->size());
@@ -56,7 +57,7 @@ TEST(fun_nested, fmap) {
 }
 
 TEST(fun_nested, fmap2) {
-  auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested2<adt::dummy>>([](auto x) { return double(x); }, 10);
   auto ys = fmap([](auto x) { return x + 1.0; }, xs);
   EXPECT_TRUE(ys.data.valid());
   EXPECT_EQ(10, ys.data.get().size());
@@ -70,7 +71,7 @@ TEST(fun_nested, fmap2) {
 
 TEST(fun_nested, fmapStencil) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<nested1>([](int x) { return x * x; }, s);
+  auto xs = iotaMap<nested1<adt::dummy>>([](int x) { return x * x; }, s);
   auto ys = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
       [](auto x, auto i) { return x; }, xs, 1, 100);
@@ -78,7 +79,7 @@ TEST(fun_nested, fmapStencil) {
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
 
-  auto x2s = iotaMap<nested2>([](int x) { return x * x; }, s);
+  auto x2s = iotaMap<nested2<adt::dummy>>([](int x) { return x * x; }, s);
   // EXPECT_FALSE(x2s.data.ready());
   auto y2s = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
@@ -93,7 +94,7 @@ TEST(fun_nested, fmapStencil) {
 }
 
 TEST(fun_nested, foldMap) {
-  auto xs = iotaMap<nested1>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested1<adt::dummy>>([](auto x) { return double(x); }, 10);
 
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0.0, xs);
@@ -101,7 +102,7 @@ TEST(fun_nested, foldMap) {
 }
 
 TEST(fun_nested, foldMap2) {
-  auto xs = iotaMap<nested2>([](auto x) { return double(x); }, 10);
+  auto xs = iotaMap<nested2<adt::dummy>>([](auto x) { return double(x); }, 10);
 
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0.0, xs);
@@ -109,12 +110,12 @@ TEST(fun_nested, foldMap2) {
 }
 
 TEST(fun_nested, monad) {
-  auto x1 = munit<nested1>(1);
+  auto x1 = munit<nested1<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), nested1<int>>::value, "");
   EXPECT_EQ(1, x1.data->size());
   EXPECT_EQ(1, x1.data->at(0));
 
-  auto xx1 = munit<nested1>(x1);
+  auto xx1 = munit<nested1<adt::dummy>>(x1);
   EXPECT_EQ(1, xx1.data->size());
   EXPECT_EQ(1, xx1.data->at(0).data->size());
   EXPECT_EQ(1, xx1.data->at(0).data->at(0));
@@ -122,7 +123,8 @@ TEST(fun_nested, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(*x1.data, *x1j.data);
 
-  auto x2 = mbind([](auto x, auto c) { return munit<nested1>(x + c); }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<nested1<adt::dummy>>(x + c); }, x1, 1);
   static_assert(std::is_same<decltype(x2), nested1<int>>::value, "");
   EXPECT_EQ(1, x2.data->size());
   EXPECT_EQ(2, x2.data->at(0));
@@ -130,8 +132,8 @@ TEST(fun_nested, monad) {
   auto r = mextract(x1);
   EXPECT_EQ(1, r);
 
-  auto x0 = mzero<nested1, int>();
-  auto x0a = mzero<nested1, int>();
+  auto x0 = mzero<nested1<adt::dummy>, int>();
+  auto x0a = mzero<nested1<adt::dummy>, int>();
   static_assert(std::is_same<decltype(x0), nested1<int>>::value, "");
   static_assert(std::is_same<decltype(x0a), nested1<int>>::value, "");
   EXPECT_TRUE(!bool(x0.data));
@@ -164,12 +166,12 @@ TEST(fun_nested, monad) {
 }
 
 TEST(fun_nested, monad2) {
-  auto x1 = munit<nested2>(1);
+  auto x1 = munit<nested2<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), nested2<int>>::value, "");
   EXPECT_EQ(1, x1.data.get().size());
   EXPECT_EQ(1, x1.data.get().at(0));
 
-  auto xx1 = munit<nested2>(x1);
+  auto xx1 = munit<nested2<adt::dummy>>(x1);
   EXPECT_EQ(1, xx1.data.get().size());
   EXPECT_EQ(1, xx1.data.get().at(0).data.get().size());
   EXPECT_EQ(1, xx1.data.get().at(0).data.get().at(0));
@@ -177,7 +179,8 @@ TEST(fun_nested, monad2) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1.data.get(), x1j.data.get());
 
-  auto x2 = mbind([](auto x, auto c) { return munit<nested2>(x + c); }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<nested2<adt::dummy>>(x + c); }, x1, 1);
   static_assert(std::is_same<decltype(x2), nested2<int>>::value, "");
   EXPECT_EQ(1, x2.data.get().size());
   EXPECT_EQ(2, x2.data.get().at(0));
@@ -227,4 +230,4 @@ template <typename T> void test_serialize(const T &x) {
 }
 }
 
-TEST(fun_nested, serialize) { test_serialize(munit<nested1>(1)); }
+TEST(fun_nested, serialize) { test_serialize(munit<nested1<adt::dummy>>(1)); }

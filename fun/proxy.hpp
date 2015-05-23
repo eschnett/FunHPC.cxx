@@ -1,6 +1,7 @@
 #ifndef FUN_PROXY_HPP
 #define FUN_PROXY_HPP
 
+#include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 #include <funhpc/proxy.hpp>
 
@@ -28,18 +29,17 @@ template <typename T> struct is_proxy<funhpc::proxy<T>> : std::true_type {};
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<funhpc::proxy<T>> {
   template <typename U> using constructor = funhpc::proxy<U>;
+  typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };
 
 // iotaMap
 
-// TODO: use remote
-template <template <typename> class C, typename F, typename... Args,
-          std::enable_if_t<detail::is_proxy<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_proxy<C>::value> * = nullptr>
 auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
-                                        std::decay_t<Args>...>> R;
   assert(s == 1);
+  // TODO: use funhpc::remote
   return funhpc::local(std::forward<F>(f), std::ptrdiff_t(0),
                        std::forward<Args>(args)...);
 }
@@ -51,14 +51,12 @@ template <typename T> struct proxy_fmap : std::tuple<> {
   template <typename F, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs, Args &&... args) const {
     assert(bool(xs) && xs.proc_ready() && xs.local());
-    return cxx::invoke(std::move(f), *xs, std::move(args)...);
+    return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
 }
 
-template <typename F, typename T, typename... Args,
-          typename R = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
+template <typename F, typename T, typename... Args>
 auto fmap(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
   assert(s);
@@ -74,14 +72,13 @@ template <typename T, typename T2> struct proxy_fmap2 : std::tuple<> {
     assert(bool(xs) && xs.proc_ready() && xs.local());
     assert(bool(ys));
     auto ysl = ys.make_local();
-    return cxx::invoke(std::move(f), *xs, *ysl, std::move(args)...);
+    return cxx::invoke(std::forward<F>(f), *xs, *ysl,
+                       std::forward<Args>(args)...);
   }
 };
 }
 
-template <typename F, typename T, typename T2, typename... Args,
-          typename R = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>>>
+template <typename F, typename T, typename T2, typename... Args>
 auto fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
            Args &&... args) {
   bool s = bool(xs);
@@ -104,10 +101,11 @@ struct proxy_foldMap : std::tuple<> {
 };
 }
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
-R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
+             Args &&... args) {
+  typedef std::decay_t<
+      cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(s);
@@ -131,10 +129,11 @@ struct proxy_foldMap2 : std::tuple<> {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args, typename R = std::decay_t<cxx::invoke_of_t<
-                                std::decay_t<F>, T, T2, std::decay_t<Args>...>>>
-R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
-           const funhpc::proxy<T2> &ys, Args &&... args) {
+          typename... Args>
+auto foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
+              const funhpc::proxy<T2> &ys, Args &&... args) {
+  typedef std::decay_t<
+      cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
   assert(bool(ys) == s);
@@ -146,10 +145,11 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
 
 // munit
 
-// TODO: use make_remote_proxy
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          std::enable_if_t<detail::is_proxy<C<R>>::value> * = nullptr>
+template <typename C, typename T,
+          std::enable_if_t<detail::is_proxy<C>::value> * = nullptr>
 auto munit(T &&x) {
+  typedef std::decay_t<T> R;
+  // TODO: use make_remote_proxy
   return funhpc::make_local_proxy<R>(std::forward<T>(x));
 }
 
@@ -162,9 +162,7 @@ template <typename T> auto mjoin(const funhpc::proxy<funhpc::proxy<T>> &xss) {
 
 // mbind
 
-template <typename F, typename T, typename... Args,
-          typename CR = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
+template <typename F, typename T, typename... Args>
 auto mbind(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
@@ -180,32 +178,33 @@ template <typename T> auto mextract(const funhpc::proxy<T> &xs) {
 
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
+template <typename F, typename Op, typename Z, typename T, typename... Args>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
               Args &&... args) {
-  return funhpc::remote(xs.get_proc_future(), detail::proxy_foldMap(),
-                        std::forward<F>(f), xs, std::forward<Args>(args)...);
+  typedef typename fun_traits<funhpc::proxy<T>>::dummy C;
+  typedef cxx::invoke_of_t<F, T, Args...> R;
+  if (!bool(xs))
+    return munit<C>(R(std::forward<Z>(z)));
+  return fmap(std::forward<F>(f), xs, std::forward<Args>(args)...);
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          std::enable_if_t<detail::is_proxy<C<R>>::value> * = nullptr>
-auto mzero() {
+template <typename C, typename R,
+          std::enable_if_t<detail::is_proxy<C>::value> * = nullptr>
+constexpr auto mzero() {
   return funhpc::proxy<R>();
 }
 
 // mempty
 
-template <typename T> bool mempty(const funhpc::proxy<T> &xs) {
+template <typename T> constexpr bool mempty(const funhpc::proxy<T> &xs) {
   return !bool(xs);
 }
 
 // msize
 
-template <typename T> std::size_t msize(const funhpc::proxy<T> &xs) {
+template <typename T> constexpr std::size_t msize(const funhpc::proxy<T> &xs) {
   return !mempty(xs);
 }
 }

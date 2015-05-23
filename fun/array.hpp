@@ -2,9 +2,9 @@
 #define FUN_ARRAY_HPP
 
 #include <adt/array.hpp>
+#include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/idtype.hpp>
-#include <fun/topology.hpp>
 
 #include <array>
 #include <cassert>
@@ -31,20 +31,25 @@ struct is_array<std::array<T, N>> : std::true_type {};
 template <typename> struct fun_traits;
 template <typename T, std::size_t N> struct fun_traits<std::array<T, N>> {
   template <typename U> using constructor = std::array<U, N>;
+  typedef constructor<adt::dummy> dummy;
   typedef T value_type;
-  static constexpr std::size_t size = N;
-  typedef adt::index_t<1> index_type;
-  template <typename U> using boundary_constructor = adt::idtype<U>;
+
+  // static constexpr std::size_t size = N;
+  static constexpr std::ptrdiff_t rank = 1;
+  typedef adt::index_t<rank> index_type;
+  typedef adt::idtype<adt::dummy> boundary_dummy;
 };
 
 // iotaMap
 
-template <template <typename> class C, typename F, typename... Args,
-          std::enable_if_t<detail::is_array<C<int>>::value> * = nullptr>
-auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_array<C>::value> * = nullptr>
+auto iotaMap(F &&f, std::ptrdiff_t s0, Args &&... args) {
   typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
-  assert(s == fun_traits<C<R>>::size);
-  C<R> rs;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  CR rs;
+  constexpr std::ptrdiff_t s = rs.size();
+  assert(s == s0);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, i, args...);
@@ -52,7 +57,7 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 }
 
 namespace detail {
-struct array_iotaMap_wrapper {
+struct array_iotaMap {
   template <typename F, typename... Args>
   auto operator()(std::ptrdiff_t i, F &&f, Args &&... args) const {
     return cxx::invoke(std::forward<F>(f), adt::set<adt::index_t<1>>(i),
@@ -61,74 +66,78 @@ struct array_iotaMap_wrapper {
 };
 }
 
-template <template <typename> class C, typename F, typename... Args,
-          std::enable_if_t<detail::is_array<C<int>>::value> * = nullptr>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_array<C>::value> * = nullptr>
 auto iotaMap(F &&f, adt::index_t<1> s, Args &&... args) {
-  return iotaMap<C>(detail::array_iotaMap_wrapper(), s[0], std::forward<F>(f),
+  return iotaMap<C>(detail::array_iotaMap(), s[0], std::forward<F>(f),
                     std::forward<Args>(args)...);
 }
 
 // fmap
 
-template <typename F, typename T, std::size_t N, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, std::size_t N, typename... Args>
 auto fmap(F &&f, const std::array<T, N> &xs, Args &&... args) {
-  std::ptrdiff_t s = N;
-  std::array<R, N> rs;
+  typedef cxx::invoke_of_t<F, T, Args...> R;
+  typedef typename fun_traits<std::array<T, N>>::template constructor<R> CR;
+  constexpr std::ptrdiff_t s = N;
+  CR rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], args...);
   return rs;
 }
 
-template <typename F, typename T, std::size_t N, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, std::size_t N, typename... Args>
 auto fmap(F &&f, std::array<T, N> &&xs, Args &&... args) {
-  std::ptrdiff_t s = N;
-  std::array<R, N> rs;
+  typedef cxx::invoke_of_t<F, T, Args...> R;
+  typedef typename fun_traits<std::array<T, N>>::template constructor<R> CR;
+  constexpr std::ptrdiff_t s = N;
+  CR rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, std::move(xs[i]), args...);
   return rs;
 }
 
-template <typename F, typename T, std::size_t N, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
-auto fmap2(F &&f, const std::array<T, N> &xs, const std::array<T2, N> &ys,
+template <typename F, typename T, std::size_t N, typename T2, std::size_t N2,
+          typename... Args>
+auto fmap2(F &&f, const std::array<T, N> &xs, const std::array<T2, N2> &ys,
            Args &&... args) {
-  std::ptrdiff_t s = N;
-  std::array<R, N> rs;
+  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
+  typedef typename fun_traits<std::array<T, N>>::template constructor<R> CR;
+  constexpr std::ptrdiff_t s = N;
+  static_assert(N2 == s, "");
+  CR rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], ys[i], args...);
   return rs;
 }
+
 // fmapStencil
 
-template <
-    typename F, typename G, typename T, std::size_t N, typename... Args,
-    typename B = cxx::invoke_of_t<G, T, bool, std::ptrdiff_t>,
-    typename R = cxx::invoke_of_t<F, T, std::tuple<B>, std::tuple<B>, Args...>>
-auto fmapStencil(F &&f, G &&g, const std::array<T, N> &xs,
-                 const std::tuple<B> &bl, const std::tuple<B> &bu,
+template <typename F, typename G, typename T, std::size_t N, typename BM,
+          typename BP, typename... Args>
+auto fmapStencil(F &&f, G &&g, const std::array<T, N> &xs, BM bm, BP bp,
                  Args &&... args) {
-  std::ptrdiff_t s = N;
-  std::array<R, N> rs;
+  typedef cxx::invoke_of_t<G, T, std::ptrdiff_t> B;
+  typedef cxx::invoke_of_t<F, T, std::size_t, B, B, Args...> R;
+  typedef typename fun_traits<std::array<T, N>>::template constructor<R> CR;
+  static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
+  static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
+  constexpr std::ptrdiff_t s = N;
+  CR rs;
   if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bl, bu,
-                        std::forward<Args>(args)...);
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], 0b11, std::forward<BM>(bm),
+                        std::forward<BP>(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], bl,
-                        std::forward_as_tuple(cxx::invoke(g, xs[1], false, 0)),
-                        args...);
+    rs[0] = cxx::invoke(f, xs[0], 0b01, bm, cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::invoke(
-          f, xs[i], std::forward_as_tuple(cxx::invoke(g, xs[i - 1], true, 0)),
-          std::forward_as_tuple(cxx::invoke(g, xs[i + 1], false, 0)), args...);
-    rs[s - 1] = cxx::invoke(
-        f, xs[s - 1], std::forward_as_tuple(cxx::invoke(g, xs[s - 2], true, 0)),
-        bu, args...);
+      rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
+                          cxx::invoke(g, xs[i + 1], 0), args...);
+    rs[s - 1] = cxx::invoke(f, xs[s - 1], 0b10, cxx::invoke(g, xs[s - 2], 1),
+                            bp, args...);
   }
   return rs;
 }
@@ -136,35 +145,34 @@ auto fmapStencil(F &&f, G &&g, const std::array<T, N> &xs,
 // head, last
 
 template <typename T, std::size_t N>
-decltype(auto) head(const std::array<T, N> &xs) {
+constexpr decltype(auto) head(const std::array<T, N> &xs) {
   static_assert(!xs.empty(), "");
   return xs.front();
 }
 
 template <typename T, std::size_t N>
-decltype(auto) last(const std::array<T, N> &xs) {
+constexpr decltype(auto) last(const std::array<T, N> &xs) {
   static_assert(!xs.empty(), "");
   return xs.back();
 }
 
 template <typename T, std::size_t N>
-decltype(auto) head(std::array<T, N> &&xs) {
+constexpr decltype(auto) head(std::array<T, N> &&xs) {
   static_assert(!xs.empty(), "");
   return std::move(xs.front());
 }
 
 template <typename T, std::size_t N>
-decltype(auto) last(std::array<T, N> &&xs) {
+constexpr decltype(auto) last(std::array<T, N> &&xs) {
   static_assert(!xs.empty(), "");
   return std::move(xs.back());
 }
 
 // boundary
 
-template <typename T, std::size_t N,
-          template <typename> class BC =
-              fun_traits<std::array<T, N>>::template boundary_constructor>
-auto boundary(const std::array<T, N> &xs, std::ptrdiff_t i) {
+template <typename T, std::size_t N>
+constexpr auto boundary(const std::array<T, N> &xs, std::ptrdiff_t i) {
+  typedef typename fun_traits<std::array<T, N>>::boundary_type BC;
   assert(i >= 0 && i < 2);
   return munit<BC>(i == 0 ? head(xs) : last(xs));
 }
@@ -195,11 +203,12 @@ public:
   decltype(auto) finalize() { return std::move(data); }
 };
 
-template <typename F, typename T, std::size_t N, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>>
+template <typename F, typename T, std::size_t N, typename... Args>
 auto fmapIndexed(F &&f, const std::array<T, N> &xs, Args &&... args) {
-  std::ptrdiff_t s = xs.size();
-  typename fun_traits<std::array<T, N>>::template constructor<R> rs(s);
+  typedef cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...> R;
+  typedef typename fun_traits<std::array<T, N>>::template constructor<R> CR;
+  constexpr std::ptrdiff_t s = xs.size();
+  CR rs;
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, xs[i], i, args...);
@@ -209,10 +218,12 @@ auto fmapIndexed(F &&f, const std::array<T, N> &xs, Args &&... args) {
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
+          typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
+             Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::ptrdiff_t s = N;
+  constexpr std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
@@ -224,10 +235,11 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
-R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
+          typename... Args>
+auto foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::ptrdiff_t s = N;
+  constexpr std::ptrdiff_t s = xs.size();
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
@@ -240,12 +252,13 @@ R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
-          typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
-R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
-           const std::array<T2, N> &ys, Args &&... args) {
+          typename T2, std::size_t N2, typename... Args>
+auto foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
+              const std::array<T2, N2> &ys, Args &&... args) {
+  typedef cxx::invoke_of_t<F &&, T, T2, Args &&...> R;
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-  std::ptrdiff_t s = N;
+  constexpr std::ptrdiff_t s = N;
+  static_assert(N2 == s, "");
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
@@ -258,12 +271,13 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
 
 // munit
 
-template <template <typename> class C, typename T, typename R = std::decay_t<T>,
-          std::enable_if_t<detail::is_array<C<R>>::value> * = nullptr>
-auto munit(T &&x) {
-  C<R> rs;
-  for (auto &r : rs)
-    r = x;
+template <typename C, typename T,
+          std::enable_if_t<detail::is_array<C>::value> * = nullptr>
+constexpr auto munit(T &&x) {
+  typedef std::decay_t<T> R;
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  CR rs;
+  rs.fill(std::forward<T>(x));
   return rs;
 }
 
@@ -287,16 +301,16 @@ auto mjoin(std::array<std::array<T, N>, N2> &&xss) {
 
 // mbind
 
-template <typename F, typename T, std::size_t N, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, std::size_t N, typename... Args>
 auto mbind(F &&f, const std::array<T, N> &xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_array<CR>::value, "");
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, std::size_t N, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+template <typename F, typename T, std::size_t N, typename... Args>
 auto mbind(F &&f, std::array<T, N> &&xs, Args &&... args) {
+  typedef cxx::invoke_of_t<F, T, Args...> CR;
   static_assert(detail::is_array<CR>::value, "");
   return mjoin(
       fmap(std::forward<F>(f), std::move(xs), std::forward<Args>(args)...));
@@ -305,13 +319,13 @@ auto mbind(F &&f, std::array<T, N> &&xs, Args &&... args) {
 // mextract
 
 template <typename T, std::size_t N>
-decltype(auto) mextract(const std::array<T, N> &xs) {
+constexpr decltype(auto) mextract(const std::array<T, N> &xs) {
   assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, std::size_t N>
-decltype(auto) mextract(std::array<T, N> &&xs) {
+constexpr decltype(auto) mextract(std::array<T, N> &&xs) {
   assert(!xs.empty());
   return std::move(xs[0]);
 }
@@ -319,21 +333,22 @@ decltype(auto) mextract(std::array<T, N> &&xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename T, std::size_t N,
-          typename... Args, typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+          typename... Args>
 auto mfoldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
               Args &&... args) {
-  return munit<fun_traits<std::array<T, N>>::template constructor>(
-      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
-              std::forward<Args>(args)...));
+  typedef typename fun_traits<std::array<T, N>>::dummy C;
+  return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
+                          std::forward<Z>(z), xs, std::forward<Args>(args)...));
 }
 
 // mzero
 
-template <template <typename> class C, typename R,
-          std::enable_if_t<detail::is_array<C<R>>::value> * = nullptr>
-auto mzero() {
-  static_assert(fun_traits<C<R>>::size == 0, "");
-  return C<R>();
+template <typename C, typename R,
+          std::enable_if_t<detail::is_array<C>::value> * = nullptr>
+constexpr auto mzero() {
+  typedef typename fun_traits<C>::template constructor<R> CR;
+  static_assert(CR().empty(), "");
+  return CR();
 }
 
 // mempty

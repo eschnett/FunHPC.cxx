@@ -3,11 +3,12 @@
 
 #include <cereal/access.hpp>
 
+#include <tuple>
 #include <utility>
 
 namespace adt {
 
-template <typename T> struct idtype {
+template <typename T> class idtype {
   T elt;
 
   friend class cereal::access;
@@ -26,6 +27,7 @@ public:
 
   const T &get() const { return elt; }
   T &get() { return elt; }
+  // T &&get() && { return elt; }
 
   bool operator==(const idtype &other) const { return elt == other.elt; }
   bool operator!=(const idtype &other) const { return !(*this == other); }
@@ -35,6 +37,9 @@ public:
   bool operator>=(const idtype &other) const { return !(*this < other); }
 };
 template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
+
+// template <typename T> class idtype : std::tuple<T> {};
+// template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
 }
 
 #define ADT_IDTYPE_HPP_DONE

@@ -13,9 +13,7 @@ namespace fun {
 
 // empty
 
-template <typename CT,
-          template <typename> class C = fun_traits<CT>::template constructor,
-          typename T = typename fun_traits<CT>::value_type>
+template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
 bool empty(const CT &xs) {
   struct f : std::tuple<> {
     bool operator()(const T &x) const { return false; }
@@ -28,9 +26,7 @@ bool empty(const CT &xs) {
 
 // size
 
-template <typename CT,
-          template <typename> class C = fun_traits<CT>::template constructor,
-          typename T = typename fun_traits<CT>::value_type>
+template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
 std::size_t size(const CT &xs) {
   struct f : std::tuple<> {
     std::size_t operator()(const T &x) const { return 1; }
@@ -43,17 +39,15 @@ std::size_t size(const CT &xs) {
 
 // convert
 
-template <template <typename> class C1, typename C2T,
-          template <typename> class C2 = fun_traits<C2T>::template constructor,
-          typename T = typename fun_traits<C2T>::value_type>
-C1<T> convert(const C2T &xs) {
+template <typename C1, typename C2T,
+          typename T = typename fun::fun_traits<C2T>::value_type>
+auto convert(const C2T &xs) {
+  typedef typename fun_traits<C1>::template constructor<T> C1T;
   struct f : std::tuple<> {
     auto operator()(const T &x) const { return munit<C1>(x); }
   };
   struct op : std::tuple<> {
-    auto operator()(const C1<T> &x, const C1<T> &y) const {
-      return mplus(x, y);
-    }
+    auto operator()(const C1T &x, const C1T &y) const { return mplus(x, y); }
   };
   return foldMap(f(), op(), mzero<C1, T>(), xs);
 }
@@ -195,9 +189,7 @@ struct combine_ostreamers : std::tuple<> {
 
 // to_ostreamer
 
-template <typename CT,
-          template <typename> class C = fun_traits<CT>::template constructor,
-          typename T = typename fun_traits<CT>::value_type>
+template <typename CT, typename T = typename fun_traits<CT>::value_type>
 ostreamer to_ostreamer(const CT &xs) {
   struct with_comma : std::tuple<> {
     auto operator()(const T &x) const {
@@ -216,18 +208,14 @@ ostreamer to_ostreamer(const CT &xs) {
 namespace std {
 // operator<<
 
-template <typename CT, template <typename>
-                       class C = fun::fun_traits<CT>::template constructor,
-          typename T = typename fun::fun_traits<CT>::value_type>
+template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
 std::ostream &operator<<(std::ostream &os, const CT &xs) {
   return os << fun::to_ostreamer(xs);
 }
 
 // to_string
 
-template <typename CT, template <typename>
-                       class C = fun::fun_traits<CT>::template constructor,
-          typename T = typename fun::fun_traits<CT>::value_type>
+template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
 std::string to_string(const CT &xs) {
   std::ostringstream os;
   os << xs;

@@ -6,16 +6,16 @@ using namespace fun;
 
 TEST(fun_maybe, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<adt::maybe>([](int x) { return x; }, s);
+  auto rs = iotaMap<adt::maybe<adt::dummy>>([](int x) { return x; }, s);
   static_assert(std::is_same<decltype(rs), adt::maybe<int>>::value, "");
   EXPECT_TRUE(rs.just());
   EXPECT_EQ(0, rs.get_just());
 
-  auto rs0 = iotaMap<adt::maybe>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<adt::maybe<adt::dummy>>([](int x) { return x; }, 0);
   EXPECT_FALSE(rs0.just());
 
-  auto rs1 =
-      iotaMap<adt::maybe>([](int x, int y) { return double(x + y); }, s, -1);
+  auto rs1 = iotaMap<adt::maybe<adt::dummy>>(
+      [](int x, int y) { return double(x + y); }, s, -1);
   static_assert(std::is_same<decltype(rs1), adt::maybe<double>>::value, "");
   EXPECT_TRUE(rs1.just());
   EXPECT_EQ(-1, rs1.get_just());
@@ -43,7 +43,7 @@ TEST(fun_maybe, fmap) {
 
 TEST(fun_maybe, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<adt::maybe>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<adt::maybe<adt::dummy>>([](auto x) { return int(x); }, s);
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },
@@ -63,12 +63,12 @@ TEST(fun_maybe, foldMap) {
 }
 
 TEST(fun_maybe, monad) {
-  auto x1 = munit<adt::maybe>(1);
+  auto x1 = munit<adt::maybe<adt::dummy>>(1);
   static_assert(std::is_same<decltype(x1), adt::maybe<int>>::value, "");
   EXPECT_TRUE(x1.just());
   EXPECT_EQ(1, x1.get_just());
 
-  auto xx1 = munit<adt::maybe>(x1);
+  auto xx1 = munit<adt::maybe<adt::dummy>>(x1);
   EXPECT_TRUE(xx1.just());
   EXPECT_TRUE(xx1.get_just().just());
   EXPECT_EQ(1, xx1.get_just().get_just());
@@ -76,8 +76,9 @@ TEST(fun_maybe, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 =
-      mbind([](auto x, auto c) { return munit<adt::maybe>(x + c); }, x1, 1);
+  auto x2 = mbind([](auto x, auto c) {
+    return munit<adt::maybe<adt::dummy>>(x + c);
+  }, x1, 1);
   static_assert(std::is_same<decltype(x2), adt::maybe<int>>::value, "");
   EXPECT_TRUE(x2.just());
   EXPECT_EQ(2, x2.get_just());
@@ -89,7 +90,7 @@ TEST(fun_maybe, monad) {
                      [](auto x, auto y) { return x + y; }, 0, x1);
   EXPECT_EQ(r, mextract(r1));
 
-  auto x0 = mzero<adt::maybe, int>();
+  auto x0 = mzero<adt::maybe<adt::dummy>, int>();
   static_assert(std::is_same<decltype(x0), adt::maybe<int>>::value, "");
   EXPECT_FALSE(x0.just());
 

@@ -33,47 +33,52 @@ template <typename T> struct fun_traits<adt::maybe<T>> {
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
-auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (s == 0)
-    return adt::maybe<R>();
+    return adt::make_nothing<R>();
   return adt::make_just<R>(cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
                                        std::forward<Args>(args)...));
 }
 
 // fmap
 
-template <typename F, typename T, typename... Args>
-auto fmap(F &&f, const adt::maybe<T> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
+template <typename F, typename T, typename... Args, typename C = adt::maybe<T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap(F &&f, const adt::maybe<T> &xs, Args &&... args) {
   bool s = xs.just();
   if (!s)
-    return adt::maybe<R>();
+    return adt::make_nothing<R>();
   return adt::make_just<R>(cxx::invoke(std::forward<F>(f), xs.get_just(),
                                        std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename... Args>
-auto fmap(F &&f, adt::maybe<T> &&xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
+template <typename F, typename T, typename... Args, typename C = adt::maybe<T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap(F &&f, adt::maybe<T> &&xs, Args &&... args) {
   bool s = xs.just();
   if (!s)
-    return adt::maybe<R>();
+    return adt::make_nothing<R>();
   return adt::make_just<R>(cxx::invoke(std::forward<F>(f),
                                        std::move(xs.get_just()),
                                        std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename T2, typename... Args>
-auto fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
-           Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
+template <typename F, typename T, typename T2, typename... Args,
+          typename C = adt::maybe<T>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
+         Args &&... args) {
   bool s = xs.just();
   assert(ys.just() == s);
   if (!s)
-    return adt::maybe<R>();
+    return adt::make_nothing<R>();
   return adt::make_just<R>(cxx::invoke(std::forward<F>(f), xs.get_just(),
                                        ys.get_just(),
                                        std::forward<Args>(args)...));
@@ -81,9 +86,9 @@ auto fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
 
 // foldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
@@ -92,9 +97,9 @@ auto foldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
                      std::forward<Args>(args)...);
 }
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+R foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   if (!s)
@@ -104,10 +109,10 @@ auto foldMap(F &&f, Op &&op, Z &&z, adt::maybe<T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args>
-auto foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
-              const adt::maybe<T2> &ys, Args &&... args) {
-  typedef cxx::invoke_of_t<F &&, T, T2, Args &&...> R;
+          typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
+R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
+           const adt::maybe<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
   assert(ys.just() == s);
@@ -120,61 +125,72 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
 // munit
 
 template <typename C, typename T,
-          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
-constexpr auto munit(T &&x) {
-  typedef std::decay_t<T> R;
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+constexpr CR munit(T &&x) {
   return adt::make_just<R>(std::forward<T>(x));
 }
 
 // mbind
 
-template <typename F, typename T, typename... Args>
-auto mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> CR;
+template <typename F, typename T, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
   static_assert(detail::is_maybe<CR>::value, "");
+  typedef typename fun_traits<CR>::value_type R;
   if (!xs.just())
-    return CR();
+    return adt::make_nothing<R>();
   return cxx::invoke(std::forward<F>(f), xs.get_just(),
                      std::forward<Args>(args)...);
 }
 
-template <typename F, typename T, typename... Args>
-auto mbind(F &&f, adt::maybe<T> &&xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> CR;
+template <typename F, typename T, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, adt::maybe<T> &&xs, Args &&... args) {
   static_assert(detail::is_maybe<CR>::value, "");
+  typedef typename fun_traits<CR>::value_type R;
   if (!xs.just())
-    return CR();
+    return adt::make_nothing<R>();
   return cxx::invoke(std::forward<F>(f), std::move(xs.get_just()),
                      std::forward<Args>(args)...);
 }
 
 // mjoin
 
-template <typename T> auto mjoin(const adt::maybe<adt::maybe<T>> &xss) {
-  if (!xss.just() || !xss.get_just().just())
-    return adt::maybe<T>();
+template <typename T, typename CT = adt::maybe<T>>
+constexpr CT mjoin(const adt::maybe<adt::maybe<T>> &xss) {
+  if (!xss.just())
+    return adt::make_nothing<T>();
   return xss.get_just();
 }
 
-template <typename T> auto mjoin(adt::maybe<adt::maybe<T>> &&xss) {
-  if (!xss.just() || !xss.get_just().just())
-    return adt::maybe<T>();
+template <typename T, typename CT = adt::maybe<T>>
+constexpr CT mjoin(adt::maybe<adt::maybe<T>> &&xss) {
+  if (!xss.just())
+    return adt::make_nothing<T>();
   return std::move(xss.get_just());
 }
 
 // mextract
 
-template <typename T>
-constexpr decltype(auto) mextract(const adt::maybe<T> &xs) {
+template <typename T> constexpr const T &mextract(const adt::maybe<T> &xs) {
   assert(xs.just());
   return xs.get_just();
 }
 
+template <typename T> constexpr T &&mextract(adt::maybe<T> &&xs) {
+  assert(xs.just());
+  return std::move(xs.get_just());
+}
+
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
-  typedef typename fun_traits<adt::maybe<T>>::dummy C;
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename C = adt::maybe<T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
   return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
                           std::forward<Z>(z), xs, std::forward<Args>(args)...));
 }
@@ -182,31 +198,32 @@ auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs, Args &&... args) {
 // mzero
 
 template <typename C, typename R,
-          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr>
-constexpr auto mzero() {
-  return adt::maybe<R>();
+          std::enable_if_t<detail::is_maybe<C>::value> * = nullptr,
+          typename CR = adt::maybe<R>>
+constexpr CR mzero() {
+  return adt::make_nothing<R>();
 }
 
 // mplus
 
-template <typename T, typename... Ts>
-constexpr auto mplus(const adt::maybe<T> &xs, const adt::maybe<Ts> &... yss) {
+template <typename T, typename... Ts, typename CT = adt::maybe<T>>
+constexpr CT mplus(const adt::maybe<T> &xs, const adt::maybe<Ts> &... yss) {
   if (xs.just())
     return xs;
   for (auto pys : std::initializer_list<const adt::maybe<T> *>{&yss...})
     if ((*pys).just())
       return *pys;
-  return adt::maybe<T>();
+  return adt::make_nothing<T>();
 }
 
-template <typename T, typename... Ts>
-constexpr auto mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
+template <typename T, typename... Ts, typename CT = adt::maybe<T>>
+constexpr CT mplus(adt::maybe<T> &&xs, adt::maybe<Ts> &&... yss) {
   if (xs.just())
     return std::move(xs);
   for (auto pys : std::initializer_list<adt::maybe<T> *>{&yss...})
     if ((*pys).just())
       return std::move(*pys);
-  return adt::maybe<T>();
+  return adt::make_nothing<T>();
 }
 
 // mempty

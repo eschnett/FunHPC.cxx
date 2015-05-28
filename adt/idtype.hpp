@@ -3,7 +3,8 @@
 
 #include <cereal/access.hpp>
 
-#include <tuple>
+// #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace adt {
@@ -37,6 +38,10 @@ public:
   bool operator>=(const idtype &other) const { return !(*this < other); }
 };
 template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
+
+template <typename T> auto make_id(T &&x) {
+  return idtype<std::decay_t<T>>(std::forward<T>(x));
+}
 
 // template <typename T> class idtype : std::tuple<T> {};
 // template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }

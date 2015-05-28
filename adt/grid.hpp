@@ -313,8 +313,10 @@ public:
     assert(invariant());
   }
 
+  struct iotaMapMulti {};
+
   template <typename F, typename... Args>
-  grid(iotaMap, F &&f, const index_type &s, Args &&... args)
+  grid(iotaMapMulti, F &&f, const index_type &s, Args &&... args)
       : indexing(s) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, index_type, Args...>, T>::value, "");
@@ -372,12 +374,13 @@ public:
     assert(invariant());
   }
 
-  // fmapStencil
+  // fmapStencilMulti
 
-  struct fmapStencil {};
+  struct fmapStencilMulti {};
 
   template <typename F, typename G, typename T1, typename... Args>
-  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 0> &xs, Args &&... args)
+  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 0> &xs,
+       Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 0, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B
@@ -395,19 +398,17 @@ public:
     assert(invariant());
   }
 
-  template <typename F, typename G, typename T1, typename BM0, typename BP0,
-            typename... Args>
-  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 1> &xs, BM0 &&bm0,
-       BP0 &&bp0, Args &&... args)
+  template <
+      typename F, typename G, typename T1, typename... Args,
+      typename BC = grid<C, adt::dummy, 0>,
+      typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+      typename BCB = typename fun::fun_traits<BC>::template constructor<B>>
+  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 1> &xs, const BCB &bm0,
+       const BCB &bp0, Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 1, "");
-    typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
-    static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...>,
-                     T>::value,
-        "");
-    static_assert(std::is_same<std::decay_t<BM0>, grid<C, B, 0>>::value, "");
-    static_assert(std::is_same<std::decay_t<BP0>, grid<C, B, 0>>::value, "");
+    typedef cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...> R;
+    static_assert(std::is_same<R, T>::value, "");
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     auto di = xs.indexing.linear(array_dir<std::ptrdiff_t, D, 0>());
     indexing.loop([&](const index_type &i) {
@@ -432,7 +433,7 @@ public:
 
   template <typename F, typename G, typename T1, typename BM0, typename BM1,
             typename BP0, typename BP1, typename... Args>
-  grid(fmapStencil, F &&f, G &&g, const grid<C, T1, 2> &xs, BM0 &&bm0,
+  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 2> &xs, BM0 &&bm0,
        BM1 &&bm1, BP0 &&bp0, BP1 &&bp1, Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 2, "");
@@ -441,10 +442,14 @@ public:
         std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, B, B, Args...>,
                      T>::value,
         "");
-    static_assert(std::is_same<std::decay_t<BM0>, grid<C, B, 1>>::value, "");
-    static_assert(std::is_same<std::decay_t<BM1>, grid<C, B, 1>>::value, "");
-    static_assert(std::is_same<std::decay_t<BP0>, grid<C, B, 1>>::value, "");
-    static_assert(std::is_same<std::decay_t<BP1>, grid<C, B, 1>>::value, "");
+    // typedef grid<C, T1, 2> CT;
+    // typedef typename fun::fun_traits<CT>::boundary_dummy BD;
+    // typedef typename fun::fun_traits<BD>::template constructor<B> CB;
+    typedef grid<C, B, 1> CB;
+    static_assert(std::is_same<std::decay_t<BM0>, CB>::value, "");
+    static_assert(std::is_same<std::decay_t<BM1>, CB>::value, "");
+    static_assert(std::is_same<std::decay_t<BP0>, CB>::value, "");
+    static_assert(std::is_same<std::decay_t<BP1>, CB>::value, "");
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     auto di0 = array_dir<std::ptrdiff_t, D, 0>();
     auto di1 = array_dir<std::ptrdiff_t, D, 1>();

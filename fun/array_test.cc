@@ -101,8 +101,8 @@ TEST(fun_array, monad) {
 
   auto x2 = mbind(
       [](auto x, auto c) { return munit<array10<adt::dummy>>(x + c); }, x1, 1);
-  static_assert(std::is_same<decltype(x2), std::array<int, 100>>::value, "");
-  EXPECT_EQ(100, x2.size());
+  static_assert(std::is_same<decltype(x2), std::array<int, 10>>::value, "");
+  EXPECT_EQ(10, x2.size());
   EXPECT_EQ(2, x2[0]);
 
   auto r = mextract(x1);

@@ -34,10 +34,11 @@ template <typename T> struct fun_traits<qthread::shared_future<T>> {
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr>
-auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef std::decay_t<cxx::invoke_of_t<std::decay_t<F>, std::ptrdiff_t,
-                                        std::decay_t<Args>...>> R;
+          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr,
+          typename R = std::decay_t<cxx::invoke_of_t<
+              std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return qthread::shared_future<R>();
@@ -47,10 +48,12 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 
 // fmap
 
-template <typename F, typename T, typename... Args>
-auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
-  typedef std::decay_t<std::decay_t<
-      cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>> R;
+template <typename F, typename T, typename... Args,
+          typename C = qthread::shared_future<T>,
+          typename R = std::decay_t<std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   bool s = xs.valid();
   if (!s)
     return qthread::shared_future<R>();
@@ -60,11 +63,13 @@ auto fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   }).share();
 }
 
-template <typename F, typename T, typename T2, typename... Args>
-auto fmap2(F &&f, const qthread::shared_future<T> &xs,
-           const qthread::shared_future<T2> &ys, Args &&... args) {
-  typedef std::decay_t<
-      cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>> R;
+template <typename F, typename T, typename T2, typename... Args,
+          typename C = qthread::shared_future<T>,
+          typename R = std::decay_t<std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>>>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap2(F &&f, const qthread::shared_future<T> &xs,
+         const qthread::shared_future<T2> &ys, Args &&... args) {
   bool s = xs.valid();
   assert(ys.valid() == s);
   if (!s)
@@ -77,11 +82,11 @@ auto fmap2(F &&f, const qthread::shared_future<T> &xs,
 
 // foldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
-             Args &&... args) {
-  typedef std::decay_t<
-      cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>> R;
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = std::decay_t<
+              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
+R foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
+          Args &&... args) {
   static_assert(
       std::is_same<std::decay_t<cxx::invoke_of_t<std::decay_t<Op>, R, R>>,
                    R>::value,
@@ -93,11 +98,10 @@ auto foldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args>
-auto foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
-              const qthread::shared_future<T2> &ys, Args &&... args) {
-  typedef std::decay_t<
-      cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>> R;
+          typename... Args, typename R = std::decay_t<cxx::invoke_of_t<
+                                std::decay_t<F>, T, T2, std::decay_t<Args>...>>>
+R foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
+           const qthread::shared_future<T2> &ys, Args &&... args) {
   static_assert(
       std::is_same<std::decay_t<cxx::invoke_of_t<std::decay_t<Op>, R, R>>,
                    R>::value,
@@ -113,47 +117,49 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
 // munit
 
 template <typename C, typename T,
-          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr>
-auto munit(T &&x) {
+          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR munit(T &&x) {
   return qthread::make_ready_future(std::forward<T>(x)).share();
-}
-
-// mbind
-
-template <typename F, typename T, typename... Args>
-auto mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
-  assert(xs.valid());
-  return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
 }
 
 // mjoin
 
-template <typename T>
-auto mjoin(const qthread::shared_future<qthread::shared_future<T>> &xss) {
+template <typename T, typename CT = qthread::shared_future<T>>
+CT mjoin(const qthread::shared_future<qthread::shared_future<T>> &xss) {
   assert(xss.valid());
   // return qthread::async([xss]() { return xss.get().get(); }).share();
   return xss.unwrap().share();
 }
 
-template <typename T>
-auto mjoin(qthread::shared_future<qthread::shared_future<T>> &&xss) {
-  assert(xss.valid());
-  return std::move(xss).unwrap().share();
+// mbind
+
+template <typename F, typename T, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
+  static_assert(detail::is_shared_future<CR>::value, "");
+  assert(xs.valid());
+  // return cxx::invoke(std::forward<F>(f), xs.get(),
+  // std::forward<Args>(args)...);
+  return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
 // mextract
 
-template <typename T>
-decltype(auto) mextract(const qthread::shared_future<T> &xs) {
+template <typename T> const T &mextract(const qthread::shared_future<T> &xs) {
   assert(xs.valid());
   return xs.get();
 }
 
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-auto mfoldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
-              Args &&... args) {
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename C = qthread::shared_future<T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR mfoldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
+            Args &&... args) {
   return qthread::async(
              [](auto &&f, auto &&op, auto &&z, auto &&xs, auto &&... args) {
                return foldMap(std::forward<F>(f), std::forward<Op>(op),
@@ -167,8 +173,9 @@ auto mfoldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
 // mzero
 
 template <typename C, typename R,
-          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr>
-auto mzero() {
+          std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR mzero() {
   return qthread::shared_future<R>();
 }
 

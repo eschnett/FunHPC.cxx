@@ -53,7 +53,7 @@ TEST(fun_tree, boundary) {
   std::ptrdiff_t s = 10;
 
   typedef typename fun::fun_traits<shared_tree<int>>::index_type index_type;
-  auto xs1 = iotaMap<shared_tree<adt::dummy>>([](const index_type &x) {
+  auto xs1 = iotaMapMulti<shared_tree<adt::dummy>>([](const index_type &x) {
     return int(adt::sum(x * x));
   }, index_type{{s}});
   typedef typename fun::fun_traits<shared_tree<adt::dummy>>::boundary_dummy

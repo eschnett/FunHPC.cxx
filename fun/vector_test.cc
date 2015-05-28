@@ -62,15 +62,15 @@ TEST(fun_vector, fmapStencil) {
                       [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, ysum);
 
-  // auto zs = fmapStencil(
-  //     [](auto x, auto bdirs, auto bm, auto bp) {
-  //       return fun::mextract(bm) - 2 * x + fun::mextract(bp);
-  //     },
-  //     [](auto x, auto i) { return x; }, xs, adt::idtype<int>(1),
-  //     adt::idtype<int>(100));
-  // auto zsum = foldMap([](auto x) { return x; },
-  //                     [](auto x, auto y) { return x + y; }, 0, zs);
-  // EXPECT_EQ(20, zsum);
+  auto zs = fmapStencil(
+      [](auto x, auto bdirs, auto bm, auto bp) {
+        return fun::mextract(bm) - 2 * x + fun::mextract(bp);
+      },
+      [](auto x, auto i) { return adt::make_id(x); }, xs, adt::idtype<int>(1),
+      adt::idtype<int>(100));
+  auto zsum = foldMap([](auto x) { return x; },
+                      [](auto x, auto y) { return x + y; }, 0, zs);
+  EXPECT_EQ(20, zsum);
 }
 
 TEST(fun_vector, foldMap) {
@@ -120,6 +120,7 @@ TEST(fun_vector, monad) {
 
   auto r1 = mfoldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, x1);
+  static_assert(std::is_same<decltype(r1), std::vector<int>>::value, "");
   EXPECT_EQ(1, r1.size());
   EXPECT_EQ(r, mextract(r1));
 

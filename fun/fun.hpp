@@ -40,9 +40,9 @@ std::size_t size(const CT &xs) {
 // convert
 
 template <typename C1, typename C2T,
-          typename T = typename fun::fun_traits<C2T>::value_type>
-auto convert(const C2T &xs) {
-  typedef typename fun_traits<C1>::template constructor<T> C1T;
+          typename T = typename fun::fun_traits<C2T>::value_type,
+          typename C1T = typename fun_traits<C1>::template constructor<T>>
+C1T convert(const C2T &xs) {
   struct f : std::tuple<> {
     auto operator()(const T &x) const { return munit<C1>(x); }
   };
@@ -51,32 +51,6 @@ auto convert(const C2T &xs) {
   };
   return foldMap(f(), op(), mzero<C1, T>(), xs);
 }
-
-// // to_string
-//
-// template <typename CT,
-//           template <typename> class C = fun_traits<CT>::template constructor,
-//           typename T = typename fun_traits<CT>::value_type>
-// std::string to_string(const CT &xs) {
-//   struct f : std::tuple<> {
-//     auto operator()(const T &x) const {
-//       std::ostringstream os;
-//       os.precision(std::numeric_limits<T>::max_digits10);
-//       os << x;
-//       return std::move(os).str();
-//     }
-//   };
-//   struct op : std::tuple<> {
-//     auto operator()(const std::string &x, const std::string &y) const {
-//       if (x.empty())
-//         return y;
-//       if (y.empty())
-//         return x;
-//       return x + ", " + y;
-//     }
-//   };
-//   return std::string("[") + foldMap(f(), op(), std::string(), xs) + "]";
-// }
 
 // An ostreamer is function that outputs something. In particular,
 // there is an efficient way of combining ostreamers -- somthing that

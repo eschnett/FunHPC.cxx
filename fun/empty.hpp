@@ -34,52 +34,65 @@ template <typename T> struct fun_traits<adt::empty<T>> {
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_empty<C>::value> * = nullptr>
-constexpr auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
+          std::enable_if_t<detail::is_empty<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+constexpr CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   assert(s == 0);
-  return adt::empty<R>();
+  return CR();
 }
 
 // fmap
 
-template <typename F, typename T, typename... Args>
-constexpr auto fmap(F &&f, const adt::empty<T> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
-  return adt::empty<R>();
+template <typename F, typename T, typename... Args, typename C = adt::empty<T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+constexpr CR fmap(F &&f, const adt::empty<T> &xs, Args &&... args) {
+  return CR();
 }
 
-template <typename F, typename T, typename T2, typename... Args>
-constexpr auto fmap2(F &&f, const adt::empty<T> &xs, const adt::empty<T2> &ys,
-                     Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
-  return adt::empty<R>();
+template <typename F, typename T, typename T2, typename... Args,
+          typename C = adt::empty<T>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+constexpr CR fmap2(F &&f, const adt::empty<T> &xs, const adt::empty<T2> &ys,
+                   Args &&... args) {
+  return CR();
 }
 
 // foldMap
 
-template <typename F, typename Op, typename Z, typename T, typename... Args>
-constexpr auto foldMap(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
-                       Args &&... args) {
-  typedef cxx::invoke_of_t<F &&, T, Args &&...> R;
+template <typename F, typename Op, typename Z, typename T, typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, Args &&...>>
+constexpr R foldMap(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
+                    Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return std::forward<Z>(z);
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args>
-constexpr auto foldMap2(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
-                        const adt::empty<T2> &ys, Args &&... args) {
-  typedef cxx::invoke_of_t<F &&, T, T2, Args &&...> R;
+          typename... Args,
+          typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
+constexpr R foldMap2(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
+                     const adt::empty<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return std::forward<Z>(z);
 }
 
+// mbind
+
+template <typename F, typename T, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+constexpr CR mbind(F &&f, const adt::empty<T> &xs, Args &&... args) {
+  static_assert(detail::is_empty<CR>::value, "");
+  return CR();
+}
+
 // mjoin
 
-template <typename T>
-constexpr auto mjoin(const adt::empty<adt::empty<T>> &xss) {
-  return adt::empty<T>();
+template <typename T, typename CT = adt::empty<T>>
+constexpr CT mjoin(const adt::empty<adt::empty<T>> &xss) {
+  return CT();
 }
 
 // mempty

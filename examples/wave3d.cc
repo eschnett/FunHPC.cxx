@@ -12,8 +12,8 @@
 
 // These include files need to come after all other fun/*.hpp include
 // files, and they need to be in this particular order
-#include <fun/nested.hpp>
 #include <fun/grid.hpp>
+#include <fun/nested.hpp>
 #include <fun/tree.hpp>
 #include <fun/fun.hpp>
 
@@ -164,7 +164,7 @@ auto cell_energy(const cell_t &c) {
 }
 
 // Note: These Dirichlet boundaries are unstable
-auto cell_boundary_dirichlet(const cell_t &c, real_t t, int_t i) {
+auto cell_boundary_dirichlet(const cell_t &c, int_t i, real_t t) {
   auto f = i % 2, d = i / 2;
   auto bdir = (!f ? -1 : +1) * vdir(d);
   auto xbnd = c.x + bdir * parameters.dx();
@@ -209,23 +209,23 @@ typedef decltype(
 
 // Grid
 
-#warning "TODO: use tree"
-
 template <typename T>
 using vector_grid = adt::grid<std::vector<adt::dummy>, T, dim>;
 
-// template <typename T>
-// using proxy_vector = adt::nested<funhpc::proxy, std_vector, T>;
-// template <typename T, int_t D> using proxy_grid = adt::grid<proxy_vector, T,
-// D>;
+template <typename T>
+using vector_grid_proxy =
+    adt::nested<funhpc::proxy<adt::dummy>, vector_grid<adt::dummy>, T>;
 
 template <typename T>
 using vector_grid_tree = adt::tree<vector_grid<adt::dummy>, T>;
 
-// template <typename T> using proxy_tree = adt::tree<proxy_grid, T>;
+template <typename T>
+using vector_grid_proxy_tree = adt::tree<vector_grid_proxy<adt::dummy>, T>;
 
-template <typename T> using storage_t = vector_grid<T>;
-// template <typename T> using storage_t = vector_grid_tree<T>;
+// template <typename T> using storage_t = vector_grid<T>;
+// template <typename T> using storage_t = vector_grid_proxy<T>;
+template <typename T> using storage_t = vector_grid_tree<T>;
+// template <typename T> using storage_t = vector_grid_proxy_tree<T>;
 
 template <typename T>
 using boundary_t = typename fun::fun_traits<typename fun::fun_traits<
@@ -250,7 +250,7 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<storage_t<adt::dummy>>([t](vint_t i) {
+  return grid_t{t, fun::iotaMapMulti<storage_t<adt::dummy>>([t](vint_t i) {
     vreal_t x = parameters.xmin +
                 parameters.dx() *
                     (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
@@ -271,15 +271,15 @@ auto grid_energy(const grid_t &g) {
 }
 
 auto grid_boundary(const grid_t &g, int_t i) {
-  // return fun::boundaryMap(cell_boundary_dirichlet, g.cells, i, g.time, i);
-  return fun::boundaryMap(cell_boundary_reflecting, g.cells, i, i);
+  // return fun::boundaryMap(cell_boundary_dirichlet, g.cells, i, g.time);
+  return fun::boundaryMap(cell_boundary_reflecting, g.cells, i);
 }
 
 template <typename F, typename G, typename TS, typename BS,
           std::size_t... Indices, typename... Args>
 auto wrap_fmapStencil(F &&f, G &&g, TS &&xs, BS &&bs,
                       std::index_sequence<Indices...>, Args &&... args) {
-  return fun::fmapStencil(
+  return fun::fmapStencilMulti<dim>(
       std::forward<F>(f), std::forward<G>(g), std::forward<TS>(xs),
       std::get<Indices>(std::forward<BS>(bs))..., std::forward<Args>(args)...);
 }

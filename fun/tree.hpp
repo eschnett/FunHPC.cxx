@@ -38,77 +38,75 @@ template <typename C, typename T> struct fun_traits<adt::tree<C, T>> {
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_tree<C>::value> * = nullptr>
-auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_tree<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   return CR(typename CR::iotaMap(), std::forward<F>(f), 0, s, 1,
             std::forward<Args>(args)...);
 }
 
-template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_tree<C>::value> * = nullptr>
-auto iotaMap(F &&f, const typename fun_traits<C>::index_type &s,
-             Args &&... args) {
-  typedef typename fun_traits<C>::index_type Index;
-  typedef cxx::invoke_of_t<F, Index, Args...> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
-  return CR(typename CR::iotaMap(), std::forward<F>(f), adt::zero<Index>(), s,
-            adt::one<Index>(), std::forward<Args>(args)...);
+template <typename C, std::size_t D, typename F, typename... Args,
+          std::enable_if_t<detail::is_tree<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(F &&f, const adt::index_t<D> &s, Args &&... args) {
+  return CR(typename CR::iotaMapMulti(), std::forward<F>(f),
+            adt::zero<adt::index_t<D>>(), s, adt::one<adt::index_t<D>>(),
+            std::forward<Args>(args)...);
 }
 
 // fmap
 
-template <typename F, typename C, typename T, typename... Args>
-auto fmap(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
-  return adt::tree<C, R>(typename adt::tree<C, R>::fmap(), std::forward<F>(f),
-                         xs, std::forward<Args>(args)...);
+template <typename F, typename C, typename T, typename... Args,
+          typename CT = adt::tree<C, T>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmap(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
+  return CR(typename CR::fmap(), std::forward<F>(f), xs,
+            std::forward<Args>(args)...);
 }
 
-template <typename F, typename C, typename T, typename T2, typename... Args>
-auto fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
-           Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
-  return adt::tree<C, R>(typename adt::tree<C, R>::fmap2(), std::forward<F>(f),
-                         xs, ys, std::forward<Args>(args)...);
-}
-
-// boundary
-
-template <typename C, typename T>
-auto boundary(const adt::tree<C, T> &xs, std::ptrdiff_t i) {
-  typedef typename fun_traits<adt::tree<C, T>>::boundary_dummy BC;
-  typedef typename fun_traits<BC>::template constructor<T> BCT;
-  return BCT(typename BCT::boundary(), xs, i);
-}
-
-// boundaryMap
-
-template <typename F, typename C, typename T, typename... Args>
-auto boundaryMap(F &&f, const adt::tree<C, T> &xs, std::ptrdiff_t i,
-                 Args &&... args) {
-  typedef typename fun_traits<adt::tree<C, T>>::boundary_dummy BC;
-  typedef cxx::invoke_of_t<F, T, Args...> R;
-  typedef typename fun_traits<BC>::template constructor<R> BCR;
-  return BCR(typename BCR::boundaryMap(), std::forward<F>(f), xs, i,
-             std::forward<Args>(args)...);
+template <typename F, typename C, typename T, typename T2, typename... Args,
+          typename CT = adt::tree<C, T>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmap2(F &&f, const adt::tree<C, T> &xs, const adt::tree<C, T2> &ys,
+         Args &&... args) {
+  return CR(typename CR::fmap2(), std::forward<F>(f), xs, ys,
+            std::forward<Args>(args)...);
 }
 
 // fmapStencil
 
 template <typename F, typename G, typename C, typename T, typename BM,
-          typename BP, typename... Args>
-auto fmapStencil(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
-                 Args &&... args) {
-  typedef cxx::invoke_of_t<G, T, std::ptrdiff_t> B;
-  typedef cxx::invoke_of_t<F, T, std::size_t, B, B, Args...> R;
+          typename BP, typename... Args, typename CT = adt::tree<C, T>,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencil(F &&f, G &&g, const adt::tree<C, T> &xs, BM &&bm, BP &&bp,
+               Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
-  return adt::tree<C, R>(typename adt::tree<C, R>::fmapStencil(),
-                         std::forward<F>(f), std::forward<G>(g), xs, 0b11,
-                         std::forward<BM>(bm), std::forward<BP>(bp),
-                         std::forward<Args>(args)...);
+  return CR(typename CR::fmapStencil(), std::forward<F>(f), std::forward<G>(g),
+            xs, 0b11, std::forward<BM>(bm), std::forward<BP>(bp),
+            std::forward<Args>(args)...);
+}
+
+template <std::size_t D, typename F, typename G, typename C, typename T,
+          typename... Args, std::enable_if_t<D == 1> * = nullptr,
+          typename CT = adt::tree<C, T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const adt::tree<C, T> &xs, const BCB &bm0,
+                    const BCB &bp0, Args &&... args) {
+  return CR(typename CR::fmapStencilMulti(),
+            std::integral_constant<std::size_t, D>(), std::forward<F>(f),
+            std::forward<G>(g), xs, 0b11, bm0, bp0,
+            std::forward<Args>(args)...);
 }
 
 // head, last
@@ -123,27 +121,42 @@ decltype(auto) last(const adt::tree<C, T> &xs) {
   return xs.last();
 }
 
-// // indexing
-//
-// template <typename C, typename T>
-// decltype(auto) getIndex(const adt::tree<C, T> &xs,std::ptrdiff_t i) {
-//   return xs.getIndex(i);
-// }
+// boundary
+
+template <typename C, typename T, typename CT = adt::tree<C, T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename BCT = typename fun_traits<BC>::template constructor<T>>
+BCT boundary(const adt::tree<C, T> &xs, std::ptrdiff_t i) {
+  return BCT(typename BCT::boundary(), xs, i);
+}
+
+// boundaryMap
+
+template <typename F, typename C, typename T, typename... Args,
+          typename CT = adt::tree<C, T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>,
+          typename BCR = typename fun_traits<BC>::template constructor<R>>
+BCR boundaryMap(F &&f, const adt::tree<C, T> &xs, std::ptrdiff_t i,
+                Args &&... args) {
+  return BCR(typename BCR::boundaryMap(), std::forward<F>(f), xs, i,
+             std::forward<Args>(args)...);
+}
 
 // foldMap
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
-             Args &&... args) {
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>>
+R foldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs, Args &&... args) {
   return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
                     std::forward<Z>(z), std::forward<Args>(args)...);
 }
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          typename T2, typename... Args>
-auto foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
-              const adt::tree<C, T2> &ys, Args &&... args) {
+          typename T2, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+R foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
+           const adt::tree<C, T2> &ys, Args &&... args) {
   return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
                      std::forward<Z>(z), ys, std::forward<Args>(args)...);
 }
@@ -151,24 +164,26 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs,
 // munit
 
 template <typename C, typename T,
-          std::enable_if_t<detail::is_tree<C>::value> * = nullptr>
-auto munit(T &&x) {
-  typedef std::decay_t<T> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_tree<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR munit(T &&x) {
   return CR(std::forward<T>(x));
 }
 
 // mjoin
 
-template <typename C, typename T>
-auto mjoin(const adt::tree<C, adt::tree<C, T>> &xss) {
-  return adt::tree<C, T>(typename adt::tree<C, T>::join(), xss);
+template <typename C, typename T, typename CT = adt::tree<C, T>>
+CT mjoin(const adt::tree<C, adt::tree<C, T>> &xss) {
+  return CT(typename CT::join(), xss);
 }
 
 // mbind
 
-template <typename F, typename C, typename T, typename... Args>
-auto mbind(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
+template <typename F, typename C, typename T, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, const adt::tree<C, T> &xs, Args &&... args) {
+  static_assert(detail::is_tree<CR>::value, "");
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
@@ -181,38 +196,39 @@ decltype(auto) mextract(const adt::tree<C, T> &xs) {
 
 // mfoldMap
 
-template <typename F, typename Op, typename Z, typename A, typename T,
-          typename... Args>
-auto mfoldMap(F &&f, Op &&op, Z &&z, const adt::tree<A, T> &xs,
-              Args &&... args) {
-  typedef typename fun_traits<adt::tree<A, T>>::dummy C;
-  return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
-                          std::forward<Z>(z), xs, std::forward<Args>(args)...));
+template <typename F, typename Op, typename Z, typename C, typename T,
+          typename... Args, typename CT = adt::tree<C, adt::dummy>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::tree<C, T> &xs, Args &&... args) {
+  return munit<typename fun_traits<CT>::dummy>(
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
+              std::forward<Args>(args)...));
 }
 
 // mzero
 
 template <typename C, typename R,
-          std::enable_if_t<detail::is_tree<C>::value> * = nullptr>
-auto mzero() {
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_tree<C>::value> * = nullptr,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR mzero() {
   return CR();
 }
 
 // mplus
 
-template <typename C, typename T, typename... Ts>
-auto mplus(const adt::tree<C, T> &xss, const adt::tree<C, Ts> &... yss) {
-  return adt::tree<C, T>(fun::msome<C>(xss, yss...));
+template <typename C, typename T, typename... Ts, typename CT = adt::tree<C, T>>
+CT mplus(const adt::tree<C, T> &xss, const adt::tree<C, Ts> &... yss) {
+  return CT(fun::msome<C>(xss, yss...));
 }
 
 // msome
 
 template <typename C, typename T, typename... Ts,
-          std::enable_if_t<detail::is_tree<C>::value> * = nullptr>
-auto msome(T &&x, Ts &&... ys) {
-  typedef std::decay_t<T> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_tree<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR msome(T &&x, Ts &&... ys) {
   return CR(msome<typename CR::container_dummy>(std::forward<T>(x),
                                                 std::forward<Ts>(ys)...));
 }

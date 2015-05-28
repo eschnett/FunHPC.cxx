@@ -46,10 +46,10 @@ struct fun_traits<std::vector<T, Allocator>> {
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr>
-auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef cxx::invoke_of_t<F, std::ptrdiff_t, Args...> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -58,7 +58,7 @@ auto iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
 }
 
 namespace detail {
-struct vector_iotaMap {
+struct vector_iotaMapMulti {
   template <typename F, typename... Args>
   auto operator()(std::ptrdiff_t i, F &&f, Args &&... args) const {
     return cxx::invoke(std::forward<F>(f), adt::set<adt::index_t<1>>(i),
@@ -67,21 +67,24 @@ struct vector_iotaMap {
 };
 }
 
-template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr>
-auto iotaMap(F &&f, adt::index_t<1> s, Args &&... args) {
-  return iotaMap<C>(detail::vector_iotaMap(), s[0], std::forward<F>(f),
+template <typename C, std::size_t D, typename F, typename... Args,
+          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(F &&f, adt::index_t<D> s, Args &&... args) {
+  static_assert(D == 1, "");
+  return iotaMap<C>(detail::vector_iotaMapMulti(), s[0], std::forward<F>(f),
                     std::forward<Args>(args)...);
 }
 
 // fmap
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
-  typedef
-      typename fun_traits<std::vector<T, Allocator>>::template constructor<R>
-          CR;
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename CT = std::vector<T, Allocator>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<
+              std::vector<T, Allocator>>::template constructor<R>>
+CR fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
 #pragma omp simd
@@ -90,12 +93,12 @@ auto fmap(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   return rs;
 }
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
-  typedef
-      typename fun_traits<std::vector<T, Allocator>>::template constructor<R>
-          CR;
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename CT = std::vector<T, Allocator>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<
+              std::vector<T, Allocator>>::template constructor<R>>
+CR fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
 #pragma omp simd
@@ -105,13 +108,13 @@ auto fmap(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename Allocator, typename T2,
-          typename Allocator2, typename... Args>
-auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
-           const std::vector<T2, Allocator2> &ys, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
-  typedef
-      typename fun_traits<std::vector<T, Allocator>>::template constructor<R>
-          CR;
+          typename Allocator2, typename... Args,
+          typename CT = std::vector<T, Allocator>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
+          typename CR = typename fun_traits<
+              std::vector<T, Allocator>>::template constructor<R>>
+CR fmap2(F &&f, const std::vector<T, Allocator> &xs,
+         const std::vector<T2, Allocator2> &ys, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
   CR rs(s);
@@ -130,13 +133,13 @@ auto fmap2(F &&f, const std::vector<T, Allocator> &xs,
 // references).
 
 template <typename F, typename G, typename T, typename Allocator, typename BM,
-          typename BP, typename... Args>
-auto fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
-                 BP &&bp, Args &&... args) {
-  typedef cxx::invoke_of_t<G, T, std::ptrdiff_t> B;
-  typedef cxx::invoke_of_t<F, T, std::size_t, B, B, Args...> R;
-  typedef std::vector<T, Allocator> C;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          typename BP, typename... Args,
+          typename CT = std::vector<T, Allocator>,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
+               BP &&bp, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   std::ptrdiff_t s = xs.size();
@@ -157,89 +160,89 @@ auto fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
   return rs;
 }
 
-#if 0
-// This is a good idea, but the signature conflicts with fmapStencil above. Need
-// to use enable_if, or change the function name.
-template <typename F, typename G, typename T, typename Allocator, typename BM,
-          typename BP, typename... Args>
-auto fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs,
-                 const adt::idtype<BM> &bm, const adt::idtype<BP> &bp,
-                 Args &&... args) {
-  typedef cxx::invoke_of_t<G, T, std::ptrdiff_t> IB;
-  static_assert(detail::is_idtype<IB>::value, "");
-  typedef typename fun_traits<IB>::value_type B;
-  typedef cxx::invoke_of_t<F, T, std::size_t, adt::idtype<B>, adt::idtype<B>,
-                           Args...> R;
-  typedef std::vector<T, Allocator> C;
-  typedef typename fun_traits<C>::template constructor<R> CR;
-  static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
-  static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
+template <std::size_t D, typename F, typename G, typename T, typename Allocator,
+          typename... Args, std::enable_if_t<D == 1> * = nullptr,
+          typename CT = std::vector<T, Allocator>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs, BCB bm,
+                    BCB bp, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
   if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], 0b11, fun::mextract(bm),
-                        fun::mextract(bp), std::forward<Args>(args)...);
+    rs[0] =
+        cxx::invoke(std::forward<F>(f), xs[0], 0b11, mextract(std::move(bm)),
+                    mextract(std::move(bp)), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], 0b01, fun::mextract(bm),
+    rs[0] = cxx::invoke(f, xs[0], 0b01, mextract(std::move(bm)),
                         cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
       rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
                           cxx::invoke(g, xs[i + 1], 0), args...);
     rs[s - 1] = cxx::invoke(f, xs[s - 1], 0b10, cxx::invoke(g, xs[s - 2], 1),
-                            fun::mextract(bp), args...);
+                            mextract(std::move(bp)), args...);
   }
   return rs;
 }
-#endif
 
 // head, last
 
 template <typename T, typename Allocator>
-decltype(auto) head(const std::vector<T, Allocator> &xs) {
+const T &head(const std::vector<T, Allocator> &xs) {
   assert(!xs.empty());
   return xs.front();
 }
 
 template <typename T, typename Allocator>
-decltype(auto) last(const std::vector<T, Allocator> &xs) {
+const T &last(const std::vector<T, Allocator> &xs) {
   assert(!xs.empty());
   return xs.back();
 }
 
 template <typename T, typename Allocator>
-decltype(auto) head(std::vector<T, Allocator> &&xs) {
+T &&head(std::vector<T, Allocator> &&xs) {
   assert(!xs.empty());
   return std::move(xs.front());
 }
 
 template <typename T, typename Allocator>
-decltype(auto) last(std::vector<T, Allocator> &&xs) {
+T &&last(std::vector<T, Allocator> &&xs) {
   assert(!xs.empty());
   return std::move(xs.back());
 }
 
 // boundary
 
-template <typename T, typename Allocator>
-auto boundary(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
-  typedef typename fun_traits<std::vector<T, Allocator>>::boundary_dummy BC;
+template <typename T, typename Allocator,
+          typename CT = std::vector<T, Allocator>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename BCT = typename fun_traits<BC>::template constructor<T>>
+BCT boundary(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
   assert(i >= 0 && i < 2);
   return munit<BC>(i == 0 ? head(xs) : last(xs));
 }
 
 // boundaryMap
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto boundaryMap(F &&f, const std::vector<T, Allocator> &xs, std::ptrdiff_t i,
-                 Args &&... args) {
-  return fmap(std::forward<F>(f), boundary(xs, i), std::forward<Args>(args)...);
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename CT = std::vector<T, Allocator>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>,
+          typename BCR = typename fun_traits<BC>::template constructor<R>>
+BCR boundaryMap(F &&f, const std::vector<T, Allocator> &xs, std::ptrdiff_t i,
+                Args &&... args) {
+  return fmap(std::forward<F>(f), boundary(xs, i), i,
+              std::forward<Args>(args)...);
 }
 
 // indexing
 
 template <typename T, typename Allocator>
-decltype(auto) getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
+const T &getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
   return xs[i];
 }
 
@@ -255,27 +258,27 @@ public:
   ~accumulator() { assert(data.empty()); }
 };
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto fmapIndexed(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...> R;
-  typedef
-      typename fun_traits<std::vector<T, Allocator>>::template constructor<R>
-          CR;
-  std::ptrdiff_t s = xs.size();
-  CR rs(s);
-#pragma omp simd
-  for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(f, xs[i], i, args...);
-  return rs;
-}
+// template <typename F, typename T, typename Allocator, typename... Args>
+// auto fmapIndexed(F &&f, const std::vector<T, Allocator> &xs, Args &&... args)
+// {
+//   typedef cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...> R;
+//   typedef
+//       typename fun_traits<std::vector<T, Allocator>>::template constructor<R>
+//           CR;
+//   std::ptrdiff_t s = xs.size();
+//   CR rs(s);
+// #pragma omp simd
+//   for (std::ptrdiff_t i = 0; i < s; ++i)
+//     rs[i] = cxx::invoke(f, xs[i], i, args...);
+//   return rs;
+// }
 
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
-             Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>>
+R foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
+          Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
@@ -289,10 +292,9 @@ auto foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename... Args>
-auto foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
-             Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> R;
+          typename... Args, typename R = cxx::invoke_of_t<F, T, Args...>>
+R foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
+          Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
@@ -307,10 +309,10 @@ auto foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
 }
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename T2, typename Allocator2, typename... Args>
-auto foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
-              const std::vector<T2, Allocator2> &ys, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, T2, Args...> R;
+          typename T2, typename Allocator2, typename... Args,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+R foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
+           const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   assert(ys.size() == s);
@@ -327,10 +329,10 @@ auto foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
 // munit
 
 template <typename C, typename T,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr>
-auto munit(T &&x) {
-  typedef std::decay_t<T> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR munit(T &&x) {
   return CR{std::forward<T>(x)};
 }
 
@@ -354,16 +356,16 @@ auto mjoin(std::vector<std::vector<T, Allocator>, Allocator2> &&xss) {
 
 // mbind
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto mbind(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> CR;
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, const std::vector<T, Allocator> &xs, Args &&... args) {
   static_assert(detail::is_vector<CR>::value, "");
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename Allocator, typename... Args>
-auto mbind(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
-  typedef cxx::invoke_of_t<F, T, Args...> CR;
+template <typename F, typename T, typename Allocator, typename... Args,
+          typename CR = cxx::invoke_of_t<F, T, Args...>>
+CR mbind(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
   static_assert(detail::is_vector<CR>::value, "");
   return mjoin(
       fmap(std::forward<F>(f), std::move(xs), std::forward<Args>(args)...));
@@ -372,13 +374,13 @@ auto mbind(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
 // mextract
 
 template <typename T, typename Allocator>
-decltype(auto) mextract(const std::vector<T, Allocator> &xs) {
+const T &mextract(const std::vector<T, Allocator> &xs) {
   assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, typename Allocator>
-decltype(auto) mextract(std::vector<T, Allocator> &&xs) {
+T &&mextract(std::vector<T, Allocator> &&xs) {
   assert(!xs.empty());
   return std::move(xs[0]);
 }
@@ -386,42 +388,43 @@ decltype(auto) mextract(std::vector<T, Allocator> &&xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename T, typename Allocator,
-          typename... Args>
-auto mfoldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
-              Args &&... args) {
-  typedef typename fun_traits<std::vector<T, Allocator>>::dummy C;
-  return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
-                          std::forward<Z>(z), xs, std::forward<Args>(args)...));
+          typename... Args, typename CT = std::vector<T, Allocator>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR mfoldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
+            Args &&... args) {
+  return munit<typename fun_traits<CT>::dummy>(
+      foldMap(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
+              std::forward<Args>(args)...));
 }
 
 // mzero
 
 template <typename C, typename R,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr>
-auto mzero() {
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR mzero() {
   return CR();
 }
 
 // mplus
 
 template <typename T, typename Allocator, typename... Ts,
-          typename... Allocators>
-auto mplus(const std::vector<T, Allocator> &xs,
-           const std::vector<Ts, Allocators> &... yss) {
-  std::vector<T, Allocator> rs(xs);
-  for (auto pys :
-       std::initializer_list<const std::vector<T, Allocator> *>{&yss...})
+          typename... Allocators, typename CT = std::vector<T, Allocator>>
+CT mplus(const std::vector<T, Allocator> &xs,
+         const std::vector<Ts, Allocators> &... yss) {
+  CT rs(xs);
+  for (auto pys : std::initializer_list<const CT *>{&yss...})
     rs.insert(rs.end(), pys->begin(), pys->end());
   return rs;
 }
 
 template <typename T, typename Allocator, typename... Ts,
-          typename... Allocators>
-auto mplus(std::vector<T, Allocator> &&xs,
-           std::vector<Ts, Allocators> &&... yss) {
-  std::vector<T, Allocator> rs(std::move(xs));
-  for (auto pys : std::initializer_list<std::vector<T, Allocator> *>{&yss...})
+          typename... Allocators, typename CT = std::vector<T, Allocator>>
+CT mplus(std::vector<T, Allocator> &&xs,
+         std::vector<Ts, Allocators> &&... yss) {
+  CT rs(std::move(xs));
+  for (auto pys : std::initializer_list<CT *>{&yss...})
     std::move(pys->begin(), pys->end(), std::back_inserter(rs));
   return rs;
 }
@@ -429,10 +432,10 @@ auto mplus(std::vector<T, Allocator> &&xs,
 // msome
 
 template <typename C, typename T, typename... Ts,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr>
-auto msome(T &&x, Ts &&... ys) {
-  typedef std::decay_t<T> R;
-  typedef typename fun_traits<C>::template constructor<R> CR;
+          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+          typename R = std::decay_t<T>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR msome(T &&x, Ts &&... ys) {
   return CR{std::forward<T>(x), std::forward<Ts>(ys)...};
 }
 

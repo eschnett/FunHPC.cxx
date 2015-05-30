@@ -180,7 +180,7 @@ TEST(adt_grid, fmapStencil) {
       typename adt::grid<std::vector<adt::dummy>, double,
                          0>::fmapStencilMulti(),
       [](auto x, auto bdirs) { return 0.0; }, [](auto x, auto i) { return x; },
-      g0);
+      g0, ~0);
   EXPECT_EQ(x0.size(), g0.size());
   auto maxabs0 =
       x0.foldMap([](auto x) { return std::fabs(x); },
@@ -203,7 +203,7 @@ TEST(adt_grid, fmapStencil) {
       typename adt::grid<std::vector<adt::dummy>, double,
                          1>::fmapStencilMulti(),
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2.0 * x + bp; },
-      [](auto x, auto i) { return x; }, g1, bm1, bp1);
+      [](auto x, auto i) { return x; }, g1, ~0, bm1, bp1);
   EXPECT_EQ(x1.size(), g1.size());
   auto maxabs1 =
       x1.foldMap([](auto x) { return std::fabs(x); },
@@ -228,7 +228,7 @@ TEST(adt_grid, fmapStencil) {
       [](auto x, auto bdirs, auto bm0, auto bm1, auto bp0, auto bp1) {
         return (bm0 - 2.0 * x + bp0) + (bm1 - 2.0 * x + bp1);
       },
-      [](auto x, auto i) { return x; }, g2, bm2, bm2, bp2, bp2);
+      [](auto x, auto i) { return x; }, g2, ~0, bm2, bm2, bp2, bp2);
   EXPECT_EQ(x2.size(), g2.size());
   EXPECT_EQ(x2.shape()[0], g2.shape()[0]);
   EXPECT_EQ(x2.shape()[1], g2.shape()[1]);

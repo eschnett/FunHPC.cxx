@@ -66,14 +66,17 @@ struct array_iotaMapMulti {
 };
 }
 
-template <typename C, std::size_t D, typename F, typename... Args,
-          std::enable_if_t<detail::is_array<C>::value> * = nullptr,
-          typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, adt::index_t<D> s, Args &&... args) {
+template <
+    typename C, std::size_t D, typename F, typename... Args,
+    std::enable_if_t<detail::is_array<C>::value> * = nullptr,
+    typename R = cxx::invoke_of_t<const F &, adt::index_t<D>, const Args &...>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(const F &f, const adt::range_t<D> &inds, const Args &... args) {
   static_assert(D == 1, "");
-  return iotaMap<C>(detail::array_iotaMapMulti(), 0, s[0], 1,
-                    std::forward<F>(f), std::forward<Args>(args)...);
+  return iotaMap<C>(
+      detail::array_iotaMapMulti(),
+      adt::irange_t(inds.imin()[0], inds.imax()[0], inds.istep()[0]),
+      std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 // fmap
@@ -157,15 +160,16 @@ template <std::size_t D, typename F, typename G, typename T, std::size_t N,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const std::array<T, N> &xs, std::size_t bmask,
-                    BCB bm, BCB bp, Args &&... args) {
+                    const typename adt::idtype<BCB>::element_type &bm,
+                    const typename adt::idtype<BCB>::element_type &bp,
+                    Args &&... args) {
   constexpr std::ptrdiff_t s = N;
   CR rs;
   if (__builtin_expect(s == 1, false)) {
-    rs[0] =
-        cxx::invoke(std::forward<F>(f), xs[0], bmask, mextract(std::move(bm)),
-                    mextract(std::move(bp)), std::forward<Args>(args)...);
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bmask, mextract(bm),
+                        mextract(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, mextract(std::move(bm)),
+    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, mextract(bm),
                         cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
@@ -173,7 +177,7 @@ CR fmapStencilMulti(F &&f, G &&g, const std::array<T, N> &xs, std::size_t bmask,
                           cxx::invoke(g, xs[i + 1], 0), args...);
     rs[s - 1] =
         cxx::invoke(f, xs[s - 1], bmask & 0b10, cxx::invoke(g, xs[s - 2], 1),
-                    mextract(std::move(bp)), args...);
+                    mextract(bp), args...);
   }
   return rs;
 }

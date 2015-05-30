@@ -56,10 +56,9 @@ TEST(fun_tree, fmap) {
 TEST(fun_tree, boundary) {
   std::ptrdiff_t s = 10;
 
-  typedef typename fun::fun_traits<shared_tree<int>>::index_type index_type;
-  auto xs1 = iotaMapMulti<shared_tree<adt::dummy>>([](const index_type &x) {
+  auto xs1 = iotaMapMulti<shared_tree<adt::dummy>>([](adt::index_t<1> x) {
     return int(adt::sum(x * x));
-  }, index_type{{s}});
+  }, adt::range_t<1>(adt::index_t<1>{{s}}));
   typedef typename fun::fun_traits<shared_tree<adt::dummy>>::boundary_dummy
       shared_tree_bnd_dummy;
   typedef

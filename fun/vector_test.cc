@@ -64,7 +64,7 @@ TEST(fun_vector, fmapStencil) {
 
   auto zs = fmapStencilMulti<1>(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
-      [](auto x, auto i) { return x; }, xs, adt::idtype<int>(1),
+      [](auto x, auto i) { return x; }, xs, 0b11, adt::idtype<int>(1),
       adt::idtype<int>(100));
   auto zsum = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, zs);

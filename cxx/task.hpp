@@ -75,7 +75,6 @@ public:
         args(std::make_tuple(std::forward<Args1>(args)...)) {}
   virtual ~concrete_task() {}
   virtual R operator()() {
-    // TODO: Check that the task is executed at most once
     assert(!did_call);
 #ifndef NDEBUG
     did_call = true;

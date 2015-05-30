@@ -50,7 +50,7 @@ template <
     typename R = cxx::invoke_of_t<const F &, std::ptrdiff_t, const Args &...>,
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(const F &f, const adt::irange_t &inds, const Args &... args) {
-  std::ptrdiff_t s = inds.size();
+  std::ptrdiff_t s = inds.shape();
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -70,12 +70,14 @@ struct vector_iotaMapMulti {
 
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
-          typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
+          typename R = cxx::invoke_of_t<F &&, adt::index_t<D>, Args &&...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, adt::index_t<D> s, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   static_assert(D == 1, "");
-  return iotaMap<C>(detail::vector_iotaMapMulti(), s[0], std::forward<F>(f),
-                    std::forward<Args>(args)...);
+  return iotaMap<C>(
+      detail::vector_iotaMapMulti(),
+      adt::irange_t(inds.imin()[0], inds.imax()[0], inds.istep()[0]),
+      std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 // fmap
@@ -171,21 +173,25 @@ template <std::size_t D, typename F, typename G, typename T, typename Allocator,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs,
-                    const BCB &bm, const BCB &bp, Args &&... args) {
+                    std::size_t bmask,
+                    const typename adt::idtype<BCB>::element_type &bm,
+                    const typename adt::idtype<BCB>::element_type &bp,
+                    Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
   if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], 0b11, mextract(bm),
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bmask, mextract(bm),
                         mextract(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], 0b01, mextract(bm), cxx::invoke(g, xs[1], 0),
-                        args...);
+    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, mextract(bm),
+                        cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
       rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
                           cxx::invoke(g, xs[i + 1], 0), args...);
-    rs[s - 1] = cxx::invoke(f, xs[s - 1], 0b10, cxx::invoke(g, xs[s - 2], 1),
-                            mextract(bp), args...);
+    rs[s - 1] =
+        cxx::invoke(f, xs[s - 1], bmask & 0b10, cxx::invoke(g, xs[s - 2], 1),
+                    mextract(bp), args...);
   }
   return rs;
 }

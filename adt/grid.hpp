@@ -27,6 +27,7 @@ private:
 #warning "TODO: Make boundaries be the same type as the domain. "\
 "This ensures that the stride of dimension 0 is always 1, "\
 "which is much more efficient."
+#warning "TODO: Do this only for grid?"
   std::ptrdiff_t m_stride0;
   index_type m_stride;
   std::ptrdiff_t m_allocated;
@@ -105,6 +106,7 @@ public:
   }
 
   index_space() : index_space(origin()) {}
+  // TODO: Add padding if desired
   index_space(const index_type &shape) : index_space(shape, origin(), shape) {}
   index_space(const index_type &shape, const index_type &offset,
               const index_type &allocated)
@@ -113,12 +115,6 @@ public:
         m_allocated(make_allocated(allocated)) {
     assert(invariant());
   }
-  // index_space(const index_type &shape, std::ptrdiff_t offset,
-  //             const index_type &stride, std::ptrdiff_t allocated)
-  //     : m_shape(shape), m_offset(offset), m_stride(stride),
-  //       m_allocated(allocated) {
-  //   assert(invariant());
-  // }
 
   void swap(index_space &other) {
     using std::swap;
@@ -310,7 +306,7 @@ public:
   template <typename F, typename... Args, std::ptrdiff_t D2 = D,
             typename std::enable_if_t<D2 == 0> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
-      : indexing(index_type()),
+      : indexing(index_type{{}}),
         data(fun::iotaMap<C>(std::forward<F>(f), inds,
                              std::forward<Args>(args)...)) {
     static_assert(
@@ -322,7 +318,7 @@ public:
   template <typename F, typename... Args, std::ptrdiff_t D2 = D,
             typename std::enable_if_t<D2 == 1> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
-      : indexing(index_type{{inds.size()}}),
+      : indexing(index_type{{inds.shape()}}),
         data(fun::iotaMap<C>(std::forward<F>(f), inds,
                              std::forward<Args>(args)...)) {
     static_assert(
@@ -334,13 +330,13 @@ public:
   struct iotaMapMulti {};
 
   template <typename F, typename... Args>
-  grid(iotaMapMulti, F &&f, const index_type &s, Args &&... args)
-      : indexing(s) {
+  grid(iotaMapMulti, F &&f, const adt::range_t<D> &inds, Args &&... args)
+      : indexing(inds.shape()) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, index_type, Args...>, T>::value, "");
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     indexing.loop([&](const index_type &i) {
-      acc[indexing.linear(i)] = cxx::invoke(f, i, args...);
+      acc[indexing.linear(i)] = cxx::invoke(f, inds[i], args...);
     });
     data = acc.finalize();
     assert(invariant());
@@ -398,7 +394,7 @@ public:
 
   template <typename F, typename G, typename T1, typename... Args>
   grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 0> &xs,
-       Args &&... args)
+       std::size_t bmask, Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 0, "");
     typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B
@@ -421,8 +417,8 @@ public:
       typename BC = grid<C, adt::dummy, 0>,
       typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
       typename BCB = typename fun::fun_traits<BC>::template constructor<B>>
-  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 1> &xs, const BCB &bm0,
-       const BCB &bp0, Args &&... args)
+  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 1> &xs,
+       std::size_t bmask, const BCB &bm0, const BCB &bp0, Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 1, "");
     typedef cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...> R;
@@ -432,7 +428,7 @@ public:
     indexing.loop([&](const index_type &i) {
       bool isbm0 = i[0] == 0;
       bool isbp0 = i[0] == xs.indexing.shape()[0] - 1;
-      std::size_t bdirs = (isbm0 << 0) | (isbp0 << 1);
+      std::size_t bdirs = bmask & ((isbm0 << 0) | (isbp0 << 1));
       const B &cm0 =
           isbm0 ? fun::getIndex(bm0.data, bm0.indexing.linear(rmdir<0>(i)))
                 : cxx::invoke(
@@ -449,25 +445,18 @@ public:
     assert(invariant());
   }
 
-  template <typename F, typename G, typename T1, typename BM0, typename BM1,
-            typename BP0, typename BP1, typename... Args>
-  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 2> &xs, BM0 &&bm0,
-       BM1 &&bm1, BP0 &&bp0, BP1 &&bp1, Args &&... args)
+  template <
+      typename F, typename G, typename T1, typename... Args,
+      typename BC = grid<C, adt::dummy, 1>,
+      typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+      typename BCB = typename fun::fun_traits<BC>::template constructor<B>>
+  grid(fmapStencilMulti, F &&f, G &&g, const grid<C, T1, 2> &xs,
+       std::size_t bmask, const BCB &bm0, const BCB &bm1, const BCB &bp0,
+       const BCB &bp1, Args &&... args)
       : indexing(xs.shape()) {
     static_assert(D == 2, "");
-    typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B;
-    static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, B, B, B, B, Args...>,
-                     T>::value,
-        "");
-    // typedef grid<C, T1, 2> CT;
-    // typedef typename fun::fun_traits<CT>::boundary_dummy BD;
-    // typedef typename fun::fun_traits<BD>::template constructor<B> CB;
-    typedef grid<C, B, 1> CB;
-    static_assert(std::is_same<std::decay_t<BM0>, CB>::value, "");
-    static_assert(std::is_same<std::decay_t<BM1>, CB>::value, "");
-    static_assert(std::is_same<std::decay_t<BP0>, CB>::value, "");
-    static_assert(std::is_same<std::decay_t<BP1>, CB>::value, "");
+    typedef cxx::invoke_of_t<F, T1, std::size_t, B, B, B, B, Args...> R;
+    static_assert(std::is_same<R, T>::value, "");
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     auto di0 = array_dir<std::ptrdiff_t, D, 0>();
     auto di1 = array_dir<std::ptrdiff_t, D, 1>();
@@ -477,7 +466,7 @@ public:
       bool isbp0 = i[0] == xs.indexing.shape()[0] - 1;
       bool isbp1 = i[1] == xs.indexing.shape()[1] - 1;
       std::size_t bdirs =
-          (isbm0 << 0) | (isbm1 << 2) | (isbp0 << 1) | (isbp1 << 3);
+          bmask & ((isbm0 << 0) | (isbm1 << 2) | (isbp0 << 1) | (isbp1 << 3));
       const B &cm0 =
           isbm0
               ? fun::getIndex(bm0.data, bm0.indexing.linear(rmdir<0>(i)))

@@ -49,8 +49,8 @@ template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, const adt::index_t<D> &s, Args &&... args) {
-  return CR(typename CR::iotaMapMulti(), std::forward<F>(f), s,
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+  return CR(typename CR::iotaMapMulti(), std::forward<F>(f), inds,
             std::forward<Args>(args)...);
 }
 
@@ -83,9 +83,9 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename R = cxx::invoke_of_t<F, T, std::size_t, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
-                    Args &&... args) {
+                    std::size_t bmask, Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
-            std::forward<G>(g), xs, std::forward<Args>(args)...);
+            std::forward<G>(g), xs, bmask, std::forward<Args>(args)...);
 }
 
 template <std::size_t D, typename F, typename G, typename C, typename T,
@@ -96,10 +96,14 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
-CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs, const BCB &bm0,
-                    const BCB &bp0, Args &&... args) {
+CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
+                    std::size_t bmask,
+                    const typename adt::idtype<BCB>::element_type &bm0,
+                    const typename adt::idtype<BCB>::element_type &bp0,
+                    Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
-            std::forward<G>(g), xs, bm0, bp0, std::forward<Args>(args)...);
+            std::forward<G>(g), xs, bmask, bm0, bp0,
+            std::forward<Args>(args)...);
 }
 
 template <std::size_t D, typename F, typename G, typename C, typename T,
@@ -110,11 +114,11 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
-CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs, const BCB &bm0,
-                    const BCB &bm1, const BCB &bp0, const BCB &bp1,
-                    Args &&... args) {
+CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
+                    std::size_t bmask, const BCB &bm0, const BCB &bm1,
+                    const BCB &bp0, const BCB &bp1, Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
-            std::forward<G>(g), xs, bm0, bm1, bp0, bp1,
+            std::forward<G>(g), xs, bmask, bm0, bm1, bp0, bp1,
             std::forward<Args>(args)...);
 }
 

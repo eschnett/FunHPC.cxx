@@ -223,9 +223,9 @@ template <typename T>
 using vector_grid_proxy_tree = adt::tree<vector_grid_proxy<adt::dummy>, T>;
 
 // template <typename T> using storage_t = vector_grid<T>;
-template <typename T> using storage_t = vector_grid_proxy<T>;
+// template <typename T> using storage_t = vector_grid_proxy<T>;
 // template <typename T> using storage_t = vector_grid_tree<T>;
-// template <typename T> using storage_t = vector_grid_proxy_tree<T>;
+template <typename T> using storage_t = vector_grid_proxy_tree<T>;
 
 template <typename T>
 using boundary_t = typename fun::fun_traits<typename fun::fun_traits<
@@ -255,7 +255,7 @@ auto grid_init(real_t t) {
                 parameters.dx() *
                     (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
     return cell_init(t, x);
-  }, parameters.ncells)};
+  }, adt::range_t<dim>(parameters.ncells))};
 }
 
 auto grid_error(const grid_t &g) {
@@ -279,8 +279,9 @@ template <typename F, typename G, typename TS, typename BS,
           std::size_t... Indices, typename... Args>
 auto wrap_fmapStencil(F &&f, G &&g, TS &&xs, BS &&bs,
                       std::index_sequence<Indices...>, Args &&... args) {
+  std::size_t bmask = ~0;
   return fun::fmapStencilMulti<dim>(
-      std::forward<F>(f), std::forward<G>(g), std::forward<TS>(xs),
+      std::forward<F>(f), std::forward<G>(g), std::forward<TS>(xs), bmask,
       std::get<Indices>(std::forward<BS>(bs))..., std::forward<Args>(args)...);
 }
 

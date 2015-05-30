@@ -69,23 +69,24 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
 namespace detail {
 template <typename A> struct nested_iotaMapMulti : std::tuple<> {
   template <std::size_t D, typename F, typename... Args>
-  auto operator()(std::ptrdiff_t i, const adt::index_t<D> &s, F &&f,
+  auto operator()(std::ptrdiff_t i, const adt::range_t<D> &inds, F &&f,
                   Args &&... args) const {
-    return iotaMapMulti<A>(std::forward<F>(f), s, std::forward<Args>(args)...);
+    return iotaMapMulti<A>(std::forward<F>(f), inds,
+                           std::forward<Args>(args)...);
   }
 };
 }
 
-template <typename C, std::size_t D, typename F, typename... Args,
-          std::enable_if_t<detail::is_nested<C>::value> * = nullptr,
-          typename R = std::decay_t<cxx::invoke_of_t<
-              std::decay_t<F>, adt::index_t<D>, std::decay_t<Args>...>>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, const adt::index_t<D> &s, Args &&... args) {
+template <
+    typename C, std::size_t D, typename F, typename... Args,
+    std::enable_if_t<detail::is_nested<C>::value> * = nullptr,
+    typename R = cxx::invoke_of_t<F &&, const adt::index_t<D> &, Args &&...>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   typedef typename C::pointer_dummy P;
   typedef typename C::array_dummy A;
   // TODO: Call iotaMapMulti<P> instead?
-  return CR{iotaMap<P>(detail::nested_iotaMapMulti<A>(), std::ptrdiff_t(1), s,
+  return CR{iotaMap<P>(detail::nested_iotaMapMulti<A>(), adt::irange_t(1), inds,
                        std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
@@ -163,11 +164,13 @@ CR fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss, std::size_t bmask,
 
 namespace detail {
 template <std::ptrdiff_t> struct nested_fmapStencilMulti;
+
 template <> struct nested_fmapStencilMulti<0> : std::tuple<> {
   template <typename AT, typename F, typename G, typename... Args>
-  auto operator()(AT &&xs, F &&f, G &&g, Args &&... args) const {
+  auto operator()(AT &&xs, F &&f, G &&g, std::size_t bmask,
+                  Args &&... args) const {
     return fmapStencilMulti<0>(std::forward<F>(f), std::forward<G>(g),
-                               std::forward<AT>(xs),
+                               std::forward<AT>(xs), bmask,
                                std::forward<Args>(args)...);
   }
 };
@@ -179,9 +182,9 @@ template <std::ptrdiff_t D, typename F, typename G, typename P, typename A,
           typename R = cxx::invoke_of_t<F, T, std::size_t, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T> &xss,
-                    Args &&... args) {
+                    std::size_t bmask, Args &&... args) {
   return CR{fmap(detail::nested_fmapStencilMulti<D>(), xss.data,
-                 std::forward<F>(f), std::forward<G>(g),
+                 std::forward<F>(f), std::forward<G>(g), bmask,
                  std::forward<Args>(args)...)};
 }
 
@@ -190,10 +193,10 @@ template <> struct nested_fmapStencilMulti<1> : std::tuple<> {
   template <typename AT, typename ABM0, typename ABP0, typename F, typename G,
             typename... Args>
   auto operator()(AT &&xs, ABM0 &&bm0, ABP0 &&bp0, F &&f, G &&g,
-                  Args &&... args) const {
+                  std::size_t bmask, Args &&... args) const {
     return fmapStencilMulti<1>(std::forward<F>(f), std::forward<G>(g),
-                               std::forward<AT>(xs), std::forward<ABM0>(bm0),
-                               std::forward<ABP0>(bp0),
+                               std::forward<AT>(xs), bmask,
+                               std::forward<ABM0>(bm0), std::forward<ABP0>(bp0),
                                std::forward<Args>(args)...);
   }
 };
@@ -208,9 +211,12 @@ template <std::ptrdiff_t D, typename F, typename G, typename P, typename A,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T> &xss,
-                    const BCB &bm0, const BCB &bp0, Args &&... args) {
+                    std::size_t bmask,
+                    const typename adt::idtype<BCB>::element_type &bm0,
+                    const typename adt::idtype<BCB>::element_type &bp0,
+                    Args &&... args) {
   return CR{fmap3(detail::nested_fmapStencilMulti<D>(), xss.data, bm0.data,
-                  bp0.data, std::forward<F>(f), std::forward<G>(g),
+                  bp0.data, std::forward<F>(f), std::forward<G>(g), bmask,
                   std::forward<Args>(args)...)};
 }
 

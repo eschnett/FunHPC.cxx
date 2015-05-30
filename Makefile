@@ -42,10 +42,10 @@ ifneq ($(LLVM_DIR), )
 # Cannot have: -fsanitize=alignment,integer,null
 # DEBUGFLAGS =					\
 	-D_GLIBCXX_DEBUG			\
+	-fsanitize-undefined-trap-on-error	\
 	-fsanitize=bool				\
 	-fsanitize=bounds			\
 	-fsanitize=enum				\
-	-fsanitize-undefined-trap-on-error	\
 	-fsanitize=float-cast-overflow		\
 	-fsanitize=integer-divide-by-zero	\
 	-fsanitize=nonnull-attribute		\

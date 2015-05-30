@@ -13,14 +13,15 @@ template <typename T> using array10 = std::array<T, 10>;
 
 TEST(fun_array, iotaMap) {
   std::ptrdiff_t s = 10;
-  auto rs = iotaMap<array10<adt::dummy>>([](int x) { return x; }, s);
+  auto rs =
+      iotaMap<array10<adt::dummy>>([](int x) { return x; }, adt::irange_t(s));
   static_assert(std::is_same<decltype(rs), std::array<int, 10>>::value, "");
   EXPECT_EQ(s, rs.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
     EXPECT_EQ(i, rs[i]);
 
   auto rs1 = iotaMap<array10<adt::dummy>>(
-      [](auto x, auto y) { return double(x + y); }, s, -1);
+      [](auto x, auto y) { return double(x + y); }, adt::irange_t(s), -1);
   static_assert(std::is_same<decltype(rs1), std::array<double, 10>>::value, "");
   EXPECT_EQ(s, rs1.size());
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -55,10 +56,11 @@ TEST(fun_array, fmap) {
 
 TEST(fun_array, fmapStencil) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<array10<adt::dummy>>([](int x) { return x * x; }, s);
+  auto xs = iotaMap<array10<adt::dummy>>([](int x) { return x * x; },
+                                         adt::irange_t(s));
   auto ys = fmapStencil([](auto x, std::size_t bdir, const auto &bm,
                            const auto &bp) { return bm - 2 * x + bp; },
-                        [](auto x, auto i) { return x; }, xs, 1, 100);
+                        [](auto x, auto i) { return x; }, xs, 0b11, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
@@ -66,7 +68,8 @@ TEST(fun_array, fmapStencil) {
 
 TEST(fun_array, foldMap) {
   std::ptrdiff_t s = 10;
-  auto xs = iotaMap<array10<adt::dummy>>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<array10<adt::dummy>>([](auto x) { return int(x); },
+                                         adt::irange_t(s));
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

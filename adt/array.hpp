@@ -402,6 +402,49 @@ std::string to_string(const std::array<T, N> &x) {
 
 namespace adt {
 template <std::size_t D> using index_t = std::array<std::ptrdiff_t, D>;
+
+class irange_t {
+  std::ptrdiff_t imin_, imax_, istep_;
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(imin_, imax_, istep_);
+  }
+
+public:
+  constexpr bool invariant() const { return istep_ > 0; };
+  constexpr irange_t() : irange_t(0) {}
+  constexpr irange_t(std::ptrdiff_t imax_) : irange_t(0, imax_) {}
+  constexpr irange_t(std::ptrdiff_t imin_, std::ptrdiff_t imax_)
+      : irange_t(imin_, imax_, 1) {}
+  constexpr irange_t(std::ptrdiff_t imin_, std::ptrdiff_t imax_,
+                     std::ptrdiff_t istep_)
+      : imin_(imin_), imax_(imax_), istep_(istep_) {
+    assert(invariant());
+  }
+  constexpr std::ptrdiff_t imin() const { return imin_; } // rename to head?
+  constexpr std::ptrdiff_t imax() const { return imax_; }
+  constexpr std::ptrdiff_t istep() const { return istep_; }
+  constexpr bool empty() const { return imax_ - imin_ <= 0; }
+  constexpr std::ptrdiff_t size() const {
+    return std::max(std::ptrdiff_t(0),
+                    cxx::div_ceil(imax_ - imin_, istep_).quot);
+  }
+  constexpr std::ptrdiff_t operator[](std::ptrdiff_t i) const {
+    return imin_ + i * istep_;
+  }
+  friend std::ostream &operator<<(std::ostream &os, const irange_t &inds) {
+    return os << "irange_t[" << inds.imin_ << ":" << inds.imax_ << ":"
+              << inds.istep_ << "]";
+  }
+};
+
+template <std::size_t D> class range_t {
+  index_t<D> imin_, imax_, istep_;
+  friend class cereal::access;
+  template <typename Archive> void serialize(Archive &ar) {
+    ar(imin_, imax_, istep_);
+  }
+};
 }
 
 #define ADT_ARRAY_HPP_DONE

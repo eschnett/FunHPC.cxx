@@ -200,7 +200,7 @@ auto grid_boundary(const grid_t &g, int_t i) {
 auto cell_get_face(const cell_t &c, int_t i) { return c; }
 auto grid_rhs(const grid_t &g) {
   return grid_t{1.0,
-                fun::fmapStencil(cell_rhs, cell_get_face, g.cells,
+                fun::fmapStencil(cell_rhs, cell_get_face, g.cells, 0b11,
                                  grid_boundary(g, 0), grid_boundary(g, 1))};
 }
 

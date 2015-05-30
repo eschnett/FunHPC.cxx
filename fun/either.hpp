@@ -1,12 +1,13 @@
 #ifndef FUN_EITHER_HPP
 #define FUN_EITHER_HPP
 
+#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <adt/either.hpp>
 #include <cxx/invoke.hpp>
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -29,8 +30,6 @@ template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
   template <typename U> using constructor = adt::either<L, U>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
-
-  // typedef L left_type;
 };
 
 // iotaMap
@@ -39,13 +38,12 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_either<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  typedef typename C::left_type L;
-  assert(s <= 1);
-  if (s == 0)
-    return adt::make_left<L, R>();
-  return adt::make_right<L, R>(cxx::invoke(
-      std::forward<F>(f), std::ptrdiff_t(0), std::forward<Args>(args)...));
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
+  assert(inds.size() <= 1);
+  if (inds.empty())
+    return CR::make_left();
+  return CR::make_right(
+      cxx::invoke(std::forward<F>(f), inds[0], std::forward<Args>(args)...));
 }
 
 // fmap
@@ -57,9 +55,9 @@ template <typename F, typename T, typename L, typename... Args,
 CR fmap(F &&f, const adt::either<L, T> &xs, Args &&... args) {
   bool s = xs.right();
   if (!s)
-    return adt::make_left<L, R>(xs.get_left());
-  return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f), xs.get_right(),
-                                           std::forward<Args>(args)...));
+    return CR::make_left(xs.get_left());
+  return CR::make_right(cxx::invoke(std::forward<F>(f), xs.get_right(),
+                                    std::forward<Args>(args)...));
 }
 
 template <typename F, typename T, typename L, typename... Args,
@@ -69,10 +67,10 @@ template <typename F, typename T, typename L, typename... Args,
 CR fmap(F &&f, adt::either<L, T> &&xs, Args &&... args) {
   bool s = xs.right();
   if (!s)
-    return adt::make_left<L, R>(xs.get_left());
-  return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f),
-                                           std::move(xs.get_right()),
-                                           std::forward<Args>(args)...));
+    return CR::make_left(xs.get_left());
+  return CR::make_right(cxx::invoke(std::forward<F>(f),
+                                    std::move(xs.get_right()),
+                                    std::forward<Args>(args)...));
 }
 
 template <typename F, typename T, typename L, typename T2, typename L2,
@@ -84,10 +82,10 @@ CR fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L2, T2> &ys,
   bool s = xs.right();
   assert(ys.right() == s);
   if (!s)
-    return adt::make_left<L, R>(xs.get_left());
-  return adt::make_right<L, R>(cxx::invoke(std::forward<F>(f), xs.get_right(),
-                                           ys.get_right(),
-                                           std::forward<Args>(args)...));
+    return CR::make_left(xs.get_left());
+  return CR::make_right(cxx::invoke(std::forward<F>(f), xs.get_right(),
+                                    ys.get_right(),
+                                    std::forward<Args>(args)...));
 }
 
 // foldMap
@@ -135,8 +133,7 @@ template <typename C, typename T,
           typename R = std::decay_t<T>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR munit(T &&x) {
-  typedef typename C::left_type L;
-  return adt::make_right<L, R>(std::forward<T>(x));
+  return CR::make_right(std::forward<T>(x));
 }
 
 // mbind
@@ -145,9 +142,8 @@ template <typename F, typename T, typename L, typename... Args,
           typename CR = cxx::invoke_of_t<F, T, Args...>>
 CR mbind(F &&f, const adt::either<L, T> &xs, Args &&... args) {
   static_assert(detail::is_either<CR>::value, "");
-  typedef typename fun_traits<CR>::value_type R;
   if (!xs.right())
-    return adt::make_left<L, R>();
+    return CR::make_left();
   return cxx::invoke(std::forward<F>(f), xs.get_right(),
                      std::forward<Args>(args)...);
 }
@@ -167,14 +163,14 @@ auto mbind(F &&f, adt::either<L, T> &&xs, Args &&... args) {
 template <typename T, typename L, typename CT = adt::either<L, T>>
 CT mjoin(const adt::either<L, adt::either<L, T>> &xss) {
   if (!xss.right())
-    return adt::make_left<L, T>(xss.get_left());
+    return CT::make_left(xss.get_left());
   return xss.get_right();
 }
 
 template <typename T, typename L, typename CT = adt::either<L, T>>
 CT mjoin(adt::either<L, adt::either<L, T>> &&xss) {
   if (!xss.right())
-    return adt::make_left<L, T>(std::move(xss.get_left()));
+    return CT::make_left(std::move(xss.get_left()));
   return std::move(xss.get_right());
 }
 
@@ -209,8 +205,7 @@ template <typename C, typename R,
           std::enable_if_t<detail::is_either<C>::value> * = nullptr,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR mzero() {
-  typedef typename C::left_type L;
-  return adt::make_left<L, R>();
+  return CR::make_left();
 }
 
 // mplus
@@ -223,7 +218,7 @@ CT mplus(const adt::either<L, T> &xs, const adt::either<L, Ts> &... yss) {
   for (auto pys : std::initializer_list<const adt::either<L, T> *>{&yss...})
     if ((*pys).right())
       return *pys;
-  return adt::make_left<L, T>();
+  return CT::make_left();
 }
 
 template <typename T, typename L, typename... Ts,
@@ -234,7 +229,7 @@ CT mplus(adt::either<L, T> &&xs, adt::either<L, Ts> &&... yss) {
   for (auto pys : std::initializer_list<adt::either<L, T> *>{&yss...})
     if ((*pys).right())
       return std::move(*pys);
-  return adt::make_left<L, T>();
+  return CT::make_left();
 }
 
 // mempty

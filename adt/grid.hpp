@@ -2,6 +2,7 @@
 #define ADT_GRID_HPP
 
 #include <adt/dummy.hpp>
+#include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/array.hpp>
 
@@ -119,6 +120,15 @@ public:
   //   assert(invariant());
   // }
 
+  void swap(index_space &other) {
+    using std::swap;
+    swap(m_shape, other.m_shape);
+    swap(m_offset, other.m_offset);
+    swap(m_stride0, other.m_stride0);
+    swap(m_stride, other.m_stride);
+    swap(m_allocated, other.m_allocated);
+  }
+
   const index_type &shape() const { return m_shape; }
   std::size_t size() const { return adt::prod(shape()); }
   bool empty() const { return size() == 0; }
@@ -208,6 +218,9 @@ public:
               << "}";
   }
 };
+template <std::ptrdiff_t D> void swap(index_space<D> &x, index_space<D> &y) {
+  x.swap(y);
+}
 }
 
 template <typename C, typename T, std::ptrdiff_t D> class grid {
@@ -276,6 +289,11 @@ public:
   grid(grid &&) = default;
   grid &operator=(const grid &) = default;
   grid &operator=(grid &&) = default;
+  void swap(grid &other) {
+    using std::swap;
+    swap(indexing, other.indexing);
+    swap(data, other.data);
+  }
 
   const T &head() const {
     return fun::getIndex(data, indexing.linear(adt::set<index_type>(0)));
@@ -291,9 +309,9 @@ public:
 
   template <typename F, typename... Args, std::ptrdiff_t D2 = D,
             typename std::enable_if_t<D2 == 0> * = nullptr>
-  grid(iotaMap, F &&f, std::ptrdiff_t s, Args &&... args)
+  grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
       : indexing(index_type()),
-        data(fun::iotaMap<C>(std::forward<F>(f), s,
+        data(fun::iotaMap<C>(std::forward<F>(f), inds,
                              std::forward<Args>(args)...)) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
@@ -303,9 +321,9 @@ public:
 
   template <typename F, typename... Args, std::ptrdiff_t D2 = D,
             typename std::enable_if_t<D2 == 1> * = nullptr>
-  grid(iotaMap, F &&f, std::ptrdiff_t s, Args &&... args)
-      : indexing(index_type{{s}}),
-        data(fun::iotaMap<C>(std::forward<F>(f), s,
+  grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
+      : indexing(index_type{{inds.size()}}),
+        data(fun::iotaMap<C>(std::forward<F>(f), inds,
                              std::forward<Args>(args)...)) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
@@ -519,6 +537,10 @@ public:
     return r;
   }
 };
+template <typename C, typename T, std::ptrdiff_t D>
+void swap(grid<C, T, D> &x, grid<C, T, D> &y) {
+  x.swap(y);
+}
 }
 
 #define ADT_GRID_HPP_DONE

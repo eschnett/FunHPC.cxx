@@ -8,16 +8,18 @@ template <typename T> using either1 = adt::either<char, T>;
 
 TEST(fun_either, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<either1<adt::dummy>>([](int x) { return x; }, s);
+  auto rs =
+      iotaMap<either1<adt::dummy>>([](int x) { return x; }, adt::irange_t(s));
   static_assert(std::is_same<decltype(rs), either1<int>>::value, "");
   EXPECT_TRUE(rs.right());
   EXPECT_EQ(0, rs.get_right());
 
-  auto rs0 = iotaMap<either1<adt::dummy>>([](int x) { return x; }, 0);
+  auto rs0 =
+      iotaMap<either1<adt::dummy>>([](int x) { return x; }, adt::irange_t(0));
   EXPECT_FALSE(rs0.right());
 
   auto rs1 = iotaMap<either1<adt::dummy>>(
-      [](int x, int y) { return double(x + y); }, s, -1);
+      [](int x, int y) { return double(x + y); }, adt::irange_t(s), -1);
   static_assert(std::is_same<decltype(rs1), either1<double>>::value, "");
   EXPECT_TRUE(rs1.right());
   EXPECT_EQ(-1, rs1.get_right());
@@ -45,7 +47,8 @@ TEST(fun_either, fmap) {
 
 TEST(fun_either, foldMap) {
   std::ptrdiff_t s = 1;
-  auto xs = iotaMap<either1<adt::dummy>>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<either1<adt::dummy>>([](auto x) { return int(x); },
+                                         adt::irange_t(s));
   auto ys = xs;
 
   auto sum = foldMap([](auto x) { return x; },

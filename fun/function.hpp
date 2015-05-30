@@ -1,9 +1,11 @@
 #ifndef FUN_FUNCTION_HPP
 #define FUN_FUNCTION_HPP
 
+#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <functional>
 #include <type_traits>
@@ -27,8 +29,6 @@ template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
   template <typename U> using constructor = std::function<U(A)>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
-
-  // typedef A argument_type;
 };
 
 // iotaMap
@@ -37,14 +37,14 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_function<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   typedef typename C::argument_type A;
-  assert(s <= 1);
-  if (s == 0)
+  assert(inds.size() <= 1);
+  if (inds.empty())
     return CR();
   // TODO: Make this serializable
-  CR rs = [ f = std::forward<F>(f), args... ](const A &) {
-    return cxx::invoke(f, std::ptrdiff_t(0), args...);
+  CR rs = [ f = std::forward<F>(f), i = inds[0], args... ](const A &) {
+    return cxx::invoke(f, i, args...);
   };
   return rs;
 }

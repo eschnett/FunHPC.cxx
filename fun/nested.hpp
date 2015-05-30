@@ -44,9 +44,9 @@ struct fun_traits<adt::nested<P, A, T>> {
 namespace detail {
 template <typename A> struct nested_iotaMap : std::tuple<> {
   template <typename F, typename... Args>
-  auto operator()(std::ptrdiff_t i, std::ptrdiff_t s, F &&f,
+  auto operator()(std::ptrdiff_t i, const adt::irange_t &inds, F &&f,
                   Args &&... args) const {
-    return iotaMap<A>(std::forward<F>(f), s, std::forward<Args>(args)...);
+    return iotaMap<A>(std::forward<F>(f), inds, std::forward<Args>(args)...);
   }
 };
 }
@@ -56,11 +56,14 @@ template <typename C, typename F, typename... Args,
           typename R = std::decay_t<cxx::invoke_of_t<
               std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   typedef typename C::pointer_dummy P;
   typedef typename C::array_dummy A;
-  return CR{iotaMap<P>(detail::nested_iotaMap<A>(), std::ptrdiff_t(1), s,
-                       std::forward<F>(f), std::forward<Args>(args)...)};
+  return CR{iotaMap<P>(
+      detail::nested_iotaMap<A>(),
+      adt::irange_t(inds.imin(), inds.imax(),
+                    inds.empty() ? inds.istep() : inds.imax() - inds.imin()),
+      inds, std::forward<F>(f), std::forward<Args>(args)...)};
 }
 
 namespace detail {
@@ -133,10 +136,10 @@ namespace detail {
 struct nested_fmapStencil : std::tuple<> {
   template <typename AT, typename F, typename G, typename BM, typename BP,
             typename... Args>
-  auto operator()(AT &&xs, F &&f, G &&g, BM &&bm, BP &&bp,
+  auto operator()(AT &&xs, F &&f, G &&g, std::size_t bmask, BM &&bm, BP &&bp,
                   Args &&... args) const {
     return fmapStencil(std::forward<F>(f), std::forward<G>(g),
-                       std::forward<AT>(xs), std::forward<BM>(bm),
+                       std::forward<AT>(xs), bmask, std::forward<BM>(bm),
                        std::forward<BP>(bp), std::forward<Args>(args)...);
   }
 };
@@ -148,12 +151,12 @@ template <typename F, typename G, typename P, typename A, typename T,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss, BM &&bm, BP &&bp,
-               Args &&... args) {
+CR fmapStencil(F &&f, G &&g, const adt::nested<P, A, T> &xss, std::size_t bmask,
+               BM &&bm, BP &&bp, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   return CR{fun::fmap(detail::nested_fmapStencil(), xss.data,
-                      std::forward<F>(f), std::forward<G>(g),
+                      std::forward<F>(f), std::forward<G>(g), bmask,
                       std::forward<BM>(bm), std::forward<BP>(bp),
                       std::forward<Args>(args)...)};
 }

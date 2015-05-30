@@ -223,8 +223,8 @@ template <typename T>
 using vector_grid_proxy_tree = adt::tree<vector_grid_proxy<adt::dummy>, T>;
 
 // template <typename T> using storage_t = vector_grid<T>;
-// template <typename T> using storage_t = vector_grid_proxy<T>;
-template <typename T> using storage_t = vector_grid_tree<T>;
+template <typename T> using storage_t = vector_grid_proxy<T>;
+// template <typename T> using storage_t = vector_grid_tree<T>;
 // template <typename T> using storage_t = vector_grid_proxy_tree<T>;
 
 template <typename T>

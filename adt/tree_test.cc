@@ -11,6 +11,10 @@
 #include <memory>
 #include <vector>
 
+#warning "TODO: Move these tests to fun/tree_test.cc"
+
+#if 0
+
 namespace {
 template <typename T>
 using shared_vector =
@@ -160,3 +164,5 @@ TEST(adt_tree, join) {
   auto ys = shared_tree<double>(typename shared_tree<double>::join(), yss);
   EXPECT_EQ(4950, ys.size());
 }
+
+#endif

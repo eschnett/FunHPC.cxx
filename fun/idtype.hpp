@@ -7,8 +7,8 @@
 #include <adt/idtype.hpp>
 #include <cxx/invoke.hpp>
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -42,10 +42,10 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_idtype<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  assert(s == 1);
-  return adt::idtype<R>(cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
-                                    std::forward<Args>(args)...));
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
+  assert(inds.size() == 1);
+  return adt::idtype<R>(
+      cxx::invoke(std::forward<F>(f), inds[0], std::forward<Args>(args)...));
 }
 
 // fmap

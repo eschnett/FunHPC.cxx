@@ -109,6 +109,21 @@ public:
     }
   }
 
+  template <typename... Args> static either<L, R> make_left(Args &&... args) {
+    either<L, R> res;
+    res.destruct();
+    res.is_left = true;
+    new (&res.left_) L(std::forward<Args>(args)...);
+    return res;
+  }
+  template <typename... Args> static either<L, R> make_right(Args &&... args) {
+    either<L, R> res;
+    res.destruct();
+    res.is_left = false;
+    new (&res.right_) R(std::forward<Args>(args)...);
+    return res;
+  }
+
   bool left() const noexcept { return is_left; }
   bool right() const noexcept { return !is_left; }
   const L &get_left() const {
@@ -180,19 +195,11 @@ template <typename L, typename R> void swap(either<L, R> &x, either<L, R> &y) {
 
 template <typename L, typename R, typename... Args>
 either<L, R> make_left(Args &&... args) {
-  either<L, R> res;
-  res.destruct();
-  res.is_left = true;
-  new (&res.left_) L(std::forward<Args>(args)...);
-  return res;
+  return either<L, R>::make_left(std::forward<Args>(args)...);
 }
 template <typename L, typename R, typename... Args>
 either<L, R> make_right(Args &&... args) {
-  either<L, R> res;
-  res.destruct();
-  res.is_left = false;
-  new (&res.right_) R(std::forward<Args>(args)...);
-  return res;
+  return either<L, R>::make_right(std::forward<Args>(args)...);
 }
 }
 

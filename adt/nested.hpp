@@ -6,7 +6,6 @@
 #include <cereal/access.hpp>
 
 #include <type_traits>
-#include <vector>
 
 namespace adt {
 
@@ -34,6 +33,10 @@ template <typename P, typename A, typename T> struct nested {
 
   template <typename Archive> void serialize(Archive &ar) { ar(data); }
 };
+template <typename P, typename A, typename T>
+void swap(nested<P, A, T> &x, nested<P, A, T> &y) {
+  swap(x.data, y.data);
+}
 }
 
 #define ADT_NESTED_HPP_DONE

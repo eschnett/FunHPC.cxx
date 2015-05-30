@@ -6,11 +6,12 @@ using namespace fun;
 
 TEST(fun_empty, iotaMap) {
   std::ptrdiff_t s = 0;
-  auto rs = iotaMap<adt::empty<adt::dummy>>([](int x) { return x; }, s);
+  auto rs = iotaMap<adt::empty<adt::dummy>>([](int x) { return x; },
+                                            adt::irange_t(s));
   static_assert(std::is_same<decltype(rs), adt::empty<int>>::value, "");
 
   auto rs1 = iotaMap<adt::empty<adt::dummy>>(
-      [](int x, int y) { return double(x + y); }, s, -1);
+      [](int x, int y) { return double(x + y); }, adt::irange_t(s), -1);
   static_assert(std::is_same<decltype(rs1), adt::empty<double>>::value, "");
 }
 
@@ -30,7 +31,8 @@ TEST(fun_empty, fmap) {
 
 TEST(fun_empty, foldMap) {
   std::ptrdiff_t s = 0;
-  auto xs = iotaMap<adt::empty<adt::dummy>>([](auto x) { return int(x); }, s);
+  auto xs = iotaMap<adt::empty<adt::dummy>>([](auto x) { return int(x); },
+                                            adt::irange_t(s));
   auto ys = xs;
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, xs);

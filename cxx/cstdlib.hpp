@@ -14,7 +14,7 @@ template <typename T> struct div_t {
 
 template <typename T, typename U,
           typename R = decltype(std::declval<T>() / std::declval<U>())>
-div_t<R> div_floor(const T x, const U y) {
+constexpr div_t<R> div_floor(const T x, const U y) {
   // x == q*y+r
   R q = x / y;
   R r = x % y;
@@ -29,7 +29,7 @@ div_t<R> div_floor(const T x, const U y) {
 
 template <typename T, typename U,
           typename R = decltype(std::declval<T>() / std::declval<U>())>
-div_t<R> div_ceil(const T x, const U y) {
+constexpr div_t<R> div_ceil(const T x, const U y) {
   // x == q*y+r
   R q = x / y;
   R r = x % y;
@@ -44,7 +44,7 @@ div_t<R> div_ceil(const T x, const U y) {
 
 template <typename T, typename U,
           typename R = decltype(std::declval<T>() / std::declval<U>())>
-div_t<R> div_exact(const T x, const U y) {
+constexpr div_t<R> div_exact(const T x, const U y) {
   // x == q*y+r
   R q = x / y;
   R r = x % y;

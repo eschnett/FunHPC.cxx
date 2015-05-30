@@ -6,8 +6,8 @@
 #include <cxx/invoke.hpp>
 #include <fun/idtype.hpp>
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -37,7 +37,6 @@ struct fun_traits<std::vector<T, Allocator>> {
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 
-  // typedef Allocator allocator_type;
   static constexpr std::ptrdiff_t rank = 1;
   typedef adt::index_t<rank> index_type;
   typedef adt::idtype<adt::dummy> boundary_dummy;
@@ -45,15 +44,17 @@ struct fun_traits<std::vector<T, Allocator>> {
 
 // iotaMap
 
-template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
+template <
+    typename C, typename F, typename... Args,
+    std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
+    typename R = cxx::invoke_of_t<const F &, std::ptrdiff_t, const Args &...>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMap(const F &f, const adt::irange_t &inds, const Args &... args) {
+  std::ptrdiff_t s = inds.size();
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
-    rs[i] = cxx::invoke(f, i, args...);
+    rs[i] = cxx::invoke(f, inds[i], args...);
   return rs;
 }
 
@@ -138,24 +139,25 @@ template <typename F, typename G, typename T, typename Allocator, typename BM,
           typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
-CR fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs, BM &&bm,
-               BP &&bp, Args &&... args) {
+CR fmapStencil(F &&f, G &&g, const std::vector<T, Allocator> &xs,
+               std::size_t bmask, BM &&bm, BP &&bp, Args &&... args) {
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   std::ptrdiff_t s = xs.size();
   CR rs(s);
   if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], 0b11, std::forward<BM>(bm),
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bmask, std::forward<BM>(bm),
                         std::forward<BP>(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], 0b01, std::forward<BM>(bm),
+    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, std::forward<BM>(bm),
                         cxx::invoke(g, xs[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
       rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
                           cxx::invoke(g, xs[i + 1], 0), args...);
-    rs[s - 1] = cxx::invoke(f, xs[s - 1], 0b10, cxx::invoke(g, xs[s - 2], 1),
-                            std::forward<BP>(bp), args...);
+    rs[s - 1] =
+        cxx::invoke(f, xs[s - 1], bmask & 0b10, cxx::invoke(g, xs[s - 2], 1),
+                    std::forward<BP>(bp), args...);
   }
   return rs;
 }
@@ -168,23 +170,22 @@ template <std::size_t D, typename F, typename G, typename T, typename Allocator,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
-CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs, BCB bm,
-                    BCB bp, Args &&... args) {
+CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs,
+                    const BCB &bm, const BCB &bp, Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
   if (__builtin_expect(s == 1, false)) {
-    rs[0] =
-        cxx::invoke(std::forward<F>(f), xs[0], 0b11, mextract(std::move(bm)),
-                    mextract(std::move(bp)), std::forward<Args>(args)...);
+    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], 0b11, mextract(bm),
+                        mextract(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], 0b01, mextract(std::move(bm)),
-                        cxx::invoke(g, xs[1], 0), args...);
+    rs[0] = cxx::invoke(f, xs[0], 0b01, mextract(bm), cxx::invoke(g, xs[1], 0),
+                        args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
       rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
                           cxx::invoke(g, xs[i + 1], 0), args...);
     rs[s - 1] = cxx::invoke(f, xs[s - 1], 0b10, cxx::invoke(g, xs[s - 2], 1),
-                            mextract(std::move(bp)), args...);
+                            mextract(bp), args...);
   }
   return rs;
 }

@@ -1,12 +1,13 @@
 #ifndef FUN_SHARED_FUTURE_HPP
 #define FUN_SHARED_FUTURE_HPP
 
+#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 #include <qthread/future.hpp>
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -38,11 +39,11 @@ template <typename C, typename F, typename... Args,
           typename R = std::decay_t<cxx::invoke_of_t<
               std::decay_t<F>, std::ptrdiff_t, std::decay_t<Args>...>>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  assert(s <= 1);
-  if (__builtin_expect(s == 0, false))
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
+  assert(inds.size() <= 1);
+  if (__builtin_expect(inds.empty(), false))
     return qthread::shared_future<R>();
-  return qthread::async(std::forward<F>(f), std::ptrdiff_t(0),
+  return qthread::async(std::forward<F>(f), inds[0],
                         std::forward<Args>(args)...).share();
 }
 

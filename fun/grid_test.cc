@@ -94,7 +94,7 @@ TEST(fun_grid, boundaryMap) {
   }, typename grid1<int>::index_type{{s}});
   std::array<grid0<int>, 2> bxs1;
   for (std::ptrdiff_t i = 0; i < 2; ++i) {
-    bxs1[i] = fun::boundaryMap([](auto x) { return -x; }, xs1, i);
+    bxs1[i] = fun::boundaryMap([](auto x, auto i) { return -x; }, xs1, i);
     EXPECT_EQ(1, fun::msize(bxs1[i]));
   }
   EXPECT_EQ(0, fun::mextract(bxs1[0]));
@@ -105,7 +105,7 @@ TEST(fun_grid, boundaryMap) {
   }, typename grid2<int>::index_type{{s, s}});
   std::array<grid1<int>, 4> bxs2;
   for (std::ptrdiff_t i = 0; i < 4; ++i) {
-    bxs2[i] = fun::boundaryMap([](auto x) { return -x; }, xs2, i);
+    bxs2[i] = fun::boundaryMap([](auto x, auto i) { return -x; }, xs2, i);
     EXPECT_EQ(s, fun::msize(bxs2[i]));
   }
   EXPECT_EQ(0, fun::mextract(bxs2[0]));

@@ -7,6 +7,7 @@ namespace adt {
 struct dummy {
   template <typename Archive> void serialize(Archive &ar) { ar(); }
 };
+inline void swap(dummy &x, dummy &y) {}
 }
 
 #define ADT_DUMMY_HPP_DONE

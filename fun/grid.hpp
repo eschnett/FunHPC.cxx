@@ -4,7 +4,6 @@
 #include <adt/dummy.hpp>
 #include <adt/grid.hpp>
 
-#include <algorithm>
 #include <cassert>
 #include <initializer_list>
 #include <iterator>
@@ -41,8 +40,8 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  return CR(typename CR::iotaMap(), std::forward<F>(f), s,
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
+  return CR(typename CR::iotaMap(), std::forward<F>(f), inds,
             std::forward<Args>(args)...);
 }
 
@@ -208,8 +207,7 @@ CR munit(T &&x) {
 
 // mextract
 
-template <typename C, typename T, std::ptrdiff_t D,
-          std::enable_if_t<D == 0> * = nullptr>
+template <typename C, typename T, std::ptrdiff_t D>
 decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
   return xs.head();
 }

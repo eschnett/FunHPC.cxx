@@ -1,6 +1,7 @@
 #ifndef FUN_MAYBE_HPP
 #define FUN_MAYBE_HPP
 
+#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <adt/maybe.hpp>
 #include <cxx/invoke.hpp>
@@ -36,12 +37,12 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_maybe<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMap(F &&f, std::ptrdiff_t s, Args &&... args) {
-  assert(s <= 1);
-  if (s == 0)
+CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
+  assert(inds.size() <= 1);
+  if (inds.empty())
     return adt::make_nothing<R>();
-  return adt::make_just<R>(cxx::invoke(std::forward<F>(f), std::ptrdiff_t(0),
-                                       std::forward<Args>(args)...));
+  return adt::make_just<R>(
+      cxx::invoke(std::forward<F>(f), inds[0], std::forward<Args>(args)...));
 }
 
 // fmap

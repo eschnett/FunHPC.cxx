@@ -8,16 +8,18 @@ template <typename R> using std_function = std::function<R(int)>;
 
 TEST(fun_function, iotaMap) {
   std::ptrdiff_t s = 1;
-  auto rs = iotaMap<std_function<adt::dummy>>([](int x) { return x; }, s);
+  auto rs = iotaMap<std_function<adt::dummy>>([](int x) { return x; },
+                                              adt::irange_t(s));
   static_assert(std::is_same<decltype(rs), std_function<int>>::value, "");
   EXPECT_TRUE(bool(rs));
   EXPECT_EQ(0, rs(42));
 
-  auto rs0 = iotaMap<std_function<adt::dummy>>([](int x) { return x; }, 0);
+  auto rs0 = iotaMap<std_function<adt::dummy>>([](int x) { return x; },
+                                               adt::irange_t(0));
   EXPECT_FALSE(bool(rs0));
 
   auto rs1 = iotaMap<std_function<adt::dummy>>(
-      [](int x, int y) { return double(x + y); }, s, -1);
+      [](int x, int y) { return double(x + y); }, adt::irange_t(s), -1);
   static_assert(std::is_same<decltype(rs1), std_function<double>>::value, "");
   EXPECT_TRUE(bool(rs1));
   EXPECT_EQ(-1, rs1(42));

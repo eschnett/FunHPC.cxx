@@ -74,7 +74,7 @@ TEST(fun_nested, fmapStencil) {
   auto xs = iotaMap<nested1<adt::dummy>>([](int x) { return x * x; }, s);
   auto ys = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
-      [](auto x, auto i) { return x; }, xs, 1, 100);
+      [](auto x, auto i) { return x; }, xs, 0b11, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
@@ -83,7 +83,7 @@ TEST(fun_nested, fmapStencil) {
   // EXPECT_FALSE(x2s.data.ready());
   auto y2s = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
-      [](auto x, auto i) { return x; }, x2s, 1, 100);
+      [](auto x, auto i) { return x; }, x2s, 0b11, 1, 100);
   // EXPECT_FALSE(x2s.data.ready());
   // EXPECT_FALSE(y2s.data.ready());
   auto sum2 = foldMap([](auto x) { return x; },

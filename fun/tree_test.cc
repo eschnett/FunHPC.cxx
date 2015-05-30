@@ -25,28 +25,32 @@ using future_tree = adt::tree<future_vector<adt::dummy>, T>;
 #warning "TODO: Test trees of grids"
 
 TEST(fun_tree, iotaMap) {
-  std::ptrdiff_t s = 10;
-  auto rs = iotaMap<shared_tree<adt::dummy>>([](auto x) { return int(x); }, s);
-  static_assert(std::is_same<decltype(rs), shared_tree<int>>::value, "");
-  EXPECT_EQ(s, rs.size());
-  EXPECT_EQ(9, rs.last());
+  for (std::ptrdiff_t s = 0; s < 110; ++s) {
+    auto rs = iotaMap<shared_tree<adt::dummy>>([](auto x) { return int(x); },
+                                               adt::irange_t(s));
+    static_assert(std::is_same<decltype(rs), shared_tree<int>>::value, "");
+    EXPECT_EQ(s, msize(rs));
+    if (s > 0)
+      EXPECT_EQ(s - 1, last(rs));
 
-  auto rs1 = iotaMap<shared_tree<adt::dummy>>(
-      [](auto x, auto y) { return double(x + y); }, s, -1);
-  static_assert(std::is_same<decltype(rs1), shared_tree<double>>::value, "");
-  EXPECT_EQ(8, rs1.last());
+    auto rs1 = iotaMap<shared_tree<adt::dummy>>(
+        [](auto x, auto y) { return double(x + y); }, adt::irange_t(s), -1);
+    static_assert(std::is_same<decltype(rs1), shared_tree<double>>::value, "");
+    if (s > 0)
+      EXPECT_EQ(s - 2, last(rs1));
+  }
 }
 
 TEST(fun_tree, fmap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<shared_tree<adt::dummy>>([](auto x) { return int(x); }, s);
-  EXPECT_EQ(9, xs.last());
+  EXPECT_EQ(9, last(xs));
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
-  EXPECT_EQ(10, ys.last());
+  EXPECT_EQ(10, last(ys));
 
   auto zs = fmap2([](auto x, auto y) { return x + y; }, xs, ys);
-  EXPECT_EQ(19, zs.last());
+  EXPECT_EQ(19, last(zs));
 }
 
 TEST(fun_tree, boundary) {
@@ -72,14 +76,14 @@ TEST(fun_tree, boundary) {
 #warning "TODO: test other tree types"
 }
 
-#warning "TODO: test fmapBoundary"
+#warning "TODO: test boundaryMap"
 
 TEST(fun_tree, fmapStencil) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<shared_tree<adt::dummy>>([](int x) { return x * x; }, s);
   auto ys = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
-      [](auto x, auto i) { return x; }, xs, 1, 100);
+      [](auto x, auto i) { return x; }, xs, 0b11, 1, 100);
   auto sum = foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, ys);
   EXPECT_EQ(20, sum);
@@ -88,7 +92,7 @@ TEST(fun_tree, fmapStencil) {
   // EXPECT_FALSE(x2s.data.ready());
   auto y2s = fmapStencil(
       [](auto x, auto bdirs, auto bm, auto bp) { return bm - 2 * x + bp; },
-      [](auto x, auto i) { return x; }, x2s, 1, 100);
+      [](auto x, auto i) { return x; }, x2s, 0b11, 1, 100);
   // EXPECT_FALSE(x2s.data.ready());
   // EXPECT_FALSE(y2s.data.ready());
   auto sum2 = foldMap([](auto x) { return x; },
@@ -116,15 +120,15 @@ TEST(fun_tree, monad) {
 
   auto z1 = mfoldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0, zs);
-  EXPECT_EQ(1, z1.size());
+  EXPECT_EQ(1, msize(z1));
   EXPECT_EQ(z, mextract(z1));
 
   auto ns = mzero<shared_tree<adt::dummy>, int>();
-  EXPECT_TRUE(ns.empty());
+  EXPECT_TRUE(mempty(ns));
   auto ps = mplus(ns, xs, ys, zs);
-  EXPECT_EQ(3, ps.size());
+  EXPECT_EQ(3, msize(ps));
   auto ss = msome<shared_tree<adt::dummy>>(1, 2, 3);
-  EXPECT_EQ(3, ss.size());
+  EXPECT_EQ(3, msize(ss));
   EXPECT_TRUE(mempty(ns));
   EXPECT_FALSE(mempty(ps));
   EXPECT_FALSE(mempty(ss));

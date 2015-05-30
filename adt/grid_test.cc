@@ -1,6 +1,7 @@
 #include <fun/vector.hpp>
 #include <adt/grid.hpp>
 
+#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 
 #include <gtest/gtest.h>
@@ -21,11 +22,11 @@ TEST(adt_grid, basic) {
 TEST(adt_grid, iotaMap_simple) {
   auto g0 = adt::grid<std::vector<adt::dummy>, double, 0>(
       typename adt::grid<std::vector<adt::dummy>, double, 0>::iotaMap(),
-      [](auto i) { return double(i); }, 1);
+      [](auto i) { return double(i); }, adt::irange_t(1));
   EXPECT_EQ(0.0, g0.last());
   auto g1 = adt::grid<std::vector<adt::dummy>, double, 1>(
       typename adt::grid<std::vector<adt::dummy>, double, 1>::iotaMap(),
-      [](auto i) { return double(i); }, 10);
+      [](auto i) { return double(i); }, adt::irange_t(10));
   EXPECT_EQ(9.0, g1.last());
 }
 

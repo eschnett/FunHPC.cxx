@@ -172,6 +172,7 @@ using proxy_tree_vector =
     adt::nested<proxy_tree<adt::dummy>, std::vector<adt::dummy>, T>;
 
 // template <typename T> using storage_t = std::vector<T>;
+// template <typename T> using storage_t = future_vector<T>;
 // template <typename T> using storage_t = proxy_vector<T>;
 // template <typename T> using storage_t = proxy_tree<T>;
 template <typename T> using storage_t = proxy_tree_vector<T>;

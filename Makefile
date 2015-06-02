@@ -115,6 +115,7 @@ HDRS =						\
 	adt/tree_impl.hpp			\
 	cxx/apply.hpp				\
 	cxx/cstdlib.hpp				\
+	cxx/funobj.hpp				\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
@@ -170,6 +171,7 @@ TEST_SRCS =					\
 	adt/nested_test.cc			\
 	adt/tree_test.cc			\
 	cxx/apply_test.cc			\
+	cxx/funobj_test.cc			\
 	cxx/invoke_test.cc			\
 	cxx/serialize_test.cc			\
 	cxx/task_test.cc			\

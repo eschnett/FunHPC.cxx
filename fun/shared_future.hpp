@@ -80,6 +80,25 @@ CR fmap2(F &&f, const qthread::shared_future<T> &xs,
   }).share();
 }
 
+template <typename F, typename T, typename T2, typename T3, typename... Args,
+          typename C = qthread::shared_future<T>,
+          typename R = cxx::invoke_of_t<F, T, T2, T3, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap3(F &&f, const qthread::shared_future<T> &xs,
+         const qthread::shared_future<T2> &ys,
+         const qthread::shared_future<T3> &zs, Args &&... args) {
+  bool s = xs.valid();
+  assert(ys.valid() == s);
+  assert(zs.valid() == s);
+  if (!s)
+    return CR();
+  return xs.then([ f = std::forward<F>(f), ys, zs, args... ](
+                     const qthread::shared_future<T> &xs) mutable {
+    return cxx::invoke(std::move(f), xs.get(), ys.get(), zs.get(),
+                       std::move(args)...);
+  }).share();
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,

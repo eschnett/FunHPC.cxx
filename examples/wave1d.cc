@@ -1,4 +1,5 @@
 #include <adt/dummy.hpp>
+#include <cxx/funobj.hpp>
 #include <fun/fun_decl.hpp>
 #include <fun/nested_decl.hpp>
 #include <fun/proxy.hpp>
@@ -221,7 +222,8 @@ auto grid_boundary(const grid_t &g, int_t i) {
 auto cell_get_face(const cell_t &c, int_t i) { return c; }
 auto grid_rhs(const grid_t &g) {
   return grid_t{1.0,
-                fun::fmapStencil(cell_rhs, cell_get_face, g.cells, 0b11,
+                fun::fmapStencil(CXX_FUNOBJ(cell_rhs),
+                                 CXX_FUNOBJ(cell_get_face), g.cells, 0b11,
                                  grid_boundary(g, 0), grid_boundary(g, 1))};
 }
 

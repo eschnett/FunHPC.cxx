@@ -1,6 +1,7 @@
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/apply.hpp>
+#include <cxx/funobj.hpp>
 #include <cxx/tuple.hpp>
 #include <cxx/utility.hpp>
 #include <fun/array.hpp>
@@ -310,9 +311,10 @@ auto grid_rhs(const grid_t &g) {
   }
   auto bs = std::tuple_cat(std::move(bms), std::move(bps));
 
-  return grid_t{1.0, wrap_fmapStencil((cell_rhs_t)cell_rhs, cell_get_face,
-                                      g.cells, std::move(bs),
-                                      std::make_index_sequence<2 * dim>())};
+  return grid_t{1.0, wrap_fmapStencil( // CXX_FUNOBJ((cell_rhs_t)cell_rhs),
+                         CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &>),
+                         CXX_FUNOBJ(cell_get_face), g.cells, std::move(bs),
+                         std::make_index_sequence<2 * dim>())};
 }
 
 // State

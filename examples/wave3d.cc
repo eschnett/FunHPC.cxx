@@ -59,6 +59,7 @@ struct parameters_t {
   const vreal_t xmin = vone * 0.0;
   const vreal_t xmax = vone * 1.0;
   vreal_t dx;
+  vreal_t dx_1;
 
   int_t nsteps;
   const real_t tmin = 0.0;
@@ -71,6 +72,7 @@ struct parameters_t {
 
   void setup() {
     dx = (xmax - xmin) / ncells;
+    dx_1 = 1.0 / dx;
     dt = adt::maxval(dx) / icfl;
   }
 };
@@ -197,14 +199,14 @@ auto cell_rhs(const cell_t &c, std::size_t bdirs, Bnds &&... bnds) {
   auto bm = cxx::to_array(cxx::tuple_section<0, dim>(bs));
   auto bp = cxx::to_array(cxx::tuple_section<dim, dim>(bs));
 
-  auto dx = parameters.dx;
+  auto dx_1 = parameters.dx_1;
   auto u_rhs = c.rho;
   real_t rho_rhs = 0.0;
   for (int_t j = 0; j < dim; ++j)
-    rho_rhs += (-0.5 * bm[j].v[j] + 0.5 * bp[j].v[j]) / dx[j];
+    rho_rhs += (-0.5 * bm[j].v[j] + 0.5 * bp[j].v[j]) * dx_1[j];
   vreal_t v_rhs;
   for (int_t i = 0; i < dim; ++i)
-    v_rhs[i] = (-0.5 * bm[i].rho + 0.5 * bp[i].rho) / dx[i];
+    v_rhs[i] = (-0.5 * bm[i].rho + 0.5 * bp[i].rho) * dx_1[i];
   return cell_t{vzero, u_rhs, rho_rhs, v_rhs};
 }
 

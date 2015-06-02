@@ -50,6 +50,7 @@ struct parameters_t {
 
   void setup() {
     dx = (xmax - xmin) / ncells;
+    dx_1 = 1.0 / dx;
     dt = dx / icfl;
   }
 };
@@ -149,15 +150,18 @@ auto cell_boundary_reflecting(const cell_t &c, int_t i) {
 
 auto cell_rhs(const cell_t &c, size_t bdirs, const cell_t &bm,
               const cell_t &bp) {
-  auto dx = parameters.dx;
+  auto dx_1 = parameters.dx_1;
   auto u_rhs = c.rho;
-  auto rho_rhs = (-0.5 * bm.v + 0.5 * bp.v) / dx;
-  auto v_rhs = (-0.5 * bm.rho + 0.5 * bp.rho) / dx;
+  auto rho_rhs = (-0.5 * bm.v + 0.5 * bp.v) * dx_1;
+  auto v_rhs = (-0.5 * bm.rho + 0.5 * bp.rho) * dx_1;
   return cell_t{0.0, u_rhs, rho_rhs, v_rhs};
 }
 
 // Grid
 
+template <typename T>
+using future_vector =
+    adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
 template <typename T>
 using proxy_vector =
     adt::nested<funhpc::proxy<adt::dummy>, std::vector<adt::dummy>, T>;

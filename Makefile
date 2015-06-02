@@ -56,11 +56,11 @@ ifneq ($(LLVM_DIR), )
 	-fsanitize=signed-integer-overflow	\
 	-fsanitize=unreachable			\
 	-fsanitize=vla-bound
+# Note: -flto doesn't see -march=native, hence leads to worse code
 OPTFLAGS =					\
 	-DNDEBUG				\
 	-Ofast					\
-	-Wno-unused-variable			\
-	-flto
+	-Wno-unused-variable
 CXXFLAGS +=					\
 	-Wall					\
 	-fmacro-backtrace-limit=0		\

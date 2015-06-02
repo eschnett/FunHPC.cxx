@@ -37,11 +37,10 @@ template <typename T> struct fun_traits<funhpc::proxy<T>> {
 
 // iotaMap
 
-template <
-    typename C, typename F, typename... Args,
-    std::enable_if_t<detail::is_proxy<C>::value> * = nullptr,
-    typename R = std::decay_t<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>>,
-    typename CR = typename fun_traits<C>::template constructor<R>>
+template <typename C, typename F, typename... Args,
+          std::enable_if_t<detail::is_proxy<C>::value> * = nullptr,
+          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   assert(inds.size() == 1);
   // TODO: use funhpc::remote
@@ -63,7 +62,7 @@ struct proxy_fmap : std::tuple<> {
 
 template <typename F, typename T, typename... Args,
           typename C = funhpc::proxy<T>,
-          typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
@@ -88,7 +87,7 @@ struct proxy_fmap2 : std::tuple<> {
 
 template <typename F, typename T, typename T2, typename... Args,
           typename C = funhpc::proxy<T>,
-          typename R = std::decay_t<cxx::invoke_of_t<F, T, T2, Args...>>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          Args &&... args) {
@@ -119,7 +118,7 @@ struct proxy_fmap3 : std::tuple<> {
 
 template <typename F, typename T, typename T2, typename T3, typename... Args,
           typename C = funhpc::proxy<T>,
-          typename R = std::decay_t<cxx::invoke_of_t<F, T, T2, T3, Args...>>,
+          typename R = cxx::invoke_of_t<F, T, T2, T3, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap3(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          const funhpc::proxy<T3> &zs, Args &&... args) {
@@ -159,11 +158,10 @@ struct proxy_fmap5 : std::tuple<> {
 // which arguments are mapped over. Pass a tied tuple? Use wrappers to
 // indicate mapping, or to indicate not mapping?
 
-template <
-    typename F, typename T, typename T2, typename T3, typename T4, typename T5,
-    typename... Args, typename C = funhpc::proxy<T>,
-    typename R = std::decay_t<cxx::invoke_of_t<F, T, T2, T3, T4, T5, Args...>>,
-    typename CR = typename fun_traits<C>::template constructor<R>>
+template <typename F, typename T, typename T2, typename T3, typename T4,
+          typename T5, typename... Args, typename C = funhpc::proxy<T>,
+          typename R = cxx::invoke_of_t<F, T, T2, T3, T4, T5, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap5(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          const funhpc::proxy<T3> &zs, const funhpc::proxy<T4> &as,
          const funhpc::proxy<T5> &bs, Args &&... args) {
@@ -191,8 +189,7 @@ struct proxy_foldMap : std::tuple<> {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
-          typename R = std::decay_t<
-              cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>>
+          typename R = cxx::invoke_of_t<F, T, Args...>>
 R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
@@ -217,8 +214,7 @@ struct proxy_foldMap2 : std::tuple<> {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
-          typename... Args, typename R = std::decay_t<cxx::invoke_of_t<
-                                std::decay_t<F>, T, T2, std::decay_t<Args>...>>>
+          typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
            const funhpc::proxy<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
@@ -234,11 +230,10 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
 
 template <typename C, typename T,
           std::enable_if_t<detail::is_proxy<C>::value> * = nullptr,
-          typename R = std::decay_t<T>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
-CR munit(T &&x) {
+          typename CT = typename fun_traits<C>::template constructor<T>>
+CT munit(T &&x) {
   // TODO: use make_remote_proxy
-  return funhpc::make_local_proxy<R>(std::forward<T>(x));
+  return funhpc::make_local_proxy<std::decay_t<T>>(std::forward<T>(x));
 }
 
 // mjoin
@@ -271,7 +266,7 @@ template <typename T> T mextract(const funhpc::proxy<T> &xs) {
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename C = funhpc::proxy<T>,
-          typename R = std::decay_t<cxx::invoke_of_t<F, T, Args...>>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR mfoldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
             Args &&... args) {

@@ -1,8 +1,10 @@
-#include <fun/vector.hpp>
-#include <adt/grid.hpp>
+#include <adt/grid_decl.hpp>
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <fun/vector.hpp>
+
+#include <adt/grid_impl.hpp>
 
 #include <gtest/gtest.h>
 

@@ -1,9 +1,10 @@
 #ifndef FUN_MAYBE_HPP
 #define FUN_MAYBE_HPP
 
+#include <adt/maybe.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
-#include <adt/maybe.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cassert>
@@ -26,7 +27,7 @@ template <typename T> struct is_maybe<adt::maybe<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<adt::maybe<T>> {
-  template <typename U> using constructor = adt::maybe<U>;
+  template <typename U> using constructor = adt::maybe<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };

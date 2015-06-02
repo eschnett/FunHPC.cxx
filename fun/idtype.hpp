@@ -1,10 +1,11 @@
 #ifndef FUN_IDTYPE_HPP
 #define FUN_IDTYPE_HPP
 
+#include <adt/idtype.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <adt/empty.hpp>
-#include <adt/idtype.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
@@ -27,7 +28,7 @@ template <typename T> struct is_idtype<adt::idtype<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<adt::idtype<T>> {
-  template <typename U> using constructor = adt::idtype<U>;
+  template <typename U> using constructor = adt::idtype<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 

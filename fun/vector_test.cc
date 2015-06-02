@@ -1,6 +1,9 @@
-#include <fun/idtype.hpp>
 #include <fun/vector.hpp>
-#include <fun/fun.hpp>
+
+#include <fun/fun_decl.hpp>
+#include <fun/idtype.hpp>
+
+#include <fun/fun_impl.hpp>
 
 #include <gtest/gtest.h>
 

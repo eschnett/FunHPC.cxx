@@ -33,7 +33,8 @@ template <typename T, typename Allocator>
 struct fun_traits<std::vector<T, Allocator>> {
   template <typename U>
   using constructor =
-      std::vector<U, typename Allocator::template rebind<U>::other>;
+      std::vector<std::decay_t<U>,
+                  typename Allocator::template rebind<std::decay_t<U>>::other>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 
@@ -179,18 +180,20 @@ CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs,
                     Args &&... args) {
   std::ptrdiff_t s = xs.size();
   CR rs(s);
+  R *restrict const rp = rs.data();
+  const T *restrict const xp = xs.data();
   if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bmask, mextract(bm),
+    rp[0] = cxx::invoke(std::forward<F>(f), xp[0], bmask, mextract(bm),
                         mextract(bp), std::forward<Args>(args)...);
   } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, mextract(bm),
-                        cxx::invoke(g, xs[1], 0), args...);
+    rp[0] = cxx::invoke(f, xp[0], bmask & 0b01, mextract(bm),
+                        cxx::invoke(g, xp[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
-                          cxx::invoke(g, xs[i + 1], 0), args...);
-    rs[s - 1] =
-        cxx::invoke(f, xs[s - 1], bmask & 0b10, cxx::invoke(g, xs[s - 2], 1),
+      rp[i] = cxx::invoke(f, xp[i], 0b00, cxx::invoke(g, xp[i - 1], 1),
+                          cxx::invoke(g, xp[i + 1], 0), args...);
+    rp[s - 1] =
+        cxx::invoke(f, xp[s - 1], bmask & 0b10, cxx::invoke(g, xp[s - 2], 1),
                     mextract(bp), args...);
   }
   return rs;
@@ -249,7 +252,8 @@ BCR boundaryMap(F &&f, const std::vector<T, Allocator> &xs, std::ptrdiff_t i,
 // indexing
 
 template <typename T, typename Allocator>
-const T &getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
+const T &restrict
+getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
   return xs[i];
 }
 
@@ -260,7 +264,7 @@ class accumulator<std::vector<T, Allocator>> {
 
 public:
   accumulator(std::ptrdiff_t n) : data(n) {}
-  T &operator[](std::ptrdiff_t i) { return data[i]; }
+  T &restrict operator[](std::ptrdiff_t i) { return data[i]; }
   decltype(auto) finalize() { return std::move(data); }
   ~accumulator() { assert(data.empty()); }
 };

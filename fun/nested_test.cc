@@ -1,8 +1,13 @@
+#include <fun/nested_decl.hpp>
+
+#include <fun/fun_decl.hpp>
 #include <fun/shared_future.hpp>
 #include <fun/shared_ptr.hpp>
 #include <fun/vector.hpp>
-#include <fun/nested.hpp>
-#include <fun/fun.hpp>
+
+#include <fun/nested_impl.hpp>
+
+#include <fun/fun_impl.hpp>
 
 #include <qthread/future.hpp>
 

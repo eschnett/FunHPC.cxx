@@ -1,10 +1,14 @@
-#include <fun/idtype.hpp>
-#include <fun/shared_ptr.hpp>
-#include <fun/vector.hpp>
-#include <fun/nested.hpp>
-#include <fun/grid.hpp>
+#include <fun/grid_decl.hpp>
 
 #include <adt/array.hpp>
+#include <fun/idtype.hpp>
+#include <fun/nested_decl.hpp>
+#include <fun/shared_ptr.hpp>
+#include <fun/vector.hpp>
+
+#include <fun/grid_impl.hpp>
+
+#include <fun/nested_impl.hpp>
 
 #include <gtest/gtest.h>
 

@@ -1,10 +1,11 @@
 #ifndef FUN_PROXY_HPP
 #define FUN_PROXY_HPP
 
+#include <funhpc/proxy.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
-#include <funhpc/proxy.hpp>
 
 #include <cereal/types/tuple.hpp>
 
@@ -29,7 +30,7 @@ template <typename T> struct is_proxy<funhpc::proxy<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<funhpc::proxy<T>> {
-  template <typename U> using constructor = funhpc::proxy<U>;
+  template <typename U> using constructor = funhpc::proxy<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };
@@ -128,6 +129,52 @@ CR fmap3(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
   assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap3(),
                         std::forward<F>(f), xs, ys, zs,
+                        std::forward<Args>(args)...);
+}
+
+namespace detail {
+struct proxy_fmap5 : std::tuple<> {
+  template <typename F, typename T, typename T2, typename T3, typename T4,
+            typename T5, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs,
+                  const funhpc::proxy<T2> &ys, const funhpc::proxy<T3> &zs,
+                  const funhpc::proxy<T4> &as, const funhpc::proxy<T5> &bs,
+                  Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    assert(bool(ys));
+    assert(bool(zs));
+    assert(bool(as));
+    assert(bool(bs));
+    auto ysl = ys.make_local();
+    auto zsl = zs.make_local();
+    auto asl = as.make_local();
+    auto bsl = bs.make_local();
+    return cxx::invoke(std::forward<F>(f), *xs, *ysl, *zsl, *asl, *bsl,
+                       std::forward<Args>(args)...);
+  }
+};
+}
+
+// TODO: Introduce fmapSome (?), where one can indicate in some way
+// which arguments are mapped over. Pass a tied tuple? Use wrappers to
+// indicate mapping, or to indicate not mapping?
+
+template <
+    typename F, typename T, typename T2, typename T3, typename T4, typename T5,
+    typename... Args, typename C = funhpc::proxy<T>,
+    typename R = std::decay_t<cxx::invoke_of_t<F, T, T2, T3, T4, T5, Args...>>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR fmap5(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
+         const funhpc::proxy<T3> &zs, const funhpc::proxy<T4> &as,
+         const funhpc::proxy<T5> &bs, Args &&... args) {
+  bool s = bool(xs);
+  assert(bool(ys) == s);
+  assert(bool(zs) == s);
+  assert(bool(as) == s);
+  assert(bool(bs) == s);
+  assert(s);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap5(),
+                        std::forward<F>(f), xs, ys, zs, as, bs,
                         std::forward<Args>(args)...);
 }
 

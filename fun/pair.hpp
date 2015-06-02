@@ -26,7 +26,7 @@ struct is_pair<std::pair<L, R>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T, typename L> struct fun_traits<std::pair<L, T>> {
-  template <typename U> using constructor = std::pair<L, U>;
+  template <typename U> using constructor = std::pair<L, std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };

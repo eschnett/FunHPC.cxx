@@ -1,18 +1,21 @@
 #include <adt/dummy.hpp>
+#include <fun/fun_decl.hpp>
+#include <fun/nested_decl.hpp>
 #include <fun/proxy.hpp>
 #include <fun/shared_future.hpp>
+#include <fun/tree_decl.hpp>
 #include <fun/vector.hpp>
 #include <funhpc/main.hpp>
 #include <funhpc/rexec.hpp>
 
-#include <fun/nested.hpp>
-#include <fun/tree.hpp>
-
-#include <fun/fun.hpp>
+#include <fun/fun_impl.hpp>
+#include <fun/nested_impl.hpp>
+#include <fun/tree_impl.hpp>
 
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <functional>
@@ -33,16 +36,22 @@ struct parameters_t {
   int_t ncells;
   const real_t xmin = 0.0;
   const real_t xmax = 1.0;
-  real_t dx() const { return (xmax - xmin) / ncells; }
+  real_t dx;
+  real_t dx_1;
 
   int_t nsteps;
   const real_t tmin = 0.0;
   const int_t icfl = 1;
-  real_t dt() const { return dx() / icfl; }
+  real_t dt;
 
   int_t outinfo_every;
   int_t outfile_every;
   std::string outfile_name;
+
+  void setup() {
+    dx = (xmax - xmin) / ncells;
+    dt = dx / icfl;
+  }
 };
 
 parameters_t parameters;
@@ -67,9 +76,9 @@ struct norm_t {
   norm_t &operator=(norm_t &&other) = default;
   norm_t &operator+=(const norm_t &other) {
     count += other.count;
-    min = std::fmin(min, other.min);
-    max = std::fmax(max, other.max);
-    max_abs = std::fmax(max_abs, other.max_abs);
+    min = std::min(min, other.min);
+    max = std::max(max, other.max);
+    max_abs = std::max(max_abs, other.max_abs);
     sum += other.sum;
     sum2 += other.sum2;
     sum_abs += other.sum_abs;
@@ -124,13 +133,13 @@ auto cell_norm(const cell_t &c) {
 }
 
 auto cell_energy(const cell_t &c) {
-  return parameters.dx() * (0.5 * std::pow(c.rho, 2) + 0.5 * std::pow(c.v, 2));
+  return parameters.dx * (0.5 * std::pow(c.rho, 2) + 0.5 * std::pow(c.v, 2));
 }
 
 // Note: These Dirichlet boundaries are unstable
 auto cell_boundary_dirichlet(real_t t, int_t i) {
-  return cell_analytic(t, i == 0 ? parameters.xmin - 0.5 * parameters.dx()
-                                 : parameters.xmax + 0.5 * parameters.dx());
+  return cell_analytic(t, i == 0 ? parameters.xmin - 0.5 * parameters.dx
+                                 : parameters.xmax + 0.5 * parameters.dx);
 }
 
 auto cell_boundary_reflecting(const cell_t &c, int_t i) {
@@ -140,7 +149,7 @@ auto cell_boundary_reflecting(const cell_t &c, int_t i) {
 
 auto cell_rhs(const cell_t &c, size_t bdirs, const cell_t &bm,
               const cell_t &bp) {
-  auto dx = parameters.dx();
+  auto dx = parameters.dx;
   auto u_rhs = c.rho;
   auto rho_rhs = (-0.5 * bm.v + 0.5 * bp.v) / dx;
   auto v_rhs = (-0.5 * bm.rho + 0.5 * bp.rho) / dx;
@@ -153,10 +162,18 @@ template <typename T>
 using proxy_vector =
     adt::nested<funhpc::proxy<adt::dummy>, std::vector<adt::dummy>, T>;
 template <typename T> using proxy_tree = adt::tree<proxy_vector<adt::dummy>, T>;
+template <typename T>
+using proxy_tree_vector =
+    adt::nested<proxy_tree<adt::dummy>, std::vector<adt::dummy>, T>;
+
+// template <typename T> using storage_t = std::vector<T>;
+// template <typename T> using storage_t = proxy_vector<T>;
+// template <typename T> using storage_t = proxy_tree<T>;
+template <typename T> using storage_t = proxy_tree_vector<T>;
 
 struct grid_t {
   real_t time;
-  proxy_tree<cell_t> cells;
+  storage_t<cell_t> cells;
 };
 
 std::ostream &operator<<(std::ostream &os, const grid_t &g) {
@@ -173,8 +190,8 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<proxy_tree<adt::dummy>>([t](int_t i) {
-    real_t x = parameters.xmin + parameters.dx() * (real_t(i) + 0.5);
+  return grid_t{t, fun::iotaMap<storage_t<adt::dummy>>([t](int_t i) {
+    real_t x = parameters.xmin + parameters.dx * (real_t(i) + 0.5);
     return cell_init(t, x);
   }, parameters.ncells)};
 }
@@ -222,15 +239,15 @@ struct state_t {
 auto euler(const state_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
-  return grid_axpy(s0, r0, parameters.dt());
+  return grid_axpy(s0, r0, parameters.dt);
 }
 
 auto rk2(const state_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
-  auto s1 = grid_axpy(s0, r0, 0.5 * parameters.dt());
+  auto s1 = grid_axpy(s0, r0, 0.5 * parameters.dt);
   auto r1 = grid_rhs(s1);
-  return grid_axpy(s0, r1, parameters.dt());
+  return grid_axpy(s0, r1, parameters.dt);
 }
 
 // Output
@@ -278,6 +295,7 @@ int funhpc_main(int argc, char **argv) {
   parameters.outinfo_every = parameters.nsteps / 10;
   parameters.outfile_every = parameters.nsteps / 20;
   parameters.outfile_name = "wave1d.tsv";
+  parameters.setup();
   qthread::shared_future<int> info_token = qthread::make_ready_future(0);
   qthread::shared_future<int> file_token = qthread::make_ready_future(0);
   state_t s(0, grid_init(parameters.tmin));

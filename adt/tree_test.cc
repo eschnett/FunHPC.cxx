@@ -1,9 +1,13 @@
-#include <fun/shared_ptr.hpp>
-#include <fun/vector.hpp>
-#include <fun/nested.hpp>
-#include <adt/tree.hpp>
+#include <adt/tree_decl.hpp>
 
 #include <adt/dummy.hpp>
+#include <fun/nested_decl.hpp>
+#include <fun/shared_ptr.hpp>
+#include <fun/vector.hpp>
+
+#include <adt/tree_impl.hpp>
+
+#include <fun/nested_impl.hpp>
 
 #include <gtest/gtest.h>
 

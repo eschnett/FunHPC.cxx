@@ -1,6 +1,8 @@
 #include <fun/array.hpp>
 
-#include <fun/fun.hpp>
+#include <fun/fun_decl.hpp>
+
+#include <fun/fun_impl.hpp>
 
 #include <gtest/gtest.h>
 

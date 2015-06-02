@@ -1,5 +1,7 @@
-#ifndef ADT_TREE_HPP
-#define ADT_TREE_HPP
+#ifndef ADT_TREE_IMPL_HPP
+#define ADT_TREE_IMPL_HPP
+
+#include "tree_decl.hpp"
 
 #include <adt/dummy.hpp>
 #include <fun/either.hpp>
@@ -33,8 +35,8 @@ template <typename A, typename T> void swap(tree<A, T> &x, tree<A, T> &y) {
 }
 }
 
-#define ADT_TREE_HPP_DONE
-#endif // #ifdef ADT_TREE_HPP
-#ifndef ADT_TREE_HPP_DONE
+#define ADT_TREE_IMPL_HPP_DONE
+#endif // #ifdef ADT_TREE_IMPL_HPP
+#ifndef ADT_TREE_IMPL_HPP_DONE
 #error "Cyclic include dependency"
 #endif

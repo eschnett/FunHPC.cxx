@@ -1,10 +1,11 @@
 #ifndef FUN_SHARED_FUTURE_HPP
 #define FUN_SHARED_FUTURE_HPP
 
+#include <qthread/future.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
-#include <qthread/future.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -27,7 +28,8 @@ struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<qthread::shared_future<T>> {
-  template <typename U> using constructor = qthread::shared_future<U>;
+  template <typename U>
+  using constructor = qthread::shared_future<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };

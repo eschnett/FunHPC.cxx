@@ -1,10 +1,11 @@
-#ifndef ADT_GRID_HPP
-#define ADT_GRID_HPP
+#ifndef ADT_GRID_IMPL_HPP
+#define ADT_GRID_IMPL_HPP
 
-#include <adt/dummy.hpp>
+#include "grid_decl.hpp"
+
+#include <adt/array.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
-#include <fun/array.hpp>
 
 #include <cereal/access.hpp>
 
@@ -378,6 +379,27 @@ public:
     assert(invariant());
   }
 
+  struct fmap3 {};
+
+  template <typename F, typename T1, typename T2, typename T3, typename... Args>
+  grid(fmap3, F &&f, const grid<C, T1, D> &xs, const grid<C, T2, D> &ys,
+       const grid<C, T3, D> &zs, Args &&... args)
+      : indexing(xs.shape()) {
+    static_assert(
+        std::is_same<cxx::invoke_of_t<F, T1, T2, T3, Args...>, T>::value, "");
+    assert(ys.shape() == xs.shape());
+    assert(zs.shape() == xs.shape());
+    fun::accumulator<container_constructor<T>> acc(indexing.size());
+    indexing.loop([&](const index_type &i) {
+      acc[indexing.linear(i)] =
+          cxx::invoke(f, fun::getIndex(xs.data, xs.indexing.linear(i)),
+                      fun::getIndex(ys.data, ys.indexing.linear(i)),
+                      fun::getIndex(zs.data, zs.indexing.linear(i)), args...);
+    });
+    data = acc.finalize();
+    assert(invariant());
+  }
+
   // boundary
 
   struct boundary {};
@@ -532,8 +554,8 @@ void swap(grid<C, T, D> &x, grid<C, T, D> &y) {
 }
 }
 
-#define ADT_GRID_HPP_DONE
-#endif // #ifdef ADT_GRID_HPP
-#ifndef ADT_GRID_HPP_DONE
+#define ADT_GRID_IMPL_HPP_DONE
+#endif // #ifdef ADT_GRID_IMPL_HPP
+#ifndef ADT_GRID_IMPL_HPP_DONE
 #error "Cyclic include dependency"
 #endif

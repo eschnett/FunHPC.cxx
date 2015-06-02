@@ -1,5 +1,5 @@
-#ifndef FUN_FUN_HPP
-#define FUN_FUN_HPP
+#ifndef FUN_FUN_DECL_HPP
+#define FUN_FUN_DECL_HPP
 
 #include <cereal/types/tuple.hpp>
 
@@ -11,46 +11,24 @@
 
 namespace fun {
 
+template <typename> struct fun_traits;
+
 // empty
 
 template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
-bool empty(const CT &xs) {
-  struct f : std::tuple<> {
-    bool operator()(const T &x) const { return false; }
-  };
-  struct op : std::tuple<> {
-    bool operator()(bool x, bool y) const { return x && y; }
-  };
-  return foldMap(f(), op(), true, xs);
-}
+bool empty(const CT &xs);
 
 // size
 
 template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
-std::size_t size(const CT &xs) {
-  struct f : std::tuple<> {
-    std::size_t operator()(const T &x) const { return 1; }
-  };
-  struct op : std::tuple<> {
-    std::size_t operator()(std::size_t x, std::size_t y) const { return x + y; }
-  };
-  return foldMap(f(), op(), 0, xs);
-}
+std::size_t size(const CT &xs);
 
 // convert
 
 template <typename C1, typename C2T,
           typename T = typename fun::fun_traits<C2T>::value_type,
           typename C1T = typename fun_traits<C1>::template constructor<T>>
-C1T convert(const C2T &xs) {
-  struct f : std::tuple<> {
-    auto operator()(const T &x) const { return munit<C1>(x); }
-  };
-  struct op : std::tuple<> {
-    auto operator()(const C1T &x, const C1T &y) const { return mplus(x, y); }
-  };
-  return foldMap(f(), op(), mzero<C1, T>(), xs);
-}
+C1T convert(const C2T &xs);
 
 // An ostreamer is function that outputs something. In particular,
 // there is an efficient way of combining ostreamers -- somthing that
@@ -197,8 +175,8 @@ std::string to_string(const CT &xs) {
 }
 }
 
-#define FUN_FUN_HPP_DONE
-#endif // #ifdef FUN_FUN_HPP
-#ifndef FUN_FUN_HPP_DONE
+#define FUN_FUN_DECL_HPP_DONE
+#endif // #ifdef FUN_FUN_DECL_HPP
+#ifndef FUN_FUN_DECL_HPP_DONE
 #error "Cyclic include dependency"
 #endif

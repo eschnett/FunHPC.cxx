@@ -4,22 +4,25 @@
 #include <cxx/tuple.hpp>
 #include <cxx/utility.hpp>
 #include <fun/array.hpp>
+#include <fun/fun_decl.hpp>
+#include <fun/grid_decl.hpp>
+#include <fun/nested_decl.hpp>
 #include <fun/proxy.hpp>
 #include <fun/shared_future.hpp>
+#include <fun/tree_decl.hpp>
 #include <fun/vector.hpp>
 #include <funhpc/main.hpp>
 #include <funhpc/rexec.hpp>
 
-// These include files need to come after all other fun/*.hpp include
-// files, and they need to be in this particular order
-#include <fun/grid.hpp>
-#include <fun/nested.hpp>
-#include <fun/tree.hpp>
-#include <fun/fun.hpp>
+#include <fun/fun_impl.hpp>
+#include <fun/grid_impl.hpp>
+#include <fun/nested_impl.hpp>
+#include <fun/tree_impl.hpp>
 
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <functional>
@@ -55,16 +58,21 @@ struct parameters_t {
   vint_t ncells;
   const vreal_t xmin = vone * 0.0;
   const vreal_t xmax = vone * 1.0;
-  vreal_t dx() const { return (xmax - xmin) / ncells; }
+  vreal_t dx;
 
   int_t nsteps;
   const real_t tmin = 0.0;
   const int_t icfl = dim == 1 ? 1 : 2;
-  real_t dt() const { return adt::maxval(dx()) / icfl; }
+  real_t dt;
 
   int_t outinfo_every;
   int_t outfile_every;
   std::string outfile_name;
+
+  void setup() {
+    dx = (xmax - xmin) / ncells;
+    dt = adt::maxval(dx) / icfl;
+  }
 };
 
 parameters_t parameters;
@@ -90,9 +98,9 @@ struct norm_t {
 
   norm_t &operator+=(const norm_t &other) {
     count += other.count;
-    min = std::fmin(min, other.min);
-    max = std::fmax(max, other.max);
-    max_abs = std::fmax(max_abs, other.max_abs);
+    min = std::min(min, other.min);
+    max = std::max(max, other.max);
+    max_abs = std::max(max_abs, other.max_abs);
     sum += other.sum;
     sum2 += other.sum2;
     sum_abs += other.sum_abs;
@@ -159,22 +167,21 @@ auto cell_norm(const cell_t &c) {
 }
 
 auto cell_energy(const cell_t &c) {
-  return adt::prod(parameters.dx()) * 0.5 *
-         (c.rho * c.rho + adt::sum(c.v * c.v));
+  return adt::prod(parameters.dx) * 0.5 * (c.rho * c.rho + adt::sum(c.v * c.v));
 }
 
 // Note: These Dirichlet boundaries are unstable
 auto cell_boundary_dirichlet(const cell_t &c, int_t i, real_t t) {
   auto f = i % 2, d = i / 2;
   auto bdir = (!f ? -1 : +1) * vdir(d);
-  auto xbnd = c.x + bdir * parameters.dx();
+  auto xbnd = c.x + bdir * parameters.dx;
   return cell_analytic(t, xbnd);
 }
 
 auto cell_boundary_reflecting(const cell_t &c, int_t i) {
   auto f = i % 2, d = i / 2;
   auto bdir = (!f ? -1 : +1) * vdir(d);
-  auto xbnd = c.x + bdir * parameters.dx();
+  auto xbnd = c.x + bdir * parameters.dx;
   return cell_t{xbnd, -c.u, -c.rho, adt::update(-c.v, d, c.v[d])};
 }
 
@@ -190,7 +197,7 @@ auto cell_rhs(const cell_t &c, std::size_t bdirs, Bnds &&... bnds) {
   auto bm = cxx::to_array(cxx::tuple_section<0, dim>(bs));
   auto bp = cxx::to_array(cxx::tuple_section<dim, dim>(bs));
 
-  auto dx = parameters.dx();
+  auto dx = parameters.dx;
   auto u_rhs = c.rho;
   real_t rho_rhs = 0.0;
   for (int_t j = 0; j < dim; ++j)
@@ -211,21 +218,29 @@ typedef decltype(
 
 template <typename T>
 using vector_grid = adt::grid<std::vector<adt::dummy>, T, dim>;
-
 template <typename T>
 using vector_grid_proxy =
     adt::nested<funhpc::proxy<adt::dummy>, vector_grid<adt::dummy>, T>;
 
 template <typename T>
 using vector_grid_tree = adt::tree<vector_grid<adt::dummy>, T>;
-
 template <typename T>
 using vector_grid_proxy_tree = adt::tree<vector_grid_proxy<adt::dummy>, T>;
 
+template <typename T>
+using vector_grid_tree_vector_grid =
+    adt::nested<vector_grid_tree<adt::dummy>, vector_grid<adt::dummy>, T>;
+template <typename T>
+using vector_grid_proxy_tree_vector_grid =
+    adt::nested<vector_grid_proxy_tree<adt::dummy>, vector_grid<adt::dummy>, T>;
+
+// Different parallel implementations
 // template <typename T> using storage_t = vector_grid<T>;
 // template <typename T> using storage_t = vector_grid_proxy<T>;
 // template <typename T> using storage_t = vector_grid_tree<T>;
-template <typename T> using storage_t = vector_grid_proxy_tree<T>;
+// template <typename T> using storage_t = vector_grid_proxy_tree<T>;
+// template <typename T> using storage_t = vector_grid_tree_vector_grid<T>;
+template <typename T> using storage_t = vector_grid_proxy_tree_vector_grid<T>;
 
 template <typename T>
 using boundary_t = typename fun::fun_traits<typename fun::fun_traits<
@@ -251,9 +266,9 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 
 auto grid_init(real_t t) {
   return grid_t{t, fun::iotaMapMulti<storage_t<adt::dummy>>([t](vint_t i) {
-    vreal_t x = parameters.xmin +
-                parameters.dx() *
-                    (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
+    vreal_t x =
+        parameters.xmin +
+        parameters.dx * (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
     return cell_init(t, x);
   }, adt::range_t<dim>(parameters.ncells))};
 }
@@ -316,15 +331,15 @@ struct state_t {
 auto euler(const state_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
-  return grid_axpy(s0, r0, parameters.dt());
+  return grid_axpy(s0, r0, parameters.dt);
 }
 
 auto rk2(const state_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
-  auto s1 = grid_axpy(s0, r0, 0.5 * parameters.dt());
+  auto s1 = grid_axpy(s0, r0, 0.5 * parameters.dt);
   auto r1 = grid_rhs(s1);
-  return grid_axpy(s0, r1, parameters.dt());
+  return grid_axpy(s0, r1, parameters.dt);
 }
 
 // Output
@@ -372,6 +387,7 @@ int funhpc_main(int argc, char **argv) {
   parameters.outinfo_every = parameters.nsteps / 10;
   parameters.outfile_every = parameters.nsteps / 20;
   parameters.outfile_name = "wave3d.tsv";
+  parameters.setup();
   qthread::shared_future<int> info_token = qthread::make_ready_future(0);
   qthread::shared_future<int> file_token = qthread::make_ready_future(0);
   state_t s(0, grid_init(parameters.tmin));

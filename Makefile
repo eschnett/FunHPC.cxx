@@ -105,32 +105,41 @@ HDRS =						\
 	adt/dummy.hpp				\
 	adt/either.hpp				\
 	adt/empty.hpp				\
-	adt/grid.hpp				\
+	adt/grid_decl.hpp			\
+	adt/grid_impl.hpp			\
 	adt/idtype.hpp				\
 	adt/maybe.hpp				\
-	adt/nested.hpp				\
-	adt/tree.hpp				\
+	adt/nested_decl.hpp			\
+	adt/nested_impl.hpp			\
+	adt/tree_decl.hpp			\
+	adt/tree_impl.hpp			\
 	cxx/apply.hpp				\
 	cxx/cstdlib.hpp				\
 	cxx/invoke.hpp				\
 	cxx/serialize.hpp			\
 	cxx/task.hpp				\
 	cxx/tuple.hpp				\
+	cxx/type_traits.hpp			\
 	cxx/utility.hpp				\
 	fun/array.hpp				\
+	fun/dummy.hpp				\
 	fun/either.hpp				\
 	fun/empty.hpp				\
-	fun/fun.hpp				\
+	fun/fun_decl.hpp			\
+	fun/fun_impl.hpp			\
 	fun/function.hpp			\
-	fun/grid.hpp				\
+	fun/grid_decl.hpp			\
+	fun/grid_impl.hpp			\
 	fun/idtype.hpp				\
 	fun/maybe.hpp				\
-	fun/nested.hpp				\
+	fun/nested_decl.hpp			\
+	fun/nested_impl.hpp			\
 	fun/pair.hpp				\
 	fun/proxy.hpp				\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
-	fun/tree.hpp				\
+	fun/tree_decl.hpp			\
+	fun/tree_impl.hpp			\
 	fun/vector.hpp				\
 	funhpc/async.hpp			\
 	funhpc/hwloc.hpp			\

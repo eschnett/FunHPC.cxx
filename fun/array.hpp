@@ -2,6 +2,7 @@
 #define FUN_ARRAY_HPP
 
 #include <adt/array.hpp>
+
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/idtype.hpp>
@@ -30,7 +31,7 @@ struct is_array<std::array<T, N>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T, std::size_t N> struct fun_traits<std::array<T, N>> {
-  template <typename U> using constructor = std::array<U, N>;
+  template <typename U> using constructor = std::array<std::decay_t<U>, N>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 
@@ -165,18 +166,20 @@ CR fmapStencilMulti(F &&f, G &&g, const std::array<T, N> &xs, std::size_t bmask,
                     Args &&... args) {
   constexpr std::ptrdiff_t s = N;
   CR rs;
-  if (__builtin_expect(s == 1, false)) {
-    rs[0] = cxx::invoke(std::forward<F>(f), xs[0], bmask, mextract(bm),
+  R *restrict const rp = rs.data();
+  const T *restrict const xp = xs.data();
+  if (s == 1) {
+    rp[0] = cxx::invoke(std::forward<F>(f), xp[0], bmask, mextract(bm),
                         mextract(bp), std::forward<Args>(args)...);
-  } else if (__builtin_expect(s > 1, true)) {
-    rs[0] = cxx::invoke(f, xs[0], bmask & 0b01, mextract(bm),
-                        cxx::invoke(g, xs[1], 0), args...);
+  } else if (s > 1) {
+    rp[0] = cxx::invoke(f, xp[0], bmask & 0b01, mextract(bm),
+                        cxx::invoke(g, xp[1], 0), args...);
 #pragma omp simd
     for (std::ptrdiff_t i = 1; i < s - 1; ++i)
-      rs[i] = cxx::invoke(f, xs[i], 0b00, cxx::invoke(g, xs[i - 1], 1),
-                          cxx::invoke(g, xs[i + 1], 0), args...);
-    rs[s - 1] =
-        cxx::invoke(f, xs[s - 1], bmask & 0b10, cxx::invoke(g, xs[s - 2], 1),
+      rp[i] = cxx::invoke(f, xp[i], 0b00, cxx::invoke(g, xp[i - 1], 1),
+                          cxx::invoke(g, xp[i + 1], 0), args...);
+    rp[s - 1] =
+        cxx::invoke(f, xp[s - 1], bmask & 0b10, cxx::invoke(g, xp[s - 2], 1),
                     mextract(bp), args...);
   }
   return rs;
@@ -232,7 +235,7 @@ BCR boundaryMap(F &&f, const std::array<T, N> &xs, std::ptrdiff_t i,
 // indexing
 
 template <typename T, std::size_t N>
-const T &getIndex(const std::array<T, N> &xs, std::ptrdiff_t i) {
+const T &restrict getIndex(const std::array<T, N> &xs, std::ptrdiff_t i) {
   static_assert(!xs.empty(), "");
   return xs[i];
 }
@@ -243,7 +246,7 @@ template <typename T, std::size_t N> class accumulator<std::array<T, N>> {
 
 public:
   accumulator(std::ptrdiff_t n) : data(n) {}
-  T &operator[](std::ptrdiff_t i) { return data[i]; }
+  T &restrict operator[](std::ptrdiff_t i) { return data[i]; }
   decltype(auto) finalize() { return std::move(data); }
 };
 

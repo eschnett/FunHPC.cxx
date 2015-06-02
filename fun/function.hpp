@@ -26,7 +26,7 @@ struct is_function<std::function<R(A)>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
-  template <typename U> using constructor = std::function<U(A)>;
+  template <typename U> using constructor = std::function<std::decay_t<U>(A)>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
 };

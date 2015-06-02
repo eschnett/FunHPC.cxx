@@ -1,5 +1,7 @@
-#ifndef ADT_NESTED_HPP
-#define ADT_NESTED_HPP
+#ifndef ADT_NESTED_IMPL_HPP
+#define ADT_NESTED_IMPL_HPP
+
+#include "nested_decl.hpp"
 
 #include <adt/dummy.hpp>
 
@@ -39,8 +41,8 @@ void swap(nested<P, A, T> &x, nested<P, A, T> &y) {
 }
 }
 
-#define ADT_NESTED_HPP_DONE
-#endif // #ifdef ADT_NESTED_HPP
-#ifndef ADT_NESTED_HPP_DONE
+#define ADT_NESTED_IMPL_HPP_DONE
+#endif // #ifdef ADT_NESTED_IMPL_HPP
+#ifndef ADT_NESTED_IMPL_HPP_DONE
 #error "Cyclic include dependency"
 #endif

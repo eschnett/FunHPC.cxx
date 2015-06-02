@@ -27,7 +27,7 @@ struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<std::shared_ptr<T>> {
-  template <typename U> using constructor = std::shared_ptr<U>;
+  template <typename U> using constructor = std::shared_ptr<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 };

@@ -1,9 +1,10 @@
 #ifndef FUN_EITHER_HPP
 #define FUN_EITHER_HPP
 
+#include <adt/either.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
-#include <adt/either.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
@@ -27,7 +28,7 @@ struct is_either<adt::either<L, R>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
-  template <typename U> using constructor = adt::either<L, U>;
+  template <typename U> using constructor = adt::either<L, std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
 };

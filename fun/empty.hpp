@@ -1,9 +1,10 @@
 #ifndef FUN_EMPTY_HPP
 #define FUN_EMPTY_HPP
 
+#include <adt/empty.hpp>
+
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
-#include <adt/empty.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
@@ -23,7 +24,7 @@ template <typename T> struct is_empty<adt::empty<T>> : std::true_type {};
 
 template <typename> struct fun_traits;
 template <typename T> struct fun_traits<adt::empty<T>> {
-  template <typename U> using constructor = adt::empty<U>;
+  template <typename U> using constructor = adt::empty<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
 

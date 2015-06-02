@@ -1,9 +1,14 @@
+#include <fun/nested_decl.hpp>
+
 #include <fun/idtype.hpp>
 #include <fun/shared_future.hpp>
 #include <fun/shared_ptr.hpp>
+#include <fun/tree_decl.hpp>
 #include <fun/vector.hpp>
-#include <fun/nested.hpp>
-#include <fun/tree.hpp>
+
+#include <fun/nested_impl.hpp>
+
+#include <fun/tree_impl.hpp>
 
 #include <gtest/gtest.h>
 

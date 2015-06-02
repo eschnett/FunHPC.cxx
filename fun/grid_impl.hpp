@@ -1,8 +1,9 @@
-#ifndef FUN_GRID_HPP
-#define FUN_GRID_HPP
+#ifndef FUN_GRID_IMPL_HPP
+#define FUN_GRID_IMPL_HPP
 
-#include <adt/dummy.hpp>
-#include <adt/grid.hpp>
+#include "grid_decl.hpp"
+
+#include <adt/grid_impl.hpp>
 
 #include <cassert>
 #include <initializer_list>
@@ -12,43 +13,19 @@
 
 namespace fun {
 
-// is_grid
-
-namespace detail {
-template <typename> struct is_grid : std::false_type {};
-template <typename C, typename T, std::ptrdiff_t D>
-struct is_grid<adt::grid<C, T, D>> : std::true_type {};
-}
-
-// traits
-
-template <typename> struct fun_traits;
-template <typename C, typename T, std::ptrdiff_t D>
-struct fun_traits<adt::grid<C, T, D>> {
-  template <typename U> using constructor = adt::grid<C, U, D>;
-  typedef constructor<adt::dummy> dummy;
-  typedef T value_type;
-
-  static constexpr std::ptrdiff_t rank = D;
-  typedef typename adt::grid<C, T, D>::index_type index_type;
-  typedef adt::grid<C, adt::dummy, D - 1> boundary_dummy;
-};
-
 // iotaMap
 
 template <typename C, typename F, typename... Args,
-          std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
-          typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
+          std::enable_if_t<detail::is_grid<C>::value> *, typename R,
+          typename CR>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   return CR(typename CR::iotaMap(), std::forward<F>(f), inds,
             std::forward<Args>(args)...);
 }
 
 template <typename C, std::size_t D, typename F, typename... Args,
-          std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
-          typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
+          std::enable_if_t<detail::is_grid<C>::value> *, typename R,
+          typename CR>
 CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   return CR(typename CR::iotaMapMulti(), std::forward<F>(f), inds,
             std::forward<Args>(args)...);
@@ -57,31 +34,33 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
 // fmap
 
 template <typename F, typename C, typename T, std::ptrdiff_t D,
-          typename... Args, typename CT = adt::grid<C, T, D>,
-          typename R = cxx::invoke_of_t<F, T, Args...>,
-          typename CR = typename fun_traits<CT>::template constructor<R>>
+          typename... Args, typename CT, typename R, typename CR>
 CR fmap(F &&f, const adt::grid<C, T, D> &xs, Args &&... args) {
   return CR(typename CR::fmap(), std::forward<F>(f), xs,
             std::forward<Args>(args)...);
 }
 
 template <typename F, typename C, typename T, std::ptrdiff_t D, typename T2,
-          typename... Args, typename CT = adt::grid<C, T, D>,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
-          typename CR = typename fun_traits<CT>::template constructor<R>>
+          typename... Args, typename CT, typename R, typename CR>
 CR fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
          Args &&... args) {
   return CR(typename CR::fmap2(), std::forward<F>(f), xs, ys,
             std::forward<Args>(args)...);
 }
 
+template <typename F, typename C, typename T, std::ptrdiff_t D, typename T2,
+          typename T3, typename... Args, typename CT, typename R, typename CR>
+CR fmap3(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
+         const adt::grid<C, T3, D> &zs, Args &&... args) {
+  return CR(typename CR::fmap3(), std::forward<F>(f), xs, ys, zs,
+            std::forward<Args>(args)...);
+}
+
 // fmapStencil
 
 template <std::size_t D, typename F, typename G, typename C, typename T,
-          typename... Args, std::enable_if_t<D == 0> * = nullptr,
-          typename CT = adt::grid<C, T, D>,
-          typename R = cxx::invoke_of_t<F, T, std::size_t, Args...>,
-          typename CR = typename fun_traits<CT>::template constructor<R>>
+          typename... Args, std::enable_if_t<D == 0> *, typename CT, typename R,
+          typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
                     std::size_t bmask, Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
@@ -89,13 +68,8 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
 }
 
 template <std::size_t D, typename F, typename G, typename C, typename T,
-          typename... Args, std::enable_if_t<D == 1> * = nullptr,
-          typename CT = adt::grid<C, T, D>,
-          typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename BCB = typename fun_traits<BC>::template constructor<B>,
-          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
-          typename CR = typename fun_traits<CT>::template constructor<R>>
+          typename... Args, std::enable_if_t<D == 1> *, typename CT,
+          typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
                     std::size_t bmask,
                     const typename adt::idtype<BCB>::element_type &bm0,
@@ -107,13 +81,8 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
 }
 
 template <std::size_t D, typename F, typename G, typename C, typename T,
-          typename... Args, std::enable_if_t<D == 2> * = nullptr,
-          typename CT = adt::grid<C, T, D>,
-          typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-          typename BCB = typename fun_traits<BC>::template constructor<B>,
-          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
-          typename CR = typename fun_traits<CT>::template constructor<R>>
+          typename... Args, std::enable_if_t<D == 2> *, typename CT,
+          typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
                     std::size_t bmask, const BCB &bm0, const BCB &bm1,
                     const BCB &bp0, const BCB &bp1, Args &&... args) {
@@ -124,25 +93,20 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
 
 // head, last
 
-template <typename C, typename T, std::ptrdiff_t D,
-          std::enable_if_t<D == 1> * = nullptr>
+template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D == 1> *>
 decltype(auto) head(const adt::grid<C, T, D> &xs) {
   return xs.head();
 }
 
-template <typename C, typename T, std::ptrdiff_t D,
-          std::enable_if_t<D == 1> * = nullptr>
+template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D == 1> *>
 decltype(auto) last(const adt::grid<C, T, D> &xs) {
   return xs.last();
 }
 
 // boundary
 
-template <typename C, typename T, std::ptrdiff_t D,
-          std::enable_if_t<D != 0> * = nullptr,
-          typename CT = adt::grid<C, T, D>,
-          typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename BCT = typename fun_traits<BC>::template constructor<T>>
+template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D != 0> *,
+          typename CT, typename BC, typename BCT>
 BCT boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
   return BCT(typename BCT::boundary(), xs, i);
 }
@@ -150,11 +114,8 @@ BCT boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
 // boundaryMap
 
 template <typename F, typename C, typename T, std::ptrdiff_t D,
-          typename... Args, std::enable_if_t<D != 0> * = nullptr,
-          typename CT = adt::grid<C, T, D>,
-          typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>,
-          typename BCR = typename fun_traits<BC>::template constructor<R>>
+          typename... Args, std::enable_if_t<D != 0> *, typename CT,
+          typename BC, typename R, typename BCR>
 BCR boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
                 Args &&... args) {
   return fmap(std::forward<F>(f), boundary(xs, i), i,
@@ -164,8 +125,7 @@ BCR boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
 // foldMap
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          std::ptrdiff_t D, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, Args...>>
+          std::ptrdiff_t D, typename... Args, typename R>
 R foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
           Args &&... args) {
   return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
@@ -173,8 +133,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          std::ptrdiff_t D, typename T2, typename... Args,
-          typename R = cxx::invoke_of_t<F, T, T2, Args...>>
+          std::ptrdiff_t D, typename T2, typename... Args, typename R>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
            const adt::grid<C, T2, D> &ys, Args &&... args) {
   return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
@@ -183,10 +142,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
 
 // munit
 
-template <typename C, typename T,
-          std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
-          typename R = std::decay_t<T>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
+template <typename C, typename T, std::enable_if_t<detail::is_grid<C>::value> *,
+          typename R, typename CR>
 CR munit(T &&x) {
   typedef typename C::container_dummy A;
   return CR(adt::set<typename fun_traits<C>::index_type>(1),
@@ -219,9 +176,8 @@ decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename A, typename T,
-          std::ptrdiff_t D, typename... Args, typename C = adt::grid<A, T, D>,
-          typename R = cxx::invoke_of_t<F, T, Args...>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
+          std::ptrdiff_t D, typename... Args, typename C, typename R,
+          typename CR>
 CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::grid<A, T, D> &xs,
             Args &&... args) {
   return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
@@ -230,9 +186,8 @@ CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::grid<A, T, D> &xs,
 
 // mzero
 
-template <typename C, typename R,
-          std::enable_if_t<detail::is_grid<C>::value> * = nullptr,
-          typename CR = typename fun_traits<C>::template constructor<R>>
+template <typename C, typename R, std::enable_if_t<detail::is_grid<C>::value> *,
+          typename CR>
 CR mzero() {
   return CR();
 }
@@ -269,8 +224,8 @@ std::size_t msize(const adt::grid<C, T, D> &xs) {
 }
 }
 
-#define FUN_GRID_HPP_DONE
-#endif // #ifdef FUN_GRID_HPP
-#ifndef FUN_GRID_HPP_DONE
+#define FUN_GRID_IMPL_HPP_DONE
+#endif // #ifdef FUN_GRID_IMPL_HPP
+#ifndef FUN_GRID_IMPL_HPP_DONE
 #error "Cyclic include dependency"
 #endif

@@ -206,7 +206,8 @@ struct check_complete<_Rp _Class::*> : private check_complete<_Class> {};
 ////////////////////////////////////////////////////////////////////////////////
 
 // decay_copy, taken from libc++ 3.4
-template <typename T> inline typename std::decay<T>::type decay_copy(T &&t) {
+template <typename T>
+constexpr inline typename std::decay<T>::type decay_copy(T &&t) {
   return std::forward<T>(t);
 }
 

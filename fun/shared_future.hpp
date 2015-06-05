@@ -32,6 +32,15 @@ template <typename T> struct fun_traits<qthread::shared_future<T>> {
   using constructor = qthread::shared_future<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  // We don't want empty shared_futures since they don't support mjoin
+  static constexpr std::size_t min_size = 1;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -41,10 +50,27 @@ template <typename C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
-  assert(inds.size() <= 1);
-  if (__builtin_expect(inds.empty(), false))
+  std::size_t s = inds.size();
+  assert(s <= 1);
+  if (__builtin_expect(s == 0, false))
     return CR();
   return qthread::async(std::forward<F>(f), inds[0],
+                        std::forward<Args>(args)...).share();
+}
+
+// iotaMapMulti
+
+template <
+    typename C, std::size_t D, typename F, typename... Args,
+    std::enable_if_t<detail::is_shared_future<C>::value> * = nullptr,
+    typename R = std::decay_t<cxx::invoke_of_t<F, adt::index_t<D>, Args...>>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+  std::size_t s = inds.size();
+  assert(s <= 1);
+  if (__builtin_expect(s == 0, false))
+    return CR();
+  return qthread::async(std::forward<F>(f), inds.imin(),
                         std::forward<Args>(args)...).share();
 }
 
@@ -99,6 +125,88 @@ CR fmap3(F &&f, const qthread::shared_future<T> &xs,
   }).share();
 }
 
+// fmapStencil
+
+template <typename F, typename G, typename T, typename BM, typename BP,
+          typename... Args, typename CT = qthread::shared_future<T>,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencil(F &&f, G &&g, const qthread::shared_future<T> &xs,
+               std::size_t bmask, BM &&bm, BP &&bp, Args &&... args) {
+  static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
+  static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
+  bool s = xs.valid();
+  if (__builtin_expect(!s, false))
+    return CR();
+  return xs.then([
+    f = std::forward<F>(f),
+    bmask,
+    bm = std::forward<BM>(bm),
+    bp = std::forward<BP>(bp),
+    args...
+  ](const qthread::shared_future<T> &xs) mutable {
+    return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm),
+                       std::move(bp), std::move(args)...);
+  }).share();
+}
+
+// fmapStencilMulti
+
+template <std::size_t D, typename F, typename G, typename T, typename... Args,
+          std::enable_if_t<D == 1> * = nullptr,
+          typename CT = qthread::shared_future<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bp0, Args &&... args) {
+  bool s = xs.valid();
+  if (__builtin_expect(!s, false))
+    return CR();
+  return xs.then([ f = std::forward<F>(f), bmask, bm0, bp0, args... ](
+                     const qthread::shared_future<T> &xs) mutable {
+    return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
+                       std::move(bp0).get(), std::move(args)...);
+  }).share();
+}
+
+// boundary
+
+template <typename T, typename CT = qthread::shared_future<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename BCT = typename fun_traits<BC>::template constructor<T>>
+BCT boundary(const qthread::shared_future<T> &xs, std::ptrdiff_t i) {
+  return xs;
+}
+
+// boundaryMap
+
+template <typename F, typename T, typename... Args,
+          typename CT = qthread::shared_future<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>,
+          typename BCR = typename fun_traits<BC>::template constructor<R>>
+BCR boundaryMap(F &&f, const qthread::shared_future<T> &xs, std::ptrdiff_t i,
+                Args &&... args) {
+  return fmap(std::forward<F>(f), xs, i, std::forward<Args>(args)...);
+}
+
+// head, last
+
+template <typename T> const T &head(const qthread::shared_future<T> &xs) {
+  assert(xs.valid());
+  return xs.get();
+}
+
+template <typename T> const T &last(const qthread::shared_future<T> &xs) {
+  assert(xs.valid());
+  return xs.get();
+}
+
 // foldMap
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
@@ -146,7 +254,7 @@ CT mjoin(const qthread::shared_future<qthread::shared_future<T>> &xss) {
 // mbind
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   static_assert(detail::is_shared_future<CR>::value, "");
   assert(xs.valid());

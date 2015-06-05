@@ -29,6 +29,14 @@ template <typename R, typename A> struct fun_traits<std::function<R(A)>> {
   template <typename U> using constructor = std::function<std::decay_t<U>(A)>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -51,11 +59,10 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
 
 // fmap
 
-template <
-    typename F, typename T, typename A, typename... Args,
-    typename C = std::function<T(A)>,
-    typename R = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>,
-    typename CR = typename fun_traits<C>::template constructor<R>>
+template <typename F, typename T, typename A, typename... Args,
+          typename C = std::function<T(A)>,
+          typename R = cxx::invoke_of_t<F, T, Args...>,
+          typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap(F &&f, const std::function<T(A)> &xs, Args &&... args) {
   bool s = bool(xs);
   if (!s)
@@ -68,8 +75,7 @@ CR fmap(F &&f, const std::function<T(A)> &xs, Args &&... args) {
 
 template <typename F, typename T, typename A, typename T2, typename... Args,
           typename C = std::function<T(A)>,
-          typename R =
-              cxx::invoke_of_t<std::decay_t<F>, T, T2, std::decay_t<Args>...>,
+          typename R = cxx::invoke_of_t<F, T, T2, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
          Args &&... args) {
@@ -87,20 +93,18 @@ CR fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
 
 template <typename C, typename T,
           std::enable_if_t<detail::is_function<C>::value> * = nullptr,
-          typename R = std::decay_t<T>,
-          typename CR = typename fun_traits<C>::template constructor<R>>
-CR munit(T &&x) {
+          typename CT = typename fun_traits<C>::template constructor<T>>
+CT munit(T &&x) {
   typedef typename C::argument_type A;
-  CR rs = [x = std::forward<T>(x)](const A &) { return x; };
+  CT rs = [x = std::forward<T>(x)](const A &) { return x; };
   return rs;
 }
 
 // mbind
 // (a -> (x -> b)) -> (x -> a) -> (x -> b)
 
-template <
-    typename F, typename T, typename A, typename... Args,
-    typename CR = cxx::invoke_of_t<std::decay_t<F>, T, std::decay_t<Args>...>>
+template <typename F, typename T, typename A, typename... Args,
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const std::function<T(A)> &xs, Args &&... args) {
   static_assert(detail::is_function<CR>::value, "");
   if (!bool(xs))

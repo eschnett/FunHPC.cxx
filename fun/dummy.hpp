@@ -28,6 +28,9 @@ template <> struct fun_traits<adt::dummy> {
   static constexpr std::ptrdiff_t rank = 0;
   typedef adt::index_t<rank> index_type;
   typedef adt::dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = 0;
 };
 
 // iotaMap
@@ -131,8 +134,9 @@ template <typename> adt::dummy mjoin(adt::dummy xss);
 
 // mbind
 
-template <typename F, typename... Args,
-          typename CR = cxx::invoke_of_t<F &&, adt::dummy, Args &&...>>
+template <
+    typename F, typename... Args,
+    typename CR = std::decay_t<cxx::invoke_of_t<F &&, adt::dummy, Args &&...>>>
 CR mbind(F &&f, adt::dummy xs, Args &&... args);
 
 // mextract

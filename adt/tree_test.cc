@@ -15,7 +15,7 @@
 #include <memory>
 #include <vector>
 
-#warning "TODO: Move these tests to fun/tree_test.cc"
+// TODO: Move these tests to fun/tree_test.cc
 
 #if 0
 

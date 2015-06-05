@@ -33,14 +33,14 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
 
 // fmap
 
-template <typename F, typename C, typename T, std::ptrdiff_t D,
-          typename... Args, typename CT, typename R, typename CR>
+template <typename F, typename C, typename T, std::size_t D, typename... Args,
+          typename CT, typename R, typename CR>
 CR fmap(F &&f, const adt::grid<C, T, D> &xs, Args &&... args) {
   return CR(typename CR::fmap(), std::forward<F>(f), xs,
             std::forward<Args>(args)...);
 }
 
-template <typename F, typename C, typename T, std::ptrdiff_t D, typename T2,
+template <typename F, typename C, typename T, std::size_t D, typename T2,
           typename... Args, typename CT, typename R, typename CR>
 CR fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
          Args &&... args) {
@@ -48,7 +48,7 @@ CR fmap2(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
             std::forward<Args>(args)...);
 }
 
-template <typename F, typename C, typename T, std::ptrdiff_t D, typename T2,
+template <typename F, typename C, typename T, std::size_t D, typename T2,
           typename T3, typename... Args, typename CT, typename R, typename CR>
 CR fmap3(F &&f, const adt::grid<C, T, D> &xs, const adt::grid<C, T2, D> &ys,
          const adt::grid<C, T3, D> &zs, Args &&... args) {
@@ -71,10 +71,8 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename... Args, std::enable_if_t<D == 1> *, typename CT,
           typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
-                    std::size_t bmask,
-                    const typename adt::idtype<BCB>::element_type &bm0,
-                    const typename adt::idtype<BCB>::element_type &bp0,
-                    Args &&... args) {
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bp0, Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
             std::forward<G>(g), xs, bmask, bm0, bp0,
             std::forward<Args>(args)...);
@@ -93,19 +91,19 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
 
 // head, last
 
-template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D == 1> *>
+template <typename C, typename T, std::size_t D, std::enable_if_t<D == 1> *>
 decltype(auto) head(const adt::grid<C, T, D> &xs) {
   return xs.head();
 }
 
-template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D == 1> *>
+template <typename C, typename T, std::size_t D, std::enable_if_t<D == 1> *>
 decltype(auto) last(const adt::grid<C, T, D> &xs) {
   return xs.last();
 }
 
 // boundary
 
-template <typename C, typename T, std::ptrdiff_t D, std::enable_if_t<D != 0> *,
+template <typename C, typename T, std::size_t D, std::enable_if_t<D != 0> *,
           typename CT, typename BC, typename BCT>
 BCT boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
   return BCT(typename BCT::boundary(), xs, i);
@@ -113,9 +111,9 @@ BCT boundary(const adt::grid<C, T, D> &xs, std::ptrdiff_t i) {
 
 // boundaryMap
 
-template <typename F, typename C, typename T, std::ptrdiff_t D,
-          typename... Args, std::enable_if_t<D != 0> *, typename CT,
-          typename BC, typename R, typename BCR>
+template <typename F, typename C, typename T, std::size_t D, typename... Args,
+          std::enable_if_t<D != 0> *, typename CT, typename BC, typename R,
+          typename BCR>
 BCR boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
                 Args &&... args) {
   return fmap(std::forward<F>(f), boundary(xs, i), i,
@@ -125,7 +123,7 @@ BCR boundaryMap(F &&f, const adt::grid<C, T, D> &xs, std::ptrdiff_t i,
 // foldMap
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          std::ptrdiff_t D, typename... Args, typename R>
+          std::size_t D, typename... Args, typename R>
 R foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
           Args &&... args) {
   return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
@@ -133,7 +131,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
 }
 
 template <typename F, typename Op, typename Z, typename C, typename T,
-          std::ptrdiff_t D, typename T2, typename... Args, typename R>
+          std::size_t D, typename T2, typename... Args, typename R>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
            const adt::grid<C, T2, D> &ys, Args &&... args) {
   return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
@@ -168,7 +166,7 @@ CR munit(T &&x) {
 
 // mextract
 
-template <typename C, typename T, std::ptrdiff_t D>
+template <typename C, typename T, std::size_t D>
 decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
   return xs.head();
 }
@@ -176,8 +174,7 @@ decltype(auto) mextract(const adt::grid<C, T, D> &xs) {
 // mfoldMap
 
 template <typename F, typename Op, typename Z, typename A, typename T,
-          std::ptrdiff_t D, typename... Args, typename C, typename R,
-          typename CR>
+          std::size_t D, typename... Args, typename C, typename R, typename CR>
 CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::grid<A, T, D> &xs,
             Args &&... args) {
   return munit<C>(foldMap(std::forward<F>(f), std::forward<Op>(op),
@@ -211,14 +208,14 @@ CR mzero() {
 
 // mempty
 
-template <typename C, typename T, std::ptrdiff_t D>
+template <typename C, typename T, std::size_t D>
 bool mempty(const adt::grid<C, T, D> &xs) {
   return xs.empty();
 }
 
 // msize
 
-template <typename C, typename T, std::ptrdiff_t D>
+template <typename C, typename T, std::size_t D>
 std::size_t msize(const adt::grid<C, T, D> &xs) {
   return xs.size();
 }

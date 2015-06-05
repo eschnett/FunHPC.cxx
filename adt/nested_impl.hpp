@@ -6,12 +6,36 @@
 #include <adt/dummy.hpp>
 
 #include <cereal/access.hpp>
+#include <cereal/types/tuple.hpp>
 
+#include <cstddef>
 #include <type_traits>
 
 namespace adt {
 
-template <typename P, typename A, typename T> struct nested {
+namespace detail {
+template <typename T> struct nested_default_policy : std::tuple<> {
+  // std::size_t(-1) means unlimited
+  constexpr std::size_t min_outer_size() const noexcept { return 0; }
+  constexpr std::size_t max_outer_size() const noexcept { return -1; }
+  constexpr std::size_t min_inner_size() const noexcept { return 0; }
+  constexpr std::size_t max_inner_size() const noexcept { return -1; }
+  template <typename U> struct rebind {
+    typedef nested_default_policy<U> other;
+  };
+  // TODO: try to remove these default definition, also in wave1d.cc
+  nested_default_policy() = default;
+  nested_default_policy(const nested_default_policy &other) = default;
+  nested_default_policy(nested_default_policy &&other) = default;
+  nested_default_policy &
+  operator=(const nested_default_policy &other) = default;
+  nested_default_policy &operator=(nested_default_policy &&other) = default;
+  template <typename U>
+  nested_default_policy(const nested_default_policy<U> &other) {}
+};
+}
+
+template <typename P, typename A, typename T, typename Policy> struct nested {
   // nested<P,A,T> = P<A<T>>
 
   static_assert(
@@ -30,13 +54,23 @@ template <typename P, typename A, typename T> struct nested {
   using array_constructor =
       typename fun::fun_traits<A>::template constructor<U>;
   typedef T value_type;
+  typedef Policy policy_type;
 
   pointer_constructor<array_constructor<T>> data;
 
-  template <typename Archive> void serialize(Archive &ar) { ar(data); }
+  policy_type policy;
+  constexpr policy_type get_policy() const noexcept { return policy; }
+
+  template <typename Archive> void serialize(Archive &ar) { ar(data, policy); }
+
+  nested() = default;
+  nested(const nested &) = default;
+  nested(nested &&) = default;
+  nested &operator=(const nested &) = default;
+  nested &operator=(nested &&) = default;
 };
-template <typename P, typename A, typename T>
-void swap(nested<P, A, T> &x, nested<P, A, T> &y) {
+template <typename P, typename A, typename T, typename Policy>
+void swap(nested<P, A, T, Policy> &x, nested<P, A, T, Policy> &y) {
   swap(x.data, y.data);
 }
 }

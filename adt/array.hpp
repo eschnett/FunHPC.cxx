@@ -428,7 +428,7 @@ class irange_t {
   }
 
 public:
-  constexpr bool invariant() const { return istep_ > 0; }
+  constexpr bool invariant() const noexcept { return istep_ > 0; }
   constexpr irange_t() : irange_t(0) {}
   constexpr irange_t(std::ptrdiff_t imax_) : irange_t(0, imax_) {}
   constexpr irange_t(std::ptrdiff_t imin_, std::ptrdiff_t imax_)
@@ -468,7 +468,9 @@ template <std::size_t D> class range_t {
 public:
   constexpr static index_t<D> zero() { return adt::set<index_t<D>>(0); }
   constexpr static index_t<D> one() { return adt::set<index_t<D>>(1); }
-  constexpr bool invariant() const { return adt::all(adt::gt(istep_, 0)); }
+  constexpr bool invariant() const noexcept {
+    return adt::all(adt::gt(istep_, 0));
+  }
   constexpr range_t() : range_t(zero()) {}
   constexpr range_t(const index_t<D> &imax_) : range_t(zero(), imax_) {}
   constexpr range_t(const index_t<D> &imin_, const index_t<D> &imax_)

@@ -34,7 +34,11 @@ template <typename T> struct fun_traits<adt::idtype<T>> {
 
   static constexpr std::ptrdiff_t rank = 0;
   typedef adt::index_t<rank> index_type;
-  typedef adt::empty<adt::dummy> boundary_dummy;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 1;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -135,14 +139,14 @@ constexpr CR munit(T &&x) {
 // mbind
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const adt::idtype<T> &xs, Args &&... args) {
   static_assert(detail::is_idtype<CR>::value, "");
   return cxx::invoke(std::forward<F>(f), xs.get(), std::forward<Args>(args)...);
 }
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, adt::idtype<T> &&xs, Args &&... args) {
   static_assert(detail::is_idtype<CR>::value, "");
   return cxx::invoke(std::forward<F>(f), std::move(xs.get()),

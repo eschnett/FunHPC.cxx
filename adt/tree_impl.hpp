@@ -13,7 +13,7 @@
 namespace adt {
 
 template <typename A, typename T> struct tree {
-  // data Tree a = Leaf a | Branch (A (Tree a))
+  // data Tree a = Leaf (A a) | Branch (A (Tree a))
 
   static_assert(
       std::is_same<typename fun::fun_traits<A>::value_type, adt::dummy>::value,

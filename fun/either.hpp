@@ -31,6 +31,14 @@ template <typename L, typename R> struct fun_traits<adt::either<L, R>> {
   template <typename U> using constructor = adt::either<L, std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef R value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -140,7 +148,7 @@ CR munit(T &&x) {
 // mbind
 
 template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const adt::either<L, T> &xs, Args &&... args) {
   static_assert(detail::is_either<CR>::value, "");
   if (!xs.right())
@@ -150,7 +158,7 @@ CR mbind(F &&f, const adt::either<L, T> &xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 auto mbind(F &&f, adt::either<L, T> &&xs, Args &&... args) {
   static_assert(detail::is_either<CR>::value, "");
   if (!xs.right())

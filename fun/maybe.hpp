@@ -30,6 +30,14 @@ template <typename T> struct fun_traits<adt::maybe<T>> {
   template <typename U> using constructor = adt::maybe<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -137,7 +145,7 @@ constexpr CR munit(T &&x) {
 // mbind
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
   static_assert(detail::is_maybe<CR>::value, "");
   typedef typename fun_traits<CR>::value_type R;
@@ -148,7 +156,7 @@ CR mbind(F &&f, const adt::maybe<T> &xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, adt::maybe<T> &&xs, Args &&... args) {
   static_assert(detail::is_maybe<CR>::value, "");
   typedef typename fun_traits<CR>::value_type R;

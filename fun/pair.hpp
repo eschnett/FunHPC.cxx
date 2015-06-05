@@ -29,6 +29,14 @@ template <typename T, typename L> struct fun_traits<std::pair<L, T>> {
   template <typename U> using constructor = std::pair<L, std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 1;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -65,11 +73,11 @@ CR fmap(F &&f, std::pair<L, T> &&xs, Args &&... args) {
                                      std::forward<Args>(args)...));
 }
 
-template <typename F, typename T, typename L, typename T2, typename... Args,
-          typename C = std::pair<L, T>,
+template <typename F, typename T, typename L, typename T2, typename L2,
+          typename... Args, typename C = std::pair<L, T>,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR fmap2(F &&f, const std::pair<L, T> &xs, const std::pair<L, T2> &ys,
+CR fmap2(F &&f, const std::pair<L, T> &xs, const std::pair<L2, T2> &ys,
          Args &&... args) {
   return std::pair<L, R>(xs.first,
                          cxx::invoke(std::forward<F>(f), xs.second, ys.second,
@@ -95,10 +103,10 @@ R foldMap(F &&f, Op &&op, Z &&z, std::pair<L, T> &&xs, Args &&... args) {
 }
 
 template <typename F, typename Op, typename Z, typename T, typename L,
-          typename T2, typename... Args,
+          typename T2, typename L2, typename... Args,
           typename R = cxx::invoke_of_t<F &&, T, T2, Args &&...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
-           const std::pair<L, T2> &ys, Args &&... args) {
+           const std::pair<L2, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return cxx::invoke(std::forward<F>(f), xs.second, ys.second,
                      std::forward<Args>(args)...);
@@ -118,7 +126,7 @@ constexpr CR munit(T &&x) {
 // mbind
 
 template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const std::pair<L, T> &xs, Args &&... args) {
   static_assert(detail::is_pair<CR>::value, "");
   return cxx::invoke(std::forward<F>(f), xs.second,
@@ -126,7 +134,7 @@ CR mbind(F &&f, const std::pair<L, T> &xs, Args &&... args) {
 }
 
 template <typename F, typename T, typename L, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, std::pair<L, T> &&xs, Args &&... args) {
   static_assert(detail::is_pair<CR>::value, "");
   return cxx::invoke(std::forward<F>(f), std::move(xs.second),
@@ -135,13 +143,13 @@ CR mbind(F &&f, std::pair<L, T> &&xs, Args &&... args) {
 
 // mjoin
 
-template <typename T, typename L, typename CT = std::pair<L, T>>
-constexpr CT mjoin(const std::pair<L, std::pair<L, T>> &xss) {
+template <typename T, typename L, typename L2, typename CT = std::pair<L, T>>
+constexpr CT mjoin(const std::pair<L2, std::pair<L, T>> &xss) {
   return xss.second;
 }
 
-template <typename T, typename L, typename CT = std::pair<L, T>>
-constexpr CT mjoin(std::pair<L, std::pair<L, T>> &&xss) {
+template <typename T, typename L, typename L2, typename CT = std::pair<L, T>>
+constexpr CT mjoin(std::pair<L2, std::pair<L, T>> &&xss) {
   return std::move(xss.second);
 }
 

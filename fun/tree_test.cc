@@ -27,7 +27,7 @@ template <typename T>
 using future_tree = adt::tree<future_vector<adt::dummy>, T>;
 }
 
-#warning "TODO: Test trees of grids"
+// TODO: Test trees of grids
 
 TEST(fun_tree, iotaMap) {
   for (std::ptrdiff_t s = 0; s < 110; ++s) {
@@ -77,10 +77,10 @@ TEST(fun_tree, boundary) {
   EXPECT_EQ(fun::mextract(bxs1[0]), 0);
   EXPECT_EQ(fun::mextract(bxs1[1]), (s - 1) * (s - 1));
 
-#warning "TODO: test other tree types"
+  // TODO: test other tree types
 }
 
-#warning "TODO: test boundaryMap"
+// TODO: test boundaryMap
 
 TEST(fun_tree, fmapStencil) {
   std::ptrdiff_t s = 10;

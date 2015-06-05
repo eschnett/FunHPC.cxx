@@ -105,12 +105,18 @@ HDRS =						\
 	adt/dummy.hpp				\
 	adt/either.hpp				\
 	adt/empty.hpp				\
+	adt/extra.hpp				\
 	adt/grid_decl.hpp			\
 	adt/grid_impl.hpp			\
 	adt/idtype.hpp				\
+	adt/maxarray.hpp			\
 	adt/maybe.hpp				\
 	adt/nested_decl.hpp			\
 	adt/nested_impl.hpp			\
+	adt/par_decl.hpp			\
+	adt/par_impl.hpp			\
+	adt/seq_decl.hpp			\
+	adt/seq_impl.hpp			\
 	adt/tree_decl.hpp			\
 	adt/tree_impl.hpp			\
 	cxx/apply.hpp				\
@@ -126,17 +132,23 @@ HDRS =						\
 	fun/dummy.hpp				\
 	fun/either.hpp				\
 	fun/empty.hpp				\
+	fun/extra.hpp				\
 	fun/fun_decl.hpp			\
 	fun/fun_impl.hpp			\
 	fun/function.hpp			\
 	fun/grid_decl.hpp			\
 	fun/grid_impl.hpp			\
 	fun/idtype.hpp				\
+	fun/maxarray.hpp			\
 	fun/maybe.hpp				\
 	fun/nested_decl.hpp			\
 	fun/nested_impl.hpp			\
 	fun/pair.hpp				\
+	fun/par_decl.hpp			\
+	fun/par_impl.hpp			\
 	fun/proxy.hpp				\
+	fun/seq_decl.hpp			\
+	fun/seq_impl.hpp			\
 	fun/shared_future.hpp			\
 	fun/shared_ptr.hpp			\
 	fun/tree_decl.hpp			\
@@ -165,12 +177,17 @@ TEST_SRCS =					\
 	adt/dummy_test.cc			\
 	adt/either_test.cc			\
 	adt/empty_test.cc			\
+	adt/extra_test.cc			\
 	adt/grid_test.cc			\
 	adt/idtype_test.cc			\
+	adt/maxarray_test.cc			\
 	adt/maybe_test.cc			\
 	adt/nested_test.cc			\
+	adt/par_test.cc				\
+	adt/seq_test.cc				\
 	adt/tree_test.cc			\
 	cxx/apply_test.cc			\
+	cxx/cstdlib_test.cc			\
 	cxx/funobj_test.cc			\
 	cxx/invoke_test.cc			\
 	cxx/serialize_test.cc			\
@@ -179,13 +196,17 @@ TEST_SRCS =					\
 	fun/array_test.cc			\
 	fun/either_test.cc			\
 	fun/empty_test.cc			\
+	fun/extra_test.cc			\
 	fun/fun_test.cc				\
 	fun/function_test.cc			\
 	fun/grid_test.cc			\
 	fun/idtype_test.cc			\
+	fun/maxarray_test.cc			\
 	fun/maybe_test.cc			\
 	fun/nested_test.cc			\
 	fun/pair_test.cc			\
+	fun/par_test.cc				\
+	fun/seq_test.cc				\
 	fun/shared_future_test.cc		\
 	fun/shared_ptr_test.cc			\
 	fun/tree_test.cc			\

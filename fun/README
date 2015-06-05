@@ -1,0 +1,28 @@
+
+T: our type
+E: some other type (Extra)
+N: nothing
+
+
+
+Container   Allowed states
+
+empty       N
+extra       E
+idtype      T
+
+pair        E * T
+maybe       N + T
+either      E + T
+
+seq         C1 T * C2 T
+par         C1 T + C2 T
+nested      C1 C2 T
+
+
+
+Tree c a = Leaf (c a) | Branch (c (Tree c a))
+
+tree c a = par c (nested c (tree c)) a
+
+tree = par idtype (nested array bintree)

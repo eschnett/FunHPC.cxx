@@ -18,22 +18,22 @@ namespace adt {
 
 namespace detail {
 
-template <std::ptrdiff_t D> class index_space {
+template <std::size_t D> class index_space {
 public:
   typedef adt::index_t<D> index_type;
 
 private:
   index_type m_shape;
   std::ptrdiff_t m_offset;
-#warning "TODO: Make boundaries be the same type as the domain. "\
-"This ensures that the stride of dimension 0 is always 1, "\
-"which is much more efficient."
-#warning "TODO: Do this only for grid?"
+  // TODO: Make boundaries be the same type as the domain. This
+  // ensures that the stride of dimension 0 is always 1, which is much
+  // more efficient.
+  // TODO: Do this only for grid?
   std::ptrdiff_t m_stride0;
   index_type m_stride;
   std::ptrdiff_t m_allocated;
 
-  template <std::ptrdiff_t D1> friend class index_space;
+  template <std::size_t D1> friend class index_space;
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
@@ -215,12 +215,12 @@ public:
               << "}";
   }
 };
-template <std::ptrdiff_t D> void swap(index_space<D> &x, index_space<D> &y) {
+template <std::size_t D> void swap(index_space<D> &x, index_space<D> &y) {
   x.swap(y);
 }
 }
 
-template <typename C, typename T, std::ptrdiff_t D> class grid {
+template <typename C, typename T, std::size_t D> class grid {
 public:
   static_assert(
       std::is_same<typename fun::fun_traits<C>::value_type, adt::dummy>::value,
@@ -236,7 +236,7 @@ public:
   typedef detail::index_space<D> index_space;
   typedef typename index_space::index_type index_type;
 
-  template <typename C1, typename T1, std::ptrdiff_t D1> friend class grid;
+  template <typename C1, typename T1, std::size_t D1> friend class grid;
 
 private:
   index_space indexing;
@@ -304,7 +304,7 @@ public:
 
   struct iotaMap {};
 
-  template <typename F, typename... Args, std::ptrdiff_t D2 = D,
+  template <typename F, typename... Args, std::size_t D2 = D,
             typename std::enable_if_t<D2 == 0> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
       : indexing(index_type{{}}),
@@ -316,7 +316,7 @@ public:
     assert(invariant());
   }
 
-  template <typename F, typename... Args, std::ptrdiff_t D2 = D,
+  template <typename F, typename... Args, std::size_t D2 = D,
             typename std::enable_if_t<D2 == 1> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
       : indexing(index_type{{inds.shape()}}),
@@ -548,7 +548,7 @@ public:
     return r;
   }
 };
-template <typename C, typename T, std::ptrdiff_t D>
+template <typename C, typename T, std::size_t D>
 void swap(grid<C, T, D> &x, grid<C, T, D> &y) {
   x.swap(y);
 }

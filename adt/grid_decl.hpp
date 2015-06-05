@@ -5,8 +5,8 @@
 
 namespace adt {
 
-template <typename C, typename T, std::ptrdiff_t D> class grid;
-template <typename C, typename T, std::ptrdiff_t D>
+template <typename C, typename T, std::size_t D> class grid;
+template <typename C, typename T, std::size_t D>
 void swap(grid<C, T, D> &x, grid<C, T, D> &y);
 }
 

@@ -3,7 +3,6 @@
 
 #include <cereal/access.hpp>
 
-// #include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -28,7 +27,6 @@ public:
 
   const T &get() const { return elt; }
   T &get() { return elt; }
-  // T &&get() && { return elt; }
 
   bool operator==(const idtype &other) const { return elt == other.elt; }
   bool operator!=(const idtype &other) const { return !(*this == other); }
@@ -42,9 +40,6 @@ template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
 template <typename T> auto make_id(T &&x) {
   return idtype<std::decay_t<T>>(std::forward<T>(x));
 }
-
-// template <typename T> class idtype : std::tuple<T> {};
-// template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
 }
 
 #define ADT_IDTYPE_HPP_DONE

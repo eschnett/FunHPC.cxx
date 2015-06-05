@@ -21,7 +21,7 @@ namespace fun {
 // iotaMap
 
 namespace detail {
-constexpr std::ptrdiff_t max_tree_size = 10;
+constexpr std::ptrdiff_t max_tree_size = 8;
 template <std::size_t D>
 const std::ptrdiff_t
     max_tree_linear_size = std::rint(std::pow(double(max_tree_size), 1.0 / D));
@@ -185,8 +185,8 @@ CR fmap3(F &&f, const adt::tree<A, T> &xs, const adt::tree<A, T2> &ys,
 // head, last
 
 template <typename A, typename T> T head(const adt::tree<A, T> &xs) {
-// TODO: head(head(...)) copies subtrees; call boundaryMap instead
-#warning "TODO: This is slow; call boundaryMap instead"
+  // TODO: head(head(...)) copies subtrees; call boundaryMap instead
+  // TODO: This is slow; call boundaryMap instead
   return xs.subtrees.left() ? xs.subtrees.get_left()
                             : head(head(xs.subtrees.get_right()));
 }
@@ -260,7 +260,7 @@ template <typename G> struct tree_fmapStencil_g {
   template <typename Archive> void serialize(Archive &ar) { ar(g); }
   template <typename A, typename T>
   auto operator()(const adt::tree<A, T> &xs, std::ptrdiff_t i) const {
-#warning "TODO: This is slow; call boundaryMap instead"
+    // TODO: This is slow; call boundaryMap instead
     return i == 0 ? cxx::invoke(g, head(xs), i) : cxx::invoke(g, last(xs), i);
   }
 };
@@ -316,8 +316,7 @@ template <std::size_t D, typename F, typename G, typename A, typename T,
           typename... Args, std::enable_if_t<D == 1> *, typename CT,
           typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
-                    const typename adt::idtype<BCB>::element_type &bm0,
-                    const typename adt::idtype<BCB>::element_type &bp0,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bp0,
                     Args &&... args) {
   bool s = xs.subtrees.right();
   assert(bm0.subtrees.right() == s);
@@ -364,14 +363,9 @@ template <std::size_t D, typename F, typename G, typename A, typename T,
           typename... Args, std::enable_if_t<D == 2> *, typename CT,
           typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
-                    const typename adt::idtype<BCB>::element_type &bm0,
-                    const typename adt::idtype<BCB>::element_type &bm1,
-                    const typename adt::idtype<BCB>::element_type &bp0,
-                    const typename adt::idtype<BCB>::element_type &bp1,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bm1,
+                    const std::decay_t<BCB> &bp0, const std::decay_t<BCB> &bp1,
                     Args &&... args) {
-#warning "TODO"
-  std::cout << "fmapStencilMulti<tree> xs=" << xs << " bm0=" << bm0
-            << " bm1=" << bm1 << " bp0=" << bp0 << " bp1=" << bp1 << "\n";
   bool s = xs.subtrees.right();
   assert(bm0.subtrees.right() == s);
   assert(bm1.subtrees.right() == s);
@@ -510,7 +504,7 @@ CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::tree<A, T> &xs, Args &&... args) {
 
 template <typename A, typename T, typename... Ts, typename CT>
 CT mplus(const adt::tree<A, T> &xss, const adt::tree<A, Ts> &... yss) {
-  return CT{CT::either_t::make_right(fun::msome<A>(xss, yss...))};
+  return CT{CT::either_t::make_right(msome<A>(xss, yss...))};
 }
 
 // msome

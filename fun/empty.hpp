@@ -30,7 +30,11 @@ template <typename T> struct fun_traits<adt::empty<T>> {
 
   static constexpr std::ptrdiff_t rank = 0;
   typedef adt::index_t<rank> index_type;
-  typedef adt::empty<adt::dummy> boundary_dummy;
+
+  typedef dummy boundary_dummy;
+
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = 0;
 };
 
 // iotaMap
@@ -84,7 +88,7 @@ constexpr R foldMap2(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
 // mbind
 
 template <typename F, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 constexpr CR mbind(F &&f, const adt::empty<T> &xs, Args &&... args) {
   static_assert(detail::is_empty<CR>::value, "");
   return CR();
@@ -94,6 +98,22 @@ constexpr CR mbind(F &&f, const adt::empty<T> &xs, Args &&... args) {
 
 template <typename T, typename CT = adt::empty<T>>
 constexpr CT mjoin(const adt::empty<adt::empty<T>> &xss) {
+  return CT();
+}
+
+// mzero
+
+template <typename C, typename R,
+          std::enable_if_t<detail::is_empty<C>::value> * = nullptr,
+          typename CR = typename fun_traits<C>::template constructor<R>>
+constexpr CR mzero() {
+  return CR();
+}
+
+// mplus
+
+template <typename T, typename... Ts, typename CT = adt::empty<T>>
+constexpr CT mplus(const adt::empty<T> &xs, const adt::empty<Ts> &... yss) {
   return CT();
 }
 

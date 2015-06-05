@@ -7,9 +7,11 @@
 #include <fun/array.hpp>
 #include <fun/fun_decl.hpp>
 #include <fun/grid_decl.hpp>
+#include <fun/maxarray.hpp>
 #include <fun/nested_decl.hpp>
 #include <fun/proxy.hpp>
 #include <fun/shared_future.hpp>
+#include <fun/shared_ptr.hpp>
 #include <fun/tree_decl.hpp>
 #include <fun/vector.hpp>
 #include <funhpc/main.hpp>
@@ -219,35 +221,42 @@ typedef decltype(
 
 // Grid
 
-template <typename T>
-using vector_grid = adt::grid<std::vector<adt::dummy>, T, dim>;
-template <typename T>
-using vector_grid_proxy =
-    adt::nested<funhpc::proxy<adt::dummy>, vector_grid<adt::dummy>, T>;
+constexpr std::size_t max_size = 8;
 
 template <typename T>
-using vector_grid_tree = adt::tree<vector_grid<adt::dummy>, T>;
-template <typename T>
-using vector_grid_proxy_tree = adt::tree<vector_grid_proxy<adt::dummy>, T>;
+using maxarray_grid = adt::grid<adt::maxarray<adt::dummy, max_size>, T, dim>;
 
 template <typename T>
-using vector_grid_tree_vector_grid =
-    adt::nested<vector_grid_tree<adt::dummy>, vector_grid<adt::dummy>, T>;
+using shared_grid =
+    adt::nested<std::shared_ptr<adt::dummy>, maxarray_grid<adt::dummy>, T>;
 template <typename T>
-using vector_grid_proxy_tree_vector_grid =
-    adt::nested<vector_grid_proxy_tree<adt::dummy>, vector_grid<adt::dummy>, T>;
-
-// Different parallel implementations
-// template <typename T> using storage_t = vector_grid<T>;
-// template <typename T> using storage_t = vector_grid_proxy<T>;
-// template <typename T> using storage_t = vector_grid_tree<T>;
-// template <typename T> using storage_t = vector_grid_proxy_tree<T>;
-// template <typename T> using storage_t = vector_grid_tree_vector_grid<T>;
-template <typename T> using storage_t = vector_grid_proxy_tree_vector_grid<T>;
-
+using future_grid = adt::nested<qthread::shared_future<adt::dummy>,
+                                maxarray_grid<adt::dummy>, T>;
 template <typename T>
-using boundary_t = typename fun::fun_traits<typename fun::fun_traits<
-    storage_t<adt::dummy>>::boundary_dummy>::template constructor<T>;
+using proxy_grid =
+    adt::nested<funhpc::proxy<adt::dummy>, maxarray_grid<adt::dummy>, T>;
+
+// template <typename T> using storage_t = adt::tree<shared_grid<adt::dummy>,
+// T>;
+// template <typename T> using storage_t = adt::tree<future_grid<adt::dummy>,
+// T>;
+// template <typename T> using storage_t = adt::tree<shared_grid<adt::dummy>,
+// T>;
+// template <typename T>
+// using storage_t = adt::nested<adt::tree<shared_grid<adt::dummy>, adt::dummy>,
+//                               shared_grid<adt::dummy>, T>;
+// template <typename T>
+// using storage_t = adt::nested<adt::tree<future_grid<adt::dummy>, adt::dummy>,
+//                               future_grid<adt::dummy>, T>;
+template <typename T>
+using storage_t = adt::nested<adt::tree<proxy_grid<adt::dummy>, adt::dummy>,
+                              proxy_grid<adt::dummy>, T>;
+
+typedef typename fun::fun_traits<storage_t<adt::dummy>>::boundary_dummy
+    boundary_dummy;
+template <typename T>
+using boundary_t =
+    typename fun::fun_traits<boundary_dummy>::template constructor<T>;
 
 struct grid_t {
   real_t time;

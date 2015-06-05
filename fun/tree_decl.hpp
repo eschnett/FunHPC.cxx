@@ -28,8 +28,13 @@ template <typename A, typename T> struct fun_traits<adt::tree<A, T>> {
 
   static constexpr std::ptrdiff_t rank = fun_traits<A>::rank;
   typedef typename fun_traits<A>::index_type index_type;
+
   typedef adt::tree<typename fun_traits<A>::boundary_dummy, adt::dummy>
       boundary_dummy;
+
+  // TODO: correct tree size range
+  static constexpr std::size_t min_size = 0;
+  static constexpr std::size_t max_size = -1;
 };
 
 // iotaMap
@@ -110,8 +115,7 @@ template <std::size_t D, typename F, typename G, typename A, typename T,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
-                    const typename adt::idtype<BCB>::element_type &bm0,
-                    const typename adt::idtype<BCB>::element_type &bp0,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bp0,
                     Args &&... args);
 
 template <std::size_t D, typename F, typename G, typename A, typename T,
@@ -123,10 +127,8 @@ template <std::size_t D, typename F, typename G, typename A, typename T,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
-                    const typename adt::idtype<BCB>::element_type &bm0,
-                    const typename adt::idtype<BCB>::element_type &bm1,
-                    const typename adt::idtype<BCB>::element_type &bp0,
-                    const typename adt::idtype<BCB>::element_type &bp1,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bm1,
+                    const std::decay_t<BCB> &bp0, const std::decay_t<BCB> &bp1,
                     Args &&... args);
 
 // foldMap
@@ -163,7 +165,7 @@ CT mjoin(const adt::tree<A, adt::tree<A, T>> &xss);
 // mbind
 
 template <typename F, typename A, typename T, typename... Args,
-          typename CR = cxx::invoke_of_t<F, T, Args...>>
+          typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const adt::tree<A, T> &xs, Args &&... args);
 
 // mextract

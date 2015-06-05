@@ -33,6 +33,15 @@ template <typename T> struct fun_traits<funhpc::proxy<T>> {
   template <typename U> using constructor = funhpc::proxy<std::decay_t<U>>;
   typedef constructor<adt::dummy> dummy;
   typedef T value_type;
+
+  static constexpr std::ptrdiff_t rank = 0;
+  typedef adt::index_t<rank> index_type;
+
+  typedef dummy boundary_dummy;
+
+  // We don't want empty proxies since they don't support mjoin
+  static constexpr std::size_t min_size = 1;
+  static constexpr std::size_t max_size = 1;
 };
 
 // iotaMap
@@ -42,9 +51,29 @@ template <typename C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
-  assert(inds.size() == 1);
+  std::size_t s = inds.size();
+  assert(s <= 1);
+  if (__builtin_expect(!s, false))
+    return CR();
   // TODO: use funhpc::remote
   return funhpc::local(std::forward<F>(f), inds[0],
+                       std::forward<Args>(args)...);
+}
+
+// iotaMapMulti
+
+template <
+    typename C, std::size_t D, typename F, typename... Args,
+    std::enable_if_t<detail::is_proxy<C>::value> * = nullptr,
+    typename R = std::decay_t<cxx::invoke_of_t<F, adt::index_t<D>, Args...>>,
+    typename CR = typename fun_traits<C>::template constructor<R>>
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+  std::size_t s = inds.size();
+  assert(inds.size() <= 1);
+  if (__builtin_expect(!s, false))
+    return CR();
+  // TODO: use funhpc::remote
+  return funhpc::local(std::forward<F>(f), inds.imin(),
                        std::forward<Args>(args)...);
 }
 
@@ -174,6 +203,110 @@ CR fmap5(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap5(),
                         std::forward<F>(f), xs, ys, zs, as, bs,
                         std::forward<Args>(args)...);
+}
+
+// fmapStencil
+
+namespace detail {
+struct proxy_fmapStencil : std::tuple<> {
+  template <typename F, typename T, typename BM, typename BP, typename... Args>
+  auto operator()(F &&f, const funhpc::proxy<T> &xs, std::size_t bmask, BM &&bm,
+                  BP &&bp, Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    return cxx::invoke(std::forward<F>(f), *xs, bmask, std::forward<BM>(bm),
+                       std::forward<BP>(bp), std::forward<Args>(args)...);
+  }
+};
+}
+
+template <typename F, typename G, typename T, typename BM, typename BP,
+          typename... Args, typename CT = funhpc::proxy<T>,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencil(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
+               BM &&bm, BP &&bp, Args &&... args) {
+  static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
+  static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
+  bool s = bool(xs);
+  assert(s);
+  return funhpc::remote(xs.get_proc_future(), detail::proxy_fmapStencil(),
+                        std::forward<F>(f), xs, bmask, std::forward<BM>(bm),
+                        std::forward<BP>(bp), std::forward<Args>(args)...);
+}
+
+// fmapStencilMulti
+
+namespace detail {
+template <std::size_t D> struct proxy_fmapStencilMulti;
+}
+
+namespace detail {
+template <> struct proxy_fmapStencilMulti<1> : std::tuple<> {
+  template <typename T, typename BM0, typename BP0, typename F,
+            typename... Args>
+  auto operator()(const funhpc::proxy<T> &xs, std::size_t bmask,
+                  const funhpc::proxy<BM0> &bm0, const funhpc::proxy<BP0> &bp0,
+                  F &&f, Args &&... args) const {
+    assert(bool(xs) && xs.proc_ready() && xs.local());
+    assert(bool(bm0));
+    assert(bool(bp0));
+    auto bm0l = bm0.make_local();
+    auto bp0l = bp0.make_local();
+    return cxx::invoke(std::forward<F>(f), *xs, bmask, *bm0l, *bp0l,
+                       std::forward<Args>(args)...);
+  }
+};
+}
+
+template <std::size_t D, typename F, typename G, typename T, typename... Args,
+          std::enable_if_t<D == 1> * = nullptr, typename CT = funhpc::proxy<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bp0,
+                    Args &&... args) {
+  bool s = bool(xs);
+  assert(s);
+  return funhpc::remote(xs.get_proc_future(),
+                        detail::proxy_fmapStencilMulti<D>(), xs, bmask, bm0,
+                        bp0, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+// head, last
+
+template <typename T> T head(const funhpc::proxy<T> &xs) {
+  assert(bool(xs));
+  return *xs.make_local();
+}
+
+template <typename T> T last(const funhpc::proxy<T> &xs) {
+  assert(bool(xs));
+  return *xs.make_local();
+}
+
+// boundary
+
+template <typename T, typename CT = funhpc::proxy<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename BCT = typename fun_traits<BC>::template constructor<T>>
+BCT boundary(const funhpc::proxy<T> &xs, std::ptrdiff_t i) {
+  return xs;
+}
+
+// boundaryMap
+
+template <typename F, typename T, typename... Args,
+          typename CT = funhpc::proxy<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename R = cxx::invoke_of_t<F, T, std::ptrdiff_t, Args...>,
+          typename BCR = typename fun_traits<BC>::template constructor<R>>
+BCR boundaryMap(F &&f, const funhpc::proxy<T> &xs, std::ptrdiff_t i,
+                Args &&... args) {
+  return fmap(std::forward<F>(f), xs, i, std::forward<Args>(args)...);
 }
 
 // foldMap

@@ -10,7 +10,7 @@
 
 using namespace fun;
 
-template <typename T> using array0 = std::array<T, 0>;
+// template <typename T> using array0 = std::array<T, 0>;
 template <typename T> using array10 = std::array<T, 10>;
 
 TEST(fun_array, iotaMap) {
@@ -118,14 +118,14 @@ TEST(fun_array, monad) {
   EXPECT_EQ(10, r1.size());
   EXPECT_EQ(r1.size() * r, mextract(r1));
 
-  auto x0 = mzero<array0<adt::dummy>, int>();
-  static_assert(std::is_same<decltype(x0), std::array<int, 0>>::value, "");
-  EXPECT_TRUE(x0.empty());
+  // auto x0 = mzero<array0<adt::dummy>, int>();
+  // static_assert(std::is_same<decltype(x0), std::array<int, 0>>::value, "");
+  // EXPECT_TRUE(x0.empty());
 
   EXPECT_FALSE(mempty(x1));
   EXPECT_FALSE(mempty(xx1));
   EXPECT_FALSE(mempty(xx1[0]));
   EXPECT_FALSE(mempty(x1j));
   EXPECT_FALSE(mempty(x2));
-  EXPECT_TRUE(mempty(x0));
+  // EXPECT_TRUE(mempty(x0));
 }

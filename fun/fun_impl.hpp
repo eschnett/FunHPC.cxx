@@ -3,6 +3,8 @@
 
 #include "fun_decl.hpp"
 
+#include <fun/maybe.hpp>
+
 #include <cereal/types/tuple.hpp>
 
 #include <functional>

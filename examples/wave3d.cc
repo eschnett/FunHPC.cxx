@@ -31,6 +31,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -347,26 +348,26 @@ auto grid_rhs(const grid_t &g) {
 
 // State
 
-struct state_t {
+struct schedule_t {
   int_t iter;
   grid_t state;
   grid_t error;
   qthread::shared_future<norm_t> fnorm;
   qthread::shared_future<real_t> fenergy;
   grid_t rhs;
-  state_t(int_t iter, const grid_t &state)
+  schedule_t(int_t iter, const grid_t &state)
       : iter(iter), state(state), error(grid_error(state)),
         fnorm(qthread::async(grid_norm, error)),
         fenergy(qthread::async(grid_energy, state)), rhs(grid_rhs(state)) {}
 };
 
-auto euler(const state_t &s) {
+auto euler(const schedule_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
   return grid_axpy(s0, r0, parameters.dt);
 }
 
-auto rk2(const state_t &s) {
+auto rk2(const schedule_t &s) {
   const grid_t &s0 = s.state;
   const grid_t &r0 = s.rhs;
   auto s1 = grid_axpy(s0, r0, 0.5 * parameters.dt);
@@ -376,10 +377,17 @@ auto rk2(const state_t &s) {
 
 // Output
 
-int info_output(int token, const state_t &s) {
-  if (s.iter % parameters.outinfo_every == 0 || s.iter == parameters.nsteps) {
+// TODO: Accept and return a shared_future<int>, and call fmap only if
+// there should be output during this iteration. Question: Does this
+// work with checking s.iter?
+int info_output(int token, const schedule_t &s) {
+  if ((parameters.outinfo_every == 0 && s.iter == 0) ||
+      (parameters.outinfo_every > 0 &&
+       s.iter % parameters.outinfo_every == 0) ||
+      s.iter == parameters.nsteps) {
     std::cout << "[" << s.iter << "] " << s.state.time << ": "
-              << s.fnorm.get().norm2() << " " << s.fenergy.get() << "\n";
+              << s.fnorm.get().norm2() << " " << s.fenergy.get() << "\n"
+              << std::flush;
   }
   return token;
 }
@@ -396,8 +404,11 @@ struct cell_to_ostreamer {
   };
 };
 
-int file_output(int token, const state_t &s) {
-  if (s.iter % parameters.outfile_every == 0 || s.iter == parameters.nsteps) {
+int file_output(int token, const schedule_t &s) {
+  if ((parameters.outfile_every == 0 && s.iter == 0) ||
+      (parameters.outfile_every > 0 &&
+       s.iter % parameters.outfile_every == 0) ||
+      s.iter == parameters.nsteps) {
     std::fstream fs;
     auto mode = s.iter == 0 ? std::ios::in | std::ios::out | std::ios::trunc
                             : std::ios::in | std::ios::out | std::ios::ate;
@@ -410,6 +421,25 @@ int file_output(int token, const state_t &s) {
   return token;
 }
 
+template <typename T> class delay_window {
+  static constexpr std::size_t window_every = 10;
+  static constexpr std::size_t window_size = 1;
+  std::size_t counter = 0;
+  std::queue<T> events;
+
+public:
+  void delayed_wait(const T &event) {
+    counter = (counter + 1) % window_every;
+    if (counter != 0)
+      return;
+    events.push(event);
+    if (events.size() <= window_size)
+      return;
+    events.front().wait();
+    events.pop();
+  }
+};
+
 // Driver
 
 int funhpc_main(int argc, char **argv) {
@@ -417,18 +447,23 @@ int funhpc_main(int argc, char **argv) {
   parameters.ncells = vione * 100;
   parameters.nsteps = adt::maxval(parameters.ncells) * parameters.icfl;
   parameters.outinfo_every = parameters.nsteps / 10;
-  parameters.outfile_every = parameters.nsteps / 20;
+  parameters.outfile_every = -1; // TODO parameters.nsteps / 20;
   parameters.outfile_name = "wave3d.tsv";
   parameters.setup();
   qthread::shared_future<int> info_token = qthread::make_ready_future(0);
   qthread::shared_future<int> file_token = qthread::make_ready_future(0);
-  state_t s(0, grid_init(parameters.tmin));
-  info_token = fun::fmap(info_output, info_token, s);
-  file_token = fun::fmap(file_output, file_token, s);
-  while (s.iter < parameters.nsteps) {
-    s = state_t(s.iter + 1, rk2(s));
-    info_token = fun::fmap(info_output, info_token, s);
-    file_token = fun::fmap(file_output, file_token, s);
+  auto s = std::make_shared<schedule_t>(0, grid_init(parameters.tmin));
+  info_token = fun::fmap(info_output, info_token, *s);
+  file_token = fun::fmap(file_output, file_token, *s);
+  delay_window<qthread::shared_future<int>> info_tokens, file_tokens;
+  info_tokens.delayed_wait(info_token);
+  file_tokens.delayed_wait(file_token);
+  while (s->iter < parameters.nsteps) {
+    s = std::make_shared<schedule_t>(s->iter + 1, rk2(*s));
+    info_token = fun::fmap(info_output, info_token, *s);
+    file_token = fun::fmap(file_output, file_token, *s);
+    info_tokens.delayed_wait(info_token);
+    file_tokens.delayed_wait(file_token);
   }
   info_token.wait();
   file_token.wait();

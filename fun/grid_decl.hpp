@@ -88,7 +88,7 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename... Args, std::enable_if_t<D == 1> * = nullptr,
           typename CT = adt::grid<C, T, D>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
@@ -100,13 +100,14 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename... Args, std::enable_if_t<D == 2> * = nullptr,
           typename CT = adt::grid<C, T, D>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
-                    std::size_t bmask, const BCB &bm0, const BCB &bm1,
-                    const BCB &bp0, const BCB &bp1, Args &&... args);
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bm1, const std::decay_t<BCB> &bp0,
+                    const std::decay_t<BCB> &bp1, Args &&... args);
 
 // head, last
 

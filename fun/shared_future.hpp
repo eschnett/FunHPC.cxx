@@ -130,7 +130,7 @@ CR fmap3(F &&f, const qthread::shared_future<T> &xs,
 
 template <typename F, typename G, typename T, typename BM, typename BP,
           typename... Args, typename CT = qthread::shared_future<T>,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencil(F &&f, G &&g, const qthread::shared_future<T> &xs,
@@ -158,7 +158,7 @@ template <std::size_t D, typename F, typename G, typename T, typename... Args,
           std::enable_if_t<D == 1> * = nullptr,
           typename CT = qthread::shared_future<T>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>

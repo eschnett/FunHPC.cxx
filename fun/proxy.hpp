@@ -222,7 +222,7 @@ struct proxy_fmapStencil : std::tuple<> {
 
 template <typename F, typename G, typename T, typename BM, typename BP,
           typename... Args, typename CT = funhpc::proxy<T>,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
 CR fmapStencil(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,

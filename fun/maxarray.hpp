@@ -145,7 +145,7 @@ CR fmap3(F &&f, const adt::maxarray<T, N> &xs, const adt::maxarray<T2, N2> &ys,
 
 template <typename F, typename G, typename T, std::size_t N, typename BM,
           typename BP, typename... Args, typename C = adt::maxarray<T, N>,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmapStencil(F &&f, G &&g, const adt::maxarray<T, N> &xs, std::size_t bmask,
@@ -175,7 +175,7 @@ template <std::size_t D, typename F, typename G, typename T, std::size_t N,
           typename... Args, std::enable_if_t<D == 1> * = nullptr,
           typename CT = adt::maxarray<T, N>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>

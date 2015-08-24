@@ -85,8 +85,9 @@ template <std::size_t D, typename F, typename G, typename C, typename T,
           typename... Args, std::enable_if_t<D == 2> *, typename CT,
           typename BC, typename B, typename BCB, typename R, typename CR>
 CR fmapStencilMulti(F &&f, G &&g, const adt::grid<C, T, D> &xs,
-                    std::size_t bmask, const BCB &bm0, const BCB &bm1,
-                    const BCB &bp0, const BCB &bp1, Args &&... args) {
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bm1, const std::decay_t<BCB> &bp0,
+                    const std::decay_t<BCB> &bp1, Args &&... args) {
   return CR(typename CR::fmapStencilMulti(), std::forward<F>(f),
             std::forward<G>(g), xs, bmask, bm0, bm1, bp0, bp1,
             std::forward<Args>(args)...);

@@ -34,8 +34,8 @@ struct fun_traits<adt::grid<C, T, D>> {
 
   typedef adt::grid<C, adt::dummy, D - 1> boundary_dummy;
 
-  static constexpr std::size_t min_size = fun_traits<C>::min_size;
-  static constexpr std::size_t max_size = fun_traits<C>::max_size;
+  static constexpr std::size_t min_size() { return fun_traits<C>::min_size(); }
+  static constexpr std::size_t max_size() { return fun_traits<C>::max_size(); }
 };
 
 // iotaMap

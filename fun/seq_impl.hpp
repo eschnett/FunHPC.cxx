@@ -24,7 +24,8 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_seq<C>::value> *, typename R, typename CR>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::size_t sz = inds.size();
-  std::size_t lsz = std::min(sz, fun_traits<typename C::left_dummy>::max_size);
+  std::size_t lsz =
+      std::min(sz, fun_traits<typename C::left_dummy>::max_size());
   adt::irange_t linds(inds.imin(), inds.imin() + lsz * inds.istep(),
                       inds.istep());
   adt::irange_t rinds(inds.imin() + lsz * inds.istep(), inds.imax(),
@@ -109,7 +110,7 @@ ostreamer dump(const adt::seq<A, B, T> &xs) {
 template <typename C, typename T, std::enable_if_t<detail::is_seq<C>::value> *,
           typename CT>
 CT munit(T &&x) {
-  if (fun_traits<typename C::left_dummy>::max_size >= 1)
+  if (fun_traits<typename C::left_dummy>::max_size() >= 1)
     return CT{{munit<typename C::left_dummy>(std::forward<T>(x)),
                mzero<typename C::right_dummy, std::decay_t<T>>()}};
   return CT{{mzero<typename C::left_dummy, std::decay_t<T>>(),

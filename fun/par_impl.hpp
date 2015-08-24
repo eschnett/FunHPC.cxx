@@ -24,8 +24,8 @@ template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_par<C>::value> *, typename R, typename CR>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::size_t sz = inds.size();
-  if (sz >= fun_traits<typename CR::left_dummy>::min_size &&
-      sz <= fun_traits<typename CR::left_dummy>::max_size)
+  if (sz >= fun_traits<typename CR::left_dummy>::min_size() &&
+      sz <= fun_traits<typename CR::left_dummy>::max_size())
     return CR{CR::either_t::make_left(iotaMap<typename CR::left_dummy>(
         std::forward<F>(f), inds, std::forward<Args>(args)...))};
   return CR{CR::either_t::make_right(iotaMap<typename CR::right_dummy>(
@@ -142,8 +142,8 @@ ostreamer dump(const adt::par<A, B, T> &xs) {
 template <typename C, typename T, std::enable_if_t<detail::is_par<C>::value> *,
           typename CT>
 CT munit(T &&x) {
-  if (fun_traits<typename CT::left_dummy>::min_size <= 1 &&
-      fun_traits<typename CT::left_dummy>::max_size >= 1)
+  if (fun_traits<typename CT::left_dummy>::min_size() <= 1 &&
+      fun_traits<typename CT::left_dummy>::max_size() >= 1)
     return CT{CT::either_t::make_left(
         munit<typename C::left_dummy>(std::forward<T>(x)))};
   return CT{CT::either_t::make_right(
@@ -191,7 +191,7 @@ CR mfoldMap(F &&f, Op &&op, Z &&z, const adt::par<A, B, T> &xs,
 template <typename C, typename R, std::enable_if_t<detail::is_par<C>::value> *,
           typename CR>
 CR mzero() {
-  if (fun_traits<typename CR::left_dummy>::min_size == 0)
+  if (fun_traits<typename CR::left_dummy>::min_size() == 0)
     return CR{CR::either_t::make_left(mzero<typename C::left_dummy, R>())};
   return CR{CR::either_t::make_right(mzero<typename C::right_dummy, R>())};
 }
@@ -212,8 +212,8 @@ template <typename C, typename T, typename... Ts,
           std::enable_if_t<detail::is_par<C>::value> *, typename CT>
 CT msome(T &&x, Ts &&... ys) {
   std::size_t sz = 1 + sizeof...(Ts);
-  if (sz >= fun_traits<typename CT::left_dummy>::min_size &&
-      sz <= fun_traits<typename CT::left_dummy>::max_size)
+  if (sz >= fun_traits<typename CT::left_dummy>::min_size() &&
+      sz <= fun_traits<typename CT::left_dummy>::max_size())
     return CT{CT::either_t::make_left(msome<typename C::left_dummy>(
         std::forward<T>(x), std::forward<Ts>(ys)...))};
   return CT{CT::either_t::make_right(msome<typename C::right_dummy>(

@@ -21,6 +21,8 @@ namespace fun {
 
 namespace detail {
 
+constexpr std::size_t nested_max_size = 16;
+
 #if 0
 
 template <typename Policy>
@@ -108,12 +110,23 @@ nested_calc_inner_inds(const Policy &policy, const adt::irange_t &inds,
 
 template <typename P, typename A>
 std::ptrdiff_t nested_calc_outer_size(const adt::irange_t &inds) {
-  bool unlimited_outer = fun_traits<P>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_inner = fun_traits<A>::min_size;
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
+  bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_inner = fun_traits<A>::min_size();
+  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
+
+  if (nested_max_size != std::size_t(-1)) {
+    max_outer = unlimited_outer
+                    ? nested_max_size
+                    : std::min(max_outer, std::ptrdiff_t(nested_max_size));
+    unlimited_outer = false;
+    max_inner = unlimited_inner
+                    ? nested_max_size
+                    : std::min(max_inner, std::ptrdiff_t(nested_max_size));
+    unlimited_inner = false;
+  }
 
   std::ptrdiff_t size = inds.size();
   std::ptrdiff_t isize, osize;
@@ -147,11 +160,11 @@ std::ptrdiff_t nested_calc_outer_size(const adt::irange_t &inds) {
 
 template <typename P, typename A>
 adt::irange_t nested_calc_outer_inds(const adt::irange_t &inds) {
-  bool unlimited_outer = fun_traits<P>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
+  bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
+  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
 
   std::ptrdiff_t osize = nested_calc_outer_size<P, A>(inds);
   std::ptrdiff_t omin = inds.imin();
@@ -169,10 +182,10 @@ template <typename P, typename A>
 adt::irange_t nested_calc_inner_inds(const adt::irange_t &inds,
                                      const adt::irange_t &oinds,
                                      std::ptrdiff_t i) {
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_inner = fun_traits<A>::min_size;
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_inner = fun_traits<A>::min_size();
+  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
 
   std::ptrdiff_t imin = i;
   std::ptrdiff_t imax = std::min(imin + oinds.istep(), inds.imax());
@@ -213,12 +226,12 @@ CR iotaMap(const typename CR::policy_type &policy, F &&f,
 namespace detail {
 template <typename P, typename A, std::size_t D>
 adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
-  bool unlimited_outer = fun_traits<P>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_inner = fun_traits<A>::min_size;
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
+  bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_inner = fun_traits<A>::min_size();
+  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
 
   std::size_t size = inds.size();
   adt::index_t<D> ishape, oshape;
@@ -268,18 +281,15 @@ adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
 
 template <typename P, typename A, std::size_t D>
 adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
-  bool unlimited_outer = fun_traits<P>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
 
   adt::index_t<D> oshape = nested_calc_outer_shape<P, A>(inds);
   std::ptrdiff_t osize = adt::prod(oshape);
   adt::index_t<D> omin = inds.imin();
   adt::index_t<D> omax = osize == 0 ? inds.imin() : inds.imax();
-  adt::index_t<D> ostep =
-      unlimited_inner ? omax - omin : inds.istep() * max_inner;
+  adt::index_t<D> ostep = adt::div_quot(adt::div_ceil(omax - omin, oshape));
   adt::range_t<D> oinds(omin, omax, ostep);
   cxx_assert(oinds.size() >= min_outer);
   cxx_assert(unlimited_outer || oinds.size() <= max_outer);
@@ -291,10 +301,10 @@ template <typename P, typename A, std::size_t D>
 adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
                                         const adt::range_t<D> &oinds,
                                         const adt::index_t<D> &i) {
-  std::ptrdiff_t min_outer = fun_traits<P>::min_size;
-  bool unlimited_inner = fun_traits<A>::max_size == std::size_t(-1);
-  std::ptrdiff_t min_inner = fun_traits<A>::min_size;
-  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size;
+  std::ptrdiff_t min_outer = fun_traits<P>::min_size();
+  bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
+  std::ptrdiff_t min_inner = fun_traits<A>::min_size();
+  std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
 
   adt::index_t<D> imin = i;
   adt::index_t<D> imax = adt::min(imin + oinds.istep(), inds.imax());

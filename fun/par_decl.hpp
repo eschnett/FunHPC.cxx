@@ -38,10 +38,12 @@ struct fun_traits<adt::par<A, B, T>> {
 
   typedef dummy boundary_dummy;
 
-  static constexpr std::size_t min_size =
-      std::min(fun_traits<A>::min_size, fun_traits<B>::min_size);
-  static constexpr std::size_t max_size =
-      std::max(fun_traits<A>::max_size, fun_traits<B>::max_size);
+  static constexpr std::size_t min_size() {
+    return std::min(fun_traits<A>::min_size(), fun_traits<B>::min_size());
+  }
+  static constexpr std::size_t max_size() {
+    return std::max(fun_traits<A>::max_size(), fun_traits<B>::max_size());
+  }
 };
 
 // iotaMap

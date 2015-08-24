@@ -41,13 +41,15 @@ struct fun_traits<adt::seq<A, B, T>> {
 
   typedef dummy boundary_dummy;
 
-  static constexpr std::size_t min_size =
-      fun_traits<A>::min_size + fun_traits<B>::min_size;
-  static constexpr std::size_t max_size =
-      fun_traits<A>::max_size == std::size_t(-1) ||
-              fun_traits<B>::max_size == std::size_t(-1)
-          ? std::size_t(-1)
-          : fun_traits<A>::max_size + fun_traits<B>::max_size;
+  static constexpr std::size_t min_size() {
+    return fun_traits<A>::min_size() + fun_traits<B>::min_size();
+  }
+  static constexpr std::size_t max_size() {
+    return fun_traits<A>::max_size() == std::size_t(-1) ||
+                   fun_traits<B>::max_size() == std::size_t(-1)
+               ? std::size_t(-1)
+               : fun_traits<A>::max_size() + fun_traits<B>::max_size();
+  }
 };
 
 // iotaMap

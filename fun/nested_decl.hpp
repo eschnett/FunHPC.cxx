@@ -42,13 +42,15 @@ struct fun_traits<adt::nested<P, A, T, Policy>> {
                       typename Policy::template rebind<adt::dummy>::other>
       boundary_dummy;
 
-  static constexpr std::size_t min_size =
-      fun_traits<P>::min_size * fun_traits<A>::min_size;
-  static constexpr std::size_t max_size =
-      fun_traits<P>::max_size == std::size_t(-1) ||
-              fun_traits<A>::max_size == std::size_t(-1)
-          ? std::size_t(-1)
-          : fun_traits<P>::max_size * fun_traits<A>::max_size;
+  static constexpr std::size_t min_size() {
+    return fun_traits<P>::min_size() * fun_traits<A>::min_size();
+  }
+  static constexpr std::size_t max_size() {
+    return fun_traits<P>::max_size() == std::size_t(-1) ||
+                   fun_traits<A>::max_size() == std::size_t(-1)
+               ? std::size_t(-1)
+               : fun_traits<P>::max_size() * fun_traits<A>::max_size();
+  }
 };
 
 // iotaMap

@@ -23,7 +23,7 @@ namespace fun {
 // iotaMap
 
 namespace detail {
-constexpr std::ptrdiff_t max_tree_size = 8;
+constexpr std::ptrdiff_t max_tree_size = 16;
 template <std::size_t D>
 const std::ptrdiff_t
     max_tree_linear_size = std::rint(std::pow(double(max_tree_size), 1.0 / D));

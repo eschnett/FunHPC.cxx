@@ -34,8 +34,8 @@ template <typename A, typename T> struct fun_traits<adt::tree<A, T>> {
       boundary_dummy;
 
   // TODO: correct tree size range
-  static constexpr std::size_t min_size = 0;
-  static constexpr std::size_t max_size = -1;
+  static constexpr std::size_t min_size() { return 0; }
+  static constexpr std::size_t max_size() { return -1; }
 };
 
 // iotaMap

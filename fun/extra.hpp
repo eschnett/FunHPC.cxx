@@ -37,8 +37,8 @@ template <typename T, typename E> struct fun_traits<adt::extra<E, T>> {
 
   typedef dummy boundary_dummy;
 
-  static constexpr std::size_t min_size = 0;
-  static constexpr std::size_t max_size = 0;
+  static constexpr std::size_t min_size() { return 0; }
+  static constexpr std::size_t max_size() { return 0; }
 };
 
 // iotaMap

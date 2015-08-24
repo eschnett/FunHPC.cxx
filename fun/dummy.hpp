@@ -30,8 +30,8 @@ template <> struct fun_traits<adt::dummy> {
   typedef adt::index_t<rank> index_type;
   typedef adt::dummy boundary_dummy;
 
-  static constexpr std::size_t min_size = 0;
-  static constexpr std::size_t max_size = 0;
+  static constexpr std::size_t min_size() { return 0; }
+  static constexpr std::size_t max_size() { return 0; }
 };
 
 // iotaMap

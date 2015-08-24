@@ -40,8 +40,8 @@ template <typename T> struct fun_traits<qthread::shared_future<T>> {
   typedef dummy boundary_dummy;
 
   // We don't want empty shared_futures since they don't support mjoin
-  static constexpr std::size_t min_size = 1;
-  static constexpr std::size_t max_size = 1;
+  static constexpr std::size_t min_size() { return 1; }
+  static constexpr std::size_t max_size() { return 1; }
 };
 
 // iotaMap

@@ -38,13 +38,9 @@ template <typename T> struct fun_traits<std::shared_ptr<T>> {
 
   typedef dummy boundary_dummy;
 
-  static constexpr std::size_t min_size = 0;
-  static constexpr std::size_t max_size = 1;
+  static constexpr std::size_t min_size() { return 0; }
+  static constexpr std::size_t max_size() { return 1; }
 };
-template <typename T>
-constexpr std::size_t fun_traits<std::shared_ptr<T>>::min_size;
-template <typename T>
-constexpr std::size_t fun_traits<std::shared_ptr<T>>::max_size;
 
 // iotaMap
 

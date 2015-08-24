@@ -441,8 +441,8 @@ CR fmapStencil(F &&f, G &&g, const adt::nested<P, A, T, Policy> &xss,
   return CR{fmapStencil(detail::nested_fmapStencil_f(),
                         detail::nested_fmapStencil_g<std::decay_t<G>>{g},
                         xss.data, bmask, std::forward<BM>(bm),
-                        std::forward<BP>(bp), std::forward<F>(f),
-                        std::forward<G>(g), std::forward<Args>(args)...),
+                        std::forward<BP>(bp), std::forward<F>(f), g,
+                        std::forward<Args>(args)...),
             typename CR::policy_type(xss.get_policy())};
 }
 
@@ -478,18 +478,6 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T, Policy> &xss,
 }
 
 namespace detail {
-template <> struct nested_fmapStencilMulti<1> : std::tuple<> {
-  template <typename AT, typename ABM0, typename ABP0, typename F, typename G,
-            typename... Args>
-  auto operator()(AT &&xs, ABM0 &&bm0, ABP0 &&bp0, F &&f, G &&g,
-                  std::size_t bmask, Args &&... args) const {
-    return fmapStencilMulti<1>(std::forward<F>(f), std::forward<G>(g),
-                               std::forward<AT>(xs), bmask,
-                               std::forward<ABM0>(bm0), std::forward<ABP0>(bp0),
-                               std::forward<Args>(args)...);
-  }
-};
-
 template <> struct nested_fmapStencilMulti_f<1> : std::tuple<> {
   template <typename AT, typename BM0, typename BP0, typename F, typename G,
             typename... Args>
@@ -520,22 +508,28 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T, Policy> &xss,
   return CR{fmapStencilMulti<D>(
                 detail::nested_fmapStencilMulti_f<D>(),
                 detail::nested_fmapStencilMulti_g<D, std::decay_t<G>>{g},
-                xss.data, bmask, bm0.data, bp0.data, std::forward<F>(f),
-                std::forward<G>(g), std::forward<Args>(args)...),
+                xss.data, bmask, bm0.data, bp0.data, std::forward<F>(f), g,
+                std::forward<Args>(args)...),
             typename CR::policy_type(xss.get_policy())};
 }
 
 namespace detail {
-template <> struct nested_fmapStencilMulti<2> : std::tuple<> {
-  template <typename AT, typename ABM0, typename ABM1, typename ABP0,
-            typename ABP1, typename F, typename G, typename... Args>
-  auto operator()(AT &&xs, ABM0 &&bm0, ABM1 &&bm1, ABP0 &&bp0, ABP1 &&bp1,
-                  F &&f, G &&g, std::size_t bmask, Args &&... args) const {
-    return fmapStencilMulti<2>(std::forward<F>(f), std::forward<G>(g),
-                               std::forward<AT>(xs), bmask,
-                               std::forward<ABM0>(bm0), std::forward<ABM1>(bm1),
-                               std::forward<ABP0>(bp0), std::forward<ABP1>(bp1),
-                               std::forward<Args>(args)...);
+template <> struct nested_fmapStencilMulti_f<2> : std::tuple<> {
+  template <typename AT, typename BM0, typename BM1, typename BP0, typename BP1,
+            typename F, typename G, typename... Args>
+  auto operator()(AT &&xs, std::size_t bmask, BM0 &&bm0, BM1 &&bm1, BP0 &&bp0,
+                  BP1 &&bp1, F &&f, G &&g, Args &&... args) const {
+    return fmapStencilMulti<2>(
+        std::forward<F>(f), std::forward<G>(g), std::forward<AT>(xs), bmask,
+        std::forward<BM0>(bm0), std::forward<BM1>(bm1), std::forward<BP0>(bp0),
+        std::forward<BP1>(bp1), std::forward<Args>(args)...);
+  }
+};
+template <typename G> struct nested_fmapStencilMulti_g<2, G> {
+  G g;
+  template <typename Archive> void serialize(Archive &ar) { ar(g); }
+  template <typename AT> auto operator()(AT &&xs, std::ptrdiff_t i) const {
+    return boundaryMap(g, std::forward<AT>(xs), i);
   }
 };
 }
@@ -548,11 +542,11 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T, Policy> &xss,
                     std::size_t bmask, const std::decay_t<BCB> &bm0,
                     const std::decay_t<BCB> &bm1, const std::decay_t<BCB> &bp0,
                     const std::decay_t<BCB> &bp1, Args &&... args) {
-  // cannot call fmap5 here
-  assert(msize(xss.data) <= 1);
-  return CR{fmap5(detail::nested_fmapStencilMulti<D>(), xss.data, bm0.data,
-                  bm1.data, bp0.data, bp1.data, std::forward<F>(f),
-                  std::forward<G>(g), bmask, std::forward<Args>(args)...),
+  return CR{fmapStencilMulti<D>(
+                detail::nested_fmapStencilMulti_f<D>(),
+                detail::nested_fmapStencilMulti_g<D, std::decay_t<G>>{g},
+                xss.data, bmask, bm0.data, bm1.data, bp0.data, bp1.data,
+                std::forward<F>(f), g, std::forward<Args>(args)...),
             typename CR::policy_type(xss.get_policy())};
 }
 

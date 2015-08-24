@@ -158,6 +158,30 @@ CR fmapStencilMulti(F &&f, G &&g, const std::shared_ptr<T> &xs,
                                          *bp0, std::forward<Args>(args)...));
 }
 
+template <std::size_t D, typename F, typename G, typename T, typename... Args,
+          std::enable_if_t<D == 2> * = nullptr,
+          typename CT = std::shared_ptr<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const std::shared_ptr<T> &xs,
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bm1, const std::decay_t<BCB> &bp0,
+                    const std::decay_t<BCB> &bp1, Args &&... args) {
+  bool s = bool(xs);
+  cxx_assert(bool(bm0) == s);
+  cxx_assert(bool(bm1) == s);
+  cxx_assert(bool(bp0) == s);
+  cxx_assert(bool(bp1) == s);
+  if (__builtin_expect(!s, false))
+    return CR();
+  return std::make_shared<R>(cxx::invoke(std::forward<F>(f), *xs, bmask, *bm0,
+                                         *bm1, *bp0, *bp1,
+                                         std::forward<Args>(args)...));
+}
+
 // head, last
 
 template <typename T> const T &head(const std::shared_ptr<T> &xs) {

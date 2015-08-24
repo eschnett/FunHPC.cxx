@@ -263,7 +263,7 @@ template <> struct proxy_fmapStencilMulti<1> : std::tuple<> {
 template <std::size_t D, typename F, typename G, typename T, typename... Args,
           std::enable_if_t<D == 1> * = nullptr, typename CT = funhpc::proxy<T>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
-          typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
           typename BCB = typename fun_traits<BC>::template constructor<B>,
           typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, Args...>,
           typename CR = typename fun_traits<CT>::template constructor<R>>
@@ -275,6 +275,47 @@ CR fmapStencilMulti(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
   return funhpc::remote(xs.get_proc_future(),
                         detail::proxy_fmapStencilMulti<D>(), xs, bmask, bm0,
                         bp0, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+namespace detail {
+template <> struct proxy_fmapStencilMulti<2> : std::tuple<> {
+  template <typename T, typename BM0, typename BM1, typename BP0, typename BP1,
+            typename F, typename... Args>
+  auto operator()(const funhpc::proxy<T> &xs, std::size_t bmask,
+                  const funhpc::proxy<BM0> &bm0, const funhpc::proxy<BM1> &bm1,
+                  const funhpc::proxy<BP0> &bp0, const funhpc::proxy<BP1> &bp1,
+                  F &&f, Args &&... args) const {
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(bm0));
+    cxx_assert(bool(bm1));
+    cxx_assert(bool(bp0));
+    cxx_assert(bool(bp1));
+    auto bm0l = bm0.make_local();
+    auto bm1l = bm1.make_local();
+    auto bp0l = bp0.make_local();
+    auto bp1l = bp1.make_local();
+    return cxx::invoke(std::forward<F>(f), *xs, bmask, *bm0l, *bm1l, *bp0l,
+                       *bp1l, std::forward<Args>(args)...);
+  }
+};
+}
+
+template <std::size_t D, typename F, typename G, typename T, typename... Args,
+          std::enable_if_t<D == 2> * = nullptr, typename CT = funhpc::proxy<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
+                    const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bm1,
+                    const std::decay_t<BCB> &bp0, const std::decay_t<BCB> &bp1,
+                    Args &&... args) {
+  bool s = bool(xs);
+  cxx_assert(s);
+  return funhpc::remote(
+      xs.get_proc_future(), detail::proxy_fmapStencilMulti<D>(), xs, bmask, bm0,
+      bm1, bp0, bp1, std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 // head, last

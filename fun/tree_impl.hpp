@@ -67,6 +67,7 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
                  std::forward<F>(f), std::forward<Args>(args)...))};
 }
 
+#if 0
 namespace detail {
 template <typename C> struct tree_iotaMapMulti : std::tuple<> {
   template <std::size_t D, typename F, typename... Args>
@@ -106,6 +107,67 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   return CR{CR::either_t::make_right(
       iotaMapMulti<A>(detail::tree_iotaMapMulti<C>(), branch_inds, inds, scale,
                       std::forward<F>(f), std::forward<Args>(args)...))};
+}
+#endif
+
+namespace detail {
+template <typename C> struct tree_iotaMapMulti_leaf : std::tuple<> {
+  template <std::size_t D, typename F, typename... Args,
+            typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
+            typename CR = typename fun_traits<C>::template constructor<R>>
+  auto operator()(const adt::index_t<D> &i, F &&f, Args &&... args) const {
+    return CR{CR::either_t::make_left(
+        cxx::invoke(std::forward<F>(f), i, std::forward<Args>(args)...))};
+  }
+};
+
+template <typename C> struct tree_iotaMapMulti_branch : std::tuple<> {
+  template <std::size_t D, typename F, typename... Args,
+            typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
+            typename CR = typename fun_traits<C>::template constructor<R>>
+  auto operator()(const adt::index_t<D> &i, const adt::range_t<D> &all_inds,
+                  std::ptrdiff_t scale, F &&f, Args &&... args) const {
+    typedef typename CR::array_dummy A;
+    adt::range_t<D> inds(
+        i, adt::min(i + all_inds.istep() * scale, all_inds.imax()),
+        all_inds.istep());
+    cxx_assert(scale % detail::max_tree_linear_size<D> == 0);
+    scale /= detail::max_tree_linear_size<D>;
+    if (scale == 1)
+      return CR{CR::either_t::make_right(
+          iotaMapMulti<A>(tree_iotaMapMulti_leaf<C>(), inds, std::forward<F>(f),
+                          std::forward<Args>(args)...))};
+    adt::range_t<D> branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
+    return CR{CR::either_t::make_right(
+        iotaMapMulti<A>(tree_iotaMapMulti_branch<C>(), branch_inds, inds, scale,
+                        std::forward<F>(f), std::forward<Args>(args)...))};
+  }
+};
+}
+
+template <typename C, std::size_t D, typename F, typename... Args,
+          std::enable_if_t<detail::is_tree<C>::value> *, typename R,
+          typename CR>
+CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+  // Empty tree: special case
+  if (inds.empty())
+    return mzero<C, R>();
+  // Leaf
+  if (inds.size() == 1)
+    return detail::tree_iotaMapMulti_leaf<C>()(inds.imin(), std::forward<F>(f),
+                                               std::forward<Args>(args)...);
+  // Calculate optimal branch size, so that all sub-branches will be full
+  // TODO: Consider different scales in different directions
+  std::ptrdiff_t scale = 1;
+  while (
+      adt::any(adt::gt(inds.shape(), scale * detail::max_tree_linear_size<D>)))
+    scale *= detail::max_tree_linear_size<D>;
+  cxx_assert(
+      adt::any(adt::lt(scale, inds.shape()) &&
+               adt::ge(scale * detail::max_tree_linear_size<D>, inds.shape())));
+  return detail::tree_iotaMapMulti_branch<C>()(
+      inds.imin(), inds, scale * detail::max_tree_linear_size<D>,
+      std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 // fmap

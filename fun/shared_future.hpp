@@ -175,6 +175,31 @@ CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
   }).share();
 }
 
+template <std::size_t D, typename F, typename G, typename T, typename... Args,
+          std::enable_if_t<D == 2> * = nullptr,
+          typename CT = qthread::shared_future<T>,
+          typename BC = typename fun_traits<CT>::boundary_dummy,
+          typename B = std::decay_t<cxx::invoke_of_t<G, T, std::ptrdiff_t>>,
+          typename BCB = typename fun_traits<BC>::template constructor<B>,
+          typename R = cxx::invoke_of_t<F, T, std::size_t, B, B, B, B, Args...>,
+          typename CR = typename fun_traits<CT>::template constructor<R>>
+CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
+                    std::size_t bmask, const std::decay_t<BCB> &bm0,
+                    const std::decay_t<BCB> &bm1, const std::decay_t<BCB> &bp0,
+                    const std::decay_t<BCB> &bp1, Args &&... args) {
+  bool s = xs.valid();
+  if (__builtin_expect(!s, false))
+    return CR();
+  return xs
+      .then([ f = std::forward<F>(f), bmask, bm0, bm1, bp0, bp1, args... ](
+          const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
+                           std::move(bm1).get(), std::move(bp0).get(),
+                           std::move(bp1).get(), std::move(args)...);
+      })
+      .share();
+}
+
 // boundary
 
 template <typename T, typename CT = qthread::shared_future<T>,

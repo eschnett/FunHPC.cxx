@@ -3,11 +3,11 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/idtype.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -121,7 +121,7 @@ template <typename F, typename T, typename Allocator, typename T2,
 CR fmap2(F &&f, const std::vector<T, Allocator> &xs,
          const std::vector<T2, Allocator2> &ys, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
+  cxx_assert(ys.size() == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -138,8 +138,8 @@ CR fmap3(F &&f, const std::vector<T, Allocator> &xs,
          const std::vector<T2, Allocator2> &ys,
          const std::vector<T3, Allocator3> &zs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
-  assert(zs.size() == s);
+  cxx_assert(ys.size() == s);
+  cxx_assert(zs.size() == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -220,25 +220,25 @@ CR fmapStencilMulti(F &&f, G &&g, const std::vector<T, Allocator> &xs,
 
 template <typename T, typename Allocator>
 const T &head(const std::vector<T, Allocator> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs.front();
 }
 
 template <typename T, typename Allocator>
 const T &last(const std::vector<T, Allocator> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs.back();
 }
 
 template <typename T, typename Allocator>
 T &&head(std::vector<T, Allocator> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs.front());
 }
 
 template <typename T, typename Allocator>
 T &&last(std::vector<T, Allocator> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs.back());
 }
 
@@ -249,7 +249,7 @@ template <typename T, typename Allocator,
           typename BC = typename fun_traits<CT>::boundary_dummy,
           typename BCT = typename fun_traits<BC>::template constructor<T>>
 BCT boundary(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
-  assert(i >= 0 && i < 2);
+  cxx_assert(i >= 0 && i < 2);
   return munit<BC>(i == 0 ? head(xs) : last(xs));
 }
 
@@ -283,7 +283,7 @@ public:
   accumulator(std::ptrdiff_t n) : data(n) {}
   T &restrict operator[](std::ptrdiff_t i) { return data[i]; }
   decltype(auto) finalize() { return std::move(data); }
-  ~accumulator() { assert(data.empty()); }
+  ~accumulator() { cxx_assert(data.empty()); }
 };
 
 // foldMap
@@ -328,7 +328,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
            const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
+  cxx_assert(ys.size() == s);
   R r(z);
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
@@ -388,13 +388,13 @@ CR mbind(F &&f, std::vector<T, Allocator> &&xs, Args &&... args) {
 
 template <typename T, typename Allocator>
 const T &mextract(const std::vector<T, Allocator> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, typename Allocator>
 T &&mextract(std::vector<T, Allocator> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs[0]);
 }
 

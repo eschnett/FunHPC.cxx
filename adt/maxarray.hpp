@@ -1,11 +1,12 @@
 #ifndef ADT_MAXARRAY_HPP
 #define ADT_MAXARRAY_HPP
 
+#include <cxx/cassert.hpp>
+
 #include <cereal/access.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
@@ -22,7 +23,7 @@ public:
   typedef T element_type;
 
   maxarray() : used(0) {}
-  explicit maxarray(std::size_t n) : used(n) { assert(n <= N); }
+  explicit maxarray(std::size_t n) : used(n) { cxx_assert(n <= N); }
   void swap(maxarray &other) {
     using std::swap;
     swap(used, other.used);
@@ -32,7 +33,7 @@ public:
   bool invariant() const noexcept { return used <= N; }
 
   void resize(std::size_t n) {
-    assert(n <= N);
+    cxx_assert(n <= N);
     used = n;
   }
   void reset() noexcept { used = 0; }
@@ -42,12 +43,12 @@ public:
   constexpr std::size_t max_size() const noexcept { return N; }
 
   void push_back(const T &value) {
-    assert(used < N);
+    cxx_assert(used < N);
     *end() = value;
     ++used;
   }
   void push_back(T &&value) {
-    assert(used < N);
+    cxx_assert(used < N);
     *end() = std::move(value);
     ++used;
   }
@@ -56,13 +57,13 @@ public:
   const T *data() const noexcept { return elts.data(); }
 
   const T &operator[](std::size_t i) const {
-    assert(i < N);
-    assert(std::ptrdiff_t(i) >= 0);
+    cxx_assert(i < N);
+    cxx_assert(std::ptrdiff_t(i) >= 0);
     return elts[i];
   }
   constexpr T &operator[](std::size_t i) {
-    assert(i < N);
-    assert(std::ptrdiff_t(i) >= 0);
+    cxx_assert(i < N);
+    cxx_assert(std::ptrdiff_t(i) >= 0);
     return elts[i];
   }
 

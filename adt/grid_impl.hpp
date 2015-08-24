@@ -4,13 +4,13 @@
 #include "grid_decl.hpp"
 
 #include <adt/array.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cereal/access.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <type_traits>
 #include <utility>
 
@@ -49,8 +49,8 @@ private:
     std::ptrdiff_t off = 0;
     std::ptrdiff_t str = 1;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
-      assert(offset[d] >= 0 &&
-             (stride[d] == 0 ? offset[d] == 0 : offset[d] < stride[d]));
+      cxx_assert(offset[d] >= 0 &&
+                 (stride[d] == 0 ? offset[d] == 0 : offset[d] < stride[d]));
       off += offset[d] * str;
       str = stride[d];
     }
@@ -67,7 +67,7 @@ private:
       i *= shape[d];
       stride[d] = i;
     }
-    assert(D == 0 || stride[D - 1] == prod(shape));
+    cxx_assert(D == 0 || stride[D - 1] == prod(shape));
     return stride;
   }
 
@@ -114,7 +114,7 @@ public:
       : m_shape(shape), m_offset(make_offset(make_stride(allocated), offset)),
         m_stride0(1), m_stride(make_stride(allocated)),
         m_allocated(make_allocated(allocated)) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   void swap(index_space &other) {
@@ -131,7 +131,7 @@ public:
   bool empty() const { return size() == 0; }
 
   std::ptrdiff_t stride(std::ptrdiff_t d) const {
-    assert(d >= 0 && d <= D);
+    cxx_assert(d >= 0 && d <= D);
     if (d == 0)
       return D == 0 ? /*1*/ m_stride0
                     : std::min(/*std::ptrdiff_t(1)*/ m_stride0, m_stride[0]);
@@ -156,16 +156,16 @@ public:
   std::ptrdiff_t linear(const index_type &i) const {
     std::ptrdiff_t lin = m_offset;
     for (std::ptrdiff_t d = 0; d < D; ++d) {
-      assert(i[d] >= 0 && i[d] < m_shape[d]);
+      cxx_assert(i[d] >= 0 && i[d] < m_shape[d]);
       lin += i[d] * stride(d);
     }
-    assert(lin < m_allocated);
+    cxx_assert(lin < m_allocated);
     return lin;
   }
 
   struct boundary {};
   index_space(boundary, const index_space<D + 1> &old, std::ptrdiff_t i) {
-    assert(i >= 0 && i < 2 * (D + 1));
+    cxx_assert(i >= 0 && i < 2 * (D + 1));
     auto f = i % 2, d = i / 2;
     m_shape = adt::rmdir(old.m_shape, d);
     auto off = old.shape() * 0;
@@ -174,7 +174,7 @@ public:
     m_stride0 = d == 0 ? old.m_stride[0] : old.m_stride0;
     m_stride = adt::rmdir(old.m_stride, d == 0 ? 0 : d - 1);
     m_allocated = old.m_allocated;
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   // Multi-dimensional loop
@@ -270,16 +270,16 @@ public:
   grid()
       : indexing(), data(fun::accumulator<container_constructor<T>>(
                              indexing.size()).finalize()) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   grid(const index_type &shape, const container_constructor<T> &data)
       : indexing(shape), data(data) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   grid(const index_type &shape, container_constructor<T> &&data)
       : indexing(shape), data(std::move(data)) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   grid(const grid &) = default;
@@ -313,7 +313,7 @@ public:
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
         "");
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   template <typename F, typename... Args, std::size_t D2 = D,
@@ -325,7 +325,7 @@ public:
     static_assert(
         std::is_same<cxx::invoke_of_t<F, std::ptrdiff_t, Args...>, T>::value,
         "");
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   struct iotaMapMulti {};
@@ -340,7 +340,7 @@ public:
       acc[indexing.linear(i)] = cxx::invoke(f, inds[i], args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   // fmap
@@ -357,7 +357,7 @@ public:
           f, fun::getIndex(xs.data, xs.indexing.linear(i)), args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   struct fmap2 {};
@@ -368,7 +368,7 @@ public:
       : indexing(xs.shape()) {
     static_assert(std::is_same<cxx::invoke_of_t<F, T1, T2, Args...>, T>::value,
                   "");
-    assert(ys.shape() == xs.shape());
+    cxx_assert(ys.shape() == xs.shape());
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     indexing.loop([&](const index_type &i) {
       acc[indexing.linear(i)] =
@@ -376,7 +376,7 @@ public:
                       fun::getIndex(ys.data, ys.indexing.linear(i)), args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   struct fmap3 {};
@@ -387,8 +387,8 @@ public:
       : indexing(xs.shape()) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, T1, T2, T3, Args...>, T>::value, "");
-    assert(ys.shape() == xs.shape());
-    assert(zs.shape() == xs.shape());
+    cxx_assert(ys.shape() == xs.shape());
+    cxx_assert(zs.shape() == xs.shape());
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     indexing.loop([&](const index_type &i) {
       acc[indexing.linear(i)] =
@@ -397,7 +397,7 @@ public:
                       fun::getIndex(zs.data, zs.indexing.linear(i)), args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   // boundary
@@ -407,7 +407,7 @@ public:
   grid(boundary, const grid<C, T, D + 1> &xs, std::ptrdiff_t i)
       : indexing(typename index_space::boundary(), xs.indexing, i),
         data(xs.data) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   // fmapStencilMulti
@@ -431,7 +431,7 @@ public:
           f, fun::getIndex(xs.data, xs.indexing.linear(i)), bdirs, args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   template <
@@ -464,7 +464,7 @@ public:
                       cm0, cp0, args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   template <
@@ -514,7 +514,7 @@ public:
                       cm0, cm1, cp0, cp1, args...);
     });
     data = acc.finalize();
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   // foldMap
@@ -537,7 +537,7 @@ public:
   R foldMap2(F &&f, Op &&op, const Z &z, const grid<C, T2, D> &ys,
              Args &&... args) const {
     static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
-    assert(ys.shape() == shape());
+    cxx_assert(ys.shape() == shape());
     R r(z);
     indexing.loop([&](const index_type &i) {
       r = cxx::invoke(op, std::move(r),

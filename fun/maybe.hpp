@@ -5,9 +5,9 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
-#include <cassert>
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
@@ -47,7 +47,7 @@ template <typename C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
-  assert(inds.size() <= 1);
+  cxx_assert(inds.size() <= 1);
   if (inds.empty())
     return adt::make_nothing<R>();
   return adt::make_just<R>(
@@ -86,7 +86,7 @@ template <typename F, typename T, typename T2, typename... Args,
 CR fmap2(F &&f, const adt::maybe<T> &xs, const adt::maybe<T2> &ys,
          Args &&... args) {
   bool s = xs.just();
-  assert(ys.just() == s);
+  cxx_assert(ys.just() == s);
   if (!s)
     return adt::make_nothing<R>();
   return adt::make_just<R>(cxx::invoke(std::forward<F>(f), xs.get_just(),
@@ -125,7 +125,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
            const adt::maybe<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.just();
-  assert(ys.just() == s);
+  cxx_assert(ys.just() == s);
   if (!s)
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<F>(f), xs.get_just(), ys.get_just(),
@@ -185,12 +185,12 @@ constexpr CT mjoin(adt::maybe<adt::maybe<T>> &&xss) {
 // mextract
 
 template <typename T> constexpr const T &mextract(const adt::maybe<T> &xs) {
-  assert(xs.just());
+  cxx_assert(xs.just());
   return xs.get_just();
 }
 
 template <typename T> constexpr T &&mextract(adt::maybe<T> &&xs) {
-  assert(xs.just());
+  cxx_assert(xs.just());
   return std::move(xs.get_just());
 }
 

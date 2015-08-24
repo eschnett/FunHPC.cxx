@@ -3,10 +3,10 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -47,7 +47,7 @@ template <typename C, typename F, typename... Args,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   typedef typename C::argument_type A;
-  assert(inds.size() <= 1);
+  cxx_assert(inds.size() <= 1);
   if (inds.empty())
     return CR();
   // TODO: Make this serializable
@@ -80,7 +80,7 @@ template <typename F, typename T, typename A, typename T2, typename... Args,
 CR fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
          Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
+  cxx_assert(bool(ys) == s);
   if (!s)
     return CR();
   CR rs = [ f = std::forward<F>(f), xs, ys, args... ](const A &a) {

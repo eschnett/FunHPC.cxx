@@ -1,9 +1,10 @@
 #ifndef CXX_SERIALIZE_HPP
 #define CXX_SERIALIZE_HPP
 
+#include <cxx/cassert.hpp>
+
 #include <cereal/archives/binary.hpp>
 
-#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
@@ -66,9 +67,9 @@ void save(Archive &ar, F const &f) {
   if ((buf.fptr & 1) == 0) {
     if (buf.fptr != 0) {
       buf.fptr -= detail::serialize_anchor();
-      assert(buf.fptr != 0);
+      cxx_assert(buf.fptr != 0);
     }
-    assert((buf.fptr & 1) == 0);
+    cxx_assert((buf.fptr & 1) == 0);
   }
   ar(buf.fptr, buf.adj);
 }
@@ -85,9 +86,9 @@ void load(Archive &ar, F &f) {
   if ((buf.fptr & 1) == 0) {
     if (buf.fptr != 0) {
       buf.fptr += detail::serialize_anchor();
-      assert(buf.fptr != 0);
+      cxx_assert(buf.fptr != 0);
     }
-    assert((buf.fptr & 1) == 0);
+    cxx_assert((buf.fptr & 1) == 0);
   }
   std::memcpy(&f, &buf, sizeof f);
 }

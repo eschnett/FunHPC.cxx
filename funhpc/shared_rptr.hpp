@@ -1,6 +1,7 @@
 #ifndef FUNHPC_SHARED_RPTR_HPP
 #define FUNHPC_SHARED_RPTR_HPP
 
+#include <cxx/cassert.hpp>
 #include <funhpc/rptr.hpp>
 #include <qthread/future.hpp>
 
@@ -62,7 +63,7 @@ public:
         }
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
 private:
@@ -79,25 +80,25 @@ public:
   manager() : obj(nullptr), robj(nullptr), refcount(1), owner(nullptr) {
     // This routine is only called for deserialization, and does not
     // need to return an object that is in a consistent state
-    // assert(invariant());
+    // cxx_assert(invariant());
   }
   manager(const std::shared_ptr<T> &obj)
       : obj(obj), robj(obj.get()), refcount(1), owner(nullptr) {
-    assert(bool(obj));
-    assert(invariant());
+    cxx_assert(bool(obj));
+    cxx_assert(invariant());
   }
   manager(std::shared_ptr<T> &&obj)
       : obj(std::move(obj)), robj(this->obj.get()), refcount(1),
         owner(nullptr) {
-    assert(bool(this->obj));
-    assert(invariant());
+    cxx_assert(bool(this->obj));
+    cxx_assert(invariant());
   }
   manager(manager &&other) = delete;
   manager(const manager &other) = delete;
   manager &operator=(manager &&other) = delete;
   manager &operator=(const manager &other) = delete;
   ~manager() {
-    assert(refcount == 0);
+    cxx_assert(refcount == 0);
     if (bool(owner))
       rexec(owner.get_proc(), decref1, owner);
   }
@@ -105,7 +106,7 @@ public:
   bool local() const { return !bool(owner); }
   std::ptrdiff_t get_proc() const { return robj.get_proc(); }
   const std::shared_ptr<T> &get_shared_ptr() const {
-    assert(local());
+    cxx_assert(local());
     return obj;
   }
   rptr<T> get_rptr() const { return robj; }
@@ -181,11 +182,11 @@ public:
 
   operator bool() const noexcept { return bool(mgr); }
   bool local() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return mgr->local();
   }
   std::ptrdiff_t get_proc() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return mgr->get_proc();
   }
 
@@ -193,15 +194,15 @@ public:
     static const std::shared_ptr<T> null;
     if (!bool(*this))
       return null;
-    assert(local());
+    cxx_assert(local());
     return mgr->get_shared_ptr();
   }
   const T &operator*() const {
-    assert(bool(*this) && local());
+    cxx_assert(bool(*this) && local());
     return *get_shared_ptr();
   }
   T &operator*() {
-    assert(bool(*this) && local());
+    cxx_assert(bool(*this) && local());
     return *get_shared_ptr();
   }
   const std::shared_ptr<T> &operator->() const { return get_shared_ptr(); }
@@ -245,7 +246,7 @@ std::shared_ptr<T> shared_rptr_get_shared_ptr(const shared_rptr<T> &rptr) {
 template <typename T>
 qthread::future<std::shared_ptr<T>>
 make_local_shared_ptr(const shared_rptr<T> &rptr) {
-  assert(bool(rptr));
+  cxx_assert(bool(rptr));
   if (rptr.local())
     return qthread::make_ready_future(detail::shared_rptr_get_shared_ptr(rptr));
   return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),

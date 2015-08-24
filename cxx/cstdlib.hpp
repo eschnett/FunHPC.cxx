@@ -1,8 +1,9 @@
 #ifndef CXX_CSTDLIB_HPP
 #define CXX_CSTDLIB_HPP
 
+#include <cxx/cassert.hpp>
+
 #include <algorithm>
-#include <cassert>
 #include <cstdlib>
 #include <utility>
 
@@ -56,7 +57,7 @@ constexpr div_t<R> div_exact(const T x, const U y) {
   // x == q*y
   R q = x / y;
   R r = x % y;
-  assert(r == 0);
+  cxx_assert(r == 0);
   return {q, r};
 }
 

@@ -4,12 +4,12 @@
 #include "tree_decl.hpp"
 
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <adt/tree_impl.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
@@ -57,7 +57,8 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::ptrdiff_t scale = 1;
   while (inds.shape() > scale * detail::max_tree_size)
     scale *= detail::max_tree_size;
-  assert(scale < inds.shape() && scale * detail::max_tree_size >= inds.shape());
+  cxx_assert(scale < inds.shape() &&
+             scale * detail::max_tree_size >= inds.shape());
   adt::irange_t branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
   return CR{CR::either_t::make_right(
       iotaMap<A>(detail::tree_iotaMap<C>(), branch_inds, inds, scale,
@@ -96,7 +97,7 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   while (
       adt::any(adt::gt(inds.shape(), scale * detail::max_tree_linear_size<D>)))
     scale *= detail::max_tree_linear_size<D>;
-  assert(
+  cxx_assert(
       adt::any(adt::lt(scale, inds.shape()) &&
                adt::ge(scale * detail::max_tree_linear_size<D>, inds.shape())));
   adt::range_t<D> branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
@@ -144,7 +145,7 @@ template <typename F, typename A, typename T, typename T2, typename... Args,
 CR fmap2(F &&f, const adt::tree<A, T> &xs, const adt::tree<A, T2> &ys,
          Args &&... args) {
   bool s = xs.subtrees.right();
-  assert(ys.subtrees.right() == s);
+  cxx_assert(ys.subtrees.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(
         cxx::invoke(std::forward<F>(f), xs.subtrees.get_left(),
@@ -170,8 +171,8 @@ template <typename F, typename A, typename T, typename T2, typename T3,
 CR fmap3(F &&f, const adt::tree<A, T> &xs, const adt::tree<A, T2> &ys,
          const adt::tree<A, T3> &zs, Args &&... args) {
   bool s = xs.subtrees.right();
-  assert(ys.subtrees.right() == s);
-  assert(zs.subtrees.right() == s);
+  cxx_assert(ys.subtrees.right() == s);
+  cxx_assert(zs.subtrees.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(cxx::invoke(
         std::forward<F>(f), xs.subtrees.get_left(), ys.subtrees.get_left(),
@@ -319,8 +320,8 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
                     const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bp0,
                     Args &&... args) {
   bool s = xs.subtrees.right();
-  assert(bm0.subtrees.right() == s);
-  assert(bp0.subtrees.right() == s);
+  cxx_assert(bm0.subtrees.right() == s);
+  cxx_assert(bp0.subtrees.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(
         cxx::invoke(std::forward<F>(f), xs.subtrees.get_left(), bmask,
@@ -367,10 +368,10 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::tree<A, T> &xs, std::size_t bmask,
                     const std::decay_t<BCB> &bp0, const std::decay_t<BCB> &bp1,
                     Args &&... args) {
   bool s = xs.subtrees.right();
-  assert(bm0.subtrees.right() == s);
-  assert(bm1.subtrees.right() == s);
-  assert(bp0.subtrees.right() == s);
-  assert(bp1.subtrees.right() == s);
+  cxx_assert(bm0.subtrees.right() == s);
+  cxx_assert(bm1.subtrees.right() == s);
+  cxx_assert(bp0.subtrees.right() == s);
+  cxx_assert(bp1.subtrees.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(
         cxx::invoke(std::forward<F>(f), xs.subtrees.get_left(), bmask,
@@ -430,7 +431,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<A, T> &xs,
            const adt::tree<A, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.subtrees.right();
-  assert(ys.subtrees.right() == s);
+  cxx_assert(ys.subtrees.right() == s);
   if (!s)
     return cxx::invoke(std::forward<F>(f), xs.subtrees.get_left(),
                        ys.subtrees.get_left(), std::forward<Args>(args)...);

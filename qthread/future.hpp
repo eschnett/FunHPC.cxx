@@ -2,13 +2,13 @@
 #define QTHREAD_FUTURE_HPP
 
 #include <cxx/apply.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <cxx/task.hpp>
 
 #include <qthread/qthread.hpp>
 
 #include <atomic>
-#include <cassert>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -99,7 +99,7 @@ public:
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
   void set_value(id_t<U> &&value_) {
-    assert(!ready());
+    cxx_assert(!ready());
     value = std::move(value_); /*TODO: memory order */
     is_ready.fill();
   }
@@ -108,21 +108,21 @@ public:
                              !std::is_reference<U>::value> * = nullptr>
   void set_value(const id_t<U> &value_) {
     static_assert(!std::is_reference<T>::value, "");
-    assert(!ready());
+    cxx_assert(!ready());
     value = value_; /*TODO: memory order */
     is_ready.fill();
   }
   template <typename U = T,
             std::enable_if_t<std::is_reference<U>::value> * = nullptr>
   void set_value(id_t<U> &value_) {
-    assert(!ready());
+    cxx_assert(!ready());
     value = &value_; /*TODO: memory order */
     is_ready.fill();
   }
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   void set_value() {
-    assert(!ready());
+    cxx_assert(!ready());
     is_ready.fill();
   }
 
@@ -222,7 +222,7 @@ public:
   }
 
   shared_future<T> share() {
-    assert(valid());
+    cxx_assert(valid());
     return shared_future<T>(std::move(*this));
   }
 
@@ -230,7 +230,7 @@ public:
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
   U get() {
-    assert(valid());
+    cxx_assert(valid());
     auto res(shared_state->move());
     shared_state.reset();
     return res;
@@ -238,7 +238,7 @@ public:
   template <typename U = T,
             std::enable_if_t<std::is_reference<U>::value> * = nullptr>
   U &get() {
-    assert(valid());
+    cxx_assert(valid());
     decltype(auto) res(shared_state->get());
     shared_state.reset();
     return res;
@@ -246,7 +246,7 @@ public:
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   void get() {
-    assert(valid());
+    cxx_assert(valid());
     shared_state->wait();
     shared_state.reset();
   }
@@ -254,12 +254,12 @@ public:
   bool valid() const noexcept { return bool(shared_state); }
 
   bool ready() const {
-    assert(valid());
+    cxx_assert(valid());
     return shared_state->ready();
   }
 
   void wait() const {
-    assert(valid());
+    cxx_assert(valid());
     shared_state->wait();
   }
 
@@ -347,31 +347,31 @@ public:
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value> * = nullptr>
   const U &get() const {
-    assert(valid());
+    cxx_assert(valid());
     return shared_state->get();
   }
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value> * = nullptr>
   U &get() {
-    assert(valid());
+    cxx_assert(valid());
     return shared_state->get();
   }
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
   void get() const {
-    assert(valid());
+    cxx_assert(valid());
     shared_state->wait();
   }
 
   bool valid() const noexcept { return bool(shared_state); }
 
   bool ready() const noexcept {
-    assert(valid());
+    cxx_assert(valid());
     return shared_state->ready();
   }
 
   void wait() const {
-    assert(valid());
+    cxx_assert(valid());
     shared_state->wait();
   }
 
@@ -511,7 +511,7 @@ public:
   }
 
   future<R> get_future() {
-    assert(bool(task));
+    cxx_assert(bool(task));
     return result.get_future();
   }
 
@@ -519,20 +519,20 @@ public:
             typename std::enable_if<std::is_same<U, R>::value &&
                                     !std::is_void<R>::value>::type * = nullptr>
   void operator()(Args... args) {
-    assert(bool(task));
+    cxx_assert(bool(task));
     result.set_value(task(std::forward<Args>(args)...));
   }
   template <typename U = R,
             typename std::enable_if<std::is_same<U, R>::value &&
                                     std::is_void<R>::value>::type * = nullptr>
   void operator()(Args... args) {
-    assert(bool(task));
+    cxx_assert(bool(task));
     task(std::forward<Args>(args)...);
     result.set_value();
   }
 
   void reset() {
-    assert(valid());
+    cxx_assert(valid());
     result = {};
   }
 };
@@ -586,15 +586,15 @@ public:
         cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...);
     result = thread_args->result.get_future();
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
-    assert(!ierr);
+    cxx_assert(!ierr);
   }
 
   async_thread(const async_thread &) = delete;
 
-  ~async_thread() { assert(!joinable()); }
+  ~async_thread() { cxx_assert(!joinable()); }
 
   async_thread &operator=(async_thread &&other) {
-    assert(!joinable());
+    cxx_assert(!joinable());
     result = future<R>();
     swap(other);
     return *this;
@@ -611,7 +611,7 @@ public:
   bool joinable() const noexcept { return result.valid(); }
 
   void join() {
-    assert(result.valid());
+    cxx_assert(result.valid());
     result.wait();
     result = {};
   }

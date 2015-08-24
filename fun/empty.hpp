@@ -5,10 +5,10 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <type_traits>
 
 namespace fun {
@@ -44,7 +44,7 @@ template <typename C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 constexpr CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
-  assert(inds.empty());
+  cxx_assert(inds.empty());
   return CR();
 }
 

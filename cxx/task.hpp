@@ -2,6 +2,7 @@
 #define CXX_TASK_HPP
 
 #include <cxx/apply.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/serialize.hpp>
 
 #include <cereal/access.hpp>
@@ -62,7 +63,9 @@ class concrete_task final : public abstract_task<R> {
 
   friend class cereal::access;
   template <typename Archive> void serialize(Archive &ar) {
-    assert(!did_call);
+#ifndef NDEBUG
+    cxx_assert(!did_call);
+#endif
     ar(cereal::base_class<abstract_task<R>>(this), f, args);
   }
   static cereal_register_t<concrete_task> cereal_register;
@@ -75,8 +78,8 @@ public:
         args(std::make_tuple(std::forward<Args1>(args)...)) {}
   virtual ~concrete_task() {}
   virtual R operator()() {
-    assert(!did_call);
 #ifndef NDEBUG
+    cxx_assert(!did_call);
     did_call = true;
 #endif
     return R(cxx::apply(std::move(f), std::move(args)));

@@ -5,10 +5,10 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <fun/idtype.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
@@ -113,7 +113,7 @@ template <typename F, typename T, std::size_t N, typename T2, std::size_t N2,
 CR fmap2(F &&f, const adt::maxarray<T, N> &xs, const adt::maxarray<T2, N2> &ys,
          Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
+  cxx_assert(ys.size() == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -129,8 +129,8 @@ template <typename F, typename T, std::size_t N, typename T2, std::size_t N2,
 CR fmap3(F &&f, const adt::maxarray<T, N> &xs, const adt::maxarray<T2, N2> &ys,
          const adt::maxarray<T3, N3> &zs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
-  assert(zs.size() == s);
+  cxx_assert(ys.size() == s);
+  cxx_assert(zs.size() == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -204,25 +204,25 @@ CR fmapStencilMulti(F &&f, G &&g, const adt::maxarray<T, N> &xs,
 
 template <typename T, std::size_t N>
 constexpr const T &head(const adt::maxarray<T, N> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, std::size_t N>
 constexpr const T &last(const adt::maxarray<T, N> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs[xs.size() - 1];
 }
 
 template <typename T, std::size_t N>
 constexpr T &&head(adt::maxarray<T, N> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs[0]);
 }
 
 template <typename T, std::size_t N>
 constexpr T &&last(adt::maxarray<T, N> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs[xs.size() - 1]);
 }
 
@@ -232,7 +232,7 @@ template <typename T, std::size_t N, typename CT = adt::maxarray<T, N>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
           typename BCT = typename fun_traits<BC>::template constructor<T>>
 BCT boundary(const adt::maxarray<T, N> &xs, std::ptrdiff_t i) {
-  assert(i >= 0 && i < 2);
+  cxx_assert(i >= 0 && i < 2);
   return munit<BC>(i == 0 ? head(xs) : last(xs));
 }
 
@@ -253,7 +253,7 @@ BCR boundaryMap(F &&f, const adt::maxarray<T, N> &xs, std::ptrdiff_t i,
 
 template <typename T, std::size_t N>
 const T &restrict getIndex(const adt::maxarray<T, N> &xs, std::ptrdiff_t i) {
-  assert(i >= 0 && i < xs.size());
+  cxx_assert(i >= 0 && i < xs.size());
   return xs[i];
 }
 
@@ -308,7 +308,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maxarray<T, N> &xs,
            const adt::maxarray<T2, N2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
-  assert(ys.size() == s);
+  cxx_assert(ys.size() == s);
   R r(std::forward<Z>(z));
 #pragma omp declare reduction(op : R : (                                       \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
@@ -381,13 +381,13 @@ CR mbind(F &&f, adt::maxarray<T, N> &&xs, Args &&... args) {
 
 template <typename T, std::size_t N>
 constexpr const T &mextract(const adt::maxarray<T, N> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, std::size_t N>
 constexpr T &&mextract(adt::maxarray<T, N> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs[0]);
 }
 

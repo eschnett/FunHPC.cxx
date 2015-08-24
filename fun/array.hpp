@@ -4,12 +4,12 @@
 #include <adt/array.hpp>
 
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/idtype.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -54,7 +54,7 @@ template <
 CR iotaMap(const F &f, const adt::irange_t &inds, const Args &... args) {
   CR rs;
   constexpr std::ptrdiff_t s = rs.size();
-  assert(inds.size() == s);
+  cxx_assert(inds.size() == s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
     rs[i] = cxx::invoke(f, inds[i], args...);
@@ -219,7 +219,7 @@ template <typename T, std::size_t N, typename CT = std::array<T, N>,
           typename BC = typename fun_traits<CT>::boundary_dummy,
           typename BCT = typename fun_traits<BC>::template constructor<T>>
 BCT boundary(const std::array<T, N> &xs, std::ptrdiff_t i) {
-  assert(i >= 0 && i < 2);
+  cxx_assert(i >= 0 && i < 2);
   return munit<BC>(i == 0 ? head(xs) : last(xs));
 }
 
@@ -358,13 +358,13 @@ CR mbind(F &&f, std::array<T, N> &&xs, Args &&... args) {
 
 template <typename T, std::size_t N>
 constexpr const T &mextract(const std::array<T, N> &xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return xs[0];
 }
 
 template <typename T, std::size_t N>
 constexpr T &&mextract(std::array<T, N> &&xs) {
-  assert(!xs.empty());
+  cxx_assert(!xs.empty());
   return std::move(xs[0]);
 }
 

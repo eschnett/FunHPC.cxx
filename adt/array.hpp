@@ -1,6 +1,7 @@
 #ifndef ADT_ARRAY_HPP
 #define ADT_ARRAY_HPP
 
+#include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 
@@ -8,7 +9,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <ios>
 #include <iostream>
 #include <limits>
@@ -265,7 +265,7 @@ constexpr std::array<R, N> array_dir() {
 
 template <typename R, std::size_t N>
 constexpr std::array<R, N> array_dir(std::size_t i) {
-  assert(i >= 0 && i < N);
+  cxx_assert(i >= 0 && i < N);
   std::array<R, N> r;
   r.fill(R(0));
   r[i] = R(1);
@@ -319,7 +319,7 @@ constexpr std::array<T, N - 1> rmdir(const std::array<T, N> &x) {
 
 template <typename T, std::size_t N>
 constexpr std::array<T, N - 1> rmdir(const std::array<T, N> &x, std::size_t i) {
-  assert(i >= 0 && i < N);
+  cxx_assert(i >= 0 && i < N);
   std::array<T, N - 1> r;
   for (std::size_t j = 0; j < N - 1; ++j)
     r[j] = x[j + (j >= i)];
@@ -337,7 +337,7 @@ constexpr std::array<T, N> update(const std::array<T, N> &x, U &&y) {
 template <typename T, std::size_t N, typename U>
 constexpr std::array<T, N> update(const std::array<T, N> &x, std::size_t i,
                                   U &&y) {
-  assert(i >= 0 && i < N);
+  cxx_assert(i >= 0 && i < N);
   std::array<T, N> r(x);
   r[i] = std::forward<U>(y);
   return r;
@@ -436,7 +436,7 @@ public:
   constexpr irange_t(std::ptrdiff_t imin_, std::ptrdiff_t imax_,
                      std::ptrdiff_t istep_)
       : imin_(imin_), imax_(imax_), istep_(istep_) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   constexpr std::ptrdiff_t imin() const { return imin_; } // rename to head?
   constexpr std::ptrdiff_t imax() const { return imax_; }
@@ -478,7 +478,7 @@ public:
   constexpr range_t(const index_t<D> &imin_, const index_t<D> &imax_,
                     const index_t<D> &istep_)
       : imin_(imin_), imax_(imax_), istep_(istep_) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   constexpr index_t<D> imin() const { return imin_; } // rename to head?
   constexpr index_t<D> imax() const { return imax_; }

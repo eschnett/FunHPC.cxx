@@ -5,12 +5,12 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cereal/types/tuple.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
@@ -52,7 +52,7 @@ template <typename C, typename F, typename... Args,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(s <= 1);
+  cxx_assert(s <= 1);
   if (__builtin_expect(!s, false))
     return CR();
   // TODO: use funhpc::remote
@@ -69,7 +69,7 @@ template <
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(inds.size() <= 1);
+  cxx_assert(inds.size() <= 1);
   if (__builtin_expect(!s, false))
     return CR();
   // TODO: use funhpc::remote
@@ -83,7 +83,7 @@ namespace detail {
 struct proxy_fmap : std::tuple<> {
   template <typename F, typename T, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
     return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
@@ -95,7 +95,7 @@ template <typename F, typename T, typename... Args,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR fmap(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
   bool s = bool(xs);
-  assert(s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap(),
                         std::forward<F>(f), xs, std::forward<Args>(args)...);
 }
@@ -105,8 +105,8 @@ struct proxy_fmap2 : std::tuple<> {
   template <typename F, typename T, typename T2, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs,
                   const funhpc::proxy<T2> &ys, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
-    assert(bool(ys));
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(ys));
     auto ysl = ys.make_local();
     return cxx::invoke(std::forward<F>(f), *xs, *ysl,
                        std::forward<Args>(args)...);
@@ -121,8 +121,8 @@ template <typename F, typename T, typename T2, typename... Args,
 CR fmap2(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
-  assert(s);
+  cxx_assert(bool(ys) == s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap2(),
                         std::forward<F>(f), xs, ys,
                         std::forward<Args>(args)...);
@@ -134,9 +134,9 @@ struct proxy_fmap3 : std::tuple<> {
   auto operator()(F &&f, const funhpc::proxy<T> &xs,
                   const funhpc::proxy<T2> &ys, const funhpc::proxy<T3> &zs,
                   Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
-    assert(bool(ys));
-    assert(bool(zs));
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(ys));
+    cxx_assert(bool(zs));
     auto ysl = ys.make_local();
     auto zsl = zs.make_local();
     return cxx::invoke(std::forward<F>(f), *xs, *ysl, *zsl,
@@ -152,9 +152,9 @@ template <typename F, typename T, typename T2, typename T3, typename... Args,
 CR fmap3(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          const funhpc::proxy<T3> &zs, Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
-  assert(bool(zs) == s);
-  assert(s);
+  cxx_assert(bool(ys) == s);
+  cxx_assert(bool(zs) == s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap3(),
                         std::forward<F>(f), xs, ys, zs,
                         std::forward<Args>(args)...);
@@ -168,11 +168,11 @@ struct proxy_fmap5 : std::tuple<> {
                   const funhpc::proxy<T2> &ys, const funhpc::proxy<T3> &zs,
                   const funhpc::proxy<T4> &as, const funhpc::proxy<T5> &bs,
                   Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
-    assert(bool(ys));
-    assert(bool(zs));
-    assert(bool(as));
-    assert(bool(bs));
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(ys));
+    cxx_assert(bool(zs));
+    cxx_assert(bool(as));
+    cxx_assert(bool(bs));
     auto ysl = ys.make_local();
     auto zsl = zs.make_local();
     auto asl = as.make_local();
@@ -195,11 +195,11 @@ CR fmap5(F &&f, const funhpc::proxy<T> &xs, const funhpc::proxy<T2> &ys,
          const funhpc::proxy<T3> &zs, const funhpc::proxy<T4> &as,
          const funhpc::proxy<T5> &bs, Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
-  assert(bool(zs) == s);
-  assert(bool(as) == s);
-  assert(bool(bs) == s);
-  assert(s);
+  cxx_assert(bool(ys) == s);
+  cxx_assert(bool(zs) == s);
+  cxx_assert(bool(as) == s);
+  cxx_assert(bool(bs) == s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmap5(),
                         std::forward<F>(f), xs, ys, zs, as, bs,
                         std::forward<Args>(args)...);
@@ -212,7 +212,7 @@ struct proxy_fmapStencil : std::tuple<> {
   template <typename F, typename T, typename BM, typename BP, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs, std::size_t bmask, BM &&bm,
                   BP &&bp, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
     return cxx::invoke(std::forward<F>(f), *xs, bmask, std::forward<BM>(bm),
                        std::forward<BP>(bp), std::forward<Args>(args)...);
   }
@@ -229,7 +229,7 @@ CR fmapStencil(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
   static_assert(std::is_same<std::decay_t<BM>, B>::value, "");
   static_assert(std::is_same<std::decay_t<BP>, B>::value, "");
   bool s = bool(xs);
-  assert(s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(), detail::proxy_fmapStencil(),
                         std::forward<F>(f), xs, bmask, std::forward<BM>(bm),
                         std::forward<BP>(bp), std::forward<Args>(args)...);
@@ -248,9 +248,9 @@ template <> struct proxy_fmapStencilMulti<1> : std::tuple<> {
   auto operator()(const funhpc::proxy<T> &xs, std::size_t bmask,
                   const funhpc::proxy<BM0> &bm0, const funhpc::proxy<BP0> &bp0,
                   F &&f, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
-    assert(bool(bm0));
-    assert(bool(bp0));
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(bm0));
+    cxx_assert(bool(bp0));
     auto bm0l = bm0.make_local();
     auto bp0l = bp0.make_local();
     return cxx::invoke(std::forward<F>(f), *xs, bmask, *bm0l, *bp0l,
@@ -270,7 +270,7 @@ CR fmapStencilMulti(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
                     const std::decay_t<BCB> &bm0, const std::decay_t<BCB> &bp0,
                     Args &&... args) {
   bool s = bool(xs);
-  assert(s);
+  cxx_assert(s);
   return funhpc::remote(xs.get_proc_future(),
                         detail::proxy_fmapStencilMulti<D>(), xs, bmask, bm0,
                         bp0, std::forward<F>(f), std::forward<Args>(args)...);
@@ -279,12 +279,12 @@ CR fmapStencilMulti(F &&f, G &&g, const funhpc::proxy<T> &xs, std::size_t bmask,
 // head, last
 
 template <typename T> T head(const funhpc::proxy<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs.make_local();
 }
 
 template <typename T> T last(const funhpc::proxy<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs.make_local();
 }
 
@@ -315,7 +315,7 @@ namespace detail {
 struct proxy_foldMap : std::tuple<> {
   template <typename F, typename T, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
     return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
@@ -326,7 +326,7 @@ template <typename F, typename Op, typename Z, typename T, typename... Args,
 R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
-  assert(s);
+  cxx_assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
                        detail::proxy_foldMap(), std::forward<F>(f), xs,
                        std::forward<Args>(args)...).get();
@@ -337,8 +337,8 @@ struct proxy_foldMap2 : std::tuple<> {
   template <typename F, typename T, typename T2, typename... Args>
   auto operator()(F &&f, const funhpc::proxy<T> &xs,
                   const funhpc::proxy<T2> &ys, Args &&... args) const {
-    assert(bool(xs) && xs.proc_ready() && xs.local());
-    assert(bool(ys));
+    cxx_assert(bool(xs) && xs.proc_ready() && xs.local());
+    cxx_assert(bool(ys));
     auto ysl = ys.make_local();
     return cxx::invoke(std::forward<F>(f), *xs, *ysl,
                        std::forward<Args>(args)...);
@@ -352,8 +352,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
            const funhpc::proxy<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = bool(xs);
-  assert(bool(ys) == s);
-  assert(s);
+  cxx_assert(bool(ys) == s);
+  cxx_assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
                        detail::proxy_foldMap2(), std::forward<F>(f), xs, ys,
                        std::forward<Args>(args)...).get();
@@ -373,7 +373,7 @@ CT munit(T &&x) {
 
 template <typename T, typename CT = funhpc::proxy<T>>
 CT mjoin(const funhpc::proxy<funhpc::proxy<T>> &xss) {
-  assert(bool(xss));
+  cxx_assert(bool(xss));
   return xss.unwrap();
 }
 
@@ -391,7 +391,7 @@ CR mbind(F &&f, const funhpc::proxy<T> &xs, Args &&... args) {
 // Note: Don't return a reference to a temporary -- cannot use
 // decltype(auto)!
 template <typename T> T mextract(const funhpc::proxy<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs.make_local();
 }
 

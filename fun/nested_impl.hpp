@@ -5,6 +5,7 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 
 #include <adt/nested_impl.hpp>
@@ -47,17 +48,17 @@ std::ptrdiff_t nested_calc_outer_size(const Policy &policy,
     isize = max_inner;
     osize = cxx::div_ceil(size, max_inner).quot;
   }
-  assert(isize * osize >= size);
+  cxx_assert(isize * osize >= size);
   if (isize == 0 || osize == 0) {
-    assert(size == 0);
+    cxx_assert(size == 0);
   } else {
-    // assert((isize - 1) * osize < size);
-    assert(isize * (osize - 1) < size);
+    // cxx_assert((isize - 1) * osize < size);
+    cxx_assert(isize * (osize - 1) < size);
   }
-  assert(isize >= min_inner);
-  assert(unlimited_inner || isize <= max_inner);
-  assert(osize >= min_outer);
-  assert(unlimited_outer || osize <= max_outer);
+  cxx_assert(isize >= min_inner);
+  cxx_assert(unlimited_inner || isize <= max_inner);
+  cxx_assert(osize >= min_outer);
+  cxx_assert(unlimited_outer || osize <= max_outer);
   return osize;
 }
 
@@ -76,9 +77,9 @@ adt::irange_t nested_calc_outer_inds(const Policy &policy,
   std::ptrdiff_t ostep =
       unlimited_inner ? omax - omin : inds.istep() * max_inner;
   adt::irange_t oinds(omin, omax, ostep);
-  assert(oinds.size() >= min_outer);
-  assert(unlimited_outer || oinds.size() <= max_outer);
-  assert(oinds.size() == osize);
+  cxx_assert(oinds.size() >= min_outer);
+  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
+  cxx_assert(oinds.size() == osize);
   return oinds;
 }
 
@@ -95,10 +96,10 @@ nested_calc_inner_inds(const Policy &policy, const adt::irange_t &inds,
   std::ptrdiff_t imax = std::min(imin + oinds.istep(), inds.imax());
   std::ptrdiff_t istep = inds.istep();
   adt::irange_t iinds(imin, imax, istep);
-  assert(iinds.size() >= min_inner);
-  assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(iinds.size() >= min_inner);
+  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
   if (min_outer == 0)
-    assert(!iinds.empty());
+    cxx_assert(!iinds.empty());
   return iinds;
 }
 
@@ -129,17 +130,17 @@ std::ptrdiff_t nested_calc_outer_size(const adt::irange_t &inds) {
     isize = max_inner;
     osize = cxx::div_ceil(size, max_inner).quot;
   }
-  assert(isize * osize >= size);
+  cxx_assert(isize * osize >= size);
   if (isize == 0 || osize == 0) {
-    assert(size == 0);
+    cxx_assert(size == 0);
   } else {
-    // assert((isize - 1) * osize < size);
-    assert(isize * (osize - 1) < size);
+    // cxx_assert((isize - 1) * osize < size);
+    cxx_assert(isize * (osize - 1) < size);
   }
-  assert(isize >= min_inner);
-  assert(unlimited_inner || isize <= max_inner);
-  assert(osize >= min_outer);
-  assert(unlimited_outer || osize <= max_outer);
+  cxx_assert(isize >= min_inner);
+  cxx_assert(unlimited_inner || isize <= max_inner);
+  cxx_assert(osize >= min_outer);
+  cxx_assert(unlimited_outer || osize <= max_outer);
   return osize;
 }
 
@@ -157,9 +158,9 @@ adt::irange_t nested_calc_outer_inds(const adt::irange_t &inds) {
   std::ptrdiff_t ostep =
       unlimited_inner ? omax - omin : inds.istep() * max_inner;
   adt::irange_t oinds(omin, omax, ostep);
-  assert(oinds.size() >= min_outer);
-  assert(unlimited_outer || oinds.size() <= max_outer);
-  assert(oinds.size() == osize);
+  cxx_assert(oinds.size() >= min_outer);
+  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
+  cxx_assert(oinds.size() == osize);
   return oinds;
 }
 
@@ -176,10 +177,10 @@ adt::irange_t nested_calc_inner_inds(const adt::irange_t &inds,
   std::ptrdiff_t imax = std::min(imin + oinds.istep(), inds.imax());
   std::ptrdiff_t istep = inds.istep();
   adt::irange_t iinds(imin, imax, istep);
-  assert(iinds.size() >= min_inner);
-  assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(iinds.size() >= min_inner);
+  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
   if (min_outer == 0)
-    assert(!iinds.empty());
+    cxx_assert(!iinds.empty());
   return iinds;
 }
 
@@ -248,18 +249,19 @@ adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
   }
   std::ptrdiff_t isize = adt::prod(ishape);
   std::ptrdiff_t osize = adt::prod(oshape);
-  assert(isize * osize >= size);
+  cxx_assert(isize * osize >= size);
   if (isize == 0 || osize == 0) {
-    assert(size == 0);
+    cxx_assert(size == 0);
   } else {
-    // assert((isize - 1) * osize < size);
+    // cxx_assert((isize - 1) * osize < size);
     for (std::size_t d = 0; d < D; ++d)
-      assert(isize * adt::prod(adt::update(oshape, d, oshape[d] + 1)) > size);
+      cxx_assert(isize * adt::prod(adt::update(oshape, d, oshape[d] + 1)) >
+                 size);
   }
-  assert(isize >= min_inner);
-  assert(unlimited_inner || isize <= max_inner);
-  assert(osize >= min_outer);
-  assert(unlimited_outer || osize <= max_outer);
+  cxx_assert(isize >= min_inner);
+  cxx_assert(unlimited_inner || isize <= max_inner);
+  cxx_assert(osize >= min_outer);
+  cxx_assert(unlimited_outer || osize <= max_outer);
   return oshape;
 }
 
@@ -278,9 +280,9 @@ adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
   adt::index_t<D> ostep =
       unlimited_inner ? omax - omin : inds.istep() * max_inner;
   adt::range_t<D> oinds(omin, omax, ostep);
-  assert(oinds.size() >= min_outer);
-  assert(unlimited_outer || oinds.size() <= max_outer);
-  assert(oinds.size() == osize);
+  cxx_assert(oinds.size() >= min_outer);
+  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
+  cxx_assert(oinds.size() == osize);
   return oinds;
 }
 
@@ -297,10 +299,10 @@ adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
   adt::index_t<D> imax = adt::min(imin + oinds.istep(), inds.imax());
   adt::index_t<D> istep = inds.istep();
   adt::range_t<D> iinds(imin, imax, istep);
-  assert(iinds.size() >= min_inner);
-  assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(iinds.size() >= min_inner);
+  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
   if (min_outer == 0)
-    assert(!iinds.empty());
+    cxx_assert(!iinds.empty());
   return iinds;
 }
 
@@ -457,7 +459,7 @@ template <std::size_t D, typename F, typename G, typename P, typename A,
 CR fmapStencilMulti(F &&f, G &&g, const adt::nested<P, A, T, Policy> &xss,
                     std::size_t bmask, Args &&... args) {
   // cannot call fmap here
-  assert(msize(xss.data) <= 1);
+  cxx_assert(msize(xss.data) <= 1);
   return CR{fmap(detail::nested_fmapStencilMulti<D>(), xss.data,
                  std::forward<F>(f), std::forward<G>(g), bmask,
                  std::forward<Args>(args)...),
@@ -620,7 +622,7 @@ template <typename P, typename A, typename T, typename Policy>
 decltype(auto) getIndex(const adt::nested<P, A, T, Policy> &xs,
                         std::ptrdiff_t i) {
   // TODO: Can't just use mextract, container may be larger
-  assert(msize(xs.data) <= 1);
+  cxx_assert(msize(xs.data) <= 1);
   return mextract(fmap(detail::nested_getIndex(), xs.data, i));
 }
 
@@ -691,7 +693,7 @@ struct nested_mextract : std::tuple<> {
   // missing somewhere.
   template <typename NPAT> auto operator()(const NPAT &xss) const {
     // TODO: Can't just use mextract, container may be larger
-    assert(msize(xss) <= 1);
+    cxx_assert(msize(xss) <= 1);
     return mextract(xss.data);
   }
 };
@@ -769,8 +771,8 @@ CT mplus(const adt::nested<P, A, T, Policy> &xss,
          const adt::nested<P, A, Ts, Policies> &... yss) {
   typedef typename CT::template array_constructor<T> AT;
   // TODO: Can't just use mextract, container may be larger
-  assert(msize(xss.data) <= 1);
-  std::make_tuple((assert(msize(yss.data) <= 1), 0)...);
+  cxx_assert(msize(xss.data) <= 1);
+  std::make_tuple((cxx_assert(msize(yss.data) <= 1), (void)yss.data, 0)...);
   return CT{munit<P, AT>(mplus(
                 mempty(xss.data) ? mzero<A, T>() : mextract(xss.data),
                 mempty(yss.data) ? mzero<A, T>() : mextract(yss.data)...)),

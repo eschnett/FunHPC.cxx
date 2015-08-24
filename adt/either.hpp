@@ -1,11 +1,11 @@
 #ifndef ADT_EITHER_HPP
 #define ADT_EITHER_HPP
 
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <cereal/access.hpp>
 
-#include <cassert>
 #include <type_traits>
 #include <utility>
 
@@ -127,19 +127,19 @@ public:
   bool left() const noexcept { return is_left; }
   bool right() const noexcept { return !is_left; }
   const L &get_left() const {
-    assert(is_left);
+    cxx_assert(is_left);
     return left_;
   }
   L &get_left() {
-    assert(is_left);
+    cxx_assert(is_left);
     return left_;
   }
   const R &get_right() const {
-    assert(!is_left);
+    cxx_assert(!is_left);
     return right_;
   }
   R &get_right() {
-    assert(!is_left);
+    cxx_assert(!is_left);
     return right_;
   }
 

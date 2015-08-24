@@ -1,11 +1,11 @@
 #ifndef FUNHPC_RPTR_HPP
 #define FUNHPC_RPTR_HPP
 
+#include <cxx/cassert.hpp>
 #include <funhpc/rexec.hpp>
 
 #include <cereal/access.hpp>
 
-#include <cassert>
 #include <cstdlib>
 #include <utility>
 
@@ -37,17 +37,17 @@ public:
 
   operator bool() const noexcept { return bool(iptr); }
   bool local() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return proc == rank();
   }
   std::ptrdiff_t get_proc() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return proc;
   }
   T *get_ptr() const {
     if (!bool(*this))
       return nullptr;
-    assert(local());
+    cxx_assert(local());
     return (T *)iptr;
   }
   const T &operator*() const { return *get_ptr(); }

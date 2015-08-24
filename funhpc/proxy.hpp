@@ -1,6 +1,7 @@
 #ifndef FUNHPC_PROXY_HPP
 #define FUNHPC_PROXY_HPP
 
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <funhpc/async.hpp>
 #include <funhpc/rexec.hpp>
@@ -10,7 +11,6 @@
 
 #include <cereal/access.hpp>
 
-#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -46,7 +46,7 @@ template <typename T> class proxy {
 public:
   typedef T element_type;
 
-  proxy() : proc(-1) { assert(invariant()); }
+  proxy() : proc(-1) { cxx_assert(invariant()); }
 
   proxy(const std::shared_ptr<T> &ptr) : proxy(shared_rptr<T>(ptr)) {}
   proxy(std::shared_ptr<T> &&ptr) : proxy(shared_rptr<T>(std::move(ptr))) {}
@@ -56,14 +56,14 @@ public:
       robj = qthread::make_ready_future(ptr);
       proc = ptr.get_proc();
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(shared_rptr<T> &&ptr) : proxy() {
     if (bool(ptr)) {
       proc = ptr.get_proc();
       robj = qthread::make_ready_future(std::move(ptr));
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   proxy(const qthread::shared_future<std::shared_ptr<T>> &fptr) : proxy() {
@@ -73,13 +73,13 @@ public:
       } else {
         robj = qthread::async([fptr]() {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return shared_rptr<T>(ptr);
         });
       }
       proc = rank();
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::shared_future<std::shared_ptr<T>> &&fptr) : proxy() {
     if (fptr.valid()) {
@@ -88,13 +88,13 @@ public:
       } else {
         robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return shared_rptr<T>(std::move(ptr));
         });
       }
       proc = rank();
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::future<std::shared_ptr<T>> &&fptr) : proxy() {
     if (fptr.valid()) {
@@ -103,29 +103,29 @@ public:
       } else {
         robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return shared_rptr<T>(std::move(ptr));
         });
       }
       proc = rank();
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   proxy(const qthread::shared_future<shared_rptr<T>> &fptr)
       : robj(fptr),
         proc(robj.valid() && robj.ready() ? robj.get().get_proc() : -1) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::shared_future<shared_rptr<T>> &&fptr)
       : robj(std::move(fptr)),
         proc(robj.valid() && robj.ready() ? robj.get().get_proc() : -1) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::future<shared_rptr<T>> &&fptr)
       : robj(std::move(fptr)),
         proc(robj.valid() && robj.ready() ? robj.get().get_proc() : -1) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   proxy(const qthread::shared_future<proxy<T>> &fptr) : proxy() {
@@ -135,12 +135,12 @@ public:
       } else {
         robj = qthread::async([fptr]() {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return ptr.robj.get();
         });
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::shared_future<proxy<T>> &&fptr) : proxy() {
     if (fptr.valid()) {
@@ -149,12 +149,12 @@ public:
       } else {
         robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return ptr.robj.get();
         });
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(qthread::future<proxy<T>> &&fptr) : proxy() {
     if (fptr.valid()) {
@@ -163,12 +163,12 @@ public:
       } else {
         robj = qthread::async([fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
-          assert(bool(ptr));
+          cxx_assert(bool(ptr));
           return ptr.robj.get();
         });
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
 private:
@@ -181,18 +181,18 @@ private:
       if (fptr.ready()) {
         *this = fptr.get();
         if (proc >= 0)
-          assert(proc == robj.get().get_proc());
+          cxx_assert(proc == robj.get().get_proc());
       } else {
         robj = qthread::async([proc, fptr]() {
           auto ptr = fptr.get();
           if (proc >= 0)
-            assert(proc == ptr.get_proc());
+            cxx_assert(proc == ptr.get_proc());
           return ptr.robj.get();
         });
         this->proc = proc;
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   proxy(std::ptrdiff_t proc, qthread::shared_future<proxy> &&fptr) : proxy() {
@@ -200,18 +200,18 @@ private:
       if (fptr.ready()) {
         *this = fptr.get();
         if (proc >= 0)
-          assert(proc == robj.get().get_proc());
+          cxx_assert(proc == robj.get().get_proc());
       } else {
         robj = qthread::async([ proc, fptr = std::move(fptr) ]() {
           auto ptr = fptr.get();
           if (proc >= 0)
-            assert(proc == ptr.get_proc());
+            cxx_assert(proc == ptr.get_proc());
           return ptr.robj.get();
         });
         this->proc = proc;
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
   proxy(std::ptrdiff_t proc, qthread::future<proxy> &&fptr) : proxy() {
@@ -219,18 +219,18 @@ private:
       if (fptr.ready()) {
         *this = fptr.get();
         if (proc >= 0)
-          assert(proc == robj.get().get_proc());
+          cxx_assert(proc == robj.get().get_proc());
       } else {
         robj = qthread::async([ proc, fptr = std::move(fptr) ]() mutable {
           auto ptr = fptr.get();
           if (proc >= 0)
-            assert(proc == ptr.get_proc());
+            cxx_assert(proc == ptr.get_proc());
           return ptr.robj.get();
         });
         this->proc = proc;
       }
     }
-    assert(invariant());
+    cxx_assert(invariant());
   }
 
 public:
@@ -270,11 +270,11 @@ public:
   }
 
   proxy(const proxy &other) : robj(other.robj), proc(other.proc) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy(proxy &&other)
       : robj(std::move(other.robj)), proc(std::move(other.proc)) {
-    assert(invariant());
+    cxx_assert(invariant());
   }
   proxy &operator=(const proxy &other) {
     robj = other.robj;
@@ -302,7 +302,7 @@ public:
 
   operator bool() const noexcept { return robj.valid(); }
   bool proc_ready() const noexcept {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     if (proc >= 0)
       return true;
     if (!ready())
@@ -311,13 +311,13 @@ public:
     return true;
   }
   std::ptrdiff_t get_proc() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     if (proc >= 0)
       return proc;
     return proc = robj.get().get_proc();
   }
   qthread::future<std::ptrdiff_t> get_proc_future() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     if (proc_ready())
       return qthread::make_ready_future(proc);
     return qthread::async([robj = this->robj]() {
@@ -325,16 +325,16 @@ public:
     });
   }
   bool local() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return get_proc() == rank();
   }
 
   bool ready() const noexcept {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     return robj.ready();
   }
   void wait() const {
-    assert(bool(*this));
+    cxx_assert(bool(*this));
     robj.wait();
     if (proc < 0)
       proc = robj.get().get_proc();
@@ -344,15 +344,15 @@ public:
     static const std::shared_ptr<T> null;
     if (!bool(*this))
       return null;
-    assert(local());
+    cxx_assert(local());
     return robj.get().get_shared_ptr();
   }
   const T &operator*() const {
-    assert(bool(*this) && local());
+    cxx_assert(bool(*this) && local());
     return *get_shared_ptr();
   }
   T &operator*() {
-    assert(bool(*this) && local());
+    cxx_assert(bool(*this) && local());
     return *get_shared_ptr();
   }
   const std::shared_ptr<T> &operator->() const { return get_shared_ptr(); }
@@ -437,7 +437,7 @@ template <typename F, typename... Args,
               cxx::invoke_of_t<std::decay_t<F>, std::decay_t<Args>...>>>
 proxy<R> remote(qthread::future<std::ptrdiff_t> &&fdest, F &&f,
                 Args &&... args) {
-  assert(fdest.valid());
+  cxx_assert(fdest.valid());
   if (fdest.ready())
     return remote(fdest.get(), std::forward<F>(f), std::forward<Args>(args)...);
   return proxy<R>(
@@ -459,7 +459,7 @@ std::shared_ptr<T> proxy_get_shared_ptr(const proxy<T> &rptr) {
 template <typename T>
 qthread::future<std::shared_ptr<T>>
 make_local_shared_ptr(const proxy<T> &rptr) {
-  assert(bool(rptr));
+  cxx_assert(bool(rptr));
   if (rptr.proc_ready()) {
     if (rptr.local()) {
       if (rptr.ready())
@@ -476,7 +476,7 @@ make_local_shared_ptr(const proxy<T> &rptr) {
 }
 
 template <typename T> proxy<T> proxy<T>::make_local() const {
-  assert(bool(*this));
+  cxx_assert(bool(*this));
   return proxy(make_local_shared_ptr(*this));
 }
 }

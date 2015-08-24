@@ -5,7 +5,7 @@
 
 #include <adt/grid_impl.hpp>
 
-#include <cassert>
+#include <cxx/cassert.hpp>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>

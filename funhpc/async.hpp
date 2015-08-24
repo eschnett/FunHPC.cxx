@@ -1,6 +1,7 @@
 #ifndef FUNHPC_ASYNC_HPP
 #define FUNHPC_ASYNC_HPP
 
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <funhpc/rexec.hpp>
 #include <funhpc/rptr.hpp>
@@ -141,7 +142,7 @@ template <typename F, typename... Args,
 qthread::future<R> async(rlaunch policy,
                          qthread::future<std::ptrdiff_t> &&fdest, F &&f,
                          Args &&... args) {
-  assert(fdest.valid());
+  cxx_assert(fdest.valid());
   if (fdest.ready())
     return async(policy, fdest.get(), std::forward<F>(f),
                  std::forward<Args>(args)...);

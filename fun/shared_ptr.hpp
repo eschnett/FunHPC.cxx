@@ -3,10 +3,10 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -53,7 +53,7 @@ template <
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(s <= 1);
+  cxx_assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return CR();
   return std::make_shared<R>(
@@ -69,7 +69,7 @@ template <
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(s <= 1);
+  cxx_assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return CR();
   return std::make_shared<R>(cxx::invoke(std::forward<F>(f), inds.imin(),
@@ -97,7 +97,7 @@ template <typename F, typename T, typename T2, typename... Args,
 CR fmap2(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
          Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
+  cxx_assert(bool(ys) == s);
   if (__builtin_expect(!s, false))
     return CR();
   return std::make_shared<R>(
@@ -111,8 +111,8 @@ template <typename F, typename T, typename T2, typename T3, typename... Args,
 CR fmap3(F &&f, const std::shared_ptr<T> &xs, const std::shared_ptr<T2> &ys,
          const std::shared_ptr<T3> &zs, Args &&... args) {
   bool s = bool(xs);
-  assert(bool(ys) == s);
-  assert(bool(zs) == s);
+  cxx_assert(bool(ys) == s);
+  cxx_assert(bool(zs) == s);
   if (__builtin_expect(!s, false))
     return CR();
   return std::make_shared<R>(cxx::invoke(std::forward<F>(f), *xs, *ys, *zs,
@@ -152,8 +152,8 @@ CR fmapStencilMulti(F &&f, G &&g, const std::shared_ptr<T> &xs,
                     std::size_t bmask, const std::decay_t<BCB> &bm0,
                     const std::decay_t<BCB> &bp0, Args &&... args) {
   bool s = bool(xs);
-  assert(bool(bm0) == s);
-  assert(bool(bp0) == s);
+  cxx_assert(bool(bm0) == s);
+  cxx_assert(bool(bp0) == s);
   if (__builtin_expect(!s, false))
     return CR();
   return std::make_shared<R>(cxx::invoke(std::forward<F>(f), *xs, bmask, *bm0,
@@ -163,12 +163,12 @@ CR fmapStencilMulti(F &&f, G &&g, const std::shared_ptr<T> &xs,
 // head, last
 
 template <typename T> const T &head(const std::shared_ptr<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs;
 }
 
 template <typename T> const T &last(const std::shared_ptr<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs;
 }
 
@@ -215,7 +215,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
   static_assert(
       std::is_same<std::decay_t<cxx::invoke_of_t<Op, R, R>>, R>::value, "");
   bool s = bool(xs);
-  assert(bool(ys) == s);
+  cxx_assert(bool(ys) == s);
   if (__builtin_expect(!s, false))
     return R(std::forward<Z>(z));
   return cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...);
@@ -254,7 +254,7 @@ CT mjoin(const std::shared_ptr<std::shared_ptr<T>> &xss) {
 // mextract
 
 template <typename T> const T &mextract(const std::shared_ptr<T> &xs) {
-  assert(bool(xs));
+  cxx_assert(bool(xs));
   return *xs;
 }
 

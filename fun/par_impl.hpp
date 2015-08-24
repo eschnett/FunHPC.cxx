@@ -5,6 +5,7 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <adt/par_impl.hpp>
@@ -47,7 +48,7 @@ template <typename F, typename A, typename B, typename T, typename T2,
 CR fmap2(F &&f, const adt::par<A, B, T> &xs, const adt::par<A, B, T2> &ys,
          Args &&... args) {
   bool s = xs.data.right();
-  assert(ys.data.right() == s);
+  cxx_assert(ys.data.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(
         fmap2(std::forward<F>(f), xs.data.get_left(), ys.data.get_left(),
@@ -62,8 +63,8 @@ template <typename F, typename A, typename B, typename T, typename T2,
 CR fmap3(F &&f, const adt::par<A, B, T> &xs, const adt::par<A, B, T2> &ys,
          const adt::par<A, B, T3> &zs, Args &&... args) {
   bool s = xs.data.right();
-  assert(ys.data.right() == s);
-  assert(zs.data.right() == s);
+  cxx_assert(ys.data.right() == s);
+  cxx_assert(zs.data.right() == s);
   if (!s)
     return CR{CR::either_t::make_left(
         fmap3(std::forward<F>(f), xs.data.get_left(), ys.data.get_left(),
@@ -109,7 +110,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::par<A, B, T> &xs,
            const adt::par<A, B, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.data.right();
-  assert(ys.data.right() == s);
+  cxx_assert(ys.data.right() == s);
   if (!s)
     return foldMap2(std::forward<F>(f), std::forward<Op>(op),
                     std::forward<Z>(z), xs.data.get_left(), ys.data.get_left(),

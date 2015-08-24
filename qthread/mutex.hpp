@@ -1,10 +1,10 @@
 #ifndef QTHREAD_MUTEX_HPP
 #define QTHREAD_MUTEX_HPP
 
+#include <cxx/cassert.hpp>
+
 #include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
-
-#include <cassert>
 
 namespace qthread {
 
@@ -17,12 +17,12 @@ public:
   mutex() noexcept {}
   mutex(const mutex &) = delete;
   mutex(mutex &&) = delete;
-  ~mutex() { assert(mem.status()); }
+  ~mutex() { cxx_assert(mem.status()); }
   mutex &operator=(const mutex &) = delete;
   mutex &operator=(mutex &&) = delete;
   void lock() { mem.readFE(); }
   void unlock() {
-    assert(!mem.status());
+    cxx_assert(!mem.status());
     mem.fill();
   }
 };

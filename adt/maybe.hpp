@@ -2,6 +2,7 @@
 #define ADT_MAYBE_HPP
 
 #include <adt/either.hpp>
+#include <cxx/cassert.hpp>
 
 #include <cereal/access.hpp>
 
@@ -33,11 +34,11 @@ public:
   bool just() const noexcept { return elt.right(); }
 
   const T &get_just() const {
-    assert(elt.right());
+    cxx_assert(elt.right());
     return elt.get_right();
   }
   T &get_just() {
-    assert(elt.right());
+    cxx_assert(elt.right());
     return elt.get_right();
   }
 

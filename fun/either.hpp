@@ -5,12 +5,14 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -48,7 +50,7 @@ template <typename C, typename F, typename... Args,
           typename R = cxx::invoke_of_t<F, std::ptrdiff_t, Args...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
-  assert(inds.size() <= 1);
+  cxx_assert(inds.size() <= 1);
   if (inds.empty())
     return CR::make_left();
   return CR::make_right(
@@ -89,7 +91,7 @@ template <typename F, typename T, typename L, typename T2, typename L2,
 CR fmap2(F &&f, const adt::either<L, T> &xs, const adt::either<L2, T2> &ys,
          Args &&... args) {
   bool s = xs.right();
-  assert(ys.right() == s);
+  cxx_assert(ys.right() == s);
   if (!s)
     return CR::make_left(xs.get_left());
   return CR::make_right(cxx::invoke(std::forward<F>(f), xs.get_right(),
@@ -128,7 +130,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
            const adt::either<L, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.right();
-  assert(ys.right() == s);
+  cxx_assert(ys.right() == s);
   if (!s)
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<F>(f), xs.get_right(), ys.get_right(),
@@ -187,12 +189,12 @@ CT mjoin(adt::either<L, adt::either<L, T>> &&xss) {
 
 template <typename T, typename L>
 const T &mextract(const adt::either<L, T> &xs) {
-  assert(xs.right());
+  cxx_assert(xs.right());
   return xs.get_right();
 }
 
 template <typename T, typename L> T &&mextract(adt::either<L, T> &&xs) {
-  assert(xs.right());
+  cxx_assert(xs.right());
   return std::move(xs.get_right());
 }
 

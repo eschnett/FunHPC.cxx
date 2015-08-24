@@ -5,10 +5,10 @@
 
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 
 #include <algorithm>
-#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -51,7 +51,7 @@ template <typename C, typename F, typename... Args,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(s <= 1);
+  cxx_assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return CR();
   return qthread::async(std::forward<F>(f), inds[0],
@@ -67,7 +67,7 @@ template <
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   std::size_t s = inds.size();
-  assert(s <= 1);
+  cxx_assert(s <= 1);
   if (__builtin_expect(s == 0, false))
     return CR();
   return qthread::async(std::forward<F>(f), inds.imin(),
@@ -97,7 +97,7 @@ template <typename F, typename T, typename T2, typename... Args,
 CR fmap2(F &&f, const qthread::shared_future<T> &xs,
          const qthread::shared_future<T2> &ys, Args &&... args) {
   bool s = xs.valid();
-  assert(ys.valid() == s);
+  cxx_assert(ys.valid() == s);
   if (!s)
     return CR();
   return xs.then([ f = std::forward<F>(f), ys, args... ](
@@ -114,8 +114,8 @@ CR fmap3(F &&f, const qthread::shared_future<T> &xs,
          const qthread::shared_future<T2> &ys,
          const qthread::shared_future<T3> &zs, Args &&... args) {
   bool s = xs.valid();
-  assert(ys.valid() == s);
-  assert(zs.valid() == s);
+  cxx_assert(ys.valid() == s);
+  cxx_assert(zs.valid() == s);
   if (!s)
     return CR();
   return xs.then([ f = std::forward<F>(f), ys, zs, args... ](
@@ -198,12 +198,12 @@ BCR boundaryMap(F &&f, const qthread::shared_future<T> &xs, std::ptrdiff_t i,
 // head, last
 
 template <typename T> const T &head(const qthread::shared_future<T> &xs) {
-  assert(xs.valid());
+  cxx_assert(xs.valid());
   return xs.get();
 }
 
 template <typename T> const T &last(const qthread::shared_future<T> &xs) {
-  assert(xs.valid());
+  cxx_assert(xs.valid());
   return xs.get();
 }
 
@@ -226,7 +226,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
            const qthread::shared_future<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   bool s = xs.valid();
-  assert(ys.valid() == s);
+  cxx_assert(ys.valid() == s);
   if (!s)
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
@@ -246,7 +246,7 @@ CT munit(T &&x) {
 
 template <typename T, typename CT = qthread::shared_future<T>>
 CT mjoin(const qthread::shared_future<qthread::shared_future<T>> &xss) {
-  assert(xss.valid());
+  cxx_assert(xss.valid());
   // return qthread::async([xss]() { return xss.get().get(); }).share();
   return xss.unwrap().share();
 }
@@ -257,7 +257,7 @@ template <typename F, typename T, typename... Args,
           typename CR = std::decay_t<cxx::invoke_of_t<F, T, Args...>>>
 CR mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   static_assert(detail::is_shared_future<CR>::value, "");
-  assert(xs.valid());
+  cxx_assert(xs.valid());
   // return cxx::invoke(std::forward<F>(f), xs.get(),
   // std::forward<Args>(args)...);
   return mjoin(fmap(std::forward<F>(f), xs, std::forward<Args>(args)...));
@@ -266,7 +266,7 @@ CR mbind(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
 // mextract
 
 template <typename T> const T &mextract(const qthread::shared_future<T> &xs) {
-  assert(xs.valid());
+  cxx_assert(xs.valid());
   return xs.get();
 }
 

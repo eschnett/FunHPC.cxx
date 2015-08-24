@@ -23,7 +23,7 @@ template <typename T> struct nested_default_policy : std::tuple<> {
   template <typename U> struct rebind {
     typedef nested_default_policy<U> other;
   };
-  // TODO: try to remove these default definition, also in wave1d.cc
+  // TODO: try to remove these default definitions, also in wave1d.cc
   nested_default_policy() = default;
   nested_default_policy(const nested_default_policy &other) = default;
   nested_default_policy(nested_default_policy &&other) = default;

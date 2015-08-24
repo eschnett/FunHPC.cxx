@@ -44,7 +44,7 @@ typedef double real_t;
 
 // Dimension
 
-constexpr int dim = 1;
+constexpr int dim = 2;
 typedef std::array<int_t, dim> vint_t;
 typedef std::array<real_t, dim> vreal_t;
 
@@ -340,10 +340,13 @@ auto grid_rhs(const grid_t &g) {
   }
   auto bs = std::tuple_cat(std::move(bms), std::move(bps));
 
-  return grid_t{1.0, wrap_fmapStencil( // CXX_FUNOBJ((cell_rhs_t)cell_rhs),
-                         CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &>),
-                         CXX_FUNOBJ(cell_get_face), g.cells, std::move(bs),
-                         std::make_index_sequence<2 * dim>())};
+  return grid_t{1.0,
+                wrap_fmapStencil( // CXX_FUNOBJ((cell_rhs_t)cell_rhs),
+                    // CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &>),
+                    CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &,
+                                        const cell_t &, const cell_t &>),
+                    CXX_FUNOBJ(cell_get_face), g.cells, std::move(bs),
+                    std::make_index_sequence<2 * dim>())};
 }
 
 // State

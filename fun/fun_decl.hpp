@@ -4,6 +4,9 @@
 #include <cereal/types/tuple.hpp>
 
 #include <functional>
+#include <iostream>
+#include <limits>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -57,6 +60,12 @@ public:
   void swap(ostreamer &other) {
     using std::swap;
     swap(impl, other.impl);
+  }
+
+  explicit operator std::string() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
   }
 
   ostreamer(const std::string &str) {
@@ -158,9 +167,19 @@ ostreamer to_ostreamer(const CT &xs) {
 }
 
 namespace std {
+
 // operator<<
 
-template <typename CT, typename T = typename fun::fun_traits<CT>::value_type>
+// std::shared_ptr already has an operator<< via an implicit conversion --
+// override this explicitly
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::shared_ptr<T> &xs) {
+  return os << fun::to_ostreamer(xs);
+}
+
+template <
+    typename CT, typename T = typename fun::fun_traits<CT>::value_type,
+    std::enable_if_t<!std::is_same<CT, std::shared_ptr<T>>::value> * = nullptr>
 std::ostream &operator<<(std::ostream &os, const CT &xs) {
   return os << fun::to_ostreamer(xs);
 }

@@ -120,6 +120,7 @@ HDRS =						\
 	adt/tree_decl.hpp			\
 	adt/tree_impl.hpp			\
 	cxx/apply.hpp				\
+	cxx/cassert.hpp				\
 	cxx/cstdlib.hpp				\
 	cxx/funobj.hpp				\
 	cxx/invoke.hpp				\

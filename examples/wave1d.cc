@@ -162,14 +162,41 @@ auto cell_rhs(const cell_t &c, size_t bdirs, const cell_t &bm,
 
 // Grid
 
-constexpr std::size_t max_size = 8;
+constexpr std::size_t max_size = 16;
+
+template <typename T>
+using shared_maxarray = adt::nested<std::shared_ptr<adt::dummy>,
+                                    adt::maxarray<adt::dummy, max_size>, T>;
+
+template <typename T>
+using future_maxarray = adt::nested<qthread::shared_future<adt::dummy>,
+                                    adt::maxarray<adt::dummy, max_size>, T>;
 
 template <typename T>
 using proxy_maxarray = adt::nested<funhpc::proxy<adt::dummy>,
                                    adt::maxarray<adt::dummy, max_size>, T>;
+
 template <typename T>
-using storage_t = adt::nested<adt::tree<proxy_maxarray<adt::dummy>, adt::dummy>,
-                              proxy_maxarray<adt::dummy>, T>;
+using shared_maxarray_tree =
+    adt::nested<adt::tree<shared_maxarray<adt::dummy>, adt::dummy>,
+                shared_maxarray<adt::dummy>, T>;
+
+template <typename T>
+using future_maxarray_tree =
+    adt::nested<adt::tree<future_maxarray<adt::dummy>, adt::dummy>,
+                future_maxarray<adt::dummy>, T>;
+
+template <typename T>
+using proxy_maxarray_tree =
+    adt::nested<adt::tree<proxy_maxarray<adt::dummy>, adt::dummy>,
+                proxy_maxarray<adt::dummy>, T>;
+
+// template <typename T> using storage_t = shared_maxarray<T>;
+// template <typename T> using storage_t = future_maxarray<T>;
+// template <typename T> using storage_t = proxy_maxarray<T>;
+// template <typename T> using storage_t = shared_maxarray_tree<T>;
+// template <typename T> using storage_t = future_maxarray_tree<T>;
+template <typename T> using storage_t = proxy_maxarray_tree<T>;
 
 struct grid_t {
   real_t time;

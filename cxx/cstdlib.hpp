@@ -61,6 +61,22 @@ constexpr div_t<R> div_exact(const T x, const U y) {
   return {q, r};
 }
 
+template <typename T, typename U, typename V,
+          typename R = decltype(std::declval<T>() / std::declval<U>() +
+                                std::declval<V>())>
+constexpr R align_floor(const T x, const U y, const V m = T(0)) {
+  return y > 0 ? div_floor(x + y - m, y).quot * y - y + m
+               : div_ceil(x + y - m, y).quot * y - y + m;
+}
+
+template <typename T, typename U, typename V,
+          typename R = decltype(std::declval<T>() / std::declval<U>() +
+                                std::declval<V>())>
+constexpr R align_ceil(const T x, const U y, const V m = T(0)) {
+  return y > 0 ? div_ceil(x - m, y).quot * y + m
+               : div_floor(x - m, y).quot * y + m;
+}
+
 // ipow
 
 namespace detail {

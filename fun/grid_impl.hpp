@@ -6,6 +6,9 @@
 #include <adt/grid_impl.hpp>
 
 #include <cxx/cassert.hpp>
+
+#include <fun/fun_impl.hpp>
+
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -136,6 +139,13 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
            const adt::grid<C, T2, D> &ys, Args &&... args) {
   return xs.foldMap2(std::forward<F>(f), std::forward<Op>(op),
                      std::forward<Z>(z), ys, std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename C, typename T, std::size_t D>
+ostreamer dump(const adt::grid<C, T, D> &xs) {
+  return xs.dump();
 }
 
 // munit

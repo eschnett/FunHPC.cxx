@@ -6,6 +6,7 @@
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <cstddef>
 #include <type_traits>
@@ -218,6 +219,11 @@ template <typename F, typename Op, typename Z, typename P, typename A,
           typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::nested<P, A, T, Policy> &xss,
            const adt::nested<P, A, T2, Policy2> &yss, Args &&... args);
+
+// dump
+
+template <typename P, typename A, typename T, typename Policy>
+ostreamer dump(const adt::nested<P, A, T, Policy> &xss);
 
 // munit
 

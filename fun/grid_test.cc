@@ -44,6 +44,15 @@ TEST(fun_grid, iotaMap) {
   EXPECT_EQ(27, rs.last());
 }
 
+TEST(fun_grid, dump) {
+  std::ptrdiff_t s = 3;
+  auto rs = iotaMapMulti<grid2<adt::dummy>>([](const auto &i) {
+    return int(adt::sum(i));
+  }, adt::range_t<2>(adt::index_t<2>{{s, s}}));
+  std::string str(dump(rs));
+  EXPECT_EQ("grid{[[0,1,2,],[1,2,3,],[2,3,4,],],}", str);
+}
+
 TEST(fun_grid, fmap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMapMulti<grid3<adt::dummy>>(

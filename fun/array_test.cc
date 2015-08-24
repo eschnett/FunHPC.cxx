@@ -30,6 +30,13 @@ TEST(fun_array, iotaMap) {
     EXPECT_EQ(i - 1, rs1[i]);
 }
 
+TEST(fun_array, dump) {
+  std::ptrdiff_t s = 10;
+  auto rs = iotaMap<array10<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("array{0,1,2,3,4,5,6,7,8,9,}", str);
+}
+
 TEST(fun_array, fmap) {
   const std::ptrdiff_t s = 10;
   std::array<int, s> xs;

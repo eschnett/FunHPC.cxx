@@ -5,10 +5,12 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -110,6 +112,14 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::pair<L, T> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return cxx::invoke(std::forward<F>(f), xs.second, ys.second,
                      std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename T, typename L> ostreamer dump(const std::pair<L, T> &xs) {
+  std::ostringstream os;
+  os << "pair{(" << xs.first << ")," << xs.second << "}";
+  return ostreamer(os.str());
 }
 
 // munit

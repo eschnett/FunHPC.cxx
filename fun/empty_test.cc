@@ -15,6 +15,14 @@ TEST(fun_empty, iotaMap) {
   static_assert(std::is_same<decltype(rs1), adt::empty<double>>::value, "");
 }
 
+TEST(fun_empty, dump) {
+  std::ptrdiff_t s = 0;
+  auto rs = iotaMap<adt::empty<adt::dummy>>([](int x) { return x; },
+                                            adt::irange_t(s));
+  std::string str(dump(rs));
+  EXPECT_EQ("empty{}", str);
+}
+
 TEST(fun_empty, fmap) {
   auto xs = adt::empty<int>();
   EXPECT_TRUE(mempty(xs));

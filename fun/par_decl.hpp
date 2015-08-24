@@ -6,6 +6,7 @@
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -93,6 +94,11 @@ template <typename F, typename Op, typename Z, typename A, typename B,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::par<A, B, T> &xs,
            const adt::par<A, B, T2> &ys, Args &&... args);
+
+// dump
+
+template <typename A, typename B, typename T>
+ostreamer dump(const adt::par<A, B, T> &xs);
 
 // munit
 

@@ -7,10 +7,12 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -130,6 +132,18 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maybe<T> &xs,
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<F>(f), xs.get_just(), ys.get_just(),
                      std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename T> ostreamer dump(const adt::maybe<T> &xs) {
+  bool s = xs.just();
+  std::ostringstream os;
+  os << "maybe{";
+  if (s)
+    os << xs.get_just();
+  os << "}";
+  return ostreamer(os.str());
 }
 
 // munit

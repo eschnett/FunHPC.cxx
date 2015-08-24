@@ -20,6 +20,17 @@ TEST(fun_proxy, iotaMap) {
   EXPECT_EQ(-1, *rs1);
 }
 
+TEST(fun_proxy, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs = iotaMap<funhpc::proxy<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("proxy{0}", str);
+
+  auto rs0 = funhpc::proxy<int>();
+  std::string str0(dump(rs0));
+  EXPECT_EQ("proxy{}", str0);
+}
+
 namespace {
 auto add1(int i) { return i + 1; }
 

@@ -8,7 +8,9 @@
 #include <adt/empty.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -93,6 +95,14 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::extra<E, T> &xs,
            const adt::extra<E2, T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return std::forward<Z>(z);
+}
+
+// dump
+
+template <typename T, typename E> ostreamer dump(const adt::extra<E, T> &xs) {
+  std::ostringstream os;
+  os << "extra{(" << xs.get_extra() << ")}";
+  return ostreamer(os.str());
 }
 
 // mbind

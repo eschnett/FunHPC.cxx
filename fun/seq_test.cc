@@ -21,6 +21,13 @@ TEST(fun_seq, iotaMap) {
   EXPECT_EQ(9, xs.data.second.back());
 }
 
+TEST(fun_seq, dump) {
+  auto xs = fun::iotaMap<shared_vector<adt::dummy>>([](int x) { return x; },
+                                                    adt::irange_t(0, 10));
+  std::string str(fun::dump(xs));
+  EXPECT_EQ("seq{first{[0,]},second{[1,2,3,4,5,6,7,8,9,]}}", str);
+}
+
 TEST(fun_seq, fmap) {
   auto xs = fun::iotaMap<shared_vector<adt::dummy>>([](int x) { return x; },
                                                     adt::irange_t(0, 10));

@@ -8,10 +8,12 @@
 #include <adt/empty.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -124,6 +126,14 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::idtype<T> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
                      std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename T> ostreamer dump(const adt::idtype<T> &xs) {
+  std::ostringstream os;
+  os << "idtype{" << xs.get() << ",}";
+  return ostreamer(os.str());
 }
 
 // munit

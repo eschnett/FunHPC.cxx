@@ -5,6 +5,7 @@
 
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <type_traits>
 
@@ -142,6 +143,10 @@ template <typename F, typename Op, typename Z, typename A, typename T,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<A, T> &xs,
            const adt::tree<A, T2> &ys, Args &&... args);
+
+// dump
+
+template <typename A, typename T> ostreamer dump(const adt::tree<A, T> &xs);
 
 // munit
 

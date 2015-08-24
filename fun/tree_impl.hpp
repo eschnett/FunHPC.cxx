@@ -6,12 +6,14 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <adt/tree_impl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -438,6 +440,27 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::tree<A, T> &xs,
   return foldMap2(detail::tree_foldMap2(), op, z, xs.subtrees.get_right(),
                   ys.subtrees.get_right(), f, op, z,
                   std::forward<Args>(args)...);
+}
+
+// dump
+
+namespace detail {
+template <typename A, typename T> ostreamer dump(const adt::tree<A, T> &xs) {
+  bool s = xs.subtrees.right();
+  if (!s) {
+    std::ostringstream os;
+    os << "leaf{" << xs.subtrees.get_left() << "},";
+    return ostreamer(os.str());
+  }
+  return ostreamer("branch{") +
+         foldMap([](const auto &xs) { return dump(xs); }, combine_ostreamers(),
+                 ostreamer(), xs.subtrees.get_right()) +
+         ostreamer("},");
+}
+}
+
+template <typename A, typename T> ostreamer dump(const adt::tree<A, T> &xs) {
+  return ostreamer("tree{") + detail::dump(xs) + ostreamer("}");
 }
 
 // munit

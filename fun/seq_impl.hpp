@@ -8,9 +8,11 @@
 #include <cxx/tuple.hpp>
 
 #include <adt/seq_impl.hpp>
+#include <fun/fun_impl.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -91,6 +93,15 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::seq<A, B, T> &xs,
   return cxx::invoke(
       op, foldMap2(f, op, z, xs.data.first, ys.data.first, args...),
       foldMap2(f, op, z, xs.data.second, ys.data.second, args...));
+}
+
+// dump
+
+template <typename A, typename B, typename T>
+ostreamer dump(const adt::seq<A, B, T> &xs) {
+  std::ostringstream os;
+  os << "seq{first{" << xs.data.first << "},second{" << xs.data.second << "}}";
+  return ostreamer(os.str());
 }
 
 // munit

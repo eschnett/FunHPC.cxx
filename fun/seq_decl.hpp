@@ -8,6 +8,7 @@
 #include <cxx/apply.hpp>
 #include <cxx/invoke.hpp>
 #include <cxx/tuple.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -99,6 +100,11 @@ template <typename F, typename Op, typename Z, typename A, typename B,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::seq<A, B, T> &xs,
            const adt::seq<A, B, T2> &ys, Args &&... args);
+
+// dump
+
+template <typename A, typename B, typename T>
+ostreamer dump(const adt::seq<A, B, T> &xs);
 
 // munit
 

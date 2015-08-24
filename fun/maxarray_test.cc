@@ -31,6 +31,13 @@ TEST(fun_maxarray, iotaMap) {
     EXPECT_EQ(i - 1, rs1[i]);
 }
 
+TEST(fun_maxarray, dump) {
+  std::ptrdiff_t s = 10;
+  auto rs = iotaMap<adt_maxarray<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("maxarray{0,1,2,3,4,5,6,7,8,9,}", str);
+}
+
 TEST(fun_maxarray, fmap) {
   std::ptrdiff_t s = 10;
   adt_maxarray<int> xs(s);

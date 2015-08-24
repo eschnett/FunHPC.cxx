@@ -9,9 +9,11 @@
 #include <cxx/invoke.hpp>
 
 #include <adt/par_impl.hpp>
+#include <fun/fun_impl.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <sstream>
 #include <type_traits>
 
 namespace fun {
@@ -118,6 +120,21 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::par<A, B, T> &xs,
   return foldMap2(std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z),
                   xs.data.get_right(), ys.data.get_right(),
                   std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename A, typename B, typename T>
+ostreamer dump(const adt::par<A, B, T> &xs) {
+  bool s = xs.data.right();
+  std::ostringstream os;
+  os << "par{";
+  if (!s)
+    os << "left{" << xs.data.get_left() << "}";
+  else
+    os << "right{" << xs.data.get_right() << "}";
+  os << "}";
+  return ostreamer(os.str());
 }
 
 // munit

@@ -7,6 +7,7 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <type_traits>
@@ -83,6 +84,12 @@ constexpr R foldMap2(F &&f, Op &&op, Z &&z, const adt::empty<T> &xs,
                      const adt::empty<T2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return std::forward<Z>(z);
+}
+
+// dump
+
+template <typename T> ostreamer dump(const adt::empty<T> &xs) {
+  return ostreamer("empty{}");
 }
 
 // mbind

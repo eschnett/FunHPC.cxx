@@ -18,6 +18,12 @@ TEST(fun_pair, iotaMap) {
   EXPECT_EQ(-1, rs1.second);
 }
 
+TEST(fun_pair, dump) {
+  auto xs = std::pair<char, int>('a', 1);
+  std::string str(dump(xs));
+  EXPECT_EQ("pair{(a),1}", str);
+}
+
 TEST(fun_pair, fmap) {
   auto xs = std::pair<char, int>('a', 0);
 

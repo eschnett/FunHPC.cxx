@@ -137,6 +137,20 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::either<L, T> &xs,
                      std::forward<Args>(args)...);
 }
 
+// dump
+
+template <typename T, typename L> ostreamer dump(const adt::either<L, T> &xs) {
+  bool s = xs.right();
+  std::ostringstream os;
+  os << "either{";
+  if (!s)
+    os << "left{" << xs.get_left() << "}";
+  else
+    os << "right{" << xs.get_right() << "}";
+  os << "}";
+  return ostreamer(os.str());
+}
+
 // munit
 
 template <typename C, typename T,

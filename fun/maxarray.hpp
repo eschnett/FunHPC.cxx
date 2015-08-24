@@ -6,10 +6,13 @@
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
+#include <fun/fun_decl.hpp>
 #include <fun/idtype.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <sstream>
+#include <type_traits>
 #include <utility>
 
 namespace fun {
@@ -317,6 +320,19 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maxarray<T, N> &xs,
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
+}
+
+// dump
+
+template <typename T, std::size_t N>
+ostreamer dump(const adt::maxarray<T, N> &xs) {
+  std::ptrdiff_t s = xs.size();
+  std::ostringstream os;
+  os << "maxarray{";
+  for (std::ptrdiff_t i = 0; i < s; ++i)
+    os << xs[i] << ",";
+  os << "}";
+  return ostreamer(os.str());
 }
 
 // munit

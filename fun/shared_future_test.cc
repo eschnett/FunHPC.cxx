@@ -25,6 +25,18 @@ TEST(fun_shared_future, iotaMap) {
   EXPECT_EQ(-1, rs1.get());
 }
 
+TEST(fun_shared_future, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs =
+      iotaMap<qthread::shared_future<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("shared_future{0}", str);
+
+  auto rs0 = qthread::shared_future<int>();
+  std::string str0(dump(rs0));
+  EXPECT_EQ("shared_future{}", str0);
+}
+
 TEST(fun_shared_future, fmap) {
   auto xs =
       iotaMap<qthread::shared_future<adt::dummy>>([](int x) { return x; }, 1);

@@ -9,6 +9,7 @@
 #include <cxx/cstdlib.hpp>
 
 #include <adt/nested_impl.hpp>
+#include <fun/fun_impl.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -673,6 +674,17 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::nested<P, A, T, Policy> &xss,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   return foldMap2(detail::nested_foldMap2(), op, z, xss.data, yss.data,
                   std::forward<F>(f), op, z, std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename P, typename A, typename T, typename Policy>
+ostreamer dump(const adt::nested<P, A, T, Policy> &xss) {
+  return ostreamer("nested{pointer{") + foldMap([](const auto &xs) {
+    return ostreamer("array{") + foldMap([](const auto &x) {
+      return ostreamer(x) + ostreamer(",");
+    }, combine_ostreamers(), ostreamer(), xs) + ostreamer("},");
+  }, combine_ostreamers(), ostreamer(), xss.data) + ostreamer("}}");
 }
 
 // munit

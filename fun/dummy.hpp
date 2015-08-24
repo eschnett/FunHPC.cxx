@@ -5,6 +5,7 @@
 
 #include <cxx/invoke.hpp>
 #include <cxx/type_traits.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <type_traits>
 
@@ -122,6 +123,12 @@ template <
     typename R = cxx::invoke_of_t<F &&, adt::dummy, adt::dummy, Args &&...>>
 R foldMap2(F &&f, Op &&op, Z &&z, adt::dummy xs, adt::dummy ys,
            Args &&... args);
+
+// dump
+
+template <typename> ostreamer dump(adt::dummy xs) {
+  return ostreamer("dummy{}");
+}
 
 // munit
 

@@ -46,6 +46,16 @@ TEST(fun_tree, iotaMap) {
   }
 }
 
+TEST(fun_tree, dump) {
+  std::ptrdiff_t s = 10;
+  auto rs = iotaMap<shared_tree<adt::dummy>>([](auto x) { return int(x); },
+                                             adt::irange_t(s));
+  std::string str(dump(rs));
+  EXPECT_EQ("tree{branch{leaf{0},leaf{1},leaf{2},leaf{3},leaf{4},leaf{5},leaf{"
+            "6},leaf{7},leaf{8},leaf{9},},}",
+            str);
+}
+
 TEST(fun_tree, fmap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMap<shared_tree<adt::dummy>>([](auto x) { return int(x); }, s);

@@ -18,6 +18,13 @@ TEST(fun_par, iotaMap) {
   EXPECT_EQ(10, fun::msize(xs.data.get_right()));
 }
 
+TEST(fun_par, dump) {
+  auto xs = fun::iotaMap<shared_vector<adt::dummy>>([](int x) { return x; },
+                                                    adt::irange_t(0, 10));
+  std::string str(fun::dump(xs));
+  EXPECT_EQ("par{right{[0,1,2,3,4,5,6,7,8,9,]}}", str);
+}
+
 TEST(fun_par, fmap) {
   auto xs = fun::iotaMap<shared_vector<adt::dummy>>([](int x) { return x; },
                                                     adt::irange_t(0, 10));

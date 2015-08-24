@@ -25,6 +25,14 @@ TEST(fun_either, iotaMap) {
   EXPECT_EQ(-1, rs1.get_right());
 }
 
+TEST(fun_either, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs =
+      iotaMap<either1<adt::dummy>>([](int x) { return x; }, adt::irange_t(s));
+  std::string str(dump(rs));
+  EXPECT_EQ("either{right{0}}", str);
+}
+
 TEST(fun_either, fmap) {
   auto xs = adt::make_right<char, int>(0);
 

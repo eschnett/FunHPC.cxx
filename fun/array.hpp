@@ -6,6 +6,7 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 #include <fun/idtype.hpp>
 
 #include <algorithm>
@@ -13,6 +14,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -303,6 +305,19 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
+}
+
+// dump
+
+template <typename T, std::size_t N>
+ostreamer dump(const std::array<T, N> &xs) {
+  constexpr std::ptrdiff_t s = N;
+  std::ostringstream os;
+  os << "array{";
+  for (std::ptrdiff_t i = 0; i < s; ++i)
+    os << xs[i] << ",";
+  os << "}";
+  return ostreamer(os.str());
 }
 
 // munit

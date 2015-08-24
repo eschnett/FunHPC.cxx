@@ -7,6 +7,7 @@
 #include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <cereal/access.hpp>
 
@@ -546,6 +547,27 @@ public:
                                   args...));
     });
     return r;
+  }
+
+  // dump
+  fun::ostreamer dump() const {
+    std::ostringstream os;
+    os << "grid{";
+    indexing.loop([&](const index_type &i) {
+      for (std::size_t d = 0; d < D; ++d) {
+        if (i[d] > 0)
+          break;
+        os << "[";
+      }
+      os << fun::getIndex(data, indexing.linear(i)) << ",";
+      for (std::size_t d = 0; d < D; ++d) {
+        if (i[d] < indexing.shape()[d] - 1)
+          break;
+        os << "],";
+      }
+    });
+    os << "}";
+    return fun::ostreamer(os.str());
   }
 };
 template <typename C, typename T, std::size_t D>

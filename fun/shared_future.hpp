@@ -7,6 +7,7 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
@@ -231,6 +232,17 @@ R foldMap2(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
     return std::forward<Z>(z);
   return cxx::invoke(std::forward<F>(f), xs.get(), ys.get(),
                      std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename T> ostreamer dump(const qthread::shared_future<T> &xs) {
+  bool s = xs.valid();
+  if (!s)
+    return ostreamer("shared_future{}");
+  return ostreamer("shared_future{") + foldMap([](const auto &x) {
+    return ostreamer(x);
+  }, combine_ostreamers(), ostreamer(), xs) + ostreamer("}");
 }
 
 // munit

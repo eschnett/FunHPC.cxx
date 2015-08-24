@@ -16,6 +16,13 @@ TEST(fun_idtype, iotaMap) {
   EXPECT_EQ(-1, rs1.get());
 }
 
+TEST(fun_idtype, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs = iotaMap<adt::idtype<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("idtype{0,}", str);
+}
+
 TEST(fun_idtype, fmap) {
   auto xs = adt::idtype<int>(0);
 

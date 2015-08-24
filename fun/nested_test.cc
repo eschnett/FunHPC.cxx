@@ -30,6 +30,26 @@ using nested2 =
     adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
 }
 
+// TODO: Test more types
+
+// test_iotaMap<adt::nested<std::shared_ptr<adt::dummy>,
+//                          qthread::shared_future<adt::dummy>,
+//                          adt::dummy>>();
+// test_iotaMap<adt::nested<qthread::shared_future<adt::dummy>,
+//                          adt::maxarray<adt::dummy, 10>, adt::dummy>>();
+// test_iotaMap<adt::nested<adt::maxarray<adt::dummy, 10>,
+//                          std::shared_ptr<adt::dummy>, adt::dummy>>();
+// test_iotaMap<adt::nested<adt::maxarray<adt::dummy, 10>,
+//                          adt::maxarray<adt::dummy, 10>, adt::dummy>>();
+// test_iotaMap<adt::nested<qthread::shared_future<adt::dummy>,
+// std::vector<adt::dummy>,
+//                          adt::dummy>>();
+// test_iotaMap<adt::nested<std::vector<adt::dummy>,
+//                          qthread::shared_future<adt::dummy>,
+//                          adt::dummy>>();
+// test_iotaMap<adt::nested<std::vector<adt::dummy>, std::vector<adt::dummy>,
+//                          adt::dummy>>();
+
 TEST(fun_nested, iotaMap) {
   auto xs = iotaMap<nested1<adt::dummy>>([](auto x) { return double(x); }, 10);
   static_assert(std::is_same<decltype(xs), nested1<double>>::value, "");
@@ -46,6 +66,12 @@ TEST(fun_nested, iotaMap2) {
   EXPECT_TRUE(xs.data.valid());
   EXPECT_EQ(10, xs.data.get().size());
   EXPECT_EQ(5.0, xs.data.get().at(5));
+}
+
+TEST(fun_nested, dump) {
+  auto xs = iotaMap<nested1<adt::dummy>>([](auto x) { return double(x); }, 10);
+  std::string str(dump(xs));
+  EXPECT_EQ("nested{pointer{array{0,1,2,3,4,5,6,7,8,9,},}}", str);
 }
 
 TEST(fun_nested, fmap) {

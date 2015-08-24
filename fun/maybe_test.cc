@@ -21,6 +21,17 @@ TEST(fun_maybe, iotaMap) {
   EXPECT_EQ(-1, rs1.get_just());
 }
 
+TEST(fun_maybe, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs = iotaMap<adt::maybe<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("maybe{0}", str);
+
+  auto rs0 = iotaMap<adt::maybe<adt::dummy>>([](int x) { return x; }, 0);
+  std::string str0(dump(rs0));
+  EXPECT_EQ("maybe{}", str0);
+}
+
 TEST(fun_maybe, fmap) {
   auto xs = adt::make_just<int>(0);
 

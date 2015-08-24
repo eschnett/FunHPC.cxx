@@ -5,11 +5,13 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -219,6 +221,18 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::shared_ptr<T> &xs,
   if (__builtin_expect(!s, false))
     return R(std::forward<Z>(z));
   return cxx::invoke(std::forward<F>(f), *xs, *ys, std::forward<Args>(args)...);
+}
+
+// dump
+
+template <typename T> ostreamer dump(const std::shared_ptr<T> &xs) {
+  bool s = bool(xs);
+  std::ostringstream os;
+  os << "shared_ptr{";
+  if (s)
+    os << *xs;
+  os << "}";
+  return ostreamer(os.str());
 }
 
 // munit

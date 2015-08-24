@@ -7,6 +7,7 @@
 #include <adt/dummy.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <cereal/types/tuple.hpp>
 
@@ -357,6 +358,23 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
                        detail::proxy_foldMap2(), std::forward<F>(f), xs, ys,
                        std::forward<Args>(args)...).get();
+}
+
+// dump
+
+namespace detail {
+struct proxy_dump : std::tuple<> {
+  template <typename T> auto operator()(const T &x) { return ostreamer(x); }
+};
+}
+
+template <typename T> ostreamer dump(const funhpc::proxy<T> &xs) {
+  bool s = bool(xs);
+  if (!s)
+    return ostreamer("proxy{}");
+  return ostreamer("proxy{") +
+         foldMap(detail::proxy_dump(), combine_ostreamers(), ostreamer(), xs) +
+         ostreamer("}");
 }
 
 // munit

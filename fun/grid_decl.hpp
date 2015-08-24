@@ -6,6 +6,7 @@
 #include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <cxx/invoke.hpp>
+#include <fun/fun_decl.hpp>
 
 #include <type_traits>
 
@@ -149,6 +150,11 @@ template <typename F, typename Op, typename Z, typename C, typename T,
           typename R = cxx::invoke_of_t<F, T, T2, Args...>>
 R foldMap2(F &&f, Op &&op, Z &&z, const adt::grid<C, T, D> &xs,
            const adt::grid<C, T2, D> &ys, Args &&... args);
+
+// dump
+
+template <typename C, typename T, std::size_t D>
+ostreamer dump(const adt::grid<C, T, D> &xs);
 
 // munit
 

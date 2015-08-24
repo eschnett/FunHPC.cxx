@@ -22,6 +22,17 @@ TEST(fun_shared_ptr, iotaMap) {
   EXPECT_EQ(-1, *rs1);
 }
 
+TEST(fun_shared_ptr, dump) {
+  std::ptrdiff_t s = 1;
+  auto rs = iotaMap<std::shared_ptr<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("shared_ptr{0}", str);
+
+  auto rs0 = iotaMap<std::shared_ptr<adt::dummy>>([](int x) { return x; }, 0);
+  std::string str0(dump(rs0));
+  EXPECT_EQ("shared_ptr{}", str0);
+}
+
 TEST(fun_shared_ptr, fmap) {
   auto xs = std::make_shared<int>(0);
 

@@ -28,6 +28,13 @@ TEST(fun_vector, iotaMap) {
     EXPECT_EQ(i - 1, rs1[i]);
 }
 
+TEST(fun_vector, dump) {
+  std::ptrdiff_t s = 10;
+  auto rs = iotaMap<std::vector<adt::dummy>>([](int x) { return x; }, s);
+  std::string str(dump(rs));
+  EXPECT_EQ("vector{0,1,2,3,4,5,6,7,8,9,}", str);
+}
+
 TEST(fun_vector, fmap) {
   std::ptrdiff_t s = 10;
   std::vector<int> xs(s);

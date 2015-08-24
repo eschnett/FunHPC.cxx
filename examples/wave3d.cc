@@ -221,7 +221,7 @@ typedef decltype(
 
 // Grid
 
-constexpr std::size_t max_size = 8;
+constexpr std::size_t max_size = 16;
 
 template <typename T>
 using maxarray_grid = adt::grid<adt::maxarray<adt::dummy, max_size>, T, dim>;
@@ -236,21 +236,40 @@ template <typename T>
 using proxy_grid =
     adt::nested<funhpc::proxy<adt::dummy>, maxarray_grid<adt::dummy>, T>;
 
-// template <typename T> using storage_t = adt::tree<shared_grid<adt::dummy>,
-// T>;
-// template <typename T> using storage_t = adt::tree<future_grid<adt::dummy>,
-// T>;
-// template <typename T> using storage_t = adt::tree<shared_grid<adt::dummy>,
-// T>;
-// template <typename T>
-// using storage_t = adt::nested<adt::tree<shared_grid<adt::dummy>, adt::dummy>,
-//                               shared_grid<adt::dummy>, T>;
-// template <typename T>
-// using storage_t = adt::nested<adt::tree<future_grid<adt::dummy>, adt::dummy>,
-//                               future_grid<adt::dummy>, T>;
+template <typename T> using shared_tree = adt::tree<shared_grid<adt::dummy>, T>;
+
+template <typename T> using future_tree = adt::tree<future_grid<adt::dummy>, T>;
+
+template <typename T> using proxy_tree = adt::tree<proxy_grid<adt::dummy>, T>;
+
 template <typename T>
-using storage_t = adt::nested<adt::tree<proxy_grid<adt::dummy>, adt::dummy>,
-                              proxy_grid<adt::dummy>, T>;
+using shared_grid_tree =
+    adt::nested<adt::tree<shared_grid<adt::dummy>, adt::dummy>,
+                shared_grid<adt::dummy>, T>;
+
+template <typename T>
+using future_grid_tree =
+    adt::nested<adt::tree<future_grid<adt::dummy>, adt::dummy>,
+                future_grid<adt::dummy>, T>;
+
+template <typename T>
+using proxy_grid_tree =
+    adt::nested<adt::tree<proxy_grid<adt::dummy>, adt::dummy>,
+                proxy_grid<adt::dummy>, T>;
+
+// template <typename T> using storage_t = maxarray_grid<T>;
+
+// template <typename T> using storage_t = shared_grid<T>;
+// template <typename T> using storage_t = future_grid<T>;
+// template <typename T> using storage_t = proxy_grid<T>;
+
+// template <typename T> using storage_t = shared_tree<T>;
+// template <typename T> using storage_t = future_tree<T>;
+// template <typename T> using storage_t = proxy_tree<T>;
+
+// template <typename T> using storage_t = shared_grid_tree<T>;
+// template <typename T> using storage_t = future_grid_tree<T>;
+template <typename T> using storage_t = proxy_grid_tree<T>;
 
 typedef typename fun::fun_traits<storage_t<adt::dummy>>::boundary_dummy
     boundary_dummy;

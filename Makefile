@@ -1,6 +1,6 @@
 # Makefile for FunHPC
 
-# pushd ~/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-4.0.0/env.sh && source llvm-3.6.2/env.sh && source openmpi-v2.x-dev-260-gd416e19/env.sh && source qthreads-1.10/env.sh && popd && make
+# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-4.0.0/env.sh && source llvm-3.6.2/env.sh && source openmpi-v2.x-dev-260-gd416e19/env.sh && source qthreads-1.10/env.sh && popd && make
 
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip

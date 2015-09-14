@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <sstream>
@@ -20,6 +21,8 @@
 #include <vector>
 
 namespace funhpc {
+
+const auto max_idle_time = std::chrono::microseconds(100);
 
 namespace detail {
 double gettime() {
@@ -89,7 +92,9 @@ void enqueue_task(std::ptrdiff_t dest, task_t &&t) {
 }
 
 // Step 2: Send task via MPI (from MPI thread)
-void send_tasks() {
+bool send_tasks() {
+  bool did_send = false;
+
   // Obtain send queue
   std::vector<std::unique_ptr<mpi_req_t>> reqps;
   {
@@ -104,16 +109,22 @@ void send_tasks() {
     MPI_Isend(const_cast<char *>(reqp->buf.data()), reqp->buf.size(), MPI_CHAR,
               reqp->proc, mpi_tag, mpi_comm, &reqp->req);
     send_reqs.push_back(std::move(reqp));
+    did_send = true;
   }
 
   // Clean up all items that are finished sending
   // TODO: Use MPI_TestAny instead
-  send_reqs.erase(
-      std::remove_if(send_reqs.begin(), send_reqs.end(), [](auto &reqp) {
-        int flag;
-        MPI_Test(&reqp->req, &flag, MPI_STATUS_IGNORE);
-        return flag;
-      }), send_reqs.end());
+  send_reqs.erase(std::remove_if(send_reqs.begin(), send_reqs.end(),
+                                 [&did_send](auto &reqp) {
+                                   int flag;
+                                   MPI_Test(&reqp->req, &flag,
+                                            MPI_STATUS_IGNORE);
+                                   did_send |= flag;
+                                   return flag;
+                                 }),
+                  send_reqs.end());
+
+  return did_send;
 }
 
 void cancel_sends() {
@@ -138,13 +149,14 @@ void run_task(std::unique_ptr<mpi_req_t> &&reqp) {
 }
 
 // Step 3: Receive the task via MPI (in MPI thread)
-void recv_tasks() {
+bool recv_tasks() {
+  bool did_recv = false;
   for (;;) {
     int flag;
     MPI_Status status;
     MPI_Iprobe(MPI_ANY_SOURCE, mpi_tag, mpi_comm, &flag, &status);
     if (!flag)
-      return;
+      return did_recv;
     auto reqp = std::make_unique<mpi_req_t>();
     reqp->proc = status.MPI_SOURCE;
     int count;
@@ -164,6 +176,7 @@ void recv_tasks() {
     //   std::terminate();
     // }
     qthread::thread(run_task, std::move(reqp)).detach();
+    did_recv = true;
   }
 }
 
@@ -230,12 +243,27 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   if (rank() == mpi_root)
     fres = qthread::async(run_main, user_main, argc, argv);
 
+  const bool is_serial = qthread::thread::hardware_concurrency() == 1;
+  auto dummy_time =
+      std::chrono::time_point<std::chrono::high_resolution_clock>();
+  auto last_comm_time =
+      is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
   for (;;) {
-    send_tasks();
-    recv_tasks();
+    bool did_send = send_tasks();
+    bool did_recv = recv_tasks();
     if (terminate_check(!fres.valid() || fres.ready()))
       break;
-    qthread::this_thread::yield();
+
+    auto now =
+        is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
+    if (did_send || did_recv)
+      last_comm_time = now;
+    if (is_serial || now - last_comm_time > max_idle_time) {
+      qthread::this_thread::yield();
+      // This may now run on a different core, and clocks may differ
+      last_comm_time =
+          is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
+    }
   }
   cancel_sends();
 

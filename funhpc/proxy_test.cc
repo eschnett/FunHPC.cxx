@@ -1,6 +1,9 @@
 #include <funhpc/proxy.hpp>
 
+#include <funhpc/async.hpp>
+
 #include <cereal/access.hpp>
+#include <cereal/types/vector.hpp>
 #include <gtest/gtest.h>
 
 using namespace funhpc;
@@ -96,4 +99,44 @@ TEST(funhpc_proxy, remote) {
   EXPECT_TRUE(psl.local());
   EXPECT_EQ(1, *pil);
   EXPECT_EQ(p, psl->x);
+}
+
+namespace {
+struct s0 {
+  int i;
+  template <typename Archive> void serialize(Archive &ar) { ar(i); }
+};
+struct s1 {
+  std::vector<proxy<s0>> pis;
+  s1() : pis(10) {}
+  template <typename Archive> void serialize(Archive &ar) { ar(pis); }
+};
+s1 localize(const proxy<s1> &oldp) {
+  s1 res;
+  const auto oldp_local = oldp.make_local();
+  const auto &old = *oldp_local;
+  for (int n = 0; n < int(old.pis.size()); ++n)
+    res.pis[n] = old.pis[n].make_local();
+  return res;
+}
+int getvalue(const std::vector<proxy<s1>> &all_p1) {
+  const auto &p1 = all_p1[rank()];
+  EXPECT_TRUE(bool(p1));
+  EXPECT_TRUE(bool(p1.local()));
+  const auto &pi = p1->pis[p1->pis.size() / 2];
+  EXPECT_TRUE(bool(pi));
+  EXPECT_TRUE(bool(pi.local()));
+  return pi->i;
+}
+}
+
+TEST(funhpc_proxy, nested) {
+  auto p1 = make_local_proxy<s1>();
+  for (int n = 0; n < int(p1->pis.size()); ++n)
+    p1->pis[n] = make_local_proxy<s0>(s0{n});
+  std::vector<proxy<s1>> all_p1(size());
+  for (int p = 0; p < size(); ++p)
+    all_p1[p] = remote(p, localize, p1);
+  auto i = async(rlaunch::sync, 1 % size(), getvalue, all_p1).get();
+  EXPECT_EQ(5, i);
 }

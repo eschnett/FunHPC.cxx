@@ -348,11 +348,11 @@ public:
     return robj.get().get_shared_ptr();
   }
   const T &operator*() const {
-    cxx_assert(bool(*this) && local());
+    cxx_assert(bool(*this));
     return *get_shared_ptr();
   }
   T &operator*() {
-    cxx_assert(bool(*this) && local());
+    cxx_assert(bool(*this));
     return *get_shared_ptr();
   }
   const std::shared_ptr<T> &operator->() const { return get_shared_ptr(); }

@@ -1,6 +1,6 @@
 # Makefile for FunHPC
 
-# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-4.0.0/env.sh && source llvm-3.6.2/env.sh && source openmpi-v2.x-dev-260-gd416e19/env.sh && source qthreads-1.10/env.sh && popd && make
+# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-4.0.0/env.sh && source llvm-3.7.0/env.sh && source openmpi-v2.x-dev-375-g46d887a/env.sh && source qthreads-1.10/env.sh && popd && make
 
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
@@ -15,28 +15,28 @@ LIBDIRS = $(GOOGLETEST_LIBDIRS)
 
 CXXFLAGS =						\
 	$(INCDIRS:%=-I%)				\
-	$(CEREAL_CXXFLAGS)				\
-	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
 	$(GOOGLETEST_CXXFLAGS)				\
-	$(HWLOC_CXXFLAGS)				\
-	$(JEMALLOC_CXXFLAGS)				\
-	$(QTHREADS_CXXFLAGS)
+	$(SIMFACTORY_CEREAL_CXXFLAGS)			\
+	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
+	$(SIMFACTORY_HWLOC_CXXFLAGS)			\
+	$(SIMFACTORY_JEMALLOC_CXXFLAGS)			\
+	$(SIMFACTORY_QTHREADS_CXXFLAGS)
 LDFLAGS =						\
 	$(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)	\
-	$(CEREAL_LDFLAGS)				\
 	$(GOOGLETEST_LDFLAGS)				\
-	$(HWLOC_LDFLAGS)				\
-	$(JEMALLOC_LDFLAGS)				\
-	$(QTHREADS_LDFLAGS)
+	$(SIMFACTORY_CEREAL_LDFLAGS)			\
+	$(SIMFACTORY_HWLOC_LDFLAGS)			\
+	$(SIMFACTORY_JEMALLOC_LDFLAGS)			\
+	$(SIMFACTORY_QTHREADS_LDFLAGS)
 LIBS =						\
-	$(CEREAL_LIBS)				\
 	$(GOOGLETEST_LIBS)			\
-	$(HWLOC_LIBS)				\
-	$(JEMALLOC_LIBS)			\
-	$(QTHREADS_LIBS)			\
-	$(JEMALLOC_LIBS)
+	$(SIMFACTORY_CEREAL_LIBS)		\
+	$(SIMFACTORY_HWLOC_LIBS)		\
+	$(SIMFACTORY_JEMALLOC_LIBS)		\
+	$(SIMFACTORY_QTHREADS_LIBS)		\
+	$(SIMFACTORY_JEMALLOC_LIBS)
 
-ifneq ($(LLVM_DIR), )
+ifneq ($(SIMFACTORY_LLVM_DIR), )
 
 # Try: -fsanitize=address,memory,thread,undefined,vptr
 # Cannot have: -fsanitize=alignment,integer,null
@@ -72,7 +72,7 @@ CXXFLAGS +=					\
 	$(DEBUGFLAGS)				\
 	$(OPTFLAGS)
 
-else ifneq ($(GCC_DIR), )
+else ifneq ($(SIMFACTORY_GCC_DIR), )
 
 DEBUGFLAGS =					\
 	-D_GLIBCXX_DEBUG			\
@@ -278,11 +278,11 @@ $(ALL_SRCS:%.cc=%.o): | format gtest
 
 # These two can be overridden on the command line
 NPROCS := 1
-NSHEPHERDS :=						\
-	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
+NSHEPHERDS :=							\
+	$(or $(shell $(SIMFACTORY_HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ NUMANode / { print $$3; }'), 1)
-NTHREADS :=						\
-	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
+NTHREADS :=							\
+	$(or $(shell $(SIMFACTORY_HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ PU / { print $$3; }'), 1)
 NSHEPHERDS_PER_PROC :=							\
 	$(shell echo $$((($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS))))

@@ -268,7 +268,7 @@ format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 
 objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
-$(ALL_SRCS:%.cc=%.o): | format gtest
+$(ALL_SRCS:%.cc=%.o): $(GOOGLETEST_DIR) | format
 %.o: %.cc Makefile
 	$(MPICXX) -MD $(CXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
@@ -348,11 +348,12 @@ check: selftest selftest-funhpc
 	$(MAKE) run EXE=./selftest
 	$(MAKE) run NPROCS=2 EXE=./selftest-funhpc
 .PHONY: check
-selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) $(GOOGLETEST_MAIN_OBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(GOOGLETEST_OBJS) $(LIBS)
-selftest-funhpc:							      \
-	$(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o)
-	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(GOOGLETEST_OBJS) $(LIBS)
+selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) $(GOOGLETEST_OBJS) \
+    $(GOOGLETEST_MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+selftest-funhpc: $(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) \
+    $(SRCS:%.cc=%.o) $(GOOGLETEST_OBJS) $(GOOGLETEST_MAIN_OBJ)
+	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 ### external ###
 
@@ -361,25 +362,20 @@ external:
 
 ### Google Test ###
 
-gtest: external/gtest.done
-.PHONY: gtest
-external/gtest.downloaded: | external
+$(GOOGLETEST_DIR): external
 	(cd external &&					\
 	    $(RM) $(notdir $(GOOGLETEST_URL)) &&	\
 	    wget $(GOOGLETEST_URL)) &&			\
-	: > $@
-external/gtest.unpacked: external/gtest.downloaded
 	$(RM) -r $(GOOGLETEST_NAME) &&			\
-	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
-	: > $@
-external/gtest.built: external/gtest.unpacked
+	unzip external/$(notdir $(GOOGLETEST_URL))
+$(GOOGLETEST_DIR)/src/gtest-all.o: $(GOOGLETEST_DIR)
 	(cd external &&					\
 	    cd $(GOOGLETEST_DIR)/src &&			\
-	    $(CXX) $(CXXFLAGS) -c gtest-all.cc &&	\
-	    $(CXX) $(CXXFLAGS) -c gtest_main.cc) &&	\
-	: > $@
-external/gtest.done: external/gtest.built
-	: > $@
+	    $(CXX) $(CXXFLAGS) -c gtest-all.cc)
+$(GOOGLETEST_DIR)/src/gtest_main.o: $(GOOGLETEST_DIR)
+	(cd external &&					\
+	    cd $(GOOGLETEST_DIR)/src &&			\
+	    $(CXX) $(CXXFLAGS) -c gtest_main.cc)
 
 ### clean ###
 

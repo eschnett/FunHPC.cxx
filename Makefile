@@ -5,6 +5,7 @@
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
 GOOGLETEST_DIR      = $(abspath ./$(GOOGLETEST_NAME))
+GOOGLETEST_HEADERS  = external/gtest.headers
 GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
 GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
 GOOGLETEST_OBJS     = $(GOOGLETEST_DIR)/src/gtest-all.o
@@ -268,7 +269,7 @@ format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 
 objs: $(ALL_SRCS:%.cc=%.o)
 .PHONY: objs
-$(ALL_SRCS:%.cc=%.o): $(GOOGLETEST_DIR) | format
+$(ALL_SRCS:%.cc=%.o): $(GOOGLETEST_HEADERS) | format
 %.o: %.cc Makefile
 	$(MPICXX) -MD $(CXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
@@ -352,7 +353,7 @@ selftest: $(TEST_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) $(GOOGLETEST_OBJS) \
     $(GOOGLETEST_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 selftest-funhpc: $(FUNHPC_TEST_SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o) \
-    $(SRCS:%.cc=%.o) $(GOOGLETEST_OBJS) $(GOOGLETEST_MAIN_OBJ)
+    $(SRCS:%.cc=%.o) $(GOOGLETEST_OBJS)
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 ### external ###
@@ -362,20 +363,19 @@ external:
 
 ### Google Test ###
 
-$(GOOGLETEST_DIR): external
+$(GOOGLETEST_HEADERS): external
 	(cd external &&					\
 	    $(RM) $(notdir $(GOOGLETEST_URL)) &&	\
 	    wget $(GOOGLETEST_URL)) &&			\
 	$(RM) -r $(GOOGLETEST_NAME) &&			\
-	unzip external/$(notdir $(GOOGLETEST_URL))
-$(GOOGLETEST_DIR)/src/gtest-all.o: $(GOOGLETEST_DIR)
-	(cd external &&					\
-	    cd $(GOOGLETEST_DIR)/src &&			\
-	    $(CXX) $(CXXFLAGS) -c gtest-all.cc)
-$(GOOGLETEST_DIR)/src/gtest_main.o: $(GOOGLETEST_DIR)
-	(cd external &&					\
-	    cd $(GOOGLETEST_DIR)/src &&			\
-	    $(CXX) $(CXXFLAGS) -c gtest_main.cc)
+	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
+	: >$@
+$(GOOGLETEST_DIR)/src/gtest-all.o: $(GOOGLETEST_HEADERS)
+	cd $(GOOGLETEST_DIR)/src &&		\
+	$(CXX) $(CXXFLAGS) -c gtest-all.cc
+$(GOOGLETEST_DIR)/src/gtest_main.o: $(GOOGLETEST_HEADERS)
+	cd $(GOOGLETEST_DIR)/src &&		\
+	$(CXX) $(CXXFLAGS) -c gtest_main.cc
 
 ### clean ###
 

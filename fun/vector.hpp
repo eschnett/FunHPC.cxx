@@ -12,11 +12,11 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
-#include <vector>
 #include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace fun {
 
@@ -123,7 +123,7 @@ template <typename F, typename T, typename Allocator, typename T2,
 CR fmap2(F &&f, const std::vector<T, Allocator> &xs,
          const std::vector<T2, Allocator2> &ys, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -140,8 +140,8 @@ CR fmap3(F &&f, const std::vector<T, Allocator> &xs,
          const std::vector<T2, Allocator2> &ys,
          const std::vector<T3, Allocator3> &zs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
-  cxx_assert(zs.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
+  cxx_assert(std::ptrdiff_t(zs.size()) == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -271,8 +271,8 @@ BCR boundaryMap(F &&f, const std::vector<T, Allocator> &xs, std::ptrdiff_t i,
 // indexing
 
 template <typename T, typename Allocator>
-const T &restrict
-getIndex(const std::vector<T, Allocator> &xs, std::ptrdiff_t i) {
+const T &restrict getIndex(const std::vector<T, Allocator> &xs,
+                           std::ptrdiff_t i) {
   return xs[i];
 }
 
@@ -297,10 +297,12 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
   return r;
@@ -313,10 +315,12 @@ R foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r),
                     cxx::invoke(f, std::move(xs[i]), args...));
@@ -330,12 +334,14 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
            const std::vector<T2, Allocator2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
   R r(z);
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;

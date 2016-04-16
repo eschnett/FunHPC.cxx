@@ -32,7 +32,7 @@ namespace std {
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(op std::declval<T>())>>         \
   constexpr auto operator op(const std::array<T, N> &x) {                      \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = op x[i];                                                          \
     return r;                                                                  \
@@ -49,7 +49,7 @@ MAKEOP(!)
                                                    op std::declval<U>())>>     \
   constexpr std::array<R, N> operator op(const std::array<T, N> &x,            \
                                          const std::array<U, N> &y) {          \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y[i];                                                     \
     return r;                                                                  \
@@ -61,7 +61,7 @@ MAKEOP(!)
       std::enable_if_t<!std::is_base_of<std::ios_base, T>::value> * = nullptr> \
   constexpr std::array<R, N> operator op(const T &x,                           \
                                          const std::array<U, N> &y) {          \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x op y[i];                                                        \
     return r;                                                                  \
@@ -71,7 +71,7 @@ MAKEOP(!)
                                                    op std::declval<U>())>>     \
   constexpr std::array<R, N> operator op(const std::array<T, N> &x,            \
                                          const U &y) {                         \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y;                                                        \
     return r;                                                                  \
@@ -79,15 +79,15 @@ MAKEOP(!)
 MAKEOP(+)
 MAKEOP(-)
 MAKEOP(*)
-MAKEOP(/ )
-MAKEOP(% )
+MAKEOP(/)
+MAKEOP(%)
 MAKEOP(&)
-MAKEOP(| )
+MAKEOP(|)
 MAKEOP (^)
-MAKEOP(<< )
-MAKEOP(>> )
+MAKEOP(<<)
+MAKEOP(>>)
 MAKEOP(&&)
-MAKEOP(|| )
+MAKEOP(||)
 // These are already provided by std::array, albeit with a different
 // meaning; we thus provide functions eq, ne, lt, le, gt, ge instead
 // MAKEOP(== )
@@ -114,16 +114,16 @@ MAKEOP(|| )
       x[i] op y;                                                               \
     return x;                                                                  \
   }
-MAKEOP(+= )
-MAKEOP(-= )
-MAKEOP(*= )
-MAKEOP(/= )
-MAKEOP(%= )
-MAKEOP(&= )
-MAKEOP(|= )
-MAKEOP(^= )
-MAKEOP(<<= )
-MAKEOP(>>= )
+MAKEOP(+=)
+MAKEOP(-=)
+MAKEOP(*=)
+MAKEOP(/=)
+MAKEOP(%=)
+MAKEOP(&=)
+MAKEOP(|=)
+MAKEOP(^=)
+MAKEOP(<<=)
+MAKEOP(>>=)
 #undef MAKEOP
 }
 
@@ -133,7 +133,7 @@ namespace adt {
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(impl(std::declval<T>()))>>      \
   constexpr std::array<R, N> f(const std::array<T, N> &x) {                    \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = impl(x[i]);                                                       \
     return r;                                                                  \
@@ -145,7 +145,7 @@ MAKEFUN(abs, std::abs)
   template <typename T, std::size_t N,                                         \
             typename R = std::decay_t<decltype(std::declval<T>().field)>>      \
   constexpr std::array<R, N> f(const std::array<T, N> &x) {                    \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i].field;                                                       \
     return r;                                                                  \
@@ -160,7 +160,7 @@ MAKEFUN(div_rem, rem)
                 impl(std::declval<T>(), std::declval<U>()))>>                  \
   constexpr std::array<R, N> f(const std::array<T, N> &x,                      \
                                const std::array<U, N> &y) {                    \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = impl(x[i], y[i]);                                                 \
     return r;                                                                  \
@@ -171,7 +171,7 @@ MAKEFUN(div_rem, rem)
       typename R =                                                             \
           std::decay_t<decltype(impl(std::declval<T>(), std::declval<U>()))>>  \
   constexpr std::array<R, N> f(const T &x, const std::array<U, N> &y) {        \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = impl(x, y[i]);                                                    \
     return r;                                                                  \
@@ -182,7 +182,7 @@ MAKEFUN(div_rem, rem)
       typename R =                                                             \
           std::decay_t<decltype(impl(std::declval<T>(), std::declval<U>()))>>  \
   constexpr std::array<R, N> f(const std::array<T, N> &x, const U &y) {        \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = impl(x[i], y);                                                    \
     return r;                                                                  \
@@ -200,7 +200,7 @@ MAKEFUN(div_exact, cxx::div_exact)
                                                    op std::declval<U>())>>     \
   constexpr std::array<R, N> f(const std::array<T, N> &x,                      \
                                const std::array<U, N> &y) {                    \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y[i];                                                     \
     return r;                                                                  \
@@ -211,7 +211,7 @@ MAKEFUN(div_exact, cxx::div_exact)
             std::enable_if_t<1 /*!::adt::detail::is_std_array<T>::value*/> * = \
                 nullptr>                                                       \
   constexpr std::array<R, N> f(const T &x, const std::array<U, N> &y) {        \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x op y[i];                                                        \
     return r;                                                                  \
@@ -222,34 +222,34 @@ MAKEFUN(div_exact, cxx::div_exact)
             std::enable_if_t<1 /*!::adt::detail::is_std_array<U>::value*/> * = \
                 nullptr>                                                       \
   constexpr std::array<R, N> f(const std::array<T, N> &x, const U &y) {        \
-    std::array<R, N> r;                                                        \
+    std::array<R, N> r{};                                                      \
     for (std::size_t i = 0; i < N; ++i)                                        \
       r[i] = x[i] op y;                                                        \
     return r;                                                                  \
   }
-MAKEFUNOP(eq, == )
-MAKEFUNOP(ne, != )
-MAKEFUNOP(lt, < )
-MAKEFUNOP(le, <= )
-MAKEFUNOP(gt, > )
-MAKEFUNOP(ge, >= )
+MAKEFUNOP(eq, ==)
+MAKEFUNOP(ne, !=)
+MAKEFUNOP(lt, <)
+MAKEFUNOP(le, <=)
+MAKEFUNOP(gt, >)
+MAKEFUNOP(ge, >=)
 #undef MAKEFUNOP
 
 template <typename R, std::size_t N> constexpr std::array<R, N> array_zero() {
-  std::array<R, N> r;
+  std::array<R, N> r{};
   r.fill(R(0));
   return r;
 }
 
 template <typename R, std::size_t N> constexpr std::array<R, N> array_one() {
-  std::array<R, N> r;
+  std::array<R, N> r{};
   r.fill(R(1));
   return r;
 }
 
 template <typename R, std::size_t N, typename T>
 constexpr std::array<R, N> array_set(T &&x) {
-  std::array<R, N> r;
+  std::array<R, N> r{};
   r.fill(std::forward<T>(x));
   return r;
 }
@@ -257,7 +257,7 @@ constexpr std::array<R, N> array_set(T &&x) {
 template <typename R, std::size_t N, std::size_t i>
 constexpr std::array<R, N> array_dir() {
   static_assert(i >= 0 && i < N, "");
-  std::array<R, N> r;
+  std::array<R, N> r{};
   r.fill(R(0));
   std::get<i>(r) = R(1);
   return r;
@@ -266,7 +266,7 @@ constexpr std::array<R, N> array_dir() {
 template <typename R, std::size_t N>
 constexpr std::array<R, N> array_dir(std::size_t i) {
   cxx_assert(i >= 0 && i < N);
-  std::array<R, N> r;
+  std::array<R, N> r{};
   r.fill(R(0));
   r[i] = R(1);
   return r;
@@ -275,7 +275,7 @@ constexpr std::array<R, N> array_dir(std::size_t i) {
 template <typename AR,
           std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr AR zero() {
-  AR r;
+  AR r{};
   typedef typename AR::value_type R;
   r.fill(R(0));
   return r;
@@ -284,7 +284,7 @@ constexpr AR zero() {
 template <typename AR,
           std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr AR one() {
-  AR r;
+  AR r{};
   typedef typename AR::value_type R;
   r.fill(R(1));
   return r;
@@ -293,7 +293,7 @@ constexpr AR one() {
 template <typename AR, typename T,
           std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr AR set(T &&x) {
-  AR r;
+  AR r{};
   r.fill(std::forward<T>(x));
   return r;
 }
@@ -301,7 +301,7 @@ constexpr AR set(T &&x) {
 template <typename AR,
           std::enable_if<detail::is_std_array<AR>::value> * = nullptr>
 constexpr AR dir(std::size_t i) {
-  AR r;
+  AR r{};
   typedef typename AR::value_type R;
   r.fill(R(0));
   r[i] = R(1);
@@ -311,7 +311,7 @@ constexpr AR dir(std::size_t i) {
 template <std::size_t i, typename T, std::size_t N>
 constexpr std::array<T, N - 1> rmdir(const std::array<T, N> &x) {
   static_assert(i >= 0 && i < N, "");
-  std::array<T, N - 1> r;
+  std::array<T, N - 1> r{};
   for (std::size_t j = 0; j < N - 1; ++j)
     r[j] = x[j + (j >= i)];
   return r;
@@ -320,7 +320,7 @@ constexpr std::array<T, N - 1> rmdir(const std::array<T, N> &x) {
 template <typename T, std::size_t N>
 constexpr std::array<T, N - 1> rmdir(const std::array<T, N> &x, std::size_t i) {
   cxx_assert(i >= 0 && i < N);
-  std::array<T, N - 1> r;
+  std::array<T, N - 1> r{};
   for (std::size_t j = 0; j < N - 1; ++j)
     r[j] = x[j + (j >= i)];
   return r;

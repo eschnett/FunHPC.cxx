@@ -29,9 +29,11 @@ int funhpc_main(int argc, char **argv) {
   }
   auto t1 = std::chrono::high_resolution_clock::now();
   std::cout << "   ping-pong time: ("
-            << std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0)
-                       .count() /
-                   count << " μs)\n";
+            << std::chrono::duration_cast<std::chrono::microseconds>(
+                   t1 -
+                   t0).count() /
+                   count
+            << " μs)\n";
   std::cout << "Done.\n";
   return 0;
 }

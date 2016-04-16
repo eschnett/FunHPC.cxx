@@ -24,9 +24,10 @@ int funhpc_main(int argc, char **argv) {
   auto f = fib(n);
   auto t1 = std::chrono::high_resolution_clock::now();
   std::cout << f;
-  std::cout << "   ("
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0)
-                   .count() << " ms)\n";
+  std::cout
+      << "   ("
+      << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()
+      << " ms)\n";
   std::cout << "Done.\n";
   return 0;
 }

@@ -79,7 +79,7 @@ int fri(int &ri) { return ri; }
 int fmi(int &&mi) { return mi; }
 int frci(const int &rci) { return rci; }
 
-int frfi(int(&rfi)(int i), int i) { return rfi(i); }
+int frfi(int (&rfi)(int i), int i) { return rfi(i); }
 int fpfi(int (*pfi)(int i), int i) { return pfi(i); }
 }
 

@@ -87,9 +87,9 @@ TEST(fun_maybe, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) {
-    return munit<adt::maybe<adt::dummy>>(x + c);
-  }, x1, 1);
+  auto x2 =
+      mbind([](auto x, auto c) { return munit<adt::maybe<adt::dummy>>(x + c); },
+            x1, 1);
   static_assert(std::is_same<decltype(x2), adt::maybe<int>>::value, "");
   EXPECT_TRUE(x2.just());
   EXPECT_EQ(2, x2.get_just());

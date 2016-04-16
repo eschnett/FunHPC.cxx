@@ -89,9 +89,9 @@ TEST(fun_shared_ptr, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) {
-    return munit<std::shared_ptr<adt::dummy>>(x + c);
-  }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<std::shared_ptr<adt::dummy>>(x + c); },
+      x1, 1);
   static_assert(std::is_same<decltype(x2), std::shared_ptr<int>>::value, "");
   EXPECT_TRUE(bool(x2));
   EXPECT_EQ(2, *x2);

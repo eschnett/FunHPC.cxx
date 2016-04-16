@@ -289,7 +289,7 @@ struct invokable
 
 template <bool _Invokable, class _Fp, class... _Args>
 struct invoke_of_imp // false
-    {};
+{};
 
 template <class _Fp, class... _Args> struct invoke_of_imp<true, _Fp, _Args...> {
   typedef typename invokable_imp<_Fp, _Args...>::type type;

@@ -119,9 +119,9 @@ TEST(fun_maxarray, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1, x1j);
 
-  auto x2 = mbind([](auto x, auto c) {
-    return munit<adt_maxarray<adt::dummy>>(x + c);
-  }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<adt_maxarray<adt::dummy>>(x + c); }, x1,
+      1);
   static_assert(std::is_same<decltype(x2), adt_maxarray<int>>::value, "");
   EXPECT_EQ(1, x2.size());
   EXPECT_EQ(2, x2[0]);

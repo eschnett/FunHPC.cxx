@@ -3,8 +3,8 @@
 
 #include <cxx/cassert.hpp>
 
-#include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
+#include <qthread/qthread.hpp>
 
 namespace qthread {
 

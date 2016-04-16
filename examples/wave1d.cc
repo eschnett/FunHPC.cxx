@@ -216,10 +216,13 @@ auto grid_axpy(const grid_t &y, const grid_t &x, real_t alpha) {
 }
 
 auto grid_init(real_t t) {
-  return grid_t{t, fun::iotaMap<storage_t<adt::dummy>>([t](int_t i) {
-    real_t x = parameters.xmin + parameters.dx * (real_t(i) + 0.5);
-    return cell_init(t, x);
-  }, parameters.ncells)};
+  return grid_t{t, fun::iotaMap<storage_t<adt::dummy>>(
+                       [t](int_t i) {
+                         real_t x = parameters.xmin +
+                                    parameters.dx * (real_t(i) + 0.5);
+                         return cell_init(t, x);
+                       },
+                       parameters.ncells)};
 }
 
 auto grid_error(const grid_t &g) {
@@ -307,7 +310,8 @@ int file_output(int token, const schedule_t &s) {
     fs.open(parameters.outfile_name, mode);
     fs << fun::foldMap2(cell_to_ostreamer{s.state.time},
                         fun::combine_ostreamers(), fun::ostreamer(),
-                        s.state.cells, s.error.cells) << "\n";
+                        s.state.cells, s.error.cells)
+       << "\n";
     fs.close();
   }
   return token;

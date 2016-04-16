@@ -16,7 +16,7 @@ int f2(int x, double y) { return x; }
 void fv(int) {}
 
 int fp(int (*f)(int), int x) { return invoke(f, x); }
-int fr(int(&f)(int), int x) { return invoke(f, x); }
+int fr(int (&f)(int), int x) { return invoke(f, x); }
 
 template <typename F, typename... Args> struct task {
   static_assert(std::is_same<F, std::decay_t<F>>::value, "");
@@ -45,7 +45,7 @@ TEST(cxx_apply, apply) {
   EXPECT_EQ(1, apply(f2, t2));
   apply(fv, t);
   std::tuple<int (*)(int), int> tp(&f, 1);
-  std::tuple<int(&)(int), int> tr(f, 1);
+  std::tuple<int (&)(int), int> tr(f, 1);
   EXPECT_EQ(1, apply(fp, tp));
   EXPECT_EQ(1, apply(fr, tr));
 }

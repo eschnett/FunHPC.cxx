@@ -128,10 +128,10 @@ TEST(cxx_invoke, invoke_of_t) {
   EXPECT_TRUE((std::is_same<a2, int>::value));
   EXPECT_TRUE((std::is_same<a3, int>::value));
 
-  typedef invoke_of_t<int(&)(int), int> b0;
-  typedef invoke_of_t<int(&)(int), const int &> b1;
-  typedef invoke_of_t<int(&)(int), int &> b2;
-  typedef invoke_of_t<int(&)(int), int &&> b3;
+  typedef invoke_of_t<int (&)(int), int> b0;
+  typedef invoke_of_t<int (&)(int), const int &> b1;
+  typedef invoke_of_t<int (&)(int), int &> b2;
+  typedef invoke_of_t<int (&)(int), int &&> b3;
   EXPECT_TRUE((std::is_same<b0, int>::value));
   EXPECT_TRUE((std::is_same<b1, int>::value));
   EXPECT_TRUE((std::is_same<b2, int>::value));

@@ -35,7 +35,7 @@ template <typename T, T F> struct obj_impl {
 template <typename T, const std::remove_reference_t<T> *F> struct objref_impl {
   static_assert(std::is_lvalue_reference<T>::value, "");
   typedef T type;
-  static constexpr T value = *F;
+  static constexpr T value = const_cast<T &>(*F);
   constexpr decltype(auto) operator()() const { return value; }
 };
 // template <typename T, T F> constexpr T objref_impl<T, F>::value;

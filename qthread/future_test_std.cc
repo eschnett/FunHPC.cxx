@@ -44,7 +44,7 @@ TEST(std_future, future) {
   test_future<int &>(i);
   test_future<const int &>(i);
   test_future<int (*)(int)>(fi);
-  test_future<int(&)(int)>(fi);
+  test_future<int (&)(int)>(fi);
 }
 
 // TEST(std_future, make_ready_future) {
@@ -93,7 +93,7 @@ TEST(std_future, shared_future) {
   test_shared_future<int &>(i);
   test_shared_future<const int &>(i);
   test_shared_future<int (*)(int)>(fi);
-  test_shared_future<int(&)(int)>(fi);
+  test_shared_future<int (&)(int)>(fi);
 }
 
 namespace {
@@ -114,7 +114,7 @@ TEST(std_future, promise) {
   test_promise<int &>(i);
   test_promise<const int &>(i);
   test_promise<int (*)(int)>(fi);
-  test_promise<int(&)(int)>(fi);
+  test_promise<int (&)(int)>(fi);
 }
 
 namespace {
@@ -162,7 +162,7 @@ TEST(std_future, packaged_task) {
   test_packaged_task<void, int>([](int) mutable {}, 0);
   // test_packaged_task<void, int>([f = future<void>()](int)mutable {}, 0);
   test_packaged_task<void, int>([f = shared_future<void>()](int){}, 0);
-  test_packaged_task<void, int>([f = shared_future<void>()](int)mutable {}, 0);
+  test_packaged_task<void, int>([f = shared_future<void>()](int) mutable {}, 0);
 }
 
 TEST(std_future, async) {

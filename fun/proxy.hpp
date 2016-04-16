@@ -371,7 +371,8 @@ R foldMap(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs, Args &&... args) {
   cxx_assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
                        detail::proxy_foldMap(), std::forward<F>(f), xs,
-                       std::forward<Args>(args)...).get();
+                       std::forward<Args>(args)...)
+      .get();
 }
 
 namespace detail {
@@ -398,7 +399,8 @@ R foldMap2(F &&f, Op &&op, Z &&z, const funhpc::proxy<T> &xs,
   cxx_assert(s);
   return funhpc::async(funhpc::rlaunch::sync, xs.get_proc_future(),
                        detail::proxy_foldMap2(), std::forward<F>(f), xs, ys,
-                       std::forward<Args>(args)...).get();
+                       std::forward<Args>(args)...)
+      .get();
 }
 
 // dump

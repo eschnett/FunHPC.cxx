@@ -264,10 +264,12 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   constexpr std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
   return r;
@@ -279,10 +281,12 @@ R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   constexpr std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r),
                     cxx::invoke(f, std::move(xs[i]), args...));
@@ -298,10 +302,12 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
   constexpr std::ptrdiff_t s = N;
   static_assert(N2 == s, "");
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
@@ -327,7 +333,7 @@ template <typename C, typename T,
           typename R = std::decay_t<T>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 constexpr CR munit(T &&x) {
-  CR rs;
+  CR rs{};
   rs.fill(std::forward<T>(x));
   return rs;
 }

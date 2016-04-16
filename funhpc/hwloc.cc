@@ -192,7 +192,8 @@ cpu_info_t manage_affinity(const hwloc_topology_t topology) {
   // on the same core
   auto t0 = std::chrono::high_resolution_clock::now();
   while (std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::high_resolution_clock::now() - t0).count() < 10)
+             std::chrono::high_resolution_clock::now() - t0)
+             .count() < 10)
     ;
 
   std::ostringstream os;

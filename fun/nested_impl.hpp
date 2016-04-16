@@ -12,8 +12,8 @@
 #include <fun/fun_impl.hpp>
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 
 namespace fun {
 
@@ -80,9 +80,9 @@ adt::irange_t nested_calc_outer_inds(const Policy &policy,
   std::ptrdiff_t ostep =
       unlimited_inner ? omax - omin : inds.istep() * max_inner;
   adt::irange_t oinds(omin, omax, ostep);
-  cxx_assert(oinds.size() >= min_outer);
-  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
-  cxx_assert(oinds.size() == osize);
+  cxx_assert(std::ptrdiff_t(oinds.size()) >= min_outer);
+  cxx_assert(unlimited_outer || std::ptrdiff_t(oinds.size()) <= max_outer);
+  cxx_assert(std::ptrdiff_t(oinds.size()) == osize);
   return oinds;
 }
 
@@ -99,8 +99,8 @@ nested_calc_inner_inds(const Policy &policy, const adt::irange_t &inds,
   std::ptrdiff_t imax = std::min(imin + oinds.istep(), inds.imax());
   std::ptrdiff_t istep = inds.istep();
   adt::irange_t iinds(imin, imax, istep);
-  cxx_assert(iinds.size() >= min_inner);
-  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(std::ptrdiff_t(iinds.size()) >= min_inner);
+  cxx_assert(unlimited_inner || std::ptrdiff_t(iinds.size()) <= max_inner);
   if (min_outer == 0)
     cxx_assert(!iinds.empty());
   return iinds;
@@ -172,9 +172,9 @@ adt::irange_t nested_calc_outer_inds(const adt::irange_t &inds) {
   std::ptrdiff_t ostep =
       unlimited_inner ? omax - omin : inds.istep() * max_inner;
   adt::irange_t oinds(omin, omax, ostep);
-  cxx_assert(oinds.size() >= min_outer);
-  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
-  cxx_assert(oinds.size() == osize);
+  cxx_assert(std::ptrdiff_t(oinds.size()) >= min_outer);
+  cxx_assert(unlimited_outer || std::ptrdiff_t(oinds.size()) <= max_outer);
+  cxx_assert(std::ptrdiff_t(oinds.size()) == osize);
   return oinds;
 }
 
@@ -191,8 +191,8 @@ adt::irange_t nested_calc_inner_inds(const adt::irange_t &inds,
   std::ptrdiff_t imax = std::min(imin + oinds.istep(), inds.imax());
   std::ptrdiff_t istep = inds.istep();
   adt::irange_t iinds(imin, imax, istep);
-  cxx_assert(iinds.size() >= min_inner);
-  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(std::ptrdiff_t(iinds.size()) >= min_inner);
+  cxx_assert(unlimited_inner || std::ptrdiff_t(iinds.size()) <= max_inner);
   if (min_outer == 0)
     cxx_assert(!iinds.empty());
   return iinds;
@@ -233,7 +233,7 @@ adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
   std::ptrdiff_t min_inner = fun_traits<A>::min_size();
   std::ptrdiff_t max_inner = unlimited_inner ? -1 : fun_traits<A>::max_size();
 
-  std::size_t size = inds.size();
+  std::ptrdiff_t size = inds.size();
   adt::index_t<D> ishape, oshape;
   if (size == 0) {
     // empty range, decide whether to create empty or unit outer container
@@ -291,9 +291,9 @@ adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
   adt::index_t<D> omax = osize == 0 ? inds.imin() : inds.imax();
   adt::index_t<D> ostep = adt::div_quot(adt::div_ceil(omax - omin, oshape));
   adt::range_t<D> oinds(omin, omax, ostep);
-  cxx_assert(oinds.size() >= min_outer);
-  cxx_assert(unlimited_outer || oinds.size() <= max_outer);
-  cxx_assert(oinds.size() == osize);
+  cxx_assert(std::ptrdiff_t(oinds.size()) >= min_outer);
+  cxx_assert(unlimited_outer || std::ptrdiff_t(oinds.size()) <= max_outer);
+  cxx_assert(std::ptrdiff_t(oinds.size()) == osize);
   return oinds;
 }
 
@@ -310,8 +310,8 @@ adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
   adt::index_t<D> imax = adt::min(imin + oinds.istep(), inds.imax());
   adt::index_t<D> istep = inds.istep();
   adt::range_t<D> iinds(imin, imax, istep);
-  cxx_assert(iinds.size() >= min_inner);
-  cxx_assert(unlimited_inner || iinds.size() <= max_inner);
+  cxx_assert(std::ptrdiff_t(iinds.size()) >= min_inner);
+  cxx_assert(unlimited_inner || std::ptrdiff_t(iinds.size()) <= max_inner);
   if (min_outer == 0)
     cxx_assert(!iinds.empty());
   return iinds;
@@ -684,11 +684,19 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::nested<P, A, T, Policy> &xss,
 
 template <typename P, typename A, typename T, typename Policy>
 ostreamer dump(const adt::nested<P, A, T, Policy> &xss) {
-  return ostreamer("nested{pointer{") + foldMap([](const auto &xs) {
-    return ostreamer("array{") + foldMap([](const auto &x) {
-      return ostreamer(x) + ostreamer(",");
-    }, combine_ostreamers(), ostreamer(), xs) + ostreamer("},");
-  }, combine_ostreamers(), ostreamer(), xss.data) + ostreamer("}}");
+  return ostreamer("nested{pointer{") +
+         foldMap(
+             [](const auto &xs) {
+               return ostreamer("array{") +
+                      foldMap(
+                          [](const auto &x) {
+                            return ostreamer(x) + ostreamer(",");
+                          },
+                          combine_ostreamers(), ostreamer(), xs) +
+                      ostreamer("},");
+             },
+             combine_ostreamers(), ostreamer(), xss.data) +
+         ostreamer("}}");
 }
 
 // munit
@@ -818,9 +826,9 @@ bool mempty(const adt::nested<P, A, T, Policy> &xss) {
 
 template <typename P, typename A, typename T, typename Policy>
 std::size_t msize(const adt::nested<P, A, T, Policy> &xss) {
-  typedef
-      typename adt::nested<P, A, T, Policy>::template array_constructor<T> AT;
-  return mempty(xss.data) ? 0 : foldMap((std::size_t (*)(const AT &))msize,
+  typedef typename adt::nested<P, A, T, Policy>::template array_constructor<T>
+      AT;
+  return mempty(xss.data) ? 0 : foldMap((std::size_t(*)(const AT &))msize,
                                         std::plus<std::size_t>(), 0, xss.data);
 }
 }

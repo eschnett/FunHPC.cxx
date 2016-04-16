@@ -4,8 +4,8 @@
 #include <cereal/archives/binary.hpp>
 #include <gtest/gtest.h>
 
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace {
 template <typename T> std::string serialize(T &&obj) {

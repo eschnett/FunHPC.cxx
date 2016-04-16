@@ -41,7 +41,8 @@ auto accumulate(int i, funhpc::rptr<std::atomic<int>> accum) {
 }
 auto call_accumulate(int i, funhpc::rptr<std::atomic<int>> accum) {
   return funhpc::async(funhpc::rlaunch::sync, accum.get_proc(), accumulate, i,
-                       accum).get();
+                       accum)
+      .get();
 }
 }
 

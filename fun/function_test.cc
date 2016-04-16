@@ -59,9 +59,9 @@ TEST(fun_function, monad) {
   auto x1j = mjoin(xx1);
   EXPECT_EQ(x1(42), x1j(42));
 
-  auto x2 = mbind([](auto x, auto c) {
-    return munit<std_function<adt::dummy>>(x + c);
-  }, x1, 1);
+  auto x2 = mbind(
+      [](auto x, auto c) { return munit<std_function<adt::dummy>>(x + c); }, x1,
+      1);
   static_assert(std::is_same<decltype(x2), std_function<int>>::value, "");
   EXPECT_TRUE(bool(x2));
   EXPECT_EQ(2, x2(42));

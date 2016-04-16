@@ -3,8 +3,8 @@
 
 #include <qthread/future.hpp>
 
-#include <qthread/qthread.hpp>
 #include <qthread/qt_syscalls.h>
+#include <qthread/qthread.hpp>
 
 #include <chrono>
 #include <tuple>

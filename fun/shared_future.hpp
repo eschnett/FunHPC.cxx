@@ -56,7 +56,8 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   if (__builtin_expect(s == 0, false))
     return CR();
   return qthread::async(std::forward<F>(f), inds[0],
-                        std::forward<Args>(args)...).share();
+                        std::forward<Args>(args)...)
+      .share();
 }
 
 // iotaMapMulti
@@ -72,7 +73,8 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   if (__builtin_expect(s == 0, false))
     return CR();
   return qthread::async(std::forward<F>(f), inds.imin(),
-                        std::forward<Args>(args)...).share();
+                        std::forward<Args>(args)...)
+      .share();
 }
 
 // fmap
@@ -85,10 +87,12 @@ CR fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   bool s = xs.valid();
   if (!s)
     return CR();
-  return xs.then([ f = std::forward<F>(f), args... ](
-                     const qthread::shared_future<T> &xs) mutable {
-    return cxx::invoke(std::move(f), xs.get(), std::move(args)...);
-  }).share();
+  return xs
+      .then([ f = std::forward<F>(f),
+              args... ](const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), std::move(args)...);
+      })
+      .share();
 }
 
 template <typename F, typename T, typename T2, typename... Args,
@@ -101,10 +105,13 @@ CR fmap2(F &&f, const qthread::shared_future<T> &xs,
   cxx_assert(ys.valid() == s);
   if (!s)
     return CR();
-  return xs.then([ f = std::forward<F>(f), ys, args... ](
-                     const qthread::shared_future<T> &xs) mutable {
-    return cxx::invoke(std::move(f), xs.get(), ys.get(), std::move(args)...);
-  }).share();
+  return xs
+      .then([ f = std::forward<F>(f), ys,
+              args... ](const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), ys.get(),
+                           std::move(args)...);
+      })
+      .share();
 }
 
 template <typename F, typename T, typename T2, typename T3, typename... Args,
@@ -119,11 +126,13 @@ CR fmap3(F &&f, const qthread::shared_future<T> &xs,
   cxx_assert(zs.valid() == s);
   if (!s)
     return CR();
-  return xs.then([ f = std::forward<F>(f), ys, zs, args... ](
-                     const qthread::shared_future<T> &xs) mutable {
-    return cxx::invoke(std::move(f), xs.get(), ys.get(), zs.get(),
-                       std::move(args)...);
-  }).share();
+  return xs
+      .then([ f = std::forward<F>(f), ys, zs,
+              args... ](const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), ys.get(), zs.get(),
+                           std::move(args)...);
+      })
+      .share();
 }
 
 // fmapStencil
@@ -140,16 +149,15 @@ CR fmapStencil(F &&f, G &&g, const qthread::shared_future<T> &xs,
   bool s = xs.valid();
   if (__builtin_expect(!s, false))
     return CR();
-  return xs.then([
-    f = std::forward<F>(f),
-    bmask,
-    bm = std::forward<BM>(bm),
-    bp = std::forward<BP>(bp),
-    args...
-  ](const qthread::shared_future<T> &xs) mutable {
-    return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm),
-                       std::move(bp), std::move(args)...);
-  }).share();
+  return xs
+      .then([
+        f = std::forward<F>(f), bmask, bm = std::forward<BM>(bm),
+        bp = std::forward<BP>(bp), args...
+      ](const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm),
+                           std::move(bp), std::move(args)...);
+      })
+      .share();
 }
 
 // fmapStencilMulti
@@ -168,11 +176,13 @@ CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
   bool s = xs.valid();
   if (__builtin_expect(!s, false))
     return CR();
-  return xs.then([ f = std::forward<F>(f), bmask, bm0, bp0, args... ](
-                     const qthread::shared_future<T> &xs) mutable {
-    return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
-                       std::move(bp0).get(), std::move(args)...);
-  }).share();
+  return xs
+      .then([ f = std::forward<F>(f), bmask, bm0, bp0,
+              args... ](const qthread::shared_future<T> &xs) mutable {
+        return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
+                           std::move(bp0).get(), std::move(args)...);
+      })
+      .share();
 }
 
 template <std::size_t D, typename F, typename G, typename T, typename... Args,
@@ -191,8 +201,8 @@ CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
   if (__builtin_expect(!s, false))
     return CR();
   return xs
-      .then([ f = std::forward<F>(f), bmask, bm0, bm1, bp0, bp1, args... ](
-          const qthread::shared_future<T> &xs) mutable {
+      .then([ f = std::forward<F>(f), bmask, bm0, bm1, bp0, bp1,
+              args... ](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
                            std::move(bm1).get(), std::move(bp0).get(),
                            std::move(bp1).get(), std::move(args)...);
@@ -265,9 +275,10 @@ template <typename T> ostreamer dump(const qthread::shared_future<T> &xs) {
   bool s = xs.valid();
   if (!s)
     return ostreamer("shared_future{}");
-  return ostreamer("shared_future{") + foldMap([](const auto &x) {
-    return ostreamer(x);
-  }, combine_ostreamers(), ostreamer(), xs) + ostreamer("}");
+  return ostreamer("shared_future{") +
+         foldMap([](const auto &x) { return ostreamer(x); },
+                 combine_ostreamers(), ostreamer(), xs) +
+         ostreamer("}");
 }
 
 // munit
@@ -322,7 +333,8 @@ CR mfoldMap(F &&f, Op &&op, Z &&z, const qthread::shared_future<T> &xs,
                               std::forward<Args>(args)...);
              },
              std::forward<F>(f), std::forward<Op>(op), std::forward<Z>(z), xs,
-             std::forward<Args>(args)...).share();
+             std::forward<Args>(args)...)
+      .share();
 }
 
 // mzero

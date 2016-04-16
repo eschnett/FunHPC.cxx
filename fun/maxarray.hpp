@@ -116,7 +116,7 @@ template <typename F, typename T, std::size_t N, typename T2, std::size_t N2,
 CR fmap2(F &&f, const adt::maxarray<T, N> &xs, const adt::maxarray<T2, N2> &ys,
          Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -132,8 +132,8 @@ template <typename F, typename T, std::size_t N, typename T2, std::size_t N2,
 CR fmap3(F &&f, const adt::maxarray<T, N> &xs, const adt::maxarray<T2, N2> &ys,
          const adt::maxarray<T3, N3> &zs, Args &&... args) {
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
-  cxx_assert(zs.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
+  cxx_assert(std::ptrdiff_t(zs.size()) == s);
   CR rs(s);
 #pragma omp simd
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -256,7 +256,7 @@ BCR boundaryMap(F &&f, const adt::maxarray<T, N> &xs, std::ptrdiff_t i,
 
 template <typename T, std::size_t N>
 const T &restrict getIndex(const adt::maxarray<T, N> &xs, std::ptrdiff_t i) {
-  cxx_assert(i >= 0 && i < xs.size());
+  cxx_assert(i >= 0 && i < std::ptrdiff_t(xs.size()));
   return xs[i];
 }
 
@@ -279,10 +279,12 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::maxarray<T, N> &xs,
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], args...));
   return r;
@@ -294,10 +296,12 @@ R foldMap(F &&f, Op &&op, Z &&z, adt::maxarray<T, N> &&xs, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r),
                     cxx::invoke(f, std::move(xs[i]), args...));
@@ -311,12 +315,14 @@ R foldMap2(F &&f, Op &&op, Z &&z, const adt::maxarray<T, N> &xs,
            const adt::maxarray<T2, N2> &ys, Args &&... args) {
   static_assert(std::is_same<cxx::invoke_of_t<Op, R, R>, R>::value, "");
   std::ptrdiff_t s = xs.size();
-  cxx_assert(ys.size() == s);
+  cxx_assert(std::ptrdiff_t(ys.size()) == s);
   R r(std::forward<Z>(z));
-#pragma omp declare reduction(op : R : (                                       \
+#if 0
+#pragma omp declare reduction(red : R : (                                      \
     omp_out = cxx::invoke(op, std::move(omp_out),                              \
                                         omp_in))) initializer(omp_priv(z))
-#pragma omp simd reduction(op : r)
+#pragma omp simd reduction(red : r)
+#endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
     r = cxx::invoke(op, std::move(r), cxx::invoke(f, xs[i], ys[i], args...));
   return r;
@@ -342,8 +348,8 @@ template <typename C, typename T,
           typename R = std::decay_t<T>,
           typename CR = typename fun_traits<C>::template constructor<R>>
 constexpr CR munit(T &&x) {
+  static_assert(fun_traits<CR>::max_size() > 0, "");
   CR rs(1);
-  static_assert(rs.max_size() > 0, "");
   rs[0] = std::forward<T>(x);
   return rs;
 }

@@ -40,10 +40,7 @@ inline constexpr rlaunch operator^(rlaunch a, rlaunch b) {
                               static_cast<unsigned>(b));
 }
 
-inline rlaunch &
-operator&=(rlaunch &a, rlaunch b) {
-  return a = a & b;
-}
+inline rlaunch &operator&=(rlaunch &a, rlaunch b) { return a = a & b; }
 inline rlaunch &operator|=(rlaunch &a, rlaunch b) { return a = a | b; }
 inline rlaunch &operator^=(rlaunch &a, rlaunch b) { return a = a ^ b; }
 
@@ -122,11 +119,13 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     return fres;
   }
   case rlaunch::deferred: {
-    return qthread::async(
-        qthread::launch::deferred, [dest](auto &&f, auto &&... args) {
-          return async(rlaunch::async, dest, std::move(f), std::move(args)...)
-              .get();
-        }, std::forward<F>(f), std::forward<Args>(args)...);
+    return qthread::async(qthread::launch::deferred,
+                          [dest](auto &&f, auto &&... args) {
+                            return async(rlaunch::async, dest, std::move(f),
+                                         std::move(args)...)
+                                .get();
+                          },
+                          std::forward<F>(f), std::forward<Args>(args)...);
   }
   case rlaunch::detached: {
     rexec(dest, std::forward<F>(f), std::forward<Args>(args)...);
@@ -150,7 +149,8 @@ qthread::future<R> async(rlaunch policy,
       detail::local_policy(policy),
       [fdest = std::move(fdest)](auto &&f, auto &&... args) mutable {
         return async(rlaunch::sync, fdest.get(), std::move(f),
-                     std::move(args)...).get();
+                     std::move(args)...)
+            .get();
       },
       std::forward<F>(f), std::forward<Args>(args)...);
 }

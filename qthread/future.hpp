@@ -11,8 +11,8 @@
 #include <atomic>
 #include <functional>
 #include <memory>
-#include <utility>
 #include <tuple>
+#include <utility>
 
 namespace qthread {
 
@@ -34,7 +34,8 @@ template <typename T> class shared_state {
   // void is stored as empty tuple, references are stored as pointers
   std::conditional_t<std::is_void<T>::value, std::tuple<>,
                      std::conditional_t<std::is_reference<T>::value,
-                                        std::remove_reference_t<T> *, T>> value;
+                                        std::remove_reference_t<T> *, T>>
+      value;
 
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value> * = nullptr>
@@ -55,21 +56,17 @@ public:
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
-  shared_state(id_t<U> &&value)
-      : has_trigger(false), value(std::move(value)) {}
+  shared_state(id_t<U> &&value) : has_trigger(false), value(std::move(value)) {}
   template <typename U = T,
             std::enable_if_t<!std::is_void<U>::value &&
                              !std::is_reference<U>::value> * = nullptr>
-  shared_state(const id_t<U> &value)
-      : has_trigger(false), value(value) {}
+  shared_state(const id_t<U> &value) : has_trigger(false), value(value) {}
   template <typename U = T,
             std::enable_if_t<std::is_reference<U>::value> * = nullptr>
-  shared_state(id_t<U> &value)
-      : has_trigger(false), value(&value) {}
+  shared_state(id_t<U> &value) : has_trigger(false), value(&value) {}
   template <typename U = T,
             std::enable_if_t<std::is_void<U>::value> * = nullptr>
-  shared_state(std::tuple<>)
-      : has_trigger(false), value(std::tuple<>()) {}
+  shared_state(std::tuple<>) : has_trigger(false), value(std::tuple<>()) {}
 
   shared_state(const cxx::task<T> &trigger) : shared_state() {
     has_trigger = true;
@@ -484,11 +481,9 @@ template <typename R, typename... Args> class packaged_task<R(Args...)> {
 public:
   packaged_task() noexcept {}
   template <class F,
-            std::enable_if_t<
-                !std::is_same<std::decay_t<F>,
-                              packaged_task<R(Args...)>>::value> * = nullptr>
-  explicit packaged_task(F &&f)
-      : task(std::forward<F>(f)) {}
+            std::enable_if_t<!std::is_same<
+                std::decay_t<F>, packaged_task<R(Args...)>>::value> * = nullptr>
+  explicit packaged_task(F &&f) : task(std::forward<F>(f)) {}
   packaged_task(const packaged_task &) = delete;
   packaged_task(packaged_task &&other) noexcept : packaged_task() {
     swap(other);
@@ -653,10 +648,7 @@ inline constexpr launch operator^(launch a, launch b) {
                              static_cast<unsigned>(b));
 }
 
-inline launch &
-operator&=(launch &a, launch b) {
-  return a = a & b;
-}
+inline launch &operator&=(launch &a, launch b) { return a = a & b; }
 inline launch &operator|=(launch &a, launch b) { return a = a | b; }
 inline launch &operator^=(launch &a, launch b) { return a = a ^ b; }
 
@@ -744,10 +736,12 @@ future<R> future<T>::then(launch policy, F &&cont) {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(policy, [ftr = std::move(*this)](auto &&cont) mutable {
-    ftr.wait();
-    return cxx::invoke(std::move(cont), std::move(ftr));
-  }, std::forward<F>(cont));
+  return async(policy,
+               [ftr = std::move(*this)](auto &&cont) mutable {
+                 ftr.wait();
+                 return cxx::invoke(std::move(cont), std::move(ftr));
+               },
+               std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>
@@ -777,10 +771,12 @@ future<R> shared_future<T>::then(launch policy, F &&cont) const {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(policy, [ftr = *this](auto &&cont) {
-    ftr.wait();
-    return cxx::invoke(std::move(cont), std::move(ftr));
-  }, std::forward<F>(cont));
+  return async(policy,
+               [ftr = *this](auto &&cont) {
+                 ftr.wait();
+                 return cxx::invoke(std::move(cont), std::move(ftr));
+               },
+               std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>

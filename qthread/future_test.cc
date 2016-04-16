@@ -53,7 +53,7 @@ TEST(qthread_future, future) {
   test_future<int &>(i);
   test_future<const int &>(i);
   test_future<int (*)(int)>(fi);
-  test_future<int(&)(int)>(fi);
+  test_future<int (&)(int)>(fi);
   test_future<int &(*)(int)>(fir);
   test_future<int &(&)(int)>(fir);
   test_future<const int &(*)(int)>(fcir);
@@ -151,7 +151,7 @@ TEST(qthread_future, shared_future) {
   test_shared_future<int &>(i);
   test_shared_future<const int &>(i);
   test_shared_future<int (*)(int)>(fi);
-  test_shared_future<int(&)(int)>(fi);
+  test_shared_future<int (&)(int)>(fi);
 }
 
 TEST(qthread_future, shared_future_then) {
@@ -219,7 +219,7 @@ TEST(qthread_future, promise) {
   test_promise<int &>(i);
   test_promise<const int &>(i);
   test_promise<int (*)(int)>(fi);
-  test_promise<int(&)(int)>(fi);
+  test_promise<int (&)(int)>(fi);
 }
 
 namespace {

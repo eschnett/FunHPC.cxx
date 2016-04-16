@@ -49,7 +49,7 @@ private:
                                     const index_type &offset) {
     std::ptrdiff_t off = 0;
     std::ptrdiff_t str = 1;
-    for (std::ptrdiff_t d = 0; d < D; ++d) {
+    for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
       cxx_assert(offset[d] >= 0 &&
                  (stride[d] == 0 ? offset[d] == 0 : offset[d] < stride[d]));
       off += offset[d] * str;
@@ -64,7 +64,7 @@ private:
   static index_type make_stride(const index_type &shape) {
     index_type stride;
     std::ptrdiff_t i = 1;
-    for (std::ptrdiff_t d = 0; d < D; ++d) {
+    for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
       i *= shape[d];
       stride[d] = i;
     }
@@ -89,7 +89,7 @@ public:
       return false;
     if (adt::any(adt::lt(m_stride, 0)))
       return false;
-    for (std::ptrdiff_t d = 0; d < D; ++d) {
+    for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
       if (stride(d) < 0)
         return false;
       if (stride(d) > 0 && stride(d + 1) % stride(d) != 0)
@@ -97,7 +97,7 @@ public:
     }
     if (m_allocated < 0)
       return false;
-    if (m_offset + size() > m_allocated)
+    if (std::ptrdiff_t(m_offset + size()) > m_allocated)
       return false;
     auto alloc = allocated();
     if (adt::any(adt::lt(alloc, 0)))
@@ -132,7 +132,7 @@ public:
   bool empty() const { return size() == 0; }
 
   std::ptrdiff_t stride(std::ptrdiff_t d) const {
-    cxx_assert(d >= 0 && d <= D);
+    cxx_assert(d >= 0 && d <= std::ptrdiff_t(D));
     if (d == 0)
       return D == 0 ? /*1*/ m_stride0
                     : std::min(/*std::ptrdiff_t(1)*/ m_stride0, m_stride[0]);
@@ -140,14 +140,14 @@ public:
   }
   index_type offset() const {
     index_type r;
-    for (std::ptrdiff_t d = 0; d < D; ++d)
+    for (std::size_t d = 0; d < D; ++d)
       r[d] = stride(d) == 0 || stride(d + 1) == 0 ? 0 : (m_offset / stride(d)) %
                                                             stride(d + 1);
     return r;
   }
   index_type allocated() const {
     index_type r;
-    for (std::ptrdiff_t d = 0; d < D; ++d)
+    for (std::size_t d = 0; d < D; ++d)
       r[d] = stride(d) == 0 ? 0 : stride(d + 1) / stride(d);
     return r;
   }
@@ -156,7 +156,7 @@ public:
   // Convert a position to a linear index
   std::ptrdiff_t linear(const index_type &i) const {
     std::ptrdiff_t lin = m_offset;
-    for (std::ptrdiff_t d = 0; d < D; ++d) {
+    for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
       cxx_assert(i[d] >= 0 && i[d] < m_shape[d]);
       lin += i[d] * stride(d);
     }
@@ -166,7 +166,7 @@ public:
 
   struct boundary {};
   index_space(boundary, const index_space<D + 1> &old, std::ptrdiff_t i) {
-    cxx_assert(i >= 0 && i < 2 * (D + 1));
+    cxx_assert(i >= 0 && i < 2 * (std::ptrdiff_t(D) + 1));
     auto f = i % 2, d = i / 2;
     m_shape = adt::rmdir(old.m_shape, d);
     auto off = old.shape() * 0;
@@ -206,7 +206,7 @@ public:
 
   friend std::ostream &operator<<(std::ostream &os, const index_space &is) {
     adt::index_t<D + 1> strides;
-    for (std::ptrdiff_t d = 0; d <= D; ++d)
+    for (std::ptrdiff_t d = 0; d <= std::ptrdiff_t(D); ++d)
       strides[d] = is.stride(d);
     return os << "index_space{m_shape=" << is.m_shape
               << ",m_offset=" << is.m_offset << ",m_stride0=" << is.m_stride0
@@ -256,7 +256,7 @@ public:
 
 private:
   bool invariant0() const {
-    return indexing.allocated_size() == fun::msize(data);
+    return indexing.allocated_size() == std::ptrdiff_t(fun::msize(data));
   }
 
 public:
@@ -269,8 +269,9 @@ public:
   }
 
   grid()
-      : indexing(), data(fun::accumulator<container_constructor<T>>(
-                             indexing.size()).finalize()) {
+      : indexing(),
+        data(fun::accumulator<container_constructor<T>>(indexing.size())
+                 .finalize()) {
     cxx_assert(invariant());
   }
 
@@ -554,13 +555,13 @@ public:
     std::ostringstream os;
     os << "grid{";
     indexing.loop([&](const index_type &i) {
-      for (std::size_t d = 0; d < D; ++d) {
+      for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
         if (i[d] > 0)
           break;
         os << "[";
       }
       os << fun::getIndex(data, indexing.linear(i)) << ",";
-      for (std::size_t d = 0; d < D; ++d) {
+      for (std::ptrdiff_t d = 0; d < std::ptrdiff_t(D); ++d) {
         if (i[d] < indexing.shape()[d] - 1)
           break;
         os << "],";

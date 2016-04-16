@@ -26,7 +26,8 @@ using cereal_register_t = cereal::detail::bind_to_archives<T> const &;
 
 template <typename T> cereal_register_t<T> cereal_register_init() {
   return cereal::detail::StaticObject<
-             cereal::detail::bind_to_archives<T>>::getInstance().bind();
+             cereal::detail::bind_to_archives<T>>::getInstance()
+      .bind();
 }
 }
 
@@ -105,7 +106,7 @@ public:
   template <typename F, typename... Args>
   task(F &&f, Args &&... args)
       : ptask(std::make_unique<
-            detail::concrete_task<R, std::decay_t<F>, std::decay_t<Args>...>>(
+              detail::concrete_task<R, std::decay_t<F>, std::decay_t<Args>...>>(
             std::forward<F>(f), std::forward<Args>(args)...)) {}
   task &operator=(task &&other) {
     ptask = {};

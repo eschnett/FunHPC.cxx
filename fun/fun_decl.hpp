@@ -93,8 +93,8 @@ public:
   ostreamer &operator+=(ostreamer &&other) {
     ostreamer self;
     swap(self);
-    impl = [ self = std::move(self), other = std::move(other) ](std::ostream &
-                                                                os) {
+    impl = [ self = std::move(self),
+             other = std::move(other) ](std::ostream & os) {
       os << self << other;
     };
     return *this;

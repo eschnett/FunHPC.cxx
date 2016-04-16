@@ -30,6 +30,14 @@ double gettime() {
   gettimeofday(&tv, nullptr);
   return tv.tv_sec + tv.tv_usec / 1.0e+6;
 }
+
+bool run_main_everywhere() {
+  char *str = std::getenv("FUNHPC_MAIN_EVERYWHERE");
+  if (!str)
+    return false;
+  const std::string val(str);
+  return val != "" && val != "0";
+}
 }
 
 constexpr int mpi_root = 0;
@@ -240,7 +248,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   send_queue_mutex = std::make_unique<qthread::mutex>();
 
   qthread::future<int> fres;
-  if (rank() == mpi_root)
+  if (detail::run_main_everywhere() || rank() == mpi_root)
     fres = qthread::async(run_main, user_main, argc, argv);
 
   const bool is_serial = qthread::thread::hardware_concurrency() == 1;

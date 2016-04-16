@@ -1,6 +1,6 @@
 # Makefile for FunHPC
 
-# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-4.0.0/env.sh && source llvm-3.7.0/env.sh && source openmpi-v2.x-dev-375-g46d887a/env.sh && source qthreads-1.10/env.sh && popd && make
+# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.1/env.sh && source jemalloc-4.0.4/env.sh && source llvm-3.7.0/env.sh && source openmpi-v2.x-dev-684-g17714ad/env.sh && source qthreads-1.10/env.sh && popd && make
 
 GOOGLETEST_NAME     = gtest-1.7.0
 GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
@@ -59,7 +59,7 @@ ifneq ($(SIMFACTORY_LLVM_DIR), )
 	-fsanitize=vla-bound
 # Note: -flto doesn't see -march=native, hence leads to worse code
 OPTFLAGS =					\
-	-DNDEBUG				\
+	-UNDEBUG				\
 	-Ofast					\
 	-Wno-unused-variable
 CXXFLAGS +=					\
@@ -69,31 +69,34 @@ CXXFLAGS +=					\
 	-g					\
 	-std=c++14				\
 	-Drestrict=__restrict__			\
-	-march=native				\
+	-pipe					\
 	$(DEBUGFLAGS)				\
 	$(OPTFLAGS)
+# -march=native
 
 else ifneq ($(SIMFACTORY_GCC_DIR), )
 
-DEBUGFLAGS =					\
+# DEBUGFLAGS =					\
 	-D_GLIBCXX_DEBUG			\
 	-fbounds-check				\
 	-fsanitize=undefined			\
 	-fstack-protector-all			\
 	-ftrapv
-# OPTFLAGS =					\
-	-DNDEBUG				\
-	-Ofast					\
-	-flto
+OPTFLAGS =					\
+	-UNDEBUG				\
+	-Ofast
+# -flto
 CXXFLAGS +=					\
 	-Wall					\
 	-g					\
 	-std=c++14				\
-	-m128bit-long-double			\
+	-fopenmp				\
 	-Drestrict=__restrict__			\
-	-march=native				\
+	-pipe					\
 	$(DEBUGFLAGS)				\
 	$(OPTFLAGS)
+# -m128bit-long-double
+# -march=native
 
 else
 
@@ -255,14 +258,14 @@ comma := ,
 empty :=
 space := $(empty) $(empty)
 
-all: objs selftest selftest-funhpc $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
+all: lib selftest selftest-funhpc $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 .PHONY: all
 
 ### format ###
 
 format: $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 .PHONY: format
-%.fmt: % Makefile 
+%.fmt: % Makefile
 	-clang-format -style=llvm -i $* && : > $*.fmt
 
 ### compile ###
@@ -274,6 +277,14 @@ $(ALL_SRCS:%.cc=%.o): $(GOOGLETEST_HEADERS) | format
 	$(MPICXX) -MD $(CXXFLAGS) -c -o $*.o.tmp $*.cc
 	@$(PROCESS_DEPENDENCIES)
 	@mv $*.o.tmp $*.o
+
+### library ###
+
+lib: libfunhpc.a
+.PHONY: lib
+libfunhpc.a: $(SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
+	ar -r -c $@ $^
+	-ranlib $@
 
 ### run an application ###
 

@@ -42,7 +42,8 @@ bool run_main_everywhere() {
 
 constexpr int mpi_root = 0;
 constexpr int mpi_tag = 0;
-const MPI_Comm mpi_comm = MPI_COMM_WORLD;
+bool did_initialize_mpi = false;
+MPI_Comm mpi_comm = MPI_COMM_NULL;
 
 namespace detail {
 std::ptrdiff_t the_rank = -1;
@@ -210,12 +211,20 @@ bool terminate_check(bool ready_to_terminate) {
 void initialize(int &argc, char **&argv) {
   // MPI_Init(&argc, &argv);
   // TODO: Want MPI_THREAD_FUNNELED
+  int flag;
+  MPI_Initialized(&flag);
   int provided;
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+  if (!flag) {
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+    did_initialize_mpi = true;
+  } else {
+    MPI_Query_thread(&provided);
+  }
   if (provided != MPI_THREAD_SERIALIZED && provided != MPI_THREAD_MULTIPLE) {
     std::cerr << "MPI does not support multi-threading\n";
     std::exit(EXIT_FAILURE);
   }
+  MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
   detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
@@ -284,6 +293,12 @@ void finalize() {
   // MPI_Barrier(mpi_comm);
   // It is recommended to only call this when necessary
   // qthread_finalize();
-  MPI_Finalize();
+  if (did_initialize_mpi) {
+    int flag;
+    MPI_Finalized(&flag);
+    if (!flag) {
+      MPI_Finalize();
+    }
+  }
 }
 }

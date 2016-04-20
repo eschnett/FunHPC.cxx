@@ -22,7 +22,7 @@
 
 namespace funhpc {
 
-const auto max_idle_time = std::chrono::microseconds(100);
+const ptrdiff_t max_idle_count = 1000;
 
 namespace detail {
 double gettime() {
@@ -70,16 +70,17 @@ void comm_restart() {
   cxx_assert(!comm_stopped());
 }
 
-void comm_wait() {
-  if (comm_stopped()) {
-    std::cout << "FunHPC[" << rank() << ": begin lock_guard(comm_mutex)\n"
-              << std::flush;
-    // { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
-    comm_mutex->lock();
-    comm_mutex->unlock();
-    std::cout << "FunHPC[" << rank() << ": end lock_guard(comm_mutex)\n"
-              << std::flush;
-  }
+bool comm_wait() {
+  if (!comm_stopped())
+    return false;
+  std::cout << "FunHPC[" << rank() << ": begin lock_guard(comm_mutex)\n"
+            << std::flush;
+  // { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
+  comm_mutex->lock();
+  comm_mutex->unlock();
+  std::cout << "FunHPC[" << rank() << ": end lock_guard(comm_mutex)\n"
+            << std::flush;
+  return true;
 }
 
 // MPI
@@ -308,28 +309,21 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
     fres = qthread::async(run_main, user_main, argc, argv);
 
   const bool is_serial = qthread::thread::hardware_concurrency() == 1;
-  auto dummy_time =
-      std::chrono::time_point<std::chrono::high_resolution_clock>();
-  auto last_comm_time =
-      is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
+
+  ptrdiff_t idle_count = 0;
   std::cout << "FunHPC[" << rank() << "]: begin eventloop\n" << std::flush;
   for (;;) {
-    comm_wait();
+    bool did_wait = comm_wait();
     bool did_send = send_tasks();
     bool did_recv = recv_tasks();
     if (terminate_check(!fres.valid() || fres.ready()))
       break;
 
-    auto now =
-        is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
-    if (did_send || did_recv)
-      last_comm_time = now;
-    if (is_serial || now - last_comm_time > max_idle_time) {
+    ++idle_count;
+    if (did_wait || did_send || did_recv)
+      idle_count = 0;
+    if (is_serial || idle_count >= max_idle_count)
       qthread::this_thread::yield();
-      // This may now run on a different core, and clocks may differ
-      last_comm_time =
-          is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
-    }
   }
   std::cout << "FunHPC[" << rank() << "]: end eventloop\n" << std::flush;
   cancel_sends();

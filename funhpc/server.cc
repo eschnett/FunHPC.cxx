@@ -51,20 +51,33 @@ std::unique_ptr<qthread::mutex> comm_mutex;
 bool comm_stopped() { return comm_mutex_locked; }
 void comm_stop() {
   cxx_assert(!comm_stopped());
+  std::cout << "FunHPC[" << rank() << ": begin comm_mutex->lock()\n"
+            << std::flush;
   comm_mutex->lock();
+  std::cout << "FunHPC[" << rank() << ": end comm_mutex->lock()\n"
+            << std::flush;
   comm_mutex_locked = true;
   cxx_assert(comm_stopped());
 }
 void comm_restart() {
   cxx_assert(comm_stopped());
   comm_mutex_locked = false;
+  std::cout << "FunHPC[" << rank() << ": begin comm_mutex->unlock()\n"
+            << std::flush;
   comm_mutex->unlock();
+  std::cout << "FunHPC[" << rank() << ": end comm_mutex->unlock()\n"
+            << std::flush;
   cxx_assert(!comm_stopped());
 }
 
 void comm_wait() {
-  if (comm_stopped())
-    qthread::lock_guard<qthread::mutex> g(*comm_mutex);
+  if (comm_stopped()) {
+    std::cout << "FunHPC[" << rank() << ": begin lock_guard(comm_mutex)\n"
+              << std::flush;
+    { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
+    std::cout << "FunHPC[" << rank() << ": end lock_guard(comm_mutex)\n"
+              << std::flush;
+  }
 }
 
 // MPI
@@ -320,10 +333,10 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   cancel_sends();
 
   send_queue_mutex.reset();
-  std::cout << "FunHPC[" << rank() << "]: Before comm_mutex.reset()\n"
+  std::cout << "FunHPC[" << rank() << "]: begin comm_mutex.reset()\n"
             << std::flush;
   comm_mutex.reset();
-  std::cout << "FunHPC[" << rank() << "]: After comm_mutex.reset()\n"
+  std::cout << "FunHPC[" << rank() << "]: end comm_mutex.reset()\n"
             << std::flush;
   return fres.valid() ? fres.get() : 0;
 }

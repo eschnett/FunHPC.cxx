@@ -5,6 +5,9 @@ namespace funhpc {
 typedef int mainfunc_t(int argc, char **argv);
 void initialize(int &argc, char **&argv);
 int eventloop(mainfunc_t *user_main, int argc, char **argv);
+bool comm_stopped();
+void comm_stop();
+void comm_restart();
 void finalize();
 }
 

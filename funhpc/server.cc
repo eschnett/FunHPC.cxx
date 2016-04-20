@@ -40,6 +40,31 @@ bool run_main_everywhere() {
 }
 }
 
+// Enable/disable communication
+
+// Use a boolean as (unreliable) indicator of the mutex state. The
+// boolean must be "conservative", i.e. if the boolean indicates
+// "locked", the mutex must indeed be locked.
+std::atomic<bool> comm_mutex_locked{false};
+std::unique_ptr<qthread::mutex> comm_mutex;
+
+bool comm_stopped() { return comm_mutex_locked; }
+void comm_stop() {
+  comm_mutex->lock();
+  comm_mutex_locked = true;
+}
+void comm_restart() {
+  comm_mutex_locked = false;
+  comm_mutex->unlock();
+}
+
+void comm_wait() {
+  if (comm_stopped())
+    qthread::lock_guard<qthread::mutex> g(*comm_mutex);
+}
+
+// MPI
+
 constexpr int mpi_root = 0;
 constexpr int mpi_tag = 0;
 bool did_initialize_mpi = false;
@@ -254,6 +279,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   if (size() == 1)
     return run_main(user_main, argc, argv);
 
+  comm_mutex = std::make_unique<qthread::mutex>();
   send_queue_mutex = std::make_unique<qthread::mutex>();
 
   qthread::future<int> fres;
@@ -266,6 +292,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   auto last_comm_time =
       is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
   for (;;) {
+    comm_wait();
     bool did_send = send_tasks();
     bool did_recv = recv_tasks();
     if (terminate_check(!fres.valid() || fres.ready()))
@@ -285,6 +312,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   cancel_sends();
 
   send_queue_mutex.reset();
+  comm_mutex.reset();
   return fres.valid() ? fres.get() : 0;
 }
 

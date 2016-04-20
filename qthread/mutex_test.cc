@@ -4,9 +4,11 @@
 #include <gtest/gtest.h>
 #include <qthread.h>
 
+#include <atomic>
 #include <memory>
 
 using namespace qthread;
+using namespace std;
 
 TEST(qthreads_mutex, basic) {
   mutex m;
@@ -70,15 +72,15 @@ TEST(qthreads_mutex, two_threads) {
   qthread_initialize();
 
   mutex m;
-  int value = 0;
+  atomic<int> value{0};
   m.lock();
   thread t([&]() {
     lock_guard<mutex> g(m);
-    value *= 2;
+    value ^= 1;
   });
   this_thread::sleep_for(std::chrono::milliseconds(100));
   value += 1;
   m.unlock();
   t.join();
-  EXPECT_EQ(2, value);
+  EXPECT_EQ(0, value);
 }

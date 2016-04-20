@@ -50,12 +50,16 @@ std::unique_ptr<qthread::mutex> comm_mutex;
 
 bool comm_stopped() { return comm_mutex_locked; }
 void comm_stop() {
+  cxx_assert(!comm_stopped());
   comm_mutex->lock();
   comm_mutex_locked = true;
+  cxx_assert(comm_stopped());
 }
 void comm_restart() {
+  cxx_assert(comm_stopped());
   comm_mutex_locked = false;
   comm_mutex->unlock();
+  cxx_assert(!comm_stopped());
 }
 
 void comm_wait() {

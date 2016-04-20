@@ -20,14 +20,15 @@ int envtoi(const char *var) {
   assert(var);
   char *str = std::getenv(var);
   if (!str) {
-    std::cerr << "FunHPC: Could not getenv(\"" << var << "\")\n";
+    std::cerr << "FunHPC[" << rank() << "]: Could not getenv(\"" << var
+              << "\")\n";
     std::exit(EXIT_FAILURE);
   }
   char *str_end;
   auto res = std::strtol(str, &str_end, 10);
   if (*str_end != '\0') {
-    std::cerr << "FunHPC: Could not strol(getenv(\"" << var << "\")=\"" << str
-              << "\")\n";
+    std::cerr << "FunHPC[" << rank() << "]: Could not strol(getenv(\"" << var
+              << "\")=\"" << str << "\")\n";
     std::exit(EXIT_FAILURE);
   }
   return res;
@@ -197,7 +198,7 @@ cpu_info_t manage_affinity(const hwloc_topology_t topology) {
     ;
 
   std::ostringstream os;
-  os << "FunHPC: "
+  os << "FunHPC[" << rank() << "]: "
      << "N" << tl.node << " "
      << "L" << tl.node_proc << " "
      << "P" << tl.proc << " "
@@ -249,8 +250,8 @@ void hwloc_set_affinity() {
   }
 
   if (!success) {
-    std::cerr << "FunHPC: Could not set CPU affinity on process " << rank()
-              << "\n";
+    std::cerr << "FunHPC[" << rank()
+              << "]: Could not set CPU affinity on process " << rank() << "\n";
     std::exit(EXIT_FAILURE);
   }
 

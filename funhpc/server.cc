@@ -262,19 +262,21 @@ void initialize(int &argc, char **&argv) {
 }
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
-  std::cout << "FunHPC: " << size() << " processes, " << hwloc_num_local_ranks()
-            << " local processes, " << qthread::thread::hardware_concurrency()
-            << " threads\n";
+  std::cout << "FunHPC[" << rank() << "]: " << size() << " processes, "
+            << hwloc_num_local_ranks() << " local processes, "
+            << qthread::thread::hardware_concurrency() << " threads\n";
   auto nprocs = hwloc_num_local_ranks();
   for (int p = 0; p < nprocs; ++p)
     std::cout << hwloc_get_cpu_infos();
 
-  std::cout << "FunHPC: begin\n";
+  std::cout << "FunHPC[" << rank() << "]: begin main\n" << std::flush;
   auto start_time = detail::gettime();
   int res = user_main(argc, argv);
   auto end_time = detail::gettime();
   auto run_time = end_time - start_time;
-  std::cout << "FunHPC: end; total execution time: " << run_time << " sec\n";
+  std::cout << "FunHPC[" << rank()
+            << "]: end main; total execution time: " << run_time << " sec\n"
+            << std::flush;
 
   return res;
 }
@@ -295,6 +297,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
       std::chrono::time_point<std::chrono::high_resolution_clock>();
   auto last_comm_time =
       is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
+  std::cout << "FunHPC[" << rank() << "]: begin eventloop\n" << std::flush;
   for (;;) {
     comm_wait();
     bool did_send = send_tasks();
@@ -313,10 +316,15 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
           is_serial ? dummy_time : std::chrono::high_resolution_clock::now();
     }
   }
+  std::cout << "FunHPC[" << rank() << "]: end eventloop\n" << std::flush;
   cancel_sends();
 
   send_queue_mutex.reset();
+  std::cout << "FunHPC[" << rank() << "]: Before comm_mutex.reset()\n"
+            << std::flush;
   comm_mutex.reset();
+  std::cout << "FunHPC[" << rank() << "]: After comm_mutex.reset()\n"
+            << std::flush;
   return fres.valid() ? fres.get() : 0;
 }
 

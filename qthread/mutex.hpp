@@ -21,7 +21,11 @@ public:
   mutex() noexcept {}
   mutex(const mutex &) = delete;
   mutex(mutex &&) = delete;
-  ~mutex() { cxx_assert(!is_locked()); }
+  ~mutex() {
+    cxx_assert(!is_locked());
+    if (is_locked())
+      unlock();
+  }
   mutex &operator=(const mutex &) = delete;
   mutex &operator=(mutex &&) = delete;
   void lock() { mem.readFE(); }

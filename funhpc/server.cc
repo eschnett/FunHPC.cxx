@@ -74,7 +74,9 @@ void comm_wait() {
   if (comm_stopped()) {
     std::cout << "FunHPC[" << rank() << ": begin lock_guard(comm_mutex)\n"
               << std::flush;
-    { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
+    // { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
+    comm_mutex->lock();
+    comm_mutex->unlock();
     std::cout << "FunHPC[" << rank() << ": end lock_guard(comm_mutex)\n"
               << std::flush;
   }

@@ -43,8 +43,16 @@ bool run_main_everywhere() {
 // Enable/disable communication
 
 std::unique_ptr<qthread::mutex> comm_mutex;
-void comm_lock() { comm_mutex->lock(); }
-void comm_unlock() { comm_mutex->unlock(); }
+void comm_lock() {
+  if (size() == 1)
+    return;
+  comm_mutex->lock();
+}
+void comm_unlock() {
+  if (size() == 1)
+    return;
+  comm_mutex->unlock();
+}
 
 // MPI
 
@@ -270,8 +278,6 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   qthread::future<int> fres;
   if (detail::run_main_everywhere() || rank() == mpi_root)
     fres = qthread::async(run_main, user_main, argc, argv);
-
-  const bool is_serial = qthread::thread::hardware_concurrency() == 1;
 
   std::cout << "FunHPC[" << rank() << "]: begin eventloop\n" << std::flush;
   for (;;) {

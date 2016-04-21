@@ -42,46 +42,9 @@ bool run_main_everywhere() {
 
 // Enable/disable communication
 
-// Use a boolean as (unreliable) indicator of the mutex state. The
-// boolean must be "conservative", i.e. if the boolean indicates
-// "locked", the mutex must indeed be locked.
-std::atomic<bool> comm_mutex_locked{false};
 std::unique_ptr<qthread::mutex> comm_mutex;
-
-bool comm_stopped() { return comm_mutex_locked; }
-void comm_stop() {
-  cxx_assert(!comm_stopped());
-  std::cout << "FunHPC[" << rank() << ": begin comm_mutex->lock()\n"
-            << std::flush;
-  comm_mutex->lock();
-  std::cout << "FunHPC[" << rank() << ": end comm_mutex->lock()\n"
-            << std::flush;
-  comm_mutex_locked = true;
-  cxx_assert(comm_stopped());
-}
-void comm_restart() {
-  cxx_assert(comm_stopped());
-  comm_mutex_locked = false;
-  std::cout << "FunHPC[" << rank() << ": begin comm_mutex->unlock()\n"
-            << std::flush;
-  comm_mutex->unlock();
-  std::cout << "FunHPC[" << rank() << ": end comm_mutex->unlock()\n"
-            << std::flush;
-  cxx_assert(!comm_stopped());
-}
-
-bool comm_wait() {
-  if (!comm_stopped())
-    return false;
-  std::cout << "FunHPC[" << rank() << ": begin lock_guard(comm_mutex)\n"
-            << std::flush;
-  // { qthread::lock_guard<qthread::mutex>(*comm_mutex); }
-  comm_mutex->lock();
-  comm_mutex->unlock();
-  std::cout << "FunHPC[" << rank() << ": end lock_guard(comm_mutex)\n"
-            << std::flush;
-  return true;
-}
+void comm_lock() { comm_mutex->lock(); }
+void comm_unlock() { comm_mutex->unlock(); }
 
 // MPI
 
@@ -167,7 +130,7 @@ bool send_tasks() {
   }
 
   // Clean up all items that are finished sending
-  // TODO: Use MPI_TestAny instead
+  // TODO: Use MPI_Testsome instead
   send_reqs.erase(std::remove_if(send_reqs.begin(), send_reqs.end(),
                                  [&did_send](auto &reqp) {
                                    int flag;
@@ -310,20 +273,15 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
 
   const bool is_serial = qthread::thread::hardware_concurrency() == 1;
 
-  ptrdiff_t idle_count = 0;
   std::cout << "FunHPC[" << rank() << "]: begin eventloop\n" << std::flush;
   for (;;) {
-    bool did_wait = comm_wait();
-    bool did_send = send_tasks();
-    bool did_recv = recv_tasks();
+    comm_lock();
+    send_tasks();
+    recv_tasks();
+    comm_unlock();
     if (terminate_check(!fres.valid() || fres.ready()))
       break;
-
-    ++idle_count;
-    if (did_wait || did_send || did_recv)
-      idle_count = 0;
-    if (is_serial || idle_count >= max_idle_count)
-      qthread::this_thread::yield();
+    qthread::this_thread::yield();
   }
   std::cout << "FunHPC[" << rank() << "]: end eventloop\n" << std::flush;
   cancel_sends();

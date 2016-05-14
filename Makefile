@@ -112,6 +112,8 @@ HDRS =						\
 	adt/extra.hpp				\
 	adt/grid_decl.hpp			\
 	adt/grid_impl.hpp			\
+	adt/grid2_decl.hpp			\
+	adt/grid2_impl.hpp			\
 	adt/idtype.hpp				\
 	adt/index.hpp				\
 	adt/maxarray.hpp			\
@@ -185,6 +187,7 @@ TEST_SRCS =					\
 	adt/empty_test.cc			\
 	adt/extra_test.cc			\
 	adt/grid_test.cc			\
+	adt/grid2_test.cc			\
 	adt/idtype_test.cc			\
 	adt/index_test.cc			\
 	adt/maxarray_test.cc			\

@@ -395,6 +395,7 @@ $(GOOGLETEST_DIR)/src/gtest_main.o: $(GOOGLETEST_HEADERS)
 clean:
 	$(RM) $(HDRS:%=%.fmt) $(ALL_SRCS:%=%.fmt)
 	$(RM) $(ALL_SRCS:%.cc=%.o) $(ALL_SRCS:%.cc=%.d)
+	$(RM) libfunhpc.a
 	$(RM) selftest selftest-funhpc
 	$(RM) $(FUNHPC_EXAMPLE_SRCS:examples/%.cc=%)
 	$(RM) wave1d.tsv wave3d.tsv

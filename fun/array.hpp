@@ -1,9 +1,8 @@
 #ifndef FUN_ARRAY_HPP
 #define FUN_ARRAY_HPP
 
-#include <adt/array.hpp>
-
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
@@ -78,7 +77,8 @@ template <
     std::enable_if_t<detail::is_array<C>::value> * = nullptr,
     typename R = cxx::invoke_of_t<const F &, adt::index_t<D>, const Args &...>,
     typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(const F &f, const adt::range_t<D> &inds, const Args &... args) {
+CR iotaMapMulti(const F &f, const adt::steprange_t<D> &inds,
+                const Args &... args) {
   static_assert(D == 1, "");
   return iotaMap<C>(
       detail::array_iotaMapMulti(),

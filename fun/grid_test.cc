@@ -1,6 +1,6 @@
 #include <fun/grid_decl.hpp>
 
-#include <adt/array.hpp>
+#include <fun/array.hpp>
 #include <fun/idtype.hpp>
 #include <fun/nested_decl.hpp>
 #include <fun/shared_ptr.hpp>
@@ -29,7 +29,7 @@ TEST(fun_grid, iotaMap) {
   std::ptrdiff_t s = 10;
   auto rs = iotaMapMulti<grid3<adt::dummy>>(
       [](const auto &i) { return int(adt::sum(i)); },
-      adt::range_t<3>(adt::index_t<3>{{s, s, s}}));
+      adt::steprange_t<3>(adt::index_t<3>{{s, s, s}}));
   static_assert(std::is_same<decltype(rs), grid3<int>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
@@ -38,7 +38,7 @@ TEST(fun_grid, iotaMap) {
       [](const typename grid3<double>::index_type &i) {
         return double(adt::sum(i));
       },
-      adt::range_t<3>(adt::index_t<3>{{s, s, s}}));
+      adt::steprange_t<3>(adt::index_t<3>{{s, s, s}}));
   static_assert(std::is_same<decltype(rs1), grid3<double>>::value, "");
   EXPECT_EQ(s * s * s, rs.size());
   EXPECT_EQ(27, rs.last());
@@ -48,7 +48,7 @@ TEST(fun_grid, dump) {
   std::ptrdiff_t s = 3;
   auto rs = iotaMapMulti<grid2<adt::dummy>>(
       [](const auto &i) { return int(adt::sum(i)); },
-      adt::range_t<2>(adt::index_t<2>{{s, s}}));
+      adt::steprange_t<2>(adt::index_t<2>{{s, s}}));
   std::string str(dump(rs));
   EXPECT_EQ("grid{[[0,1,2,],[1,2,3,],[2,3,4,],],}", str);
 }
@@ -57,7 +57,7 @@ TEST(fun_grid, fmap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMapMulti<grid3<adt::dummy>>(
       [](const typename grid3<int>::index_type &x) { return int(adt::sum(x)); },
-      adt::range_t<3>(adt::index_t<3>{{s, s, s}}));
+      adt::steprange_t<3>(adt::index_t<3>{{s, s, s}}));
   EXPECT_EQ(27, xs.last());
 
   auto ys = fmap([](auto x, auto y) { return x + y; }, xs, 1);
@@ -72,7 +72,7 @@ TEST(fun_grid, boundary) {
 
   auto xs1 = iotaMapMulti<grid1<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<1>(adt::index_t<1>{{s}}));
+      adt::steprange_t<1>(adt::index_t<1>{{s}}));
   std::array<grid0<int>, 2> bxs1;
   for (std::ptrdiff_t i = 0; i < 2; ++i) {
     bxs1[i] = fun::boundary(xs1, i);
@@ -83,7 +83,7 @@ TEST(fun_grid, boundary) {
 
   auto xs2 = iotaMapMulti<grid2<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<2>(adt::index_t<2>{{s, s}}));
+      adt::steprange_t<2>(adt::index_t<2>{{s, s}}));
   std::array<grid1<int>, 4> bxs2;
   for (std::ptrdiff_t i = 0; i < 4; ++i) {
     bxs2[i] = fun::boundary(xs2, i);
@@ -104,7 +104,7 @@ TEST(fun_grid, boundaryMap) {
 
   auto xs1 = iotaMapMulti<grid1<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<1>(adt::index_t<1>{{s}}));
+      adt::steprange_t<1>(adt::index_t<1>{{s}}));
   std::array<grid0<int>, 2> bxs1;
   for (std::ptrdiff_t i = 0; i < 2; ++i) {
     bxs1[i] = fun::boundaryMap([](auto x, auto i) { return -x; }, xs1, i);
@@ -115,7 +115,7 @@ TEST(fun_grid, boundaryMap) {
 
   auto xs2 = iotaMapMulti<grid2<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<2>(adt::index_t<2>{{s, s}}));
+      adt::steprange_t<2>(adt::index_t<2>{{s, s}}));
   std::array<grid1<int>, 4> bxs2;
   for (std::ptrdiff_t i = 0; i < 4; ++i) {
     bxs2[i] = fun::boundaryMap([](auto x, auto i) { return -x; }, xs2, i);
@@ -132,7 +132,7 @@ TEST(fun_grid, fmapStencil) {
 
   auto xs0 = iotaMapMulti<grid0<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<0>(adt::index_t<0>{{}}));
+      adt::steprange_t<0>(adt::index_t<0>{{}}));
   auto ys0 = fmapStencilMulti<0>([](auto x, auto bdirs) { return 0; },
                                  [](auto x, auto i) { return x; }, xs0, ~0);
   auto sum0 = foldMap([](auto x) { return x; },
@@ -141,13 +141,13 @@ TEST(fun_grid, fmapStencil) {
 
   auto xs1 = iotaMapMulti<grid1<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<1>(adt::index_t<1>{{s}}));
+      adt::steprange_t<1>(adt::index_t<1>{{s}}));
   auto bms1 = iotaMapMulti<grid0<adt::dummy>>(
       [](const auto &x) { return int(-1 * -1); },
-      adt::range_t<0>(adt::index_t<0>{{}}));
+      adt::steprange_t<0>(adt::index_t<0>{{}}));
   auto bps1 =
       iotaMapMulti<grid0<adt::dummy>>([s](const auto &x) { return int(s * s); },
-                                      adt::range_t<0>(adt::index_t<0>{{}}));
+                                      adt::steprange_t<0>(adt::index_t<0>{{}}));
   auto ys1 = fmapStencilMulti<1>(
       [](auto x, auto bdirs, auto bm0, auto bp0) { return bm0 - 2 * x + bp0; },
       [](auto x, auto i) { return x; }, xs1, ~0, bms1, bps1);
@@ -157,13 +157,13 @@ TEST(fun_grid, fmapStencil) {
 
   auto xs2 = iotaMapMulti<grid2<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x * x)); },
-      adt::range_t<2>(adt::index_t<2>{{s, s}}));
+      adt::steprange_t<2>(adt::index_t<2>{{s, s}}));
   auto bms2 = iotaMapMulti<grid1<adt::dummy>>(
       [](const auto &x) { return int(-1 * -1 + adt::sum(x * x)); },
-      adt::range_t<1>(adt::index_t<1>{{s}}));
+      adt::steprange_t<1>(adt::index_t<1>{{s}}));
   auto bps2 = iotaMapMulti<grid1<adt::dummy>>(
       [s](const auto &x) { return int(s * s + adt::sum(x * x)); },
-      adt::range_t<1>(adt::index_t<1>{{s}}));
+      adt::steprange_t<1>(adt::index_t<1>{{s}}));
   auto ys2 = fmapStencilMulti<2>(
       [](auto x, auto bdirs, auto bm0, auto bm1, auto bp0, auto bp1) {
         return (bm0 - 2 * x + bp0) + (bm1 - 2 * x + bp1);
@@ -178,7 +178,7 @@ TEST(fun_grid, foldMap) {
   std::ptrdiff_t s = 10;
   auto xs = iotaMapMulti<grid3<adt::dummy>>(
       [](const auto &x) { return int(adt::sum(x)); },
-      adt::range_t<3>(adt::index_t<3>{{s, s, s}}));
+      adt::steprange_t<3>(adt::index_t<3>{{s, s, s}}));
   EXPECT_EQ(27, xs.last());
   auto r = foldMap([](auto x) { return x; },
                    [](auto x, auto y) { return x + y; }, 0, xs);

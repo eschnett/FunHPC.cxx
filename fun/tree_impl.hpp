@@ -4,6 +4,7 @@
 #include "tree_decl.hpp"
 
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
@@ -71,9 +72,9 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
 namespace detail {
 template <typename C> struct tree_iotaMapMulti : std::tuple<> {
   template <std::size_t D, typename F, typename... Args>
-  auto operator()(const adt::index_t<D> &i, const adt::range_t<D> &inds,
+  auto operator()(const adt::index_t<D> &i, const adt::steprange_t<D> &inds,
                   std::ptrdiff_t scale, F &&f, Args &&... args) const {
-    adt::range_t<D> sub_inds(i, adt::min(i + inds.istep() * scale, inds.imax()),
+    adt::steprange_t<D> sub_inds(i, adt::min(i + inds.istep() * scale, inds.imax()),
                              inds.istep());
     return iotaMapMulti<C>(std::forward<F>(f), sub_inds,
                            std::forward<Args>(args)...);
@@ -84,7 +85,7 @@ template <typename C> struct tree_iotaMapMulti : std::tuple<> {
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_tree<C>::value> *, typename R,
           typename CR>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   typedef typename CR::array_dummy A;
   // Empty tree: special case
   if (inds.empty())
@@ -103,7 +104,7 @@ CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
   cxx_assert(
       adt::any(adt::lt(scale, inds.shape()) &&
                adt::ge(scale * detail::max_tree_linear_size<D>, inds.shape())));
-  adt::range_t<D> branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
+  adt::steprange_t<D> branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
   return CR{CR::either_t::make_right(
       iotaMapMulti<A>(detail::tree_iotaMapMulti<C>(), branch_inds, inds, scale,
                       std::forward<F>(f), std::forward<Args>(args)...))};
@@ -125,10 +126,10 @@ template <typename C> struct tree_iotaMapMulti_branch : std::tuple<> {
   template <std::size_t D, typename F, typename... Args,
             typename R = cxx::invoke_of_t<F, adt::index_t<D>, Args...>,
             typename CR = typename fun_traits<C>::template constructor<R>>
-  auto operator()(const adt::index_t<D> &i, const adt::range_t<D> &all_inds,
+  auto operator()(const adt::index_t<D> &i, const adt::steprange_t<D> &all_inds,
                   std::ptrdiff_t scale, F &&f, Args &&... args) const {
     typedef typename CR::array_dummy A;
-    adt::range_t<D> inds(
+    adt::steprange_t<D> inds(
         i, adt::min(i + all_inds.istep() * scale, all_inds.imax()),
         all_inds.istep());
     cxx_assert(scale % detail::max_tree_linear_size<D> == 0);
@@ -137,7 +138,8 @@ template <typename C> struct tree_iotaMapMulti_branch : std::tuple<> {
       return CR{CR::either_t::make_right(
           iotaMapMulti<A>(tree_iotaMapMulti_leaf<C>(), inds, std::forward<F>(f),
                           std::forward<Args>(args)...))};
-    adt::range_t<D> branch_inds(inds.imin(), inds.imax(), inds.istep() * scale);
+    adt::steprange_t<D> branch_inds(inds.imin(), inds.imax(),
+                                    inds.istep() * scale);
     return CR{CR::either_t::make_right(
         iotaMapMulti<A>(tree_iotaMapMulti_branch<C>(), branch_inds, inds, scale,
                         std::forward<F>(f), std::forward<Args>(args)...))};
@@ -148,7 +150,7 @@ template <typename C> struct tree_iotaMapMulti_branch : std::tuple<> {
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_tree<C>::value> *, typename R,
           typename CR>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   // Empty tree: special case
   if (inds.empty())
     return mzero<C, R>();

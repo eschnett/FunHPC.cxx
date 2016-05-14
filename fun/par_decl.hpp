@@ -3,8 +3,8 @@
 
 #include <adt/par_decl.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
 

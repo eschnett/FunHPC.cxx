@@ -105,7 +105,7 @@ $(error Unknown compiler)
 endif
 
 HDRS =						\
-	adt/array.hpp				\
+	adt/arith.hpp				\
 	adt/dummy.hpp				\
 	adt/either.hpp				\
 	adt/empty.hpp				\
@@ -113,6 +113,7 @@ HDRS =						\
 	adt/grid_decl.hpp			\
 	adt/grid_impl.hpp			\
 	adt/idtype.hpp				\
+	adt/index.hpp				\
 	adt/maxarray.hpp			\
 	adt/maybe.hpp				\
 	adt/nested_decl.hpp			\
@@ -178,13 +179,14 @@ FUNHPC_SRCS =					\
 	funhpc/main.cc				\
 	funhpc/server.cc
 TEST_SRCS =					\
-	adt/array_test.cc			\
+	adt/arith_test.cc			\
 	adt/dummy_test.cc			\
 	adt/either_test.cc			\
 	adt/empty_test.cc			\
 	adt/extra_test.cc			\
 	adt/grid_test.cc			\
 	adt/idtype_test.cc			\
+	adt/index_test.cc			\
 	adt/maxarray_test.cc			\
 	adt/maybe_test.cc			\
 	adt/nested_test.cc			\

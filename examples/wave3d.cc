@@ -1,5 +1,5 @@
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/apply.hpp>
 #include <cxx/funobj.hpp>
 #include <cxx/tuple.hpp>
@@ -306,7 +306,7 @@ auto grid_init(real_t t) {
                        (fun::fmap([](int_t i) { return real_t(i); }, i) + 0.5);
                return cell_init(t, x);
              },
-             adt::range_t<dim>(parameters.ncells))};
+             adt::steprange_t<dim>(parameters.ncells))};
 }
 
 auto grid_error(const grid_t &g) {

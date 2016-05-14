@@ -3,8 +3,8 @@
 
 #include <adt/nested_decl.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
 
@@ -79,14 +79,14 @@ template <
     typename R = cxx::invoke_of_t<F &&, const adt::index_t<D> &, Args &&...>,
     typename CR = typename fun_traits<C>::template constructor<R>>
 CR iotaMapMulti(const typename CR::policy_type &policy, F &&f,
-                const adt::range_t<D> &inds, Args &&... args);
+                const adt::steprange_t<D> &inds, Args &&... args);
 
 template <
     typename C, std::size_t D, typename F, typename... Args,
     std::enable_if_t<detail::is_nested<C>::value> * = nullptr,
     typename R = cxx::invoke_of_t<F &&, const adt::index_t<D> &, Args &&...>,
     typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   return iotaMapMulti<C>(typename CR::policy_type(), std::forward<F>(f), inds,
                          std::forward<Args>(args)...);
 }

@@ -1,12 +1,14 @@
 #include <adt/grid_decl.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <fun/vector.hpp>
 
 #include <adt/grid_impl.hpp>
 
 #include <gtest/gtest.h>
+
+#include <cmath>
 
 TEST(adt_grid, basic) {
   auto g0 = adt::grid<std::vector<adt::dummy>, double, 0>();

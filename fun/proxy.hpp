@@ -3,8 +3,8 @@
 
 #include <funhpc/proxy.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
@@ -68,7 +68,7 @@ template <
     std::enable_if_t<detail::is_proxy<C>::value> * = nullptr,
     typename R = std::decay_t<cxx::invoke_of_t<F, adt::index_t<D>, Args...>>,
     typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   std::size_t s = inds.size();
   cxx_assert(inds.size() <= 1);
   if (__builtin_expect(!s, false))

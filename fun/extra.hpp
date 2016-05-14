@@ -3,9 +3,9 @@
 
 #include <adt/extra.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
 #include <adt/empty.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>

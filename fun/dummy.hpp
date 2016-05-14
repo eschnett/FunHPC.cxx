@@ -44,7 +44,8 @@ adt::dummy iotaMap(const F &f, const adt::irange_t &inds, const Args &... args);
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_dummy<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F &&, adt::index_t<D>, Args &&...>>
-adt::dummy iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args);
+adt::dummy iotaMapMulti(F &&f, const adt::steprange_t<D> &inds,
+                        Args &&... args);
 
 // fmap
 

@@ -3,8 +3,8 @@
 
 #include <adt/seq_decl.hpp>
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/apply.hpp>
 #include <cxx/invoke.hpp>
 #include <cxx/tuple.hpp>

@@ -1,8 +1,8 @@
 #ifndef FUN_FUNCTION_HPP
 #define FUN_FUNCTION_HPP
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 

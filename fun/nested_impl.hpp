@@ -3,8 +3,8 @@
 
 #include "nested_decl.hpp"
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 
@@ -225,7 +225,7 @@ CR iotaMap(const typename CR::policy_type &policy, F &&f,
 
 namespace detail {
 template <typename P, typename A, std::size_t D>
-adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
+adt::index_t<D> nested_calc_outer_shape(const adt::steprange_t<D> &inds) {
   bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
   std::ptrdiff_t min_outer = fun_traits<P>::min_size();
   std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
@@ -237,12 +237,13 @@ adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
   adt::index_t<D> ishape, oshape;
   if (size == 0) {
     // empty range, decide whether to create empty or unit outer container
-    ishape = adt::range_t<D>::zero();
-    oshape = min_outer == 0 ? adt::range_t<D>::zero() : adt::range_t<D>::one();
+    ishape = adt::steprange_t<D>::zero();
+    oshape = min_outer == 0 ? adt::steprange_t<D>::zero()
+                            : adt::steprange_t<D>::one();
   } else if (unlimited_inner || size <= max_inner) {
     // need only unit outer container, do so
     ishape = inds.shape();
-    oshape = adt::range_t<D>::one();
+    oshape = adt::steprange_t<D>::one();
   } else {
     // create outer container with multiple elements, each with a maximal inner
     // container -- we assume this is most efficient
@@ -280,7 +281,7 @@ adt::index_t<D> nested_calc_outer_shape(const adt::range_t<D> &inds) {
 }
 
 template <typename P, typename A, std::size_t D>
-adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
+adt::steprange_t<D> nested_calc_outer_range(const adt::steprange_t<D> &inds) {
   bool unlimited_outer = fun_traits<P>::max_size() == std::size_t(-1);
   std::ptrdiff_t min_outer = fun_traits<P>::min_size();
   std::ptrdiff_t max_outer = unlimited_outer ? -1 : fun_traits<P>::max_size();
@@ -290,7 +291,7 @@ adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
   adt::index_t<D> omin = inds.imin();
   adt::index_t<D> omax = osize == 0 ? inds.imin() : inds.imax();
   adt::index_t<D> ostep = adt::div_quot(adt::div_ceil(omax - omin, oshape));
-  adt::range_t<D> oinds(omin, omax, ostep);
+  adt::steprange_t<D> oinds(omin, omax, ostep);
   cxx_assert(std::ptrdiff_t(oinds.size()) >= min_outer);
   cxx_assert(unlimited_outer || std::ptrdiff_t(oinds.size()) <= max_outer);
   cxx_assert(std::ptrdiff_t(oinds.size()) == osize);
@@ -298,9 +299,9 @@ adt::range_t<D> nested_calc_outer_range(const adt::range_t<D> &inds) {
 }
 
 template <typename P, typename A, std::size_t D>
-adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
-                                        const adt::range_t<D> &oinds,
-                                        const adt::index_t<D> &i) {
+adt::steprange_t<D> nested_calc_inner_range(const adt::steprange_t<D> &inds,
+                                            const adt::steprange_t<D> &oinds,
+                                            const adt::index_t<D> &i) {
   std::ptrdiff_t min_outer = fun_traits<P>::min_size();
   bool unlimited_inner = fun_traits<A>::max_size() == std::size_t(-1);
   std::ptrdiff_t min_inner = fun_traits<A>::min_size();
@@ -309,7 +310,7 @@ adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
   adt::index_t<D> imin = i;
   adt::index_t<D> imax = adt::min(imin + oinds.istep(), inds.imax());
   adt::index_t<D> istep = inds.istep();
-  adt::range_t<D> iinds(imin, imax, istep);
+  adt::steprange_t<D> iinds(imin, imax, istep);
   cxx_assert(std::ptrdiff_t(iinds.size()) >= min_inner);
   cxx_assert(unlimited_inner || std::ptrdiff_t(iinds.size()) <= max_inner);
   if (min_outer == 0)
@@ -319,8 +320,9 @@ adt::range_t<D> nested_calc_inner_range(const adt::range_t<D> &inds,
 
 template <typename CR> struct nested_iotaMapMulti : std::tuple<> {
   template <std::size_t D, typename F, typename... Args>
-  auto operator()(const adt::index_t<D> &i, const adt::range_t<D> &inds,
-                  const adt::range_t<D> &oinds, F &&f, Args &&... args) const {
+  auto operator()(const adt::index_t<D> &i, const adt::steprange_t<D> &inds,
+                  const adt::steprange_t<D> &oinds, F &&f,
+                  Args &&... args) const {
     typedef typename CR::pointer_dummy P;
     typedef typename CR::array_dummy A;
     auto iinds = nested_calc_inner_range<P, A>(inds, oinds, i);
@@ -334,7 +336,7 @@ template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_nested<C>::value> *, typename R,
           typename CR>
 CR iotaMapMulti(const typename CR::policy_type &policy, F &&f,
-                const adt::range_t<D> &inds, Args &&... args) {
+                const adt::steprange_t<D> &inds, Args &&... args) {
   typedef typename C::pointer_dummy P;
   typedef typename C::array_dummy A;
   auto oinds = detail::nested_calc_outer_range<P, A>(inds);

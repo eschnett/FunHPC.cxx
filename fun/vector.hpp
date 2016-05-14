@@ -1,8 +1,8 @@
 #ifndef FUN_VECTOR_HPP
 #define FUN_VECTOR_HPP
 
-#include <adt/array.hpp>
 #include <adt/dummy.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
@@ -79,7 +79,7 @@ template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
           typename R = cxx::invoke_of_t<F &&, adt::index_t<D>, Args &&...>,
           typename CR = typename fun_traits<C>::template constructor<R>>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   static_assert(D == 1, "");
   return iotaMap<C>(
       detail::vector_iotaMapMulti(),

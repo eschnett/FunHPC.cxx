@@ -29,7 +29,7 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_grid<C>::value> *, typename R,
           typename CR>
-CR iotaMapMulti(F &&f, const adt::range_t<D> &inds, Args &&... args) {
+CR iotaMapMulti(F &&f, const adt::steprange_t<D> &inds, Args &&... args) {
   return CR(typename CR::iotaMapMulti(), std::forward<F>(f), inds,
             std::forward<Args>(args)...);
 }

@@ -3,7 +3,7 @@
 
 #include "grid_decl.hpp"
 
-#include <adt/array.hpp>
+#include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
@@ -333,13 +333,13 @@ public:
   struct iotaMapMulti {};
 
   template <typename F, typename... Args>
-  grid(iotaMapMulti, F &&f, const adt::range_t<D> &inds, Args &&... args)
+  grid(iotaMapMulti, F &&f, const adt::steprange_t<D> &inds, Args &&... args)
       : indexing(inds.shape()) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, index_type, Args...>, T>::value, "");
     fun::accumulator<container_constructor<T>> acc(indexing.size());
     indexing.loop([&](const index_type &i) {
-      acc[indexing.linear(i)] = cxx::invoke(f, inds[i], args...);
+      acc[indexing.linear(i)] = cxx::invoke(f, i, args...);
     });
     data = acc.finalize();
     cxx_assert(invariant());

@@ -379,7 +379,7 @@ external:
 $(GOOGLETEST_HEADERS): external
 	(cd external &&					\
 	    $(RM) $(notdir $(GOOGLETEST_URL)) &&	\
-	    curl -O $(GOOGLETEST_URL)) &&		\
+	    curl -OLv $(GOOGLETEST_URL)) &&		\
 	$(RM) -r $(GOOGLETEST_NAME) &&			\
 	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: >$@

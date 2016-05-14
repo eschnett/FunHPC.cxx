@@ -307,7 +307,7 @@ public:
   struct iotaMap {};
 
   template <typename F, typename... Args, std::size_t D2 = D,
-            typename std::enable_if_t<D2 == 0> * = nullptr>
+            std::enable_if_t<D2 == 0> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
       : indexing(index_type{{}}),
         data(fun::iotaMap<C>(std::forward<F>(f), inds,
@@ -319,7 +319,7 @@ public:
   }
 
   template <typename F, typename... Args, std::size_t D2 = D,
-            typename std::enable_if_t<D2 == 1> * = nullptr>
+            std::enable_if_t<D2 == 1> * = nullptr>
   grid(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
       : indexing(index_type{{inds.shape()}}),
         data(fun::iotaMap<C>(std::forward<F>(f), inds,

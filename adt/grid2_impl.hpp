@@ -3,11 +3,14 @@
 
 #include "grid2_decl.hpp"
 
+#include <adt/dummy.hpp>
 #include <adt/index.hpp>
 #include <cxx/cassert.hpp>
 #include <cxx/cstdlib.hpp>
 #include <cxx/invoke.hpp>
 #include <fun/fun_decl.hpp>
+
+#include <fun/fun_impl.hpp>
 
 #include <cereal/access.hpp>
 
@@ -106,17 +109,15 @@ public:
   template <typename F, typename... Args, std::size_t D1 = D,
             std::enable_if_t<D1 == 1> * = nullptr>
   grid2(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
-      : grid2(iotaMapMulti(),
+      : grid2(iotaMap(),
               [&](const index_type &ipos) {
                 return cxx::invoke(std::forward<F>(f), ipos[0],
                                    std::forward<Args>(args)...);
               },
               adt::range_t<D>(inds)) {}
 
-  struct iotaMapMulti {};
-
   template <typename F, typename... Args>
-  grid2(iotaMapMulti, F &&f, const adt::range_t<D> &inds, Args &&... args)
+  grid2(iotaMap, F &&f, const adt::range_t<D> &inds, Args &&... args)
       : space(inds) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, index_type, Args...>, T>::value, "");
@@ -128,8 +129,6 @@ public:
     data = acc.finalize();
     cxx_assert(invariant());
   }
-
-  // TODO: introduce iotaMapStencilMulti
 
   // fmap
 
@@ -177,8 +176,8 @@ public:
       : space(xs.active()) {
     static_assert(
         std::is_same<cxx::invoke_of_t<F, T1, T2, T3, Args...>, T>::value, "");
-    cxx_assert(ys.shape() == xs.shape());
-    cxx_assert(zs.shape() == xs.shape());
+    cxx_assert(ys.active() == xs.active());
+    cxx_assert(zs.active() == xs.active());
     fun::accumulator<container_type> acc(size());
     active().loop([&](const index_type &ipos) {
       acc[space.linear(ipos)] = cxx::invoke(
@@ -195,17 +194,17 @@ public:
 
   struct boundary {};
 
-  grid2(boundary, const grid2 &xs, std::ptrdiff_t i)
-      : space(xs.boundary(i)), data(xs.data) {
+  grid2(boundary, const grid2 &xs, std::ptrdiff_t f, std::ptrdiff_t d)
+      : space(xs.space.boundary(f, d)), data(xs.data) {
     cxx_assert(invariant());
   }
 
-  // fmapStencilMulti
+  // fmapStencil
 
-  struct fmapStencilMulti {};
+  struct fmapStencil {};
 
   template <typename F, typename G, typename T1, typename B, typename... Args>
-  grid2(fmapStencilMulti, F &&f, G &&g, const grid2<C, T1, D> &xs,
+  grid2(fmapStencil, F &&f, G &&g, const grid2<C, T1, D> &xs,
         const std::array<std::array<grid2<C, B, D>, D>, 2> &bss,
         Args &&... args)
       : space(xs.active()) {
@@ -237,109 +236,6 @@ public:
     data = acc.finalize();
     cxx_assert(invariant());
   }
-
-#if 0
-
-  template <typename F, typename G, typename T1, typename... Args>
-  grid2(fmapStencilMulti, F &&f, G &&g, const grid2<C, T1, 0> &xs,
-       std::size_t bmask, Args &&... args)
-      : space(xs.shape()) {
-    static_assert(D == 0, "");
-    typedef cxx::invoke_of_t<G, T1, std::ptrdiff_t> B
-        __attribute__((__unused__));
-    static_assert(
-        std::is_same<cxx::invoke_of_t<F, T1, std::size_t, Args...>, T>::value,
-        "");
-    fun::accumulator<container_constructor<T>> acc(space.size());
-    space.loop([&](const index_type &i) {
-      std::size_t bdirs = 0;
-      acc[space.linear(i)] = cxx::invoke(
-          f, fun::getIndex(xs.data, xs.space.linear(i)), bdirs, args...);
-    });
-    data = acc.finalize();
-    cxx_assert(invariant());
-  }
-
-  template <
-      typename F, typename G, typename T1, typename... Args,
-      typename BC = grid2<C, adt::dummy, 0>,
-      typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-      typename BCB = typename fun::fun_traits<BC>::template constructor<B>>
-  grid2(fmapStencilMulti, F &&f, G &&g, const grid2<C, T1, 1> &xs,
-       std::size_t bmask, const BCB &bm0, const BCB &bp0, Args &&... args)
-      : space(xs.shape()) {
-    static_assert(D == 1, "");
-    typedef cxx::invoke_of_t<F, T1, std::size_t, B, B, Args...> R;
-    static_assert(std::is_same<R, T>::value, "");
-    fun::accumulator<container_constructor<T>> acc(space.size());
-    auto di = xs.space.linear(array_dir<std::ptrdiff_t, D, 0>());
-    space.loop([&](const index_type &i) {
-      bool isbm0 = i[0] == 0;
-      bool isbp0 = i[0] == xs.space.shape()[0] - 1;
-      std::size_t bdirs = bmask & ((isbm0 << 0) | (isbp0 << 1));
-      const B &cm0 =
-          isbm0 ? fun::getIndex(bm0.data, bm0.space.linear(rmdir<0>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i - di)), 1);
-      const B &cp0 =
-          isbp0 ? fun::getIndex(bp0.data, bp0.space.linear(rmdir<0>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i + di)), 0);
-      acc[space.linear(i)] =
-          cxx::invoke(f, fun::getIndex(xs.data, xs.space.linear(i)), bdirs, cm0,
-                      cp0, args...);
-    });
-    data = acc.finalize();
-    cxx_assert(invariant());
-  }
-
-  template <
-      typename F, typename G, typename T1, typename... Args,
-      typename BC = grid2<C, adt::dummy, 1>,
-      typename B = cxx::invoke_of_t<G, T, std::ptrdiff_t>,
-      typename BCB = typename fun::fun_traits<BC>::template constructor<B>>
-  grid2(fmapStencilMulti, F &&f, G &&g, const grid2<C, T1, 2> &xs,
-       std::size_t bmask, const BCB &bm0, const BCB &bm1, const BCB &bp0,
-       const BCB &bp1, Args &&... args)
-      : space(xs.shape()) {
-    static_assert(D == 2, "");
-    typedef cxx::invoke_of_t<F, T1, std::size_t, B, B, B, B, Args...> R;
-    static_assert(std::is_same<R, T>::value, "");
-    fun::accumulator<container_constructor<T>> acc(space.size());
-    auto di0 = array_dir<std::ptrdiff_t, D, 0>();
-    auto di1 = array_dir<std::ptrdiff_t, D, 1>();
-    space.loop([&](const index_type &i) {
-      bool isbm0 = i[0] == 0;
-      bool isbm1 = i[1] == 0;
-      bool isbp0 = i[0] == xs.space.shape()[0] - 1;
-      bool isbp1 = i[1] == xs.space.shape()[1] - 1;
-      std::size_t bdirs =
-          bmask & ((isbm0 << 0) | (isbm1 << 2) | (isbp0 << 1) | (isbp1 << 3));
-      const B &cm0 =
-          isbm0 ? fun::getIndex(bm0.data, bm0.space.linear(rmdir<0>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i - di0)), 1);
-      const B &cm1 =
-          isbm1 ? fun::getIndex(bm1.data, bm1.space.linear(rmdir<1>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i - di1)), 3);
-      const B &cp0 =
-          isbp0 ? fun::getIndex(bp0.data, bp0.space.linear(rmdir<0>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i + di0)), 0);
-      const B &cp1 =
-          isbp1 ? fun::getIndex(bp1.data, bp1.space.linear(rmdir<1>(i)))
-                : cxx::invoke(
-                      g, fun::getIndex(xs.data, xs.space.linear(i + di1)), 2);
-      acc[space.linear(i)] =
-          cxx::invoke(f, fun::getIndex(xs.data, xs.space.linear(i)), bdirs, cm0,
-                      cm1, cp0, cp1, args...);
-    });
-    data = acc.finalize();
-    cxx_assert(invariant());
-  }
-
-#endif
 
   // foldMap
 

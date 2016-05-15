@@ -144,6 +144,8 @@ HDRS =						\
 	fun/fun_decl.hpp			\
 	fun/fun_impl.hpp			\
 	fun/function.hpp			\
+	fun/grid2_decl.hpp			\
+	fun/grid2_impl.hpp			\
 	fun/grid_decl.hpp			\
 	fun/grid_impl.hpp			\
 	fun/idtype.hpp				\
@@ -209,6 +211,7 @@ TEST_SRCS =					\
 	fun/extra_test.cc			\
 	fun/fun_test.cc				\
 	fun/function_test.cc			\
+	fun/grid2_test.cc			\
 	fun/grid_test.cc			\
 	fun/idtype_test.cc			\
 	fun/maxarray_test.cc			\

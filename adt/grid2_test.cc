@@ -8,288 +8,220 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
+#include <tuple>
+
+namespace {
+template <typename T, std::size_t D>
+using vgrid = adt::grid2<std::vector<adt::dummy>, T, D>;
+}
 
 TEST(adt_grid2, basic) {
-  auto g0 = adt::grid2<std::vector<adt::dummy>, double, 0>();
+  auto g0 = vgrid<double, 0>();
   EXPECT_EQ(1, g0.size());
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>();
+  auto g1 = vgrid<double, 1>();
   EXPECT_EQ(0, g1.size());
-  auto g2 = adt::grid2<std::vector<adt::dummy>, double, 2>();
+  auto g2 = vgrid<double, 2>();
   EXPECT_EQ(0, g2.size());
-  auto g3 = adt::grid2<std::vector<adt::dummy>, double, 3>();
+  auto g3 = vgrid<double, 3>();
   EXPECT_EQ(0, g3.size());
-  auto g10 = adt::grid2<std::vector<adt::dummy>, double, 10>();
+  auto g10 = vgrid<double, 10>();
   EXPECT_EQ(0, g10.size());
 }
 
 TEST(adt_grid2, iotaMap_simple) {
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::iotaMap(),
-      [](auto i) { return double(i); }, adt::irange_t(10));
+  auto g1 =
+      vgrid<double, 1>(typename vgrid<double, 1>::iotaMap(),
+                       [](auto i) { return double(i); }, adt::irange_t(10));
   EXPECT_EQ(9.0, g1.last());
 }
 
+namespace {
+template <std::size_t D> void test_iotaMap() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  EXPECT_EQ(D * double(s - 1), g.last());
+}
+}
+
 TEST(adt_grid2, iotaMap) {
-  std::ptrdiff_t s = 10;
-  auto g0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 0>(s));
-  EXPECT_EQ(0 * double(s - 1), g0.last());
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 1>(s));
-  EXPECT_EQ(1 * double(s - 1), g1.last());
-  auto g2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 2>(s));
-  EXPECT_EQ(2 * double(s - 1), g2.last());
-  auto g3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 3>(s));
-  EXPECT_EQ(3 * double(s - 1), g3.last());
-  std::ptrdiff_t s10 = 2;
-  auto g10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 10>(s10));
-  EXPECT_EQ(10 * double(s10 - 1), g10.last());
+  test_iotaMap<0>();
+  test_iotaMap<1>();
+  test_iotaMap<2>();
+  test_iotaMap<3>();
+  test_iotaMap<10>();
+}
+
+namespace {
+template <std::size_t D> void test_fmap() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  auto x = vgrid<double, D>(typename vgrid<double, D>::fmap(),
+                            [](auto x) { return 2 * x + 1; }, g);
+  EXPECT_EQ(2 * (D * double(s - 1)) + 1, x.last());
+}
 }
 
 TEST(adt_grid2, fmap) {
-  std::ptrdiff_t s = 10;
-  auto g0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 0>(s));
-  auto x0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g0);
-  EXPECT_EQ(2 * (0 * double(s - 1)) + 1, x0.last());
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 1>(s));
-  auto x1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g1);
-  EXPECT_EQ(2 * (1 * double(s - 1)) + 1, x1.last());
-  auto g2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 2>(s));
-  auto x2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g2);
-  EXPECT_EQ(2 * (2 * double(s - 1)) + 1, x2.last());
-  auto g3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 3>(s));
-  auto x3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g3);
-  EXPECT_EQ(2 * (3 * double(s - 1)) + 1, x3.last());
-  std::ptrdiff_t s10 = 2;
-  auto g10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 10>(s10));
-  auto x10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g10);
-  EXPECT_EQ(2 * (10 * double(s10 - 1)) + 1, x10.last());
+  test_fmap<0>();
+  test_fmap<1>();
+  test_fmap<2>();
+  test_fmap<3>();
+  test_fmap<10>();
+}
+
+namespace {
+template <std::size_t D> void test_fmap2() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  auto x = vgrid<double, D>(typename vgrid<double, D>::fmap(),
+                            [](auto x) { return 2 * x + 1; }, g);
+  auto y = vgrid<double, D>(typename vgrid<double, D>::fmap2(),
+                            [](auto x, auto y) { return x + y; }, g, x);
+  EXPECT_EQ(3 * (D * double(s - 1)) + 1, y.last());
+}
 }
 
 TEST(adt_grid2, fmap2) {
-  std::ptrdiff_t s = 10;
-  auto g0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 0>(s));
-  auto x0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g0);
-  auto y0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::fmap2(),
-      [](auto x, auto y) { return x + y; }, g0, x0);
-  EXPECT_EQ(3 * (0 * double(s - 1)) + 1, y0.last());
-
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 1>(s));
-  auto x1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g1);
-  auto y1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::fmap2(),
-      [](auto x, auto y) { return x + y; }, g1, x1);
-  EXPECT_EQ(3 * (1 * double(s - 1)) + 1, y1.last());
-
-  auto g2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 2>(s));
-  auto x2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g2);
-  auto y2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::fmap2(),
-      [](auto x, auto y) { return x + y; }, g2, x2);
-  EXPECT_EQ(3 * (2 * double(s - 1)) + 1, y2.last());
-
-  auto g3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 3>(s));
-  auto x3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g3);
-  auto y3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::fmap2(),
-      [](auto x, auto y) { return x + y; }, g3, x3);
-  EXPECT_EQ(3 * (3 * double(s - 1)) + 1, y3.last());
-
-  std::ptrdiff_t s10 = 2;
-  auto g10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::array_set<std::ptrdiff_t, 10>(s10));
-  auto x10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::fmap(),
-      [](auto x) { return 2 * x + 1; }, g10);
-  auto y10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::fmap2(),
-      [](auto x, auto y) { return x + y; }, g10, x10);
-  EXPECT_EQ(3 * (10 * double(s10 - 1)) + 1, y10.last());
+  test_fmap2<0>();
+  test_fmap2<1>();
+  test_fmap2<2>();
+  test_fmap2<3>();
+  test_fmap2<10>();
 }
 
-TEST(adt_grid2, fmapStencilMulti) {
-  std::ptrdiff_t s = 10;
+namespace {
+template <std::size_t D> void test_fmap3() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  auto x = vgrid<double, D>(typename vgrid<double, D>::fmap(),
+                            [](auto x) { return 2 * x + 1; }, g);
+  auto y = vgrid<double, D>(typename vgrid<double, D>::fmap2(),
+                            [](auto x, auto y) { return x + y; }, g, x);
+  auto z = vgrid<double, D>(typename vgrid<double, D>::fmap3(),
+                            [](auto x, auto y, auto z) { return x + y + z; }, g,
+                            x, y);
+  EXPECT_EQ(6 * (D * double(s - 1)) + 2, z.last());
+}
+}
 
-  typedef adt::grid2<std::vector<adt::dummy>, double, 0> grid2_0;
-  auto g0 =
-      grid2_0(typename grid2_0::iotaMapMulti(),
-              [](auto i) { return double(adt::sum(i)); }, adt::index_t<0>{});
-  auto x0 = grid2_0(typename grid2_0::fmapStencilMulti(),
-                    [](auto x, auto bs) { return 0.0; },
-                    [](auto x, auto f, auto d) {
-                      cxx_assert(false);
-                      return x;
-                    },
-                    g0, std::array<std::array<grid2_0, 0>, 2>{});
-  EXPECT_EQ(x0.size(), g0.size());
-  EXPECT_EQ(x0.active(), g0.active());
-  auto maxabs0 =
-      x0.foldMap([](auto x) { return std::fabs(x); },
-                 [](auto x, auto y) { return std::fmax(x, y); }, 0.0);
-  EXPECT_EQ(0.0, maxabs0);
+TEST(adt_grid2, fmap3) {
+  test_fmap3<0>();
+  test_fmap3<1>();
+  test_fmap3<2>();
+  test_fmap3<3>();
+  test_fmap3<10>();
+}
 
-  typedef adt::grid2<std::vector<adt::dummy>, double, 1> grid2_1;
-  auto g1 =
-      grid2_1(typename grid2_1::iotaMapMulti(),
-              [](auto i) { return double(adt::sum(i)); }, adt::index_t<1>{s});
-  auto bm1 = grid2_1(typename grid2_1::iotaMapMulti(),
-                     [](auto i) { return double(adt::sum(i)); },
-                     adt::range_t<1>(adt::index_t<1>{-1}, adt::index_t<1>{0}));
-  auto bp1 =
-      grid2_1(typename grid2_1::iotaMapMulti(),
-              [](auto i) { return double(adt::sum(i)); },
-              adt::range_t<1>(adt::index_t<1>{s}, adt::index_t<1>{s + 1}));
-  auto x1 =
-      grid2_1(typename grid2_1::fmapStencilMulti(),
-              [](auto x, auto bs) { return bs[0][0] - 2.0 * x + bs[1][0]; },
-              [](auto x, auto f, auto d) { return x; }, g1,
-              std::array<std::array<grid2_1, 1>, 2>{bm1, bp1});
-  EXPECT_EQ(x1.size(), g1.size());
-  EXPECT_EQ(x1.active(), g1.active());
-  auto maxabs1 =
-      x1.foldMap([](auto x) { return std::fabs(x); },
-                 [](auto x, auto y) { return std::fmax(x, y); }, 0.0);
-  EXPECT_EQ(0.0, maxabs1);
+namespace {
+template <std::size_t D> void test_boundary() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  for (int f = 0; f < 2; ++f) {
+    for (int d = 0; d < int(D); ++d) {
+      auto bs =
+          vgrid<double, D>(typename vgrid<double, D>::boundary(), g, f, d);
+      EXPECT_EQ(std::pow(s, D - 1), bs.size());
+      if (f == 0) {
+        EXPECT_EQ(0, bs.head());
+        EXPECT_EQ((D - 1) * (s - 1), bs.last());
+      } else {
+        EXPECT_EQ(s - 1, bs.head());
+        EXPECT_EQ(D * (s - 1), bs.last());
+      }
+    }
+  }
+}
+}
 
-  typedef adt::grid2<std::vector<adt::dummy>, double, 2> grid2_2;
-  auto g2 = grid2_2(typename grid2_2::iotaMapMulti(),
-                    [](auto i) { return double(adt::sum(i)); },
-                    adt::index_t<2>{s, s});
-  auto bm2_0 =
-      grid2_2(typename grid2_2::iotaMapMulti(),
-              [](auto i) { return double(adt::sum(i)); },
-              adt::range_t<2>(adt::index_t<2>{-1, 0}, adt::index_t<2>{0, s}));
-  auto bm2_1 =
-      grid2_2(typename grid2_2::iotaMapMulti(),
-              [](auto i) { return double(adt::sum(i)); },
-              adt::range_t<2>(adt::index_t<2>{0, -1}, adt::index_t<2>{s, 0}));
-  auto bp2_0 = grid2_2(
-      typename grid2_2::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::range_t<2>(adt::index_t<2>{s, 0}, adt::index_t<2>{s + 1, s}));
-  auto bp2_1 = grid2_2(
-      typename grid2_2::iotaMapMulti(),
-      [](auto i) { return double(adt::sum(i)); },
-      adt::range_t<2>(adt::index_t<2>{0, s}, adt::index_t<2>{s, s + 1}));
-  auto x2 = grid2_2(
-      typename grid2_2::fmapStencilMulti(),
-      [](auto x, auto bs) {
-        return (bs[0][0] - 2.0 * x + bs[1][0]) +
-               (bs[0][1] - 2.0 * x + bs[1][1]);
-      },
-      [](auto x, auto f, auto d) { return x; }, g2,
-      std::array<std::array<grid2_2, 2>, 2>{bm2_0, bm2_1, bp2_0, bp2_1});
-  EXPECT_EQ(x2.size(), g2.size());
-  EXPECT_EQ(x2.active(), g2.active());
-  auto maxabs2 =
-      x2.foldMap([](auto x) { return std::fabs(x); },
-                 [](auto x, auto y) { return std::fmax(x, y); }, 0.0);
-  EXPECT_EQ(0.0, maxabs2);
+TEST(adt_grid2, boundary) {
+  test_boundary<1>();
+  test_boundary<2>();
+  test_boundary<3>();
+  test_boundary<10>();
+}
+
+namespace {
+template <std::size_t D> void test_fmapStencil() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto i) { return double(adt::sum(i)); },
+                            adt::set<adt::index_t<D>>(s));
+  std::array<std::array<vgrid<double, D>, D>, 2> bss;
+  for (int f = 0; f < 2; ++f) {
+    for (int d = 0; d < int(D); ++d) {
+      auto bmin = adt::set<adt::index_t<D>>(0);
+      auto bmax = adt::set<adt::index_t<D>>(s);
+      if (f == 0) {
+        bmin[d] = -1;
+        bmax[d] = 0;
+      } else {
+        bmin[d] = s;
+        bmax[d] = s + 1;
+      }
+      bss[f][d] = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                                   [](auto i) { return double(adt::sum(i)); },
+                                   adt::range_t<D>(bmin, bmax));
+    }
+  }
+  auto x = vgrid<double, D>(typename vgrid<double, D>::fmapStencil(),
+                            [](auto x, auto bs) {
+                              auto r = x;
+                              r = 0;
+                              for (int d = 0; d < int(D); ++d)
+                                r += bs[0][d] - 2 * x + bs[1][d];
+                              return r;
+                            },
+                            [](auto x, auto f, auto d) { return x; }, g, bss);
+  EXPECT_EQ(x.size(), g.size());
+  EXPECT_EQ(x.active(), g.active());
+  double maxabs = 0.0;
+  vgrid<std::tuple<>, D>(typename vgrid<std::tuple<>, D>::fmap(),
+                         [&](auto x) {
+                           maxabs = std::fmax(maxabs, std::fabs(x));
+                           return std::tuple<>();
+                         },
+                         x);
+  EXPECT_EQ(0.0, maxabs);
+}
+}
+
+TEST(adt_grid2, fmapStencil) {
+  test_fmapStencil<0>();
+  test_fmapStencil<1>();
+  test_fmapStencil<2>();
+  test_fmapStencil<3>();
+  test_fmapStencil<10>();
+}
+
+namespace {
+template <std::size_t D> void test_foldMap() {
+  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
+  auto g = vgrid<double, D>(typename vgrid<double, D>::iotaMap(),
+                            [](auto x) { return double(adt::sum(x)); },
+                            adt::set<adt::index_t<D>>(s));
+  auto r = g.foldMap([](auto x) { return x; },
+                     [](auto x, auto y) { return x + y; }, 0.0);
+  EXPECT_TRUE((std::is_same<decltype(r), double>::value));
+  EXPECT_EQ(D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
+}
 }
 
 TEST(adt_grid2, foldMap) {
-  std::ptrdiff_t s = 10;
-  auto g0 = adt::grid2<std::vector<adt::dummy>, double, 0>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 0>::iotaMapMulti(),
-      [](auto x) { return double(adt::sum(x)); },
-      adt::array_set<std::ptrdiff_t, 0>(s));
-  auto r0 = g0.foldMap([](auto x) { return x; },
-                       [](auto x, auto y) { return x + y; }, 0.0);
-  EXPECT_TRUE((std::is_same<decltype(r0), double>::value));
-  EXPECT_EQ(0.0, r0);
-  auto g1 = adt::grid2<std::vector<adt::dummy>, double, 1>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 1>::iotaMapMulti(),
-      [](auto x) { return double(adt::sum(x)); },
-      adt::array_set<std::ptrdiff_t, 1>(s));
-  auto r1 = g1.foldMap([](auto x) { return x; },
-                       [](auto x, auto y) { return x + y; }, 0.0);
-  EXPECT_TRUE((std::is_same<decltype(r1), double>::value));
-  EXPECT_EQ(45.0, r1);
-  auto g2 = adt::grid2<std::vector<adt::dummy>, double, 2>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 2>::iotaMapMulti(),
-      [](auto x) { return double(adt::sum(x)); },
-      adt::array_set<std::ptrdiff_t, 2>(s));
-  auto r2 = g2.foldMap([](auto x) { return x; },
-                       [](auto x, auto y) { return x + y; }, 0.0);
-  EXPECT_TRUE((std::is_same<decltype(r2), double>::value));
-  EXPECT_EQ(900.0, r2);
-  auto g3 = adt::grid2<std::vector<adt::dummy>, double, 3>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 3>::iotaMapMulti(),
-      [](auto x) { return double(adt::sum(x)); },
-      adt::array_set<std::ptrdiff_t, 3>(s));
-  auto r3 = g3.foldMap([](auto x) { return x; },
-                       [](auto x, auto y) { return x + y; }, 0.0);
-  EXPECT_TRUE((std::is_same<decltype(r3), double>::value));
-  EXPECT_EQ(13500.0, r3);
-  std::ptrdiff_t s10 = 2;
-  auto g10 = adt::grid2<std::vector<adt::dummy>, double, 10>(
-      typename adt::grid2<std::vector<adt::dummy>, double, 10>::iotaMapMulti(),
-      [](auto x) { return double(adt::sum(x)); },
-      adt::array_set<std::ptrdiff_t, 10>(s10));
-  auto r10 = g10.foldMap([](auto x) { return x; },
-                         [](auto x, auto y) { return x + y; }, 0.0);
-  EXPECT_TRUE((std::is_same<decltype(r10), double>::value));
-  EXPECT_EQ(5120.0, r10);
+  test_foldMap<0>();
+  test_foldMap<1>();
+  test_foldMap<2>();
+  test_foldMap<3>();
+  test_foldMap<10>();
 }

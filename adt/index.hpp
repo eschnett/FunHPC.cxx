@@ -80,7 +80,7 @@ public:
                    bool outer = false) const {
     cxx_assert(!empty());
     cxx_assert(f >= 0 && f < 2);
-    cxx_assert(d >= 0 && d < int(D));
+    cxx_assert(d >= 0 && d < std::ptrdiff_t(D));
     range_t bnd(*this);
     if (f == 0) {
       if (outer)
@@ -221,7 +221,7 @@ public:
                    bool outer = false) const {
     cxx_assert(!empty());
     cxx_assert(f >= 0 && f < 2);
-    cxx_assert(d >= 0 && d < D);
+    cxx_assert(d >= 0 && d < std::ptrdiff_t(D));
     space_t bnd(*this);
     bnd.active_ = bnd.active_.boundary(f, d, outer);
     return bnd;

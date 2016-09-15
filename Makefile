@@ -58,7 +58,7 @@ LIBS =						\
 	$(QTHREADS_LIBS)			\
 	$(JEMALLOC_LIBS)
 
-ifneq ($(shell $(CXX) --version | head -n 1 | grep 'clang'), )
+ifneq ($(shell $(CXX) --version | head -n 1 | grep 'LLVM\|clang'), )
 
 # Try: -fsanitize=address,memory,thread,undefined,vptr
 # Cannot have: -fsanitize=alignment,integer,null
@@ -95,7 +95,7 @@ CXXFLAGS +=					\
 	$(OPTFLAGS)
 # -march=native
 
-else ifneq ($(shell $(CXX) --version | head -n 1 | grep 'g++'), )
+else ifneq ($(shell $(CXX) --version | head -n 1 | grep 'GCC\|g++'), )
 
 # DEBUGFLAGS =					\
 	-D_GLIBCXX_DEBUG			\

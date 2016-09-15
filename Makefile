@@ -1,43 +1,64 @@
 # Makefile for FunHPC
 
-# pushd /Users/eschnett/software && source cereal-1.1.2/env.sh && source hwloc-1.11.1/env.sh && source jemalloc-4.0.4/env.sh && source llvm-3.7.0/env.sh && source openmpi-v2.x-dev-684-g17714ad/env.sh && source qthreads-1.10/env.sh && popd && make
+# Cereal
+CEREAL_DIR = /usr
+CEREAL_CXXFLAGS = -I$(CEREAL_DIR)/include -DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION
+CEREAL_LDFLAGS =
+CEREAL_LIBS =
 
-GOOGLETEST_NAME     = gtest-1.7.0
-GOOGLETEST_URL      = https://googletest.googlecode.com/files/gtest-1.7.0.zip
-GOOGLETEST_DIR      = $(abspath ./$(GOOGLETEST_NAME))
-GOOGLETEST_HEADERS  = external/gtest.headers
-GOOGLETEST_INCDIRS  = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
-GOOGLETEST_LIBDIRS  = $(GOOGLETEST_DIR)/src
-GOOGLETEST_OBJS     = $(GOOGLETEST_DIR)/src/gtest-all.o
+# hwloc
+HWLOC_DIR = /usr
+HWLOC_CXXFLAGS = -I$(HWLOC_DIR)/include
+HWLOC_LDFLAGS = -L$(HWLOC_DIR)/lib
+HWLOC_LIBS = -lhwloc
+
+# jemalloc
+JEMALLOC_DIR = /usr
+JEMALLOC_CXXFLAGS = -I$(JEMALLOC_DIR)/include
+JEMALLOC_LDFLAGS = -L$(JEMALLOC_DIR)/lib
+JEMALLOC_LIBS = -ljemalloc   # this must be listed last
+
+# Qthreads
+QTHREADS_DIR = /usr
+QTHREADS_CXXFLAGS = -I$(QTHREADS_DIR)/include
+QTHREADS_LDFLAGS = -L$(QTHREADS_DIR)/lib
+QTHREADS_LIBS = -lqthread
+
+# Google Test
+GOOGLETEST_NAME = googletest-release-1.8.0
+GOOGLETEST_URL = https://github.com/google/googletest/archive/release-1.8.0.tar.gz
+GOOGLETEST_DIR = $(abspath ./$(GOOGLETEST_NAME))/googletest
+GOOGLETEST_HEADERS = external/gtest.headers
+GOOGLETEST_INCDIRS = $(GOOGLETEST_DIR)/include $(GOOGLETEST_DIR)
+GOOGLETEST_LIBDIRS = $(GOOGLETEST_DIR)/src
+GOOGLETEST_OBJS = $(GOOGLETEST_DIR)/src/gtest-all.o
 GOOGLETEST_MAIN_OBJ = $(GOOGLETEST_DIR)/src/gtest_main.o
 
 INCDIRS = . $(GOOGLETEST_INCDIRS)
 LIBDIRS = $(GOOGLETEST_LIBDIRS)
 
-CXXFLAGS =						\
-	$(INCDIRS:%=-I%)				\
-	$(GOOGLETEST_CXXFLAGS)				\
-	$(SIMFACTORY_CEREAL_CXXFLAGS)			\
-	-DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION	\
-	$(SIMFACTORY_HWLOC_CXXFLAGS)			\
-	$(SIMFACTORY_JEMALLOC_CXXFLAGS)			\
-	$(SIMFACTORY_QTHREADS_CXXFLAGS)
+CXXFLAGS =					\
+	$(INCDIRS:%=-I%)			\
+	$(GOOGLETEST_CXXFLAGS)			\
+	$(CEREAL_CXXFLAGS)			\
+	$(HWLOC_CXXFLAGS)			\
+	$(JEMALLOC_CXXFLAGS)			\
+	$(QTHREADS_CXXFLAGS)
 LDFLAGS =						\
 	$(LIBDIRS:%=-L%) $(LIBDIRS:%=-Wl,-rpath,%)	\
 	$(GOOGLETEST_LDFLAGS)				\
-	$(SIMFACTORY_CEREAL_LDFLAGS)			\
-	$(SIMFACTORY_HWLOC_LDFLAGS)			\
-	$(SIMFACTORY_JEMALLOC_LDFLAGS)			\
-	$(SIMFACTORY_QTHREADS_LDFLAGS)
+	$(CEREAL_LDFLAGS)				\
+	$(HWLOC_LDFLAGS)				\
+	$(JEMALLOC_LDFLAGS)				\
+	$(QTHREADS_LDFLAGS)
 LIBS =						\
 	$(GOOGLETEST_LIBS)			\
-	$(SIMFACTORY_CEREAL_LIBS)		\
-	$(SIMFACTORY_HWLOC_LIBS)		\
-	$(SIMFACTORY_JEMALLOC_LIBS)		\
-	$(SIMFACTORY_QTHREADS_LIBS)		\
-	$(SIMFACTORY_JEMALLOC_LIBS)
+	$(CEREAL_LIBS)				\
+	$(HWLOC_LIBS)				\
+	$(QTHREADS_LIBS)			\
+	$(JEMALLOC_LIBS)
 
-ifneq ($(SIMFACTORY_LLVM_DIR), )
+ifneq ($(shell $(CXX) --version | head -n 1 | grep 'clang'), )
 
 # Try: -fsanitize=address,memory,thread,undefined,vptr
 # Cannot have: -fsanitize=alignment,integer,null
@@ -74,7 +95,7 @@ CXXFLAGS +=					\
 	$(OPTFLAGS)
 # -march=native
 
-else ifneq ($(SIMFACTORY_GCC_DIR), )
+else ifneq ($(shell $(CXX) --version | head -n 1 | grep 'g++'), )
 
 # DEBUGFLAGS =					\
 	-D_GLIBCXX_DEBUG			\
@@ -299,10 +320,10 @@ libfunhpc.a: $(SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
 # These two can be overridden on the command line
 NPROCS := 1
 NSHEPHERDS :=							\
-	$(or $(shell $(SIMFACTORY_HWLOC_DIR)/bin/hwloc-info |	\
+	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ NUMANode / { print $$3; }'), 1)
 NTHREADS :=							\
-	$(or $(shell $(SIMFACTORY_HWLOC_DIR)/bin/hwloc-info |	\
+	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ PU / { print $$3; }'), 1)
 NSHEPHERDS_PER_PROC :=							\
 	$(shell echo $$((($(NSHEPHERDS) + $(NPROCS) - 1) / $(NPROCS))))
@@ -387,7 +408,7 @@ $(GOOGLETEST_HEADERS): external
 	    $(RM) $(notdir $(GOOGLETEST_URL)) &&	\
 	    curl -OLv $(GOOGLETEST_URL)) &&		\
 	$(RM) -r $(GOOGLETEST_NAME) &&			\
-	unzip external/$(notdir $(GOOGLETEST_URL)) &&	\
+	tar xzf external/$(notdir $(GOOGLETEST_URL)) &&	\
 	: >$@
 $(GOOGLETEST_DIR)/src/gtest-all.o: $(GOOGLETEST_HEADERS)
 	cd $(GOOGLETEST_DIR)/src &&		\

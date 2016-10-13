@@ -16,9 +16,11 @@
 namespace funhpc {
 
 namespace {
-int envtoi(const char *var) {
+int envtoi(const char *var, const char *defaultvalue = nullptr) {
   assert(var);
-  char *str = std::getenv(var);
+  const char *str = std::getenv(var);
+  if (!str)
+    str = defaultvalue;
   if (!str) {
     std::cerr << "FunHPC[" << rank() << "]: Could not getenv(\"" << var
               << "\")\n";
@@ -214,6 +216,10 @@ std::vector<cpu_info_t> cpu_infos;
 
 // This routine is called on each process
 void hwloc_set_affinity() {
+  bool set_thread_bindings = envtoi("FUNHPC_SET_THREAD_BINDINGS", "1");
+  if (!set_thread_bindings)
+    return;
+
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
   assert(!ierr);

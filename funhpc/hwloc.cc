@@ -185,10 +185,11 @@ struct cpu_info_t {
   }
 };
 
-cpu_info_t manage_affinity(const hwloc_topology_t topology) {
+cpu_info_t manage_affinity(const hwloc_topology_t topology,
+                           bool do_set_affinity) {
   const thread_layout tl;
   const thread_affinity ta(topology, tl);
-  const auto set_msg = set_affinity(topology, ta);
+  const auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
   const auto get_msg = get_affinity(topology);
 
   // Busy-wait some time to prevent other threads from being scheduled
@@ -217,8 +218,6 @@ std::vector<cpu_info_t> cpu_infos;
 // This routine is called on each process
 void hwloc_set_affinity() {
   bool set_thread_bindings = envtoi("FUNHPC_SET_THREAD_BINDINGS", "1");
-  if (!set_thread_bindings)
-    return;
 
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
@@ -238,7 +237,7 @@ void hwloc_set_affinity() {
 
     std::vector<qthread::future<hwloc::cpu_info_t>> fs(nsubmit);
     for (auto &f : fs)
-      f = qthread::async(hwloc::manage_affinity, topology);
+      f = qthread::async(hwloc::manage_affinity, topology, set_thread_bindings);
 
     for (auto &info : infos)
       info = {};

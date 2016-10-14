@@ -97,8 +97,8 @@ struct thread_affinity {
                                thread_pu + thread_npus <= node_npus);
   }
 
-  thread_affinity(const hwloc_topology_t topology, const thread_layout &tl) {
-    const int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
+  thread_affinity(hwloc_topology_t topology, const thread_layout &tl) {
+    int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
     assert(pu_depth >= 0);
 
     node_npus = hwloc_get_nbobjs_by_depth(topology, pu_depth);
@@ -119,15 +119,13 @@ struct thread_affinity {
   }
 };
 
-std::string set_affinity(const hwloc_topology_t topology,
-                         const thread_affinity &ta) {
+std::string set_affinity(hwloc_topology_t topology, const thread_affinity &ta) {
   // Note: Even when undersubscribing we are binding the thread to a single PU
-  const int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
+  int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
   assert(pu_depth >= 0);
-  const hwloc_obj_t pu_obj =
-      hwloc_get_obj_by_depth(topology, pu_depth, ta.thread_pu);
+  hwloc_obj_t pu_obj = hwloc_get_obj_by_depth(topology, pu_depth, ta.thread_pu);
   assert(pu_obj);
-  const hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
+  hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
 
   int ierr = hwloc_set_cpubind(topology, cpuset,
                                HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
@@ -140,8 +138,8 @@ std::string set_affinity(const hwloc_topology_t topology,
   return {};
 }
 
-std::string get_affinity(const hwloc_topology_t topology) {
-  const hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+std::string get_affinity(hwloc_topology_t topology) {
+  hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
   assert(cpuset);
   int ierr = hwloc_get_cpubind(topology, cpuset, HWLOC_CPUBIND_THREAD);
   if (ierr) {
@@ -185,12 +183,11 @@ struct cpu_info_t {
   }
 };
 
-cpu_info_t manage_affinity(const hwloc_topology_t topology,
-                           bool do_set_affinity) {
-  const thread_layout tl;
-  const thread_affinity ta(topology, tl);
-  const auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
-  const auto get_msg = get_affinity(topology);
+cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
+  thread_layout tl;
+  thread_affinity ta(topology, tl);
+  auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
+  auto get_msg = get_affinity(topology);
 
   // Busy-wait some time to prevent other threads from being scheduled
   // on the same core
@@ -218,6 +215,8 @@ std::vector<cpu_info_t> cpu_infos;
 // This routine is called on each process
 void hwloc_set_affinity() {
   bool set_thread_bindings = envtoi("FUNHPC_SET_THREAD_BINDINGS", "1");
+  if (!set_thread_bindings)
+    return;
 
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
@@ -263,7 +262,9 @@ void hwloc_set_affinity() {
   hwloc_topology_destroy(topology);
 }
 
-int hwloc_num_local_ranks() { return hwloc::cpu_infos.at(0).nprocs; }
+#warning "TODO"
+// int hwloc_get_local_size() { return hwloc::cpu_infos.at(0).nprocs; }
+int hwloc_get_local_size() { return envtoi("OMPI_COMM_WORLD_LOCAL_SIZE"); }
 
 std::string hwloc_get_cpu_infos() {
   std::ostringstream os;

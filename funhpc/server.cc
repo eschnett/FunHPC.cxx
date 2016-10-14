@@ -249,21 +249,36 @@ void initialize(int &argc, char **&argv) {
 }
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
-  std::cout << "FunHPC[" << rank() << "]: " << size() << " processes, "
-            << hwloc_num_local_ranks() << " local processes, "
-            << qthread::thread::hardware_concurrency() << " threads\n";
-  auto nprocs = hwloc_num_local_ranks();
-  for (int p = 0; p < nprocs; ++p)
-    std::cout << hwloc_get_cpu_infos();
+  {
+    std::ostringstream buf;
+    buf << "FunHPC[" << rank() << "]: " << size() << " processes, "
+        << hwloc_get_local_size() << " local processes, "
+        << qthread::thread::hardware_concurrency() << " threads\n";
+    std::cout << buf.str();
+  }
+  auto nprocs = hwloc_get_local_size();
+  {
+    std::ostringstream buf;
+    for (int p = 0; p < nprocs; ++p)
+      buf << hwloc_get_cpu_infos();
+    std::cout << buf.str();
+  }
 
-  std::cout << "FunHPC[" << rank() << "]: begin main\n" << std::flush;
+  {
+    std::ostringstream buf;
+    buf << "FunHPC[" << rank() << "]: begin main\n";
+    std::cout << buf.str() << std::flush;
+  }
   auto start_time = detail::gettime();
   int res = user_main(argc, argv);
   auto end_time = detail::gettime();
   auto run_time = end_time - start_time;
-  std::cout << "FunHPC[" << rank()
-            << "]: end main; total execution time: " << run_time << " sec\n"
-            << std::flush;
+  {
+    std::ostringstream buf;
+    buf << "FunHPC[" << rank()
+        << "]: end main; total execution time: " << run_time << " sec\n";
+    std::cout << buf.str() << std::flush;
+  }
 
   return res;
 }

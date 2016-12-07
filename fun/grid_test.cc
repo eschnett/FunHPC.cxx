@@ -149,7 +149,9 @@ TEST(fun_grid, fmapStencil) {
       iotaMapMulti<grid0<adt::dummy>>([s](const auto &x) { return int(s * s); },
                                       adt::steprange_t<0>(adt::index_t<0>{{}}));
   auto ys1 = fmapStencilMulti<1>(
-      [](auto x, auto bdirs, auto bm0, auto bp0) { return bm0 - 2 * x + bp0; },
+      // [](auto x, auto bdirs, auto bm0, auto bp0) { return bm0 - 2 * x + bp0;
+      // },
+      [](auto x, auto bdirs, int bm0, int bp0) { return bm0 - 2 * x + bp0; },
       [](auto x, auto i) { return x; }, xs1, ~0, bms1, bps1);
   auto sum1 = foldMap([](auto x) { return x; },
                       [](auto x, auto y) { return x + y; }, 0, ys1);
@@ -165,7 +167,10 @@ TEST(fun_grid, fmapStencil) {
       [s](const auto &x) { return int(s * s + adt::sum(x * x)); },
       adt::steprange_t<1>(adt::index_t<1>{{s}}));
   auto ys2 = fmapStencilMulti<2>(
-      [](auto x, auto bdirs, auto bm0, auto bm1, auto bp0, auto bp1) {
+      // [](auto x, auto bdirs, auto bm0, auto bm1, auto bp0, auto bp1) {
+      //   return (bm0 - 2 * x + bp0) + (bm1 - 2 * x + bp1);
+      // },
+      [](auto x, auto bdirs, int bm0, int bm1, int bp0, int bp1) {
         return (bm0 - 2 * x + bp0) + (bm1 - 2 * x + bp1);
       },
       [](auto x, auto i) { return x; }, xs2, ~0, bms2, bms2, bps2, bps2);

@@ -141,8 +141,9 @@ public:
   index_type offset() const {
     index_type r;
     for (std::size_t d = 0; d < D; ++d)
-      r[d] = stride(d) == 0 || stride(d + 1) == 0 ? 0 : (m_offset / stride(d)) %
-                                                            stride(d + 1);
+      r[d] = stride(d) == 0 || stride(d + 1) == 0
+                 ? 0
+                 : (m_offset / stride(d)) % stride(d + 1);
     return r;
   }
   index_type allocated() const {

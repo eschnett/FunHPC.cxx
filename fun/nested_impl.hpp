@@ -626,12 +626,24 @@ struct nested_getIndex : std::tuple<> {
 }
 
 template <typename P, typename A, typename T, typename Policy>
-decltype(auto) getIndex(const adt::nested<P, A, T, Policy> &xs,
-                        std::ptrdiff_t i) {
+// Cannot use decltype(auto) here, since we call mextract on a temporary
+auto getIndex(const adt::nested<P, A, T, Policy> &xs, std::ptrdiff_t i) {
   // TODO: Can't just use mextract, container may be larger
   cxx_assert(msize(xs.data) <= 1);
   return mextract(fmap(detail::nested_getIndex(), xs.data, i));
 }
+
+template <typename P, typename A, typename T, typename Policy>
+class accumulator<adt::nested<P, A, T, Policy>> {
+  typedef adt::nested<P, A, T, Policy> CT;
+  typedef typename fun_traits<A>::template constructor<T> AT;
+  accumulator<AT> data;
+
+public:
+  accumulator(std::ptrdiff_t n) : data(n) {}
+  T &operator[](std::ptrdiff_t i) { return data[i]; }
+  auto finalize() -> CT;
+};
 
 template <typename P, typename A, typename T, typename Policy>
 auto accumulator<adt::nested<P, A, T, Policy>>::finalize() -> CT {

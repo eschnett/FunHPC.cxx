@@ -192,21 +192,11 @@ BCR boundaryMap(F &&f, const adt::nested<P, A, T, Policy> &xs, std::ptrdiff_t i,
 // indexing
 
 template <typename P, typename A, typename T, typename Policy>
-decltype(auto) getIndex(const adt::nested<P, A, T, Policy> &xs,
-                        std::ptrdiff_t i);
+auto getIndex(const adt::nested<P, A, T, Policy> &xs, std::ptrdiff_t i);
 
 template <typename> class accumulator;
 template <typename P, typename A, typename T, typename Policy>
-class accumulator<adt::nested<P, A, T, Policy>> {
-  typedef adt::nested<P, A, T, Policy> CT;
-  typedef typename fun_traits<CT>::template constructor<T> AT;
-  accumulator<AT> data;
-
-public:
-  accumulator(std::ptrdiff_t n) : data(n) {}
-  T &operator[](std::ptrdiff_t i) { return data[i]; }
-  auto finalize() -> CT;
-};
+class accumulator<adt::nested<P, A, T, Policy>>;
 
 // foldMap
 

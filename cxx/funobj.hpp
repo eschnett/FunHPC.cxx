@@ -18,8 +18,9 @@ template <typename T, T F> struct funobj_impl {
                 "");
   typedef T type;
   static constexpr T value = F;
-  template <typename... Args>
-  constexpr decltype(auto) operator()(Args &&... args) const {
+  // Cannot use auto -- need to help SFINAE
+  template <typename... Args, typename R = cxx::invoke_of_t<T, Args &&...>>
+  constexpr R operator()(Args &&... args) const {
     return cxx::invoke(value, std::forward<Args>(args)...);
   }
 };

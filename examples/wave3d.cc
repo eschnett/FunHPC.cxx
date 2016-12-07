@@ -258,7 +258,9 @@ using proxy_grid_tree =
     adt::nested<adt::tree<proxy_grid<adt::dummy>, adt::dummy>,
                 proxy_grid<adt::dummy>, T>;
 
-// template <typename T> using storage_t = maxarray_grid<T>;
+// TOOD: Correct handling of boundaries (?) for adt::nested to make
+// the other storage types work
+template <typename T> using storage_t = maxarray_grid<T>;
 
 // template <typename T> using storage_t = shared_grid<T>;
 // template <typename T> using storage_t = future_grid<T>;
@@ -270,7 +272,7 @@ using proxy_grid_tree =
 
 // template <typename T> using storage_t = shared_grid_tree<T>;
 // template <typename T> using storage_t = future_grid_tree<T>;
-template <typename T> using storage_t = proxy_grid_tree<T>;
+// template <typename T> using storage_t = proxy_grid_tree<T>;
 
 typedef typename fun::fun_traits<storage_t<adt::dummy>>::boundary_dummy
     boundary_dummy;
@@ -343,14 +345,28 @@ auto grid_rhs(const grid_t &g) {
     bps[d] = grid_boundary(g, 2 * d + 1);
   }
   auto bs = std::tuple_cat(std::move(bms), std::move(bps));
+  std::size_t bmask = ~0;
 
+  // return grid_t{1.0,
+  //               wrap_fmapStencil( // CXX_FUNOBJ((cell_rhs_t)cell_rhs),
+  //                   // CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &>),
+  //                   CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &,
+  //                                       const cell_t &, const cell_t &>),
+  //                   CXX_FUNOBJ(cell_get_face), g.cells, std::move(bs),
+  //                   std::make_index_sequence<2 * dim>())};
+  // static_assert(dim == 1, "");
+  // return grid_t{1.0, fun::fmapStencilMulti<dim>(
+  //                        CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t
+  //                        &>),
+  //                        CXX_FUNOBJ(cell_get_face), g.cells, bmask,
+  //                        std::get<0>(bs), std::get<1>(bs))};
+  static_assert(dim == 2, "");
   return grid_t{1.0,
-                wrap_fmapStencil( // CXX_FUNOBJ((cell_rhs_t)cell_rhs),
-                    // CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &>),
+                fun::fmapStencilMulti<dim>(
                     CXX_FUNOBJ(cell_rhs<const cell_t &, const cell_t &,
                                         const cell_t &, const cell_t &>),
-                    CXX_FUNOBJ(cell_get_face), g.cells, std::move(bs),
-                    std::make_index_sequence<2 * dim>())};
+                    CXX_FUNOBJ(cell_get_face), g.cells, bmask, std::get<0>(bs),
+                    std::get<1>(bs), std::get<2>(bs), std::get<3>(bs))};
 }
 
 // State

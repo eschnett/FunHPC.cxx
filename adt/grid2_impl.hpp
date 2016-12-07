@@ -93,10 +93,10 @@ public:
 
   // TODO: avoid these
 
-  const T &head() const {
+  decltype(auto) head() const {
     return fun::getIndex(data, space.linear(active().imin()));
   }
-  const T &last() const {
+  decltype(auto) last() const {
     return fun::getIndex(
         data, space.linear(active().imax() - adt::set<index_type>(1)));
   }

@@ -319,10 +319,10 @@ libfunhpc.a: $(SRCS:%.cc=%.o) $(FUNHPC_SRCS:%.cc=%.o)
 
 # These two can be overridden on the command line
 NPROCS := 1
-NSHEPHERDS :=							\
+NSHEPHERDS :=						\
 	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ NUMANode / { print $$3; }'), 1)
-NTHREADS :=							\
+NTHREADS :=						\
 	$(or $(shell $(HWLOC_DIR)/bin/hwloc-info |	\
 	    awk '/ PU / { print $$3; }'), 1)
 NSHEPHERDS_PER_PROC :=							\

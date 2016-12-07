@@ -46,8 +46,8 @@ public:
   typedef M mutex_type;
   unique_lock() noexcept : mtx(nullptr), owned(false) {}
   unique_lock(const unique_lock &) = delete;
-  unique_lock(unique_lock &&other) noexcept : mtx(other.mtx),
-                                              owned(other.owned) {
+  unique_lock(unique_lock &&other) noexcept
+      : mtx(other.mtx), owned(other.owned) {
     other.mtx = nullptr;
     other.owned = false;
   }

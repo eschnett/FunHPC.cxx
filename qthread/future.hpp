@@ -726,9 +726,8 @@ future<R> async(F &&f, Args &&... args) {
 
 template <typename T>
 future<T>::future(future<future<T>> &&other) noexcept
-    : future(async([other = std::move(other)]() {
-      return other.get().get();
-    })) {}
+    : future(
+          async([other = std::move(other)]() { return other.get().get(); })) {}
 
 template <typename T>
 template <typename F, typename R>

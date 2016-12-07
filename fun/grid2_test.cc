@@ -3,41 +3,81 @@
 #include <adt/arith.hpp>
 #include <adt/dummy.hpp>
 #include <adt/index.hpp>
+#include <adt/maxarray.hpp>
 #include <fun/dummy.hpp>
-#include <fun/nested_decl.hpp>
+#include <fun/maxarray.hpp>
+#include <fun/shared_future.hpp>
 #include <fun/shared_ptr.hpp>
 #include <fun/vector.hpp>
+#include <qthread/future.hpp>
 
-#include <fun/grid2_impl.hpp>
+#include <fun/nested_decl.hpp>
 
 #include <fun/nested_impl.hpp>
 
+#include <fun/grid2_impl.hpp>
+
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <memory>
 #include <type_traits>
+#include <typeinfo>
 #include <vector>
 
 using namespace fun;
 
 namespace {
+template <typename T, std::size_t D>
+using vgrid = adt::grid2<std::vector<adt::dummy>, T, D>;
+
+template <typename T, std::size_t D>
+using agrid = adt::grid2<adt::maxarray<adt::dummy, 10>, T, D>;
+
 template <typename T>
 using shared_vector =
     adt::nested<std::shared_ptr<adt::dummy>, std::vector<adt::dummy>, T>;
-// TODO: test shared_vector as well, once it has been implemented
 template <typename T, std::size_t D>
-using vgrid = adt::grid2<std::vector<adt::dummy>, T, D>;
+using svgrid = adt::grid2<shared_vector<adt::dummy>, T, D>;
+
+template <typename T>
+using future_vector =
+    adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
+template <typename T, std::size_t D>
+using fvgrid = adt::grid2<future_vector<adt::dummy>, T, D>;
 }
 
 namespace {
-template <std::size_t D> void test_iotaMap() {
-  std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
-  auto xs = iotaMap<vgrid<adt::dummy, D>>(
+std::ptrdiff_t get_size(std::size_t D, std::size_t max_size,
+                        std::ptrdiff_t size) {
+  cxx_assert(D >= 0);
+  cxx_assert(size > 0);
+  std::ptrdiff_t s = size;
+  if (D > 0)
+    s = std::lrint(std::pow(1000.0, 1.0 / D));
+  cxx_assert(size > 0);
+  s = std::max(std::ptrdiff_t(s), s);
+  cxx_assert(size > 0);
+  if (std::ptrdiff_t(max_size) >= 0)
+    s = std::min(std::ptrdiff_t(max_size), s);
+  cxx_assert(size > 0);
+  return s;
+}
+}
+
+namespace {
+template <template <typename, std::size_t> typename grid, std::size_t D>
+void test_iotaMap() {
+  std::ptrdiff_t s =
+      get_size(D, fun::fun_traits<grid<adt::dummy, D>>::max_size(), 1000);
+  std::cout << "type=" << typeid(grid<adt::dummy, D>).name() << " D=" << D
+            << " s=" << s << "\n";
+  auto xs = iotaMap<grid<adt::dummy, D>>(
       [](const adt::index_t<D> &i) { return double(adt::sum(i)); },
       adt::range_t<D>(adt::set<adt::index_t<D>>(s)));
-  static_assert(std::is_same<decltype(xs), vgrid<double, D>>::value, "");
+  static_assert(std::is_same<decltype(xs), grid<double, D>>::value, "");
   EXPECT_EQ(std::pow(s, D), xs.size());
   EXPECT_EQ(D * (s - 1), xs.last());
 }
@@ -53,11 +93,26 @@ TEST(fun_grid2, iotaMap) {
     EXPECT_EQ(s - 1, xs.last());
   }
 
-  test_iotaMap<0>();
-  test_iotaMap<1>();
-  test_iotaMap<2>();
-  test_iotaMap<3>();
-  test_iotaMap<10>();
+  test_iotaMap<vgrid, 0>();
+  test_iotaMap<vgrid, 1>();
+  test_iotaMap<vgrid, 2>();
+  test_iotaMap<vgrid, 3>();
+  test_iotaMap<vgrid, 10>();
+  test_iotaMap<agrid, 0>();
+  test_iotaMap<agrid, 1>();
+  test_iotaMap<agrid, 2>();
+  test_iotaMap<agrid, 3>();
+  test_iotaMap<agrid, 10>();
+  test_iotaMap<svgrid, 0>();
+  test_iotaMap<svgrid, 1>();
+  test_iotaMap<svgrid, 2>();
+  test_iotaMap<svgrid, 3>();
+  test_iotaMap<svgrid, 10>();
+  // test_iotaMap<fvgrid, 0>();
+  // test_iotaMap<fvgrid, 1>();
+  // test_iotaMap<fvgrid, 2>();
+  // test_iotaMap<fvgrid, 3>();
+  // test_iotaMap<fvgrid, 10>();
 }
 
 namespace {

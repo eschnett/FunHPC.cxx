@@ -30,10 +30,8 @@ struct fun_traits<adt::grid2<C, T, D>> {
   static constexpr std::ptrdiff_t rank = D;
   typedef typename adt::grid2<C, T, D>::index_type index_type;
 
-  // static constexpr std::size_t min_size() { return fun_traits<C>::min_size();
-  // }
-  // static constexpr std::size_t max_size() { return fun_traits<C>::max_size();
-  // }
+  static constexpr std::size_t min_size() { return fun_traits<C>::min_size(); }
+  static constexpr std::size_t max_size() { return fun_traits<C>::max_size(); }
 };
 
 // iotaMap

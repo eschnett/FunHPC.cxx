@@ -580,6 +580,11 @@ public:
     thread_args->task =
         cxx::task<R>(std::forward<F>(f), std::forward<Args>(args)...);
     result = thread_args->result.get_future();
+    // TODO: Add a variant that uses qthread_spawn with preconditions
+    // to start the thread in a waiting state
+    // TODO: Use this for future::then
+    // TODO: Use this for launch::deferred as well, and omit the
+    // current mechanism?
     auto ierr = qthread_fork_syncvar(run_thread, thread_args, nullptr);
     cxx_assert(!ierr);
   }

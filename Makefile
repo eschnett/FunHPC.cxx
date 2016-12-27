@@ -263,6 +263,7 @@ FUNHPC_EXAMPLE_SRCS =				\
 	examples/benchmark2.cc			\
 	examples/fibonacci.cc			\
 	examples/hello.cc			\
+	examples/loops.cc			\
 	examples/pingpong.cc			\
 	examples/wave1d.cc			\
 	examples/wave3d.cc
@@ -339,6 +340,8 @@ ARGS =
 run:
 	$(MPIRUN)							   \
 	    -np $(NPROCS)						   \
+	    -x "FUNHPC_NUM_PROCS=$(NPROCS)"				   \
+	    -x "FUNHPC_NUM_THREADS=$(NTHREADS_PER_PROC)"		   \
 	    -x "QTHREAD_GUARD_PAGES=0"					   \
 	    -x "QTHREAD_INFO=1"						   \
 	    -x "QTHREAD_NUM_SHEPHERDS=$(NSHEPHERDS_PER_PROC)"		   \
@@ -368,6 +371,8 @@ benchmark2: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/benchmark2.o
 fibonacci: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/fibonacci.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 hello: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/hello.o
+	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+loops: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/loops.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 pingpong: $(FUNHPC_SRCS:%.cc=%.o) $(SRCS:%.cc=%.o) examples/pingpong.o
 	$(MPICXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)

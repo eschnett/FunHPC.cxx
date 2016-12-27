@@ -84,7 +84,7 @@ set -u
 set -x
 cd $(pwd)
 
-pushd /project/eschnett/shelob/software && source cereal-1.1.0/env.sh && source hpx-0.9.10/env.sh && source hwloc-1.10.1/env.sh && source jemalloc-3.6.0/env.sh && source llvm-3.6.0/env.sh && source openmpi-1.8.4/env.sh && source qthreads-1.10/env.sh && popd
+pushd /project/eschnett/shelob/software && source cereal-1.1.2/env.sh && source hwloc-1.11.0/env.sh && source jemalloc-3.6.0/env.sh && source llvm-3.6.2/env.sh && source openmpi-v2.x-dev-100-g26c3f03/env.sh && source qthreads-1.10/env.sh && popd
 
 echo '[BEGIN ENV]'
 env | sort
@@ -102,11 +102,9 @@ echo '[BEGIN MPIRUN]'
     -np $procs                                                          \\
     --map-by ppr:$ppr                                                   \\
     --display-map                                                       \\
-    --mca btl self,sm,tcp                                               \\
+    --mca btl self,sm,openib                                            \\
     --bind-to $bind_to                                                  \\
     --report-bindings                                                   \\
-    -x LD_LIBRARY_PATH=                                                 \\
-    -x PATH='$(pwd)/openmpi-1.8.4/bin:$PATH'                            \\
     -x QTHREAD_NUM_SHEPHERDS=$proc_sockets                              \\
     -x QTHREAD_NUM_WORKERS_PER_SHEPHERD=$threads_per_proc_socket        \\
     -x QTHREAD_STACK_SIZE=65536                                         \\

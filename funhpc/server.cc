@@ -14,6 +14,8 @@
 #include <cassert>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <sstream>
 // #include <stdlib.h>
@@ -61,12 +63,70 @@ MPI_Comm mpi_comm = MPI_COMM_NULL;
 namespace detail {
 std::ptrdiff_t the_rank = -1;
 std::ptrdiff_t the_size = -1;
+std::ptrdiff_t the_local_rank = -1;
+std::ptrdiff_t the_local_size = -1;
+std::ptrdiff_t the_node_rank = -1;
+std::ptrdiff_t the_node_size = -1;
 void set_rank_size() {
   int rank, size;
   MPI_Comm_rank(mpi_comm, &rank);
   MPI_Comm_size(mpi_comm, &size);
   the_rank = rank;
   the_size = size;
+
+  // Taken and adapted from
+  // <https://github.com/jeffhammond/MPI-plus-MPI-slides/blob/master/code/hello-mpi.c>:
+  MPI_Comm node_comm;
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
+                      &node_comm);
+
+  int local_rank, local_size;
+  MPI_Comm_rank(node_comm, &local_rank);
+  MPI_Comm_size(node_comm, &local_size);
+  the_local_rank = local_rank;
+  the_local_size = local_size;
+
+  int node_group;
+  MPI_Allreduce(&rank, &node_group, 1, MPI_INT, MPI_MIN, node_comm);
+  std::vector<int> node_groups;
+  if (rank == mpi_root) {
+    node_groups.resize(size);
+  }
+  MPI_Gather(&node_group, 1, MPI_INT, node_groups.data(), 1, MPI_INT, mpi_root,
+             mpi_comm);
+  std::vector<int> node_ranks;
+  int node_size;
+  if (rank == mpi_root) {
+    std::vector<int> group_ranks(size, -1);
+    node_ranks.resize(size);
+    node_size = 0;
+    for (int p = 0; p < size; ++p) {
+      int g = node_groups[p];
+      int r = group_ranks[g];
+      if (r < 0)
+        r = group_ranks[g] = node_size++;
+      node_ranks[p] = r;
+    }
+  }
+  int node_rank;
+  MPI_Scatter(node_ranks.data(), 1, MPI_INT, &node_rank, 1, MPI_INT, mpi_root,
+              mpi_comm);
+  MPI_Bcast(&node_size, 1, MPI_INT, mpi_root, mpi_comm);
+  the_node_rank = node_rank;
+  the_node_size = node_size;
+
+  MPI_Comm_free(&node_comm);
+
+  int want_num_nodes = cxx::envtol("FUNHPC_NUM_NODES", "0");
+  assert(node_size == want_num_nodes);
+  // int want_node_npus = cxx::envtol("FUNHPC_NUM_PUS", "0");
+  // assert(node_npus == want_node_npus);
+
+  int want_num_procs = cxx::envtol("FUNHPC_NUM_PROCS", "0");
+  assert(size == want_num_procs);
+  int want_num_threads = cxx::envtol("FUNHPC_NUM_THREADS", "0");
+  int num_threads = qthread::thread::hardware_concurrency();
+  assert(num_threads == want_num_threads);
 }
 }
 
@@ -238,9 +298,9 @@ void initialize(int &argc, char **&argv) {
     std::exit(EXIT_FAILURE);
   }
   MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
-  detail::set_rank_size();
   // ::setenv("QTHREAD_STACK_SIZE", "65536", 0);
   qthread_initialize();
+  detail::set_rank_size();
   hwloc_set_affinity();
   MPI_Barrier(mpi_comm);
 }
@@ -250,11 +310,12 @@ int run_main(mainfunc_t *user_main, int argc, char **argv) {
     {
       std::ostringstream buf;
       buf << "FunHPC[" << rank() << "]: " << size() << " processes, "
-          << hwloc_get_local_size() << " local processes, "
+          << node_size() << " nodes, " << local_size()
+          << " node-local processes, "
           << qthread::thread::hardware_concurrency() << " threads\n";
       std::cout << buf.str();
     }
-    auto nprocs = hwloc_get_local_size();
+    auto nprocs = local_size();
     {
       std::ostringstream buf;
       for (int p = 0; p < nprocs; ++p)

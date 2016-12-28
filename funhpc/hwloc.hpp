@@ -5,7 +5,6 @@
 
 namespace funhpc {
 void hwloc_set_affinity();
-int hwloc_get_local_size();
 std::string hwloc_get_cpu_infos();
 }
 

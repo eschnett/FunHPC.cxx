@@ -5,7 +5,6 @@
 
 #include <cereal/types/string.hpp>
 #include <hwloc.h>
-#include <mpi.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -49,41 +48,20 @@ struct thread_layout {
     // TODO: also look at OMPI_UNIVERSE_SIZE
 #endif
 
-    // Taken and adapted from
-    // <https://github.com/jeffhammond/MPI-plus-MPI-slides/blob/master/code/hello-mpi.c>:
+    proc = rank();
+    nprocs = size();
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &proc);
-    assert(proc == rank());
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    assert(nprocs == size());
+    node_proc = local_rank();
+    node_nprocs = local_size();
 
-    MPI_Comm node_comm;
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
-                        &node_comm);
-    MPI_Comm_rank(node_comm, &node_proc);
-    MPI_Comm_size(node_comm, &node_nprocs);
-    MPI_Comm_free(&node_comm);
-    node = cxx::div_floor(proc, node_nprocs).quot;
-    nnodes = cxx::div_exact(nprocs, node_nprocs).quot;
+    node = node_rank();
+    nnodes = node_size();
 
     proc_thread = qthread::this_thread::get_worker_id();
     proc_nthreads = qthread::thread::hardware_concurrency();
+
     node_thread = node_proc * proc_nthreads + proc_thread;
     node_nthreads = node_nprocs * proc_nthreads;
-
-    int want_nnodes = envtoi("FUNHPC_NUM_NODES", "0");
-    // if (want_nnodes > 0)
-    assert(nnodes == want_nnodes);
-    // int want_node_npus = envtoi("FUNHPC_NUM_PUS", "0");
-    // // if (want_node_npus > 0)
-    // assert(node_npus == want_node_npus);
-
-    int want_nprocs = envtoi("FUNHPC_NUM_PROCS", "0");
-    // if (want_nprocs > 0)
-    assert(nprocs == want_nprocs);
-    int want_proc_nthreads = envtoi("FUNHPC_NUM_THREADS", "0");
-    // if (want_proc_nthreads > 0)
-    assert(proc_nthreads == want_proc_nthreads);
 
     assert(invariant());
   }
@@ -264,10 +242,6 @@ void hwloc_set_affinity() {
 
   hwloc_topology_destroy(topology);
 }
-
-#warning "TODO"
-// int hwloc_get_local_size() { return hwloc::cpu_infos.at(0).nprocs; }
-int hwloc_get_local_size() { return envtoi("OMPI_COMM_WORLD_LOCAL_SIZE"); }
 
 std::string hwloc_get_cpu_infos() {
   std::ostringstream os;

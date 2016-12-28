@@ -10,9 +10,20 @@ namespace funhpc {
 namespace detail {
 extern std::ptrdiff_t the_rank;
 extern std::ptrdiff_t the_size;
+extern std::ptrdiff_t the_local_rank;
+extern std::ptrdiff_t the_local_size;
+extern std::ptrdiff_t the_node_rank;
+extern std::ptrdiff_t the_node_size;
 }
+// Processes
 inline std::ptrdiff_t rank() { return detail::the_rank; }
 inline std::ptrdiff_t size() { return detail::the_size; }
+// Node-local processes
+inline std::ptrdiff_t local_rank() { return detail::the_local_rank; }
+inline std::ptrdiff_t local_size() { return detail::the_local_size; }
+// Nodes
+inline std::ptrdiff_t node_rank() { return detail::the_node_rank; }
+inline std::ptrdiff_t node_size() { return detail::the_node_size; }
 
 typedef cxx::task<void> task_t;
 void enqueue_task(std::ptrdiff_t dest, task_t &&t);

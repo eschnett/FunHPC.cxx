@@ -1,3 +1,4 @@
+#include <cxx/cstdlib.hpp>
 #include <cxx/task.hpp>
 #include <funhpc/hwloc.hpp>
 #include <funhpc/rexec.hpp>
@@ -32,11 +33,7 @@ double gettime() {
 }
 
 bool run_main_everywhere() {
-  char *str = std::getenv("FUNHPC_MAIN_EVERYWHERE");
-  if (!str)
-    return false;
-  const std::string val(str);
-  return val != "" && val != "0";
+  return cxx::envtol("FUNHPC_MAIN_EVERYWHERE", "0");
 }
 }
 

@@ -16,28 +16,6 @@
 
 namespace funhpc {
 
-namespace {
-int envtoi(const char *var, const char *defaultvalue = nullptr) {
-  assert(var);
-  const char *str = std::getenv(var);
-  if (!str)
-    str = defaultvalue;
-  if (!str) {
-    std::cerr << "FunHPC[" << rank() << "]: Could not getenv(\"" << var
-              << "\")\n";
-    std::exit(EXIT_FAILURE);
-  }
-  char *str_end;
-  auto res = std::strtol(str, &str_end, 10);
-  if (*str_end != '\0') {
-    std::cerr << "FunHPC[" << rank() << "]: Could not strol(getenv(\"" << var
-              << "\")=\"" << str << "\")\n";
-    std::exit(EXIT_FAILURE);
-  }
-  return res;
-}
-}
-
 namespace hwloc {
 
 // Thread layout (processes, threads)
@@ -58,13 +36,13 @@ struct thread_layout {
   thread_layout() {
 #if 0
     // This requires OpenMPI
-    proc = envtoi("OMPI_COMM_WORLD_RANK");
+    proc = cxx::envtol("OMPI_COMM_WORLD_RANK");
     assert(proc == rank());
-    nprocs = envtoi("OMPI_COMM_WORLD_SIZE");
+    nprocs = cxx::envtol("OMPI_COMM_WORLD_SIZE");
     assert(nprocs == size());
 
-    node_proc = envtoi("OMPI_COMM_WORLD_LOCAL_RANK");
-    node_nprocs = envtoi("OMPI_COMM_WORLD_LOCAL_SIZE");
+    node_proc = cxx::envtol("OMPI_COMM_WORLD_LOCAL_RANK");
+    node_nprocs = cxx::envtol("OMPI_COMM_WORLD_LOCAL_SIZE");
     node = cxx::div_floor(proc, node_nprocs).quot;
     nnodes = cxx::div_exact(nprocs, node_nprocs).quot;
 
@@ -239,7 +217,7 @@ std::vector<cpu_info_t> cpu_infos;
 
 // This routine is called on each process
 void hwloc_set_affinity() {
-  bool set_thread_bindings = envtoi("FUNHPC_SET_THREAD_BINDINGS", "1");
+  bool set_thread_bindings = cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
   if (!set_thread_bindings)
     return;
 

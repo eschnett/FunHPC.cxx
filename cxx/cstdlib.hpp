@@ -89,6 +89,8 @@ template <typename T, typename U> constexpr T ipow(T x, U y) {
     return T(1) / detail::ipow_impl(x, -y);
   return detail::ipow_impl(x, y);
 }
+
+long envtol(const char *var, const char *defaultvalue = nullptr);
 }
 
 #define CXX_CSTDLIB_HPP_DONE

@@ -198,6 +198,7 @@ HDRS =						\
 	qthread/mutex.hpp			\
 	qthread/thread.hpp
 SRCS =						\
+	cxx/cstdlib.cc				\
 	cxx/serialize.cc
 FUNHPC_SRCS =					\
 	funhpc/hwloc.cc				\
@@ -340,6 +341,8 @@ ARGS =
 run:
 	$(MPIRUN)							   \
 	    -np $(NPROCS)						   \
+	    -x "FUNHPC_NUM_NODES=1"					   \
+	    -x "FUNHPC_NUM_PUS=$(NTHREADS_PER_PROC)"			   \
 	    -x "FUNHPC_NUM_PROCS=$(NPROCS)"				   \
 	    -x "FUNHPC_NUM_THREADS=$(NTHREADS_PER_PROC)"		   \
 	    -x "QTHREAD_GUARD_PAGES=0"					   \

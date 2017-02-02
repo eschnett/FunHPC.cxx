@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <type_traits>
 #include <utility>
 
 namespace cxx {
@@ -16,8 +17,10 @@ template <typename T> struct div_t {
   T rem;
 };
 
-template <typename T, typename U>
-constexpr div_t<T> div_floor(const T x, const U y) {
+template <typename U, typename V, typename T = std::common_type_t<U, V>>
+constexpr div_t<T> div_floor(const U x0, const V y0) {
+  const T x = x0;
+  const T y = y0;
   // x == q*y+r
   // q <= x/y
   // (q+1) > x/y
@@ -32,8 +35,10 @@ constexpr div_t<T> div_floor(const T x, const U y) {
   return {q, r};
 }
 
-template <typename T, typename U>
-constexpr div_t<T> div_ceil(const T x, const U y) {
+template <typename U, typename V, typename T = std::common_type_t<U, V>>
+constexpr div_t<T> div_ceil(const U x0, const V y0) {
+  const T x = x0;
+  const T y = y0;
   // x == q*y+r
   // q <= x/y
   // (q-1) > x/y
@@ -48,24 +53,34 @@ constexpr div_t<T> div_ceil(const T x, const U y) {
   return {q, r};
 }
 
-template <typename T, typename U>
-constexpr div_t<T> div_exact(const T x, const U y) {
+template <typename U, typename V, typename T = std::common_type_t<U, V>>
+constexpr div_t<T> div_exact(const U x0, const V y0) {
+  const T x = x0;
+  const T y = y0;
   // x == q*y+r
   // x == q*y
-  T q = x / y;
-  T r = x % y;
+  const T q = x / y;
+  const T r = x % y;
   cxx_assert(r == 0);
   return {q, r};
 }
 
-template <typename T, typename U, typename V>
-constexpr T align_floor(const T x, const U y, const V m = T(0)) {
-  return y > 0 ? div_floor(x + y - m, y).quot * y - y + m
-               : div_ceil(x + y - m, y).quot * y - y + m;
+template <typename U, typename V, typename W = U,
+          typename T = std::common_type_t<U, V, W>>
+constexpr T align_floor(const U x0, const V y0, const W m0 = 0) {
+  const T x = x0;
+  const T y = y0;
+  const T m = m0;
+  return y > 0 ? div_floor(x - m, y).quot * y + m
+               : div_ceil(x - m, y).quot * y + m;
 }
 
-template <typename T, typename U, typename V>
-constexpr T align_ceil(const T x, const U y, const V m = T(0)) {
+template <typename U, typename V, typename W = U,
+          typename T = std::common_type_t<U, V, W>>
+constexpr T align_ceil(const U x0, const V y0, const W m0 = 0) {
+  const T x = x0;
+  const T y = y0;
+  const T m = m0;
   return y > 0 ? div_ceil(x - m, y).quot * y + m
                : div_floor(x - m, y).quot * y + m;
 }

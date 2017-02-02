@@ -102,6 +102,11 @@ TEST(cxx_cstdlib, align_floor) {
             EXPECT_EQ(m, div.rem);
           }
         }
+        auto r = cxx::align_floor(x, y);
+        EXPECT_TRUE(r <= x);
+        EXPECT_TRUE(std::abs(r - x) < std::abs(y));
+        auto div = cxx::div_floor(r, y);
+        EXPECT_EQ(0, div.rem);
       }
     }
   }
@@ -127,6 +132,11 @@ TEST(cxx_cstdlib, align_ceil) {
             EXPECT_EQ(m, div.rem);
           }
         }
+        auto r = cxx::align_ceil(x, y);
+        EXPECT_TRUE(r >= x);
+        EXPECT_TRUE(std::abs(r - x) < std::abs(y));
+        auto div = cxx::div_floor(r, y);
+        EXPECT_EQ(0, div.rem);
       }
     }
   }

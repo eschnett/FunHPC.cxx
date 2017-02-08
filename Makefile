@@ -257,6 +257,7 @@ FUNHPC_TEST_SRCS =				\
 	funhpc/async_test.cc			\
 	funhpc/proxy_test.cc			\
 	funhpc/rexec_test.cc			\
+	funhpc/server_test.cc			\
 	funhpc/shared_rptr_test.cc		\
 	funhpc/test_main.cc
 FUNHPC_EXAMPLE_SRCS =				\

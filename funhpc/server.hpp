@@ -5,9 +5,11 @@ namespace funhpc {
 typedef int mainfunc_t(int argc, char **argv);
 void initialize(int &argc, char **&argv);
 int eventloop(mainfunc_t *user_main, int argc, char **argv);
+void finalize();
 void comm_lock();
 void comm_unlock();
-void finalize();
+void threading_lock();
+void threading_unlock();
 }
 
 #define FUNHPC_SERVER_HPP_DONE

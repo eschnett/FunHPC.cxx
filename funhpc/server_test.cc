@@ -12,42 +12,51 @@
 using namespace funhpc;
 
 namespace {
-std::atomic<int> num_active;
 
-int do_work() {
-  int max_active = ++num_active;
+int do_work(std::atomic<int> *restrict const num_active) {
+  int max_active = ++*num_active;
   volatile int x = 0;
   for (int i = 0; i < 1000000; ++i)
     ++x;
-  --num_active;
+  --*num_active;
   return max_active;
 }
 
 int count_threads() {
-  std::vector<qthread::future<int>> fs;
-  for (int n = 0; n < 100; ++n)
-    fs.push_back(qthread::async(qthread::launch::async, do_work));
-  qthread::this_thread::yield();
   int max_active = 0;
-  for (auto &f : fs)
-    max_active = std::max(max_active, f.get());
+  for (int attempt = 0; attempt < 10; ++attempt) {
+    std::atomic<int> num_active;
+    num_active = 0;
+    std::vector<qthread::future<int>> fs;
+    for (int n = 0; n < 100; ++n)
+      fs.push_back(
+          qthread::async(qthread::launch::async, do_work, &num_active));
+    qthread::this_thread::yield();
+    for (auto &f : fs)
+      max_active = std::max(max_active, f.get());
+    EXPECT_EQ(0, num_active);
+  }
   return max_active;
 }
 }
 
 TEST(funhpc_server, disable_threading) {
-  std::cout << "nthreads=" << count_threads() << "\n" << std::flush;
-  threading_lock();
-  std::cout << "nthreads=" << count_threads() << "\n" << std::flush;
-  int max_active = count_threads();
-  EXPECT_EQ(1, max_active);
-  // Test OpenMP integration
-  const int n = 1000;
-  int s = 0;
+  const int num_threads = qthread::thread::hardware_concurrency();
+  EXPECT_FALSE(threading_disabled());
+  EXPECT_EQ(num_threads, count_threads());
+  threading_disable();
+  EXPECT_TRUE(threading_disabled());
+  EXPECT_EQ(1, count_threads());
+  {
+    // Test OpenMP integration
+    const int n = 1000;
+    int s = 0;
 #pragma omp parallel for reduction(+ : s)
-  for (int i = 0; i < n; ++i)
-    s += i;
-  EXPECT_EQ((n * n - n) / 2, s);
-  threading_unlock();
-  std::cout << "nthreads=" << count_threads() << "\n" << std::flush;
+    for (int i = 0; i < n; ++i)
+      s += i;
+    EXPECT_EQ((n * n - n) / 2, s);
+  }
+  threading_enable();
+  EXPECT_FALSE(threading_disabled());
+  EXPECT_EQ(num_threads, count_threads());
 }

@@ -60,82 +60,55 @@ void comm_unlock() {
 
 // Enable/disable threading
 namespace detail {
-bool threading_locked = false;
-pthread_rwlock_t threads_lock;
+bool threading_disabled = false;
+pthread_rwlock_t threads_disable;
 std::atomic<int> threads_counter;
 }
-bool threading_locked() { return detail::threading_locked; }
-void threading_lock() {
-  if (threading_locked()) {
-    std::cerr << "threading_lock: Threaading already locked\n";
+bool threading_disabled() { return detail::threading_disabled; }
+void threading_disable() {
+  if (threading_disabled()) {
+    std::cerr << "threading_disable: Threaading already locked\n";
     std::terminate();
   }
-  detail::threading_locked = true;
+  detail::threading_disabled = true;
   if (qthread::thread::hardware_concurrency() == 1)
     return;
-  // std::cout << "FunHPC[" << rank() << "]: threading_lock()\n" << std::flush;
-  int ierr = pthread_rwlock_init(&detail::threads_lock, NULL);
+  int ierr = pthread_rwlock_init(&detail::threads_disable, NULL);
   assert(!ierr);
-  // std::cout << "FunHPC[" << rank()
-  //           << "]: threading_lock(): obtaining write lock\n"
-  //           << std::flush;
-  ierr = pthread_rwlock_wrlock(&detail::threads_lock);
+  ierr = pthread_rwlock_wrlock(&detail::threads_disable);
   assert(!ierr);
-  // std::cout << "FunHPC[" << rank()
-  //           << "]: threading_lock(): obtaining read locks\n"
-  //           << std::flush;
   detail::threads_counter = 0;
   const int numworkers = qthread::thread::hardware_concurrency() - 1;
   for (int n = 0; n < numworkers; ++n)
     qthread::async(qthread::launch::async, [&]() {
-      // std::cout << "FunHPC[" << rank() << "]["
-      //           << qthread::this_thread::get_worker_id()
-      //           << "]: threading_lock(): obtaining read lock\n"
-      //           << std::flush;
       ++detail::threads_counter;
-      int ierr = pthread_rwlock_rdlock(&detail::threads_lock);
+      int ierr = pthread_rwlock_rdlock(&detail::threads_disable);
       assert(!ierr);
-      ierr = pthread_rwlock_unlock(&detail::threads_lock);
+      ierr = pthread_rwlock_unlock(&detail::threads_disable);
       assert(!ierr);
       --detail::threads_counter;
-      // std::cout << "FunHPC[" << rank() << "]["
-      //           << qthread::this_thread::get_worker_id()
-      //           << "]: threading_lock(): released read lock\n"
-      //           << std::flush;
     });
   // Note: Don't yield here, so that the master thread (which holds
   // the write lock) does not try to obtain a read lock
-  // std::cout << "FunHPC[" << rank()
-  //           << "]: threading_lock(): waiting for read locks\n"
-  //           << std::flush;
   // Wait until all workers are suspended
   while (detail::threads_counter != numworkers)
     ;
-  // std::cout << "FunHPC[" << rank() << "]: threading_lock(): done.\n"
-  //           << std::flush;
 }
-void threading_unlock() {
-  if (!threading_locked()) {
-    std::cerr << "threading_lock: Threaading already unlocked\n";
+void threading_enable() {
+  if (!threading_disabled()) {
+    std::cerr << "threading_disable: Threaading already unlocked\n";
     std::terminate();
   }
-  detail::threading_locked = false;
+  detail::threading_disabled = false;
   if (qthread::thread::hardware_concurrency() == 1)
     return;
-  // std::cout << "FunHPC[" << rank() << "]: threading_unlock()\n"
-  //           << std::flush;
-  int ierr = pthread_rwlock_unlock(&detail::threads_lock);
+  int ierr = pthread_rwlock_unlock(&detail::threads_disable);
   assert(!ierr);
   // Wait until all workers are active again
-  // std::cout << "FunHPC[" << rank()
-  //           << "]: threading_unlock(): waiting for read lock releases\n"
-  //           << std::flush;
   while (detail::threads_counter != 0)
     ;
-  ierr = pthread_rwlock_destroy(&detail::threads_lock);
+  ierr = pthread_rwlock_destroy(&detail::threads_disable);
   assert(!ierr);
-  // std::cout << "FunHPC[" << rank() << "]: threading_unlock(): done.\n"
-  //           << std::flush;
 }
 
 // MPI

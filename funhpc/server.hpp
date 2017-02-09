@@ -8,6 +8,7 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv);
 void finalize();
 void comm_lock();
 void comm_unlock();
+bool threading_locked();
 void threading_lock();
 void threading_unlock();
 }

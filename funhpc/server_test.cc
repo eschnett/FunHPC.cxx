@@ -41,7 +41,6 @@ TEST(funhpc_server, disable_threading) {
   std::cout << "nthreads=" << count_threads() << "\n" << std::flush;
   int max_active = count_threads();
   EXPECT_EQ(1, max_active);
-#if 0
   // Test OpenMP integration
   const int n = 1000;
   int s = 0;
@@ -49,7 +48,6 @@ TEST(funhpc_server, disable_threading) {
   for (int i = 0; i < n; ++i)
     s += i;
   EXPECT_EQ((n * n - n) / 2, s);
-#endif
   threading_unlock();
   std::cout << "nthreads=" << count_threads() << "\n" << std::flush;
 }

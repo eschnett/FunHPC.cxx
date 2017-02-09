@@ -1,5 +1,6 @@
 #include <cxx/cstdlib.hpp>
 #include <cxx/task.hpp>
+#include <funhpc/async.hpp>
 #include <funhpc/hwloc.hpp>
 #include <funhpc/rexec.hpp>
 #include <funhpc/server.hpp>
@@ -401,8 +402,10 @@ int run_main(mainfunc_t *user_main, int argc, char **argv) {
     auto nprocs = local_size();
     {
       std::ostringstream buf;
+      buf << "FunHPC thread affinity:\n";
       for (int p = 0; p < nprocs; ++p)
-        buf << hwloc_get_cpu_infos();
+        buf << funhpc::async(funhpc::rlaunch::async, p, hwloc_get_cpu_infos)
+                   .get();
       std::cout << buf.str();
     }
   }

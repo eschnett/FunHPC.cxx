@@ -79,7 +79,7 @@ struct thread_affinity {
   }
 
   thread_affinity(hwloc_topology_t topology, const thread_layout &tl) {
-    int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
+    const int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
     assert(pu_depth >= 0);
 
     node_npus = hwloc_get_nbobjs_by_depth(topology, pu_depth);
@@ -102,11 +102,12 @@ struct thread_affinity {
 
 std::string set_affinity(hwloc_topology_t topology, const thread_affinity &ta) {
   // Note: Even when undersubscribing we are binding the thread to a single PU
-  int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
+  const int pu_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_PU);
   assert(pu_depth >= 0);
-  hwloc_obj_t pu_obj = hwloc_get_obj_by_depth(topology, pu_depth, ta.thread_pu);
+  const hwloc_obj_t pu_obj =
+      hwloc_get_obj_by_depth(topology, pu_depth, ta.thread_pu);
   assert(pu_obj);
-  hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
+  const hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
 
   int ierr = hwloc_set_cpubind(topology, cpuset,
                                HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
@@ -120,7 +121,7 @@ std::string set_affinity(hwloc_topology_t topology, const thread_affinity &ta) {
 }
 
 std::string get_affinity(hwloc_topology_t topology) {
-  hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+  const hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
   assert(cpuset);
   int ierr = hwloc_get_cpubind(topology, cpuset, HWLOC_CPUBIND_THREAD);
   if (ierr) {
@@ -170,8 +171,8 @@ cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
   auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
   auto get_msg = get_affinity(topology);
 
-  // Busy-wait some time to prevent other threads from being scheduled
-  // on the same core
+  // Busy-wait some time to prevent other threads from being scheduled on the
+  // same core
   auto t0 = std::chrono::high_resolution_clock::now();
   while (std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::high_resolution_clock::now() - t0)
@@ -207,13 +208,13 @@ void hwloc_set_affinity() {
 
   auto &infos = hwloc::cpu_infos;
 
-  int nthreads = qthread::thread::hardware_concurrency();
+  const int nthreads = qthread::thread::hardware_concurrency();
   infos.clear();
   infos.resize(nthreads);
+  const int nattempts = 10;
   bool success = false;
-  int nattempts = 10;
   for (int attempt = 1; attempt <= nattempts; ++attempt) {
-    int nsubmit = 10 * nthreads;
+    const int nsubmit = 10 * nthreads;
 
     std::vector<qthread::future<hwloc::cpu_info_t>> fs(nsubmit);
     for (auto &f : fs)

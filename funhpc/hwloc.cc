@@ -141,15 +141,17 @@ std::string get_affinity(hwloc_topology_t topology) {
       hwloc_bitmap_set(lcpuset, pu);
   }
 
-  char lcpuset_buf[1000];
-  hwloc_bitmap_list_snprintf(lcpuset_buf, sizeof lcpuset_buf, lcpuset);
-  char cpuset_buf[1000];
-  hwloc_bitmap_list_snprintf(cpuset_buf, sizeof cpuset_buf, cpuset);
+  char *lcpuset_buf;
+  hwloc_bitmap_list_asprintf(&lcpuset_buf, lcpuset);
+  char *cpuset_buf;
+  hwloc_bitmap_list_asprintf(&cpuset_buf, cpuset);
 
   std::ostringstream os;
   os << " PU set L#{" << lcpuset_buf << "}"
      << " P#{" << cpuset_buf << "}";
 
+  free(lcpuset_buf);
+  free(cpuset_buf);
   hwloc_bitmap_free(lcpuset);
   hwloc_bitmap_free(cpuset);
 

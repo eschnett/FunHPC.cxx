@@ -201,9 +201,12 @@ void set_rank_size() {
 
   MPI_Comm_free(&node_comm);
 
+  int num_threads = qthread::thread::hardware_concurrency();
+
   if (rank == mpi_root)
     std::cout << "FunHPC: Using " << node_size << " nodes, " << local_size
-              << " processes per node\n"
+              << " processes per node, " << num_threads
+              << " threads per process\n"
               << std::flush;
 
   int want_num_nodes = cxx::envtol("FUNHPC_NUM_NODES", "0");
@@ -214,7 +217,6 @@ void set_rank_size() {
   int want_num_procs = cxx::envtol("FUNHPC_NUM_PROCS", "0");
   assert(size == want_num_procs);
   int want_num_threads = cxx::envtol("FUNHPC_NUM_THREADS", "0");
-  int num_threads = qthread::thread::hardware_concurrency();
   assert(num_threads == want_num_threads);
 }
 }
@@ -396,14 +398,6 @@ void initialize(int &argc, char **&argv) {
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
   if (rank() == mpi_root) {
-    {
-      std::ostringstream buf;
-      buf << "FunHPC[" << rank() << "]: " << size() << " processes, "
-          << node_size() << " nodes, " << local_size()
-          << " node-local processes, "
-          << qthread::thread::hardware_concurrency() << " threads\n";
-      std::cout << buf.str();
-    }
     auto nprocs = local_size();
     {
       std::ostringstream buf;

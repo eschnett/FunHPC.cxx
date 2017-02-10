@@ -75,12 +75,14 @@ void threading_disable() {
     return;
   int ierr = pthread_rwlock_init(&detail::threads_disable, NULL);
   assert(!ierr);
-  ierr = pthread_rwlock_wrlock(&detail::threads_disable);
-  assert(!ierr);
   detail::threads_counter = 0;
+  std::atomic<char> go(false);
   const int numworkers = qthread::thread::hardware_concurrency() - 1;
   for (int n = 0; n < numworkers; ++n)
     qthread::async(qthread::launch::async, [&]() {
+      // Wait for rwlock to be locked
+      while (!go)
+        ;
       ++detail::threads_counter;
       int ierr = pthread_rwlock_rdlock(&detail::threads_disable);
       assert(!ierr);
@@ -88,8 +90,11 @@ void threading_disable() {
       assert(!ierr);
       --detail::threads_counter;
     });
-  // Note: Don't yield here, so that the master thread (which holds
-  // the write lock) does not try to obtain a read lock
+  qthread::this_thread::yield();
+  ierr = pthread_rwlock_wrlock(&detail::threads_disable);
+  assert(!ierr);
+  // Let workers go
+  go = true;
   // Wait until all workers are suspended
   while (detail::threads_counter != numworkers)
     ;
@@ -104,7 +109,7 @@ void threading_enable() {
     return;
   int ierr = pthread_rwlock_unlock(&detail::threads_disable);
   assert(!ierr);
-  // Wait until all workers are active again
+  // Wait until all workers have unlocked the lock, and are active again
   while (detail::threads_counter != 0)
     ;
   ierr = pthread_rwlock_destroy(&detail::threads_disable);

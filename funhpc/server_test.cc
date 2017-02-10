@@ -41,6 +41,7 @@ int count_threads() {
 }
 
 TEST(funhpc_server, disable_threading) {
+  comm_lock();
   const int num_threads = qthread::thread::hardware_concurrency();
   EXPECT_FALSE(threading_disabled());
   EXPECT_EQ(num_threads, count_threads());
@@ -59,4 +60,5 @@ TEST(funhpc_server, disable_threading) {
   threading_enable();
   EXPECT_FALSE(threading_disabled());
   EXPECT_EQ(num_threads, count_threads());
+  comm_unlock();
 }

@@ -7,6 +7,7 @@
 #include <hwloc.h>
 
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>

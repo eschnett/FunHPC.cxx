@@ -16,13 +16,11 @@
 
 #include <algorithm>
 #include <cassert>
-#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <sstream>
-// #include <stdlib.h>
 #include <string>
 #include <vector>
 
@@ -461,7 +459,6 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   if (detail::run_main_everywhere() || rank() == mpi_root)
     fres = qthread::async(run_main, user_main, argc, argv);
 
-  std::cout << "FunHPC[" << rank() << "]: begin eventloop\n" << std::flush;
   for (;;) {
     comm_lock();
     send_tasks();
@@ -471,15 +468,10 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
       break;
     qthread::this_thread::yield();
   }
-  std::cout << "FunHPC[" << rank() << "]: end eventloop\n" << std::flush;
   cancel_sends();
 
   send_queue_mutex.reset();
-  std::cout << "FunHPC[" << rank() << "]: begin comm_mutex.reset()\n"
-            << std::flush;
   detail::comm_mutex.reset();
-  std::cout << "FunHPC[" << rank() << "]: end comm_mutex.reset()\n"
-            << std::flush;
   return fres.valid() ? fres.get() : 0;
 }
 

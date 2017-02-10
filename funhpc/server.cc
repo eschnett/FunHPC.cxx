@@ -414,11 +414,38 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   // Output thread bindings
   {
     if (node_rank() == 0) {
+      // for (int p = 0; p < local_size(); ++p) {
+      //   if (p > 0)
+      //     MPI_Barrier(mpi_node_comm);
+      //   if (local_rank() == p)
+      //     std::cout << hwloc_get_cpu_infos() << std::flush;
+      // }
+
+      // Output all CPU infos in order
       for (int p = 0; p < local_size(); ++p) {
-        if (p > 0)
-          MPI_Barrier(mpi_node_comm);
+        std::string msg;
+        // On process p, get the CPU info
         if (local_rank() == p)
-          std::cout << hwloc_get_cpu_infos() << std::flush;
+          msg = hwloc_get_cpu_infos();
+        // If necessary, transmit from process p to process 0
+        if (p != 0) {
+          // Send on process p
+          if (local_rank() == p)
+            MPI_Send(msg.data(), msg.size(), MPI_CHAR, 0, 0, mpi_node_comm);
+          // Receive on process 0
+          if (local_rank() == 0) {
+            MPI_Status status;
+            MPI_Probe(p, 0, mpi_node_comm, &status);
+            int count;
+            MPI_Get_count(&status, MPI_CHAR, &count);
+            msg = std::string(count, '\0');
+            MPI_Recv(const_cast<char *>(msg.data()), count, MPI_CHAR, p, 0,
+                     mpi_node_comm, MPI_STATUS_IGNORE);
+          }
+        }
+        // On process 0, output the CPU info
+        if (local_rank() == 0)
+          std::cout << msg;
       }
     }
     MPI_Barrier(mpi_comm);

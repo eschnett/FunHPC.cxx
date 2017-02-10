@@ -358,8 +358,6 @@ bool terminate_check(bool ready_to_terminate) {
 }
 
 void initialize(int &argc, char **&argv) {
-  // MPI_Init(&argc, &argv);
-  // TODO: Want MPI_THREAD_FUNNELED
   int flag;
   MPI_Initialized(&flag);
   int provided;

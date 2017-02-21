@@ -130,36 +130,36 @@ set(FUNHPC_TEST_SRCS
   funhpc/test_main.cpp
   )
 
-add_executable(selftest ${SRCS} ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
+add_executable(selftest EXCLUDE_FROM_ALL ${SRCS} ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
 target_link_libraries(selftest funhpc)
 
-add_executable(selftest-funhpc ${SRCS} ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
+add_executable(selftest-funhpc EXCLUDE_FROM_ALL ${SRCS} ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
 target_link_libraries(selftest-funhpc funhpc)
 
 # Examples
 
-add_executable(benchmark examples/benchmark.cpp)
+add_executable(benchmark EXCLUDE_FROM_ALL examples/benchmark.cpp)
 target_link_libraries(benchmark funhpc)
 
-add_executable(benchmark2 examples/benchmark2.cpp)
+add_executable(benchmark2 EXCLUDE_FROM_ALL examples/benchmark2.cpp)
 target_link_libraries(benchmark2 funhpc)
 
-add_executable(fibonacci examples/fibonacci.cpp)
+add_executable(fibonacci EXCLUDE_FROM_ALL examples/fibonacci.cpp)
 target_link_libraries(fibonacci funhpc)
 
-add_executable(hello examples/hello.cpp funhpc)
+add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp funhpc)
 target_link_libraries(hello funhpc)
 
-add_executable(loops examples/loops.cpp)
+add_executable(loops EXCLUDE_FROM_ALL examples/loops.cpp)
 target_link_libraries(loops funhpc)
 
-add_executable(pingpong examples/pingpong.cpp)
+add_executable(pingpong EXCLUDE_FROM_ALL examples/pingpong.cpp)
 target_link_libraries(pingpong funhpc)
 
-add_executable(wave1d examples/wave1d.cpp)
+add_executable(wave1d EXCLUDE_FROM_ALL examples/wave1d.cpp)
 target_link_libraries(wave1d funhpc)
 
-add_executable(wave3d examples/wave3d.cpp)
+add_executable(wave3d EXCLUDE_FROM_ALL examples/wave3d.cpp)
 target_link_libraries(wave3d funhpc)
 
 # Install

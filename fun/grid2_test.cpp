@@ -70,10 +70,10 @@ std::ptrdiff_t get_size(std::size_t D, std::size_t max_size,
 namespace {
 template <template <typename, std::size_t> typename grid, std::size_t D>
 void test_iotaMap() {
-  std::ptrdiff_t s =
-      get_size(D, fun::fun_traits<grid<adt::dummy, D>>::max_size(), 1000);
-  std::cout << "type=" << typeid(grid<adt::dummy, D>).name() << " D=" << D
-            << " s=" << s << "\n";
+  auto max_size = fun::fun_traits<grid<adt::dummy, D>>::max_size();
+  std::ptrdiff_t max_dim_size =
+      max_size >= 0 ? llrint(floor(pow(double(max_size), 1.0 / D))) : max_size;
+  std::ptrdiff_t s = get_size(D, max_dim_size, 1000);
   auto xs = iotaMap<grid<adt::dummy, D>>(
       [](const adt::index_t<D> &i) { return double(adt::sum(i)); },
       adt::range_t<D>(adt::set<adt::index_t<D>>(s)));

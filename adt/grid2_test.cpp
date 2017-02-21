@@ -214,7 +214,7 @@ template <std::size_t D> void test_foldMap() {
   auto r = g.foldMap([](auto x) { return x; },
                      [](auto x, auto y) { return x + y; }, 0.0);
   EXPECT_TRUE((std::is_same<decltype(r), double>::value));
-  EXPECT_EQ(D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
+  EXPECT_EQ(D == 0 ? 0 : D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
 }
 }
 

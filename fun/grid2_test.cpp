@@ -233,7 +233,7 @@ template <std::size_t D> void test_foldMap() {
   auto r = foldMap([](int x) { return double(x); },
                    [](double x, double y) { return x + y; }, 0.0, xs);
   static_assert(std::is_same<decltype(r), double>::value, "");
-  EXPECT_EQ(D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
+  EXPECT_EQ(D == 0 ? 0 : D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
 }
 }
 

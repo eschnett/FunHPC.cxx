@@ -1,0 +1,28 @@
+#ifndef FUNHPC_CONFIG_HPP
+#define FUNHPC_CONFIG_HPP
+
+namespace funhpc {
+
+#define FUNHPC_VERSION_MAJOR @FunHPC_VERSION_MAJOR@
+#define FUNHPC_VERSION_MINOR @FunHPC_VERSION_MINOR@
+#define FUNHPC_VERSION_PATCH @FunHPC_VERSION_PATCH@
+
+#define FUNHPC_VERSION                                                         \
+  "@FunHPC_VERSION_MAJOR@.@FunHPC_VERSION_MINOR@.@FunHPC_VERSION_PATCH@"
+
+int version_major();
+int version_minor();
+int version_patch();
+
+const char *version();
+
+void check_version(const char *header_version);
+
+#define FUNHPC_CHECK_VERSION (::funhpc::check_version(FUNHPC_VERSION))
+}
+
+#define FUNHPC_CONFIG_HPP_DONE
+#endif // #ifdef FUNHPC_CONFIG_HPP
+#ifndef FUNHPC_CONFIG_HPP_DONE
+#error "Cyclic include dependency"
+#endif

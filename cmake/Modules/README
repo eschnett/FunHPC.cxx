@@ -1,0 +1,4 @@
+The "Find*.cmake" files in this directory are modelled closely after
+those found in the HPX library at
+<https://github.com/STEllAR-GROUP/hpx>. We gratefully acknowledge the
+HPX developers' contribution to the open source landscape.

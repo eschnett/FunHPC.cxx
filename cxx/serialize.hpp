@@ -12,9 +12,22 @@
 namespace cereal {
 
 namespace detail {
+template <typename F> inline std::uintptr_t fptr2uint(F *const &fptr) {
+  std::uintptr_t uint;
+  static_assert(sizeof uint == sizeof fptr, "");
+  std::memcpy(&uint, &fptr, sizeof uint);
+  return uint;
+}
+
+template <typename F>
+inline void uint2fptr(F *&fptr, std::uintptr_t const uint) {
+  static_assert(sizeof fptr == sizeof uint, "");
+  std::memcpy(&fptr, &uint, sizeof fptr);
+}
+
 void serialize_anchor_f();
 inline std::uintptr_t serialize_anchor() {
-  return std::uintptr_t(&serialize_anchor_f);
+  return fptr2uint(&serialize_anchor_f) & ~std::uintptr_t(1);
 }
 }
 
@@ -36,7 +49,7 @@ template <typename Archive, typename F,
           std::enable_if_t<std::is_function<F>::value> * = nullptr>
 void save(Archive &ar, F *const &f) {
   std::uintptr_t offset =
-      bool(f) ? std::uintptr_t(f) - detail::serialize_anchor() : 0;
+      bool(f) ? detail::fptr2uint(f) - detail::serialize_anchor() : 0;
   ar(offset);
 }
 template <class Archive, typename F,
@@ -44,7 +57,10 @@ template <class Archive, typename F,
 void load(Archive &ar, F *&f) {
   std::uintptr_t offset;
   ar(offset);
-  f = offset ? (F *)(offset + detail::serialize_anchor()) : nullptr;
+  if (offset)
+    detail::uint2fptr(f, offset + detail::serialize_anchor());
+  else
+    f = nullptr;
 }
 
 // member function pointers

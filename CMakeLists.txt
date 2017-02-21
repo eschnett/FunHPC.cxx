@@ -130,11 +130,27 @@ set(FUNHPC_TEST_SRCS
   funhpc/test_main.cpp
   )
 
-add_executable(selftest EXCLUDE_FROM_ALL ${SRCS} ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
+add_executable(selftest ${SRCS} ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
 target_link_libraries(selftest funhpc)
 
-add_executable(selftest-funhpc EXCLUDE_FROM_ALL ${SRCS} ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
+add_executable(selftest-funhpc ${SRCS} ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
 target_link_libraries(selftest-funhpc funhpc)
+
+enable_testing()
+add_test(NAME selftest COMMAND ./selftest)
+add_test(NAME selftest-funhpc
+  COMMAND
+  env
+  QTHREAD_NUM_SHEPHERDS=1
+  QTHREAD_NUM_WORKERS_PER_SHEPHERD=2
+  QTHREAD_STACK_SIZE=65536
+  FUNHPC_NUM_NODES=1
+  FUNHPC_NUM_PROCS=2
+  FUNHPC_NUM_THREADS=2
+  ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2
+  ${MPIEXEC_PREFLAGS}
+  ./selftest-funhpc
+  ${MPIEXEC_POSTFLAGS})
 
 # Examples
 
@@ -161,6 +177,18 @@ target_link_libraries(wave1d funhpc)
 
 add_executable(wave3d EXCLUDE_FROM_ALL examples/wave3d.cpp)
 target_link_libraries(wave3d funhpc)
+
+add_custom_target(examples EXCLUDE_FROM_ALL
+  DEPENDS
+  benchmark
+  benchmark2
+  fibonacci
+  hello
+  loops
+  pingpong
+  wave1d
+  wave3d
+  )
 
 # Install
 

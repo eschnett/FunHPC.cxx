@@ -191,15 +191,44 @@ void set_rank_size() {
               << " threads per process\n"
               << std::flush;
 
+  bool found_error = false;
+
   int want_num_nodes = cxx::envtol("FUNHPC_NUM_NODES", "0");
-  assert(node_size == want_num_nodes);
+  if (node_size != want_num_nodes) {
+    found_error = true;
+    std::cerr << "FunHPC: Expected " << want_num_nodes << " nodes, found "
+              << node_size << " nodes.\n"
+              << "  Is the environment variable FUNHPC_NUM_NODES\n"
+              << "  consistent with the expected number of nodes?\n";
+  }
+
   // int want_node_npus = cxx::envtol("FUNHPC_NUM_PUS", "0");
   // assert(node_npus == want_node_npus);
 
   int want_num_procs = cxx::envtol("FUNHPC_NUM_PROCS", "0");
-  assert(size == want_num_procs);
+  if (size != want_num_procs) {
+    found_error = true;
+    std::cerr << "FunHPC: Expected " << want_num_procs << " processes, found "
+              << size << " processes.\n"
+              << "  Is the environment variable FUNHPC_NUM_PROCS\n"
+              << "  consistent with the expected total number of processes?\n";
+  }
+
   int want_num_threads = cxx::envtol("FUNHPC_NUM_THREADS", "0");
-  assert(num_threads == want_num_threads);
+  if (num_threads != want_num_threads) {
+    found_error = true;
+    std::cerr
+        << "FunHPC: Expected " << want_num_threads << " threads, found "
+        << num_threads << " threads.\n"
+        << "  Is the environment variable FUNHPC_NUM_THREADS\n"
+        << "  consistent with the expected number of threads per process?\n";
+  }
+
+  if (found_error) {
+    std::cerr << "Aborting because the number of processes and threads is "
+                 "inconsistent.\n";
+    std::exit(EXIT_FAILURE);
+  }
 }
 }
 

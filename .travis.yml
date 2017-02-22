@@ -1,0 +1,85 @@
+# General settings
+notifications:
+  email: false
+sudo: false
+
+# Build matrix
+os:
+  - linux   # This is currently Ubuntu 12.04 LTS
+  # - osx
+language: cpp
+compiler:
+  - clang
+  - gcc
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
+
+# Install, buuild, and test
+addons:
+  apt:
+    packages:
+      - cmake
+      - lcov
+      - libhwloc-dev
+      - libjemalloc-dev
+      - libopenmpi-dev
+      - openmpi-bin
+before_install:
+  # - |
+  #   if [ `uname` = Darwin ]; then
+  #     brew update
+  #     brew install homebrew/science/hdf5
+  #     brew install lcov
+  #     brew install open-mpi
+  #     brew install python
+  #     brew install swig
+  #     export HDF5_DIR="/usr/local"
+  #     export PYTHON_DIR="/usr/local/Cellar/python/2.7.12_1/Frameworks/Python.framework/Versions/2.7"
+  #   fi
+  - |
+    if [ `uname` = Linux ]; then
+      mkdir -p external
+      pushd external
+      wget https://github.com/USCiLab/cereal/archive/v1.2.1.tar.gz
+      tar xzf v1.2.1.tar.gz
+      cd cereal-1.2.1
+      cmake -DCMAKE_DISABLE_FIND_PACKAGE_Boost=TRUE .
+      make -j2
+      cp -r doc "$HOME/doc"
+      cp -r include "$HOME/include"
+      popd
+    fi
+  - |
+    if [ `uname` = Linux ]; then
+      mkdir -p external
+      pushd external
+      wget https://github.com/Qthreads/qthreads/releases/download/1.11/qthread-1.11.tar.gz
+      tar xzf qthread-1.11.tar.gz
+      cd qthread-1.11
+      ./configure --prefix="$HOME" --enable-guard-pages --with-topology=hwloc
+      make -j2
+      make -j2 install
+      popd
+    fi
+  - pip install --user codecov
+  - gem install coveralls-lcov
+  - which $CXX
+  - which mpirun
+  - which lcov
+  - $CXX --version
+  - mpirun --version
+  - lcov --version
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_INSTALL_PREFIX="$HOME" ..
+  # - make -j2 COVERAGE=1
+  - make -j2
+  - make -j2 test
+  - make -j2 install
+# after_success:
+#   - make -j2 coverage
+#   - codecov
+#   - coveralls-lcov coverage.info

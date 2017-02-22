@@ -18,7 +18,7 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
-install:
+before_install:
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   - git clone https://github.com/llnl/spack.git
   - cd spack

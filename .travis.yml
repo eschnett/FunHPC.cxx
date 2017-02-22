@@ -5,7 +5,7 @@ sudo: false
 
 # Build matrix
 os:
-  - linux   # This is currently Ubuntu 12.04 LTS
+  - linux                       # This is currently Ubuntu 12.04 LTS
   # - osx
 language: cpp
 
@@ -18,25 +18,28 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
-before_install:
+install:
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   - git clone https://github.com/llnl/spack.git
   - cd spack
   - source share/spack/setup-env.sh
   - spack compilers
-  - spack install -j2 -v cereal
-  - spack install -j2 -v cmake
-  - spack install -j2 -v hwloc
-  - spack install -j2 -v openmpi
-  - spack install -j2 -v qthreads
-  - spack view -d true hardlink $HOME cereal
-  - spack view -d true hardlink $HOME cmake
-  - spack view -d true hardlink $HOME hwloc
-  - spack view -d true hardlink $HOME openmpi
-  - spack view -d true hardlink $HOME qthreads
+  - travis_wait spack install -j2 cereal
+  - travis_wait spack install -j2 cmake
+  - travis_wait spack install -j2 hwloc
+  - travis_wait spack install -j2 openmpi
+  - travis_wait spack install -j2 qthreads
+  - spack find
+  - spack view -d true hardlink "$HOME/spack-view" cereal
+  - spack view -d true hardlink "$HOME/spack-view" cmake
+  - spack view -d true hardlink "$HOME/spack-view" hwloc
+  - spack view -d true hardlink "$HOME/spack-view" openmpi
+  - spack view -d true hardlink "$HOME/spack-view" qthreads
+  - export PATH="$HOME/spack-view/bin:$PATH"
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME" -DCMAKE_CXX_COMPILER="$HOME/bin/g++" -DCMAKE_INSTALL_PREFIX="$HOME" ..
+  # -DCMAKE_CXX_COMPILER="$HOME/bin/g++"
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2
   - make -j2 test
   - make -j2 install

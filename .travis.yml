@@ -48,7 +48,7 @@ script:
   - echo "$PATH"
   - which cmake
   - cmake --version
-  - "$HOME/spack-view/bin/cmake" --version
+  - $HOME/spack-view/bin/cmake --version
   - mkdir build && pushd build
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="g++-5" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2

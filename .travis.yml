@@ -13,10 +13,10 @@ language: cpp
 addons:
   apt:
     sources:
-      - kalakris-cmake
+      # - kalakris-cmake
       - ubuntu-toolchain-r-test
     packages:
-      - cmake
+      # - cmake
       - g++-5
       - gcc-5
       - gfortran-5
@@ -32,13 +32,13 @@ install:
   - source share/spack/setup-env.sh
   - spack compilers
   - travis_wait spack install -j2 cereal
-  # - travis_wait spack install -j2 cmake
+  - travis_wait spack install -j2 cmake
   # - travis_wait spack install -j2 hwloc
   # - travis_wait spack install -j2 openmpi
   - travis_wait spack install -j2 qthreads
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
-  # - spack view -d true hardlink "$HOME/spack-view" cmake
+  - spack view -d true hardlink "$HOME/spack-view" cmake
   # - spack view -d true hardlink "$HOME/spack-view" hwloc
   # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
@@ -48,10 +48,7 @@ script:
   - echo "$PATH"
   - which cmake
   - cmake --version
-  - which g++
-  - g++ --version
-  - which g++-5
-  - g++-5 --version
+  - "$HOME/spack-view/bin/cmake" --version
   - mkdir build && pushd build
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="g++-5" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2

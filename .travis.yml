@@ -34,12 +34,14 @@ install:
   - travis_wait spack install -j2 cereal
   - travis_wait spack install -j2 cmake
   - travis_wait spack install -j2 hwloc
+  - travis_wait spack install -j2 jemalloc
   - travis_wait spack install -j2 openmpi
   - travis_wait spack install -j2 qthreads
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
   - spack view -d true hardlink "$HOME/spack-view" hwloc
+  - spack view -d true hardlink "$HOME/spack-view" jemalloc
   - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"

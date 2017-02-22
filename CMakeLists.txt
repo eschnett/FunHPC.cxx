@@ -27,7 +27,7 @@ find_package(Hwloc REQUIRED)
 include_directories(${HWLOC_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
-find_package(jemalloc REQUIRED)
+find_package(Jemalloc REQUIRED)
 include_directories(${JEMALLOC_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${JEMALLOC_LIBRARIES})
 

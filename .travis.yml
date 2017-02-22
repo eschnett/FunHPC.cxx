@@ -24,7 +24,8 @@ addons:
       - libjemalloc-dev
       - libopenmpi-dev
       - openmpi-bin
-before_install:
+install:
+  - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   - git clone https://github.com/llnl/spack.git
   - cd spack
@@ -42,20 +43,21 @@ before_install:
   # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"
+  - popd
 script:
   - echo "$PATH"
   - which cmake
   - cmake --version
-  - $HOME/spack-view/bin/cmake --version
   - which g++
   - g++ --version
-  - $HOME/spack-view/bin/g++ --version
-  - mkdir build && cd build
-  # -DCMAKE_CXX_COMPILER="$HOME/bin/g++"
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
+  - which g++-5
+  - g++-5 --version
+  - mkdir build && pushd build
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="g++-5" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2
   - make -j2 test
   - make -j2 install
+  - popd
 # after_success:
 #   - make -j2 coverage
 #   - codecov

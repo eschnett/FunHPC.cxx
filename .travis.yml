@@ -9,7 +9,7 @@ os:
   # - osx
 language: cpp
 compiler:
-  - clang
+  # - clang
   - gcc
 matrix:
   exclude:
@@ -19,7 +19,12 @@ matrix:
 # Install, buuild, and test
 addons:
   apt:
+    sources:
+      - sourceline: 'ppa:ubuntu-toolchain-r/test'
     packages:
+      - gcc-5
+      - g++-5
+      # - clang-3.6
       - cmake
       - lcov
       - libhwloc-dev
@@ -66,15 +71,17 @@ before_install:
   - pip install --user codecov
   - gem install coveralls-lcov
   - which $CXX
+  - which g++-5
   - which mpirun
   - which lcov
   - $CXX --version
+  - g++-5 --version
   - mpirun --version
   - lcov --version
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_INSTALL_PREFIX="$HOME" ..
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME" -DCMAKE_CXX_COMPILER=g++-5 -DCMAKE_INSTALL_PREFIX="$HOME" ..
   # - make -j2 COVERAGE=1
   - make -j2
   - make -j2 test

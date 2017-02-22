@@ -19,16 +19,16 @@ addons:
       - g++-5
 before_install:
   - git clone https://github.com/llnl/spack.git
-  - pushd spack
+  - cd spack
   - source share/spack/setup-env.sh
   - spack compilers
   - curl -O https://curl.haxx.se/ca/cacert.pem
   - export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
-  - spack install cereal
-  - spack install cmake
-  - spack install hwloc
-  - spack install openmpi
-  - spack install qthreads
+  - spack install -j2 cereal
+  - spack install -j2 cmake
+  - spack install -j2 hwloc
+  - spack install -j2 openmpi
+  - spack install -j2 qthreads
   - spack view -d true hardlink $HOME cereal
   - spack view -d true hardlink $HOME cmake
   - spack view -d true hardlink $HOME hwloc

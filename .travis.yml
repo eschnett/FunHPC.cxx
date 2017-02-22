@@ -20,10 +20,10 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
-      - libhwloc-dev
-      - libjemalloc-dev
-      - libopenmpi-dev
-      - openmpi-bin
+      # - libhwloc-dev
+      # - libjemalloc-dev
+      # - libopenmpi-dev
+      # - openmpi-bin
 install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
@@ -33,22 +33,18 @@ install:
   - spack compilers
   - travis_wait spack install -j2 cereal
   - travis_wait spack install -j2 cmake
-  # - travis_wait spack install -j2 hwloc
-  # - travis_wait spack install -j2 openmpi
+  - travis_wait spack install -j2 hwloc
+  - travis_wait spack install -j2 openmpi
   - travis_wait spack install -j2 qthreads
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
-  # - spack view -d true hardlink "$HOME/spack-view" hwloc
-  # - spack view -d true hardlink "$HOME/spack-view" openmpi
+  - spack view -d true hardlink "$HOME/spack-view" hwloc
+  - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"
   - popd
 script:
-  - echo "$PATH"
-  - which cmake
-  - cmake --version
-  - $HOME/spack-view/bin/cmake --version
   - mkdir build && pushd build
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="g++-5" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2

@@ -19,25 +19,23 @@ addons:
       - gcc-5
       - gfortran-5
 before_install:
+  - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   - git clone https://github.com/llnl/spack.git
   - cd spack
   - source share/spack/setup-env.sh
   - spack compilers
-  - curl -O https://curl.haxx.se/ca/cacert.pem
-  - export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
-  - spack install -j2 cereal
-  - spack install -j2 cmake
-  - spack install -j2 hwloc
-  - spack install -j2 openmpi
-  - spack install -j2 qthreads
+  - spack install -j2 -v cereal
+  - spack install -j2 -v cmake
+  - spack install -j2 -v hwloc
+  - spack install -j2 -v openmpi
+  - spack install -j2 -v qthreads
   - spack view -d true hardlink $HOME cereal
   - spack view -d true hardlink $HOME cmake
   - spack view -d true hardlink $HOME hwloc
   - spack view -d true hardlink $HOME openmpi
   - spack view -d true hardlink $HOME qthreads
 script:
-  - mkdir build
-  - cd build
+  - mkdir build && cd build
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME" -DCMAKE_CXX_COMPILER="$HOME/bin/g++" -DCMAKE_INSTALL_PREFIX="$HOME" ..
   - make -j2
   - make -j2 test

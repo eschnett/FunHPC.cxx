@@ -37,6 +37,13 @@ before_install:
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"
 script:
+  - echo "$PATH"
+  - which cmake
+  - cmake --version
+  - $HOME/spack-view/bin/cmake --version
+  - which g++
+  - g++ --version
+  - $HOME/spack-view/bin/g++ --version
   - mkdir build && cd build
   # -DCMAKE_CXX_COMPILER="$HOME/bin/g++"
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_INSTALL_PREFIX="$HOME/install" ..

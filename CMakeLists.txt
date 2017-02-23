@@ -1,14 +1,12 @@
 # CMake setup
 
-cmake_minimum_required(VERSION 3.0)
-if(POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-endif()
+cmake_minimum_required(VERSION 3.1)
+cmake_policy(SET CMP0048 NEW)
 
-set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 
-project(FunHPC VERSION 1.0.0)
+project(FunHPC VERSION 1.0.0 LANGUAGES C CXX)
 set(PROJECT_DESCRIPTION "FunHPC: Functional HPC Programming")
 set(PROJECT_URL "https://bitbucket.org/eschnett/funhpc.cxx")
 
@@ -38,6 +36,10 @@ set(LIBS ${LIBS} ${MPI_LIBRARIES})
 find_package(Qthread REQUIRED)
 include_directories(${QTHREAD_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${QTHREAD_LIBRARIES})
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+set(LIBS ${LIBS} Threads::Threads)
 
 # Main project
 

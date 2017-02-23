@@ -6,7 +6,7 @@ cmake_policy(SET CMP0048 NEW)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 
-project(FunHPC VERSION 1.0.0 LANGUAGES C CXX)
+project(FunHPC VERSION 1.1.0 LANGUAGES C CXX)
 set(PROJECT_DESCRIPTION "FunHPC: Functional HPC Programming")
 set(PROJECT_URL "https://bitbucket.org/eschnett/funhpc.cxx")
 

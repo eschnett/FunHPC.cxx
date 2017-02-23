@@ -29,8 +29,10 @@ addons:
 install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
-  - git clone https://github.com/llnl/spack.git
+  # The git repo might have been created from the cache
+  - git clone https://github.com/llnl/spack.git || true
   - cd spack
+  - git pull
   - source share/spack/setup-env.sh
   - spack compilers
   - travis_wait spack install -j2 cereal

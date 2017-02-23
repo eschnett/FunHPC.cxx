@@ -3,6 +3,11 @@ notifications:
   email: false
 sudo: false
 
+# TODO:
+# - build with Clang
+# - test on macOS
+# - test coverage
+
 # Build matrix
 os:
   - linux                       # This is currently Ubuntu 12.04 LTS
@@ -10,20 +15,17 @@ os:
 language: cpp
 
 # Install, build, and test
+cache:
+  directories:
+    - $HOME/spack
 addons:
   apt:
     sources:
-      # - kalakris-cmake
       - ubuntu-toolchain-r-test
     packages:
-      # - cmake
       - g++-5
       - gcc-5
       - gfortran-5
-      # - libhwloc-dev
-      # - libjemalloc-dev
-      # - libopenmpi-dev
-      # - openmpi-bin
 install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"

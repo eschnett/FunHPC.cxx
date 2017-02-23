@@ -8,7 +8,7 @@ endif()
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-project(FunHPC VERSION 0.1.2)
+project(FunHPC VERSION 1.0.0)
 set(PROJECT_DESCRIPTION "FunHPC: Functional HPC Programming")
 set(PROJECT_URL "https://bitbucket.org/eschnett/funhpc.cxx")
 

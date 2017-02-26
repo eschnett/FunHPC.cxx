@@ -134,11 +134,11 @@ set(FUNHPC_TEST_SRCS
   funhpc/test_main.cpp
   )
 
-add_executable(selftest ${SRCS} ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
+add_executable(selftest ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
 set_property(TARGET selftest PROPERTY CXX_STANDARD 14)
 target_link_libraries(selftest funhpc)
 
-add_executable(selftest-funhpc ${SRCS} ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
+add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
 set_property(TARGET selftest-funhpc PROPERTY CXX_STANDARD 14)
 target_link_libraries(selftest-funhpc funhpc)
 

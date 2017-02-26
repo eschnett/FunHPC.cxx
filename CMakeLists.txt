@@ -8,7 +8,7 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 
 project(FunHPC VERSION 1.1.0 LANGUAGES C CXX)
 set(PROJECT_DESCRIPTION "FunHPC: Functional HPC Programming")
-set(PROJECT_URL "https://bitbucket.org/eschnett/funhpc.cxx")
+set(PROJECT_URL "https://github.com/eschnett/FunHPC.cxx")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules")
 

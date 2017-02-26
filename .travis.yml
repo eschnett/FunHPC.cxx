@@ -15,9 +15,6 @@ os:
 language: cpp
 
 # Install, build, and test
-cache:
-  directories:
-    - $HOME/spack
 addons:
   apt:
     sources:
@@ -26,6 +23,9 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
+cache:
+  directories:
+    - $HOME/spack
 install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"

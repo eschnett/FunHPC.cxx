@@ -48,10 +48,7 @@ configure_file(
   "${PROJECT_BINARY_DIR}/funhpc/config.hpp"
   )
 
-include_directories(
-  "${PROJECT_SOURCE_DIR}"
-  "${PROJECT_BINARY_DIR}"
-  )
+include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 
 set(SRCS
   cxx/cstdlib.cpp

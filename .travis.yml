@@ -27,6 +27,8 @@ addons:
 cache:
   directories:
     - $HOME/spack
+before_cache:
+  - rm -f "$HOME"/spack/travis_wait_*.log
 install:
   - if [ "$TRAVIS_OS_NAME" = linux ]; then
       export CC=gcc-5;
@@ -85,9 +87,9 @@ after_success:
   - $CC --version || true
   - $CXX --version || true
   - $GCOV --version || true
-  # - mkdir -p "$HOME/bin" && ln -s $(which $CGOV) "$HOME/bin/gcov" && export PATH="$HOME/bin:$PATH"
+  - mkdir -p "$HOME/bin" && ln -s "$(which $CGOV)" "$HOME/bin/gcov" && ls -l "$HOME/bin" && export PATH="$HOME/bin:$PATH" && hash -r
   - mkdir build-coveralls && pushd build-coveralls
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON -DGCOV_EXECUTABLE="$(which $GCOV)" ..
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..
   - make -j2
   - make -j2 coveralls CTEST_OUTPUT_ON_FAILURE=1
   - popd

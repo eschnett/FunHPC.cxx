@@ -17,8 +17,10 @@ language: cpp
 addons:
   apt:
     sources:
+      # - h-rayflood/llvm
       - ubuntu-toolchain-r-test
     packages:
+      # - llvm-toolchain-3.6
       - g++-5
       - gcc-5
       - gfortran-5
@@ -35,7 +37,7 @@ install:
   - git pull
   - source share/spack/setup-env.sh
   - spack compilers
-  - travis_wait spack install -j2 cereal
+  - travis_wait 40 spack install -j2 cereal
   - travis_wait spack install -j2 cmake
   - travis_wait spack install -j2 hwloc
   - travis_wait spack install -j2 jemalloc

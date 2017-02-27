@@ -59,7 +59,12 @@ script:
   - make -j2 test CTEST_OUTPUT_ON_FAILURE=1
   - make -j2 install
   - popd
-# after_success:
-#   - make -j2 coverage
-#   - codecov
-#   - coveralls-lcov coverage.info
+after_success:
+  - mkdir build-coveralls
+  # - export COVERALLS_SERVICE_NAME=travis-ci
+  # - export COVERALLS_REPO_TOKEN=abc12345
+  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..
+  - make -j2
+  - make -j2 coveralls CTEST_OUTPUT_ON_FAILURE=1
+  - codecov
+  - coveralls-lcov coverage.info

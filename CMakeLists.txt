@@ -12,9 +12,11 @@ set(PROJECT_URL "https://github.com/eschnett/FunHPC.cxx")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules")
 
+option(COVERALLS "Generate coveralls data" OFF)
+
 # External dependencies
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Drestrict=__restrict__")
+add_definitions(-Drestrict=__restrict__)
 
 find_package(Cereal REQUIRED)
 include_directories(${CEREAL_INCLUDE_DIRS})
@@ -40,6 +42,11 @@ set(LIBS ${LIBS} ${QTHREAD_LIBRARIES})
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 set(LIBS ${LIBS} Threads::Threads)
+
+if(COVERALLS)
+  include(Coveralls)
+  coveralls_turn_on_coverage()
+endif()
 
 # Main project
 
@@ -155,6 +162,19 @@ add_test(NAME selftest-funhpc
   ${MPIEXEC_PREFLAGS}
   ./selftest-funhpc
   ${MPIEXEC_POSTFLAGS})
+
+if(COVERALLS)
+  # Create the coveralls target
+  set(COVERALLS_SRCS
+    ${PROJECT_SOURCE_DIR}/cxx/cstdlib.cpp
+    ${PROJECT_SOURCE_DIR}/cxx/serialize.cpp
+    ${PROJECT_SOURCE_DIR}/funhpc/config.cpp
+    ${PROJECT_SOURCE_DIR}/funhpc/hwloc.cpp
+    ${PROJECT_SOURCE_DIR}/funhpc/main.cpp
+    ${PROJECT_SOURCE_DIR}/funhpc/server.cpp
+    )
+  coveralls_setup("${COVERALLS_SRCS}" ON "${PROJECT_SOURCE_DIR}/cmake/Modules")
+endif()
 
 # Examples
 

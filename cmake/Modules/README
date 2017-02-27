@@ -2,3 +2,6 @@ The "Find*.cmake" files in this directory are modelled closely after
 those found in the HPX library at
 <https://github.com/STEllAR-GROUP/hpx>. We gratefully acknowledge the
 HPX developers' contribution to the open source landscape.
+
+The "Coveralls*.cmake" files in this directory are taken from
+<https://github.com/JoakimSoderberg/coveralls-cmake>.

@@ -34,10 +34,10 @@ install:
       export CXX=g++-5;
       export FC=gfortran;
     fi
+  # brew install lcov;
   - if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update;
       brew install gcc@5;
-      : brew install lcov;
       export CC=gcc-5;
       export CXX=g++-5;
       export FC=gfortran;

@@ -24,7 +24,7 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
-      - lcov
+      # - lcov
 cache:
   directories:
     - $HOME/spack
@@ -37,13 +37,13 @@ install:
   - if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update;
       brew install gcc@5;
-      brew install lcov;
+      : brew install lcov;
       export CC=gcc-5;
       export CXX=g++-5;
       export FC=gfortran;
     fi
-  - pip install --user codecov
-  - gem install coveralls-lcov
+  # - pip install --user codecov
+  # - gem install coveralls-lcov
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   # The git repo might have been created from the cache
@@ -84,6 +84,6 @@ after_success:
   # - lcov --directory . --capture --output-file coverage.info
   # - lcov --remove coverage.info '/googletest-*' '/hdf5-*' '/usr/*' '/opt/*' '/Xcode.app/*' '*_wrap.cpp' --output-file coverage.info
   # - lcov --list coverage.info
-  - codecov
-  - coveralls-lcov coverage.info
+  # - codecov
+  # - coveralls-lcov coverage.info
   - popd

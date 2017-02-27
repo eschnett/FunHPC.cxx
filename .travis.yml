@@ -5,13 +5,12 @@ sudo: false
 
 # TODO:
 # - build with Clang
-# - test on macOS
 # - test coverage
 
 # Build matrix
 os:
   - linux                       # This is currently Ubuntu 12.04 LTS
-  # - osx
+  - osx
 language: cpp
 
 # Install, build, and test
@@ -27,6 +26,7 @@ cache:
   directories:
     - $HOME/spack
 install:
+  - if [ `uname` = Darwin ]; then brew update; brew install gcc@5; fi
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   # The git repo might have been created from the cache

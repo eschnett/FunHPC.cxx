@@ -55,6 +55,10 @@ install:
   - git pull
   - source share/spack/setup-env.sh
   - spack compilers
+  - which $CC || true
+  - which $CXX || true
+  - which $FC || true
+  - cat $HOME/.spack/*/compilers.yaml
   - travis_wait 40 spack install -j2 cereal
   - travis_wait spack install -j2 cmake
   - travis_wait spack install -j2 hwloc

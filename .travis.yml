@@ -5,7 +5,6 @@ sudo: false
 
 # TODO:
 # - build with Clang
-# - test coverage
 
 # Build matrix
 os:

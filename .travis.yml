@@ -34,6 +34,8 @@ install:
       export CXX=g++-5;
       export FC=gfortran-5;
       export GCOV=gcov-5;
+      export comp=gcc@5
+      export syscomp="$comp"
     fi
   - if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update;
@@ -43,27 +45,25 @@ install:
       export CXX=g++-5;
       export FC=gfortran-5;
       export GCOV=gcov-5;
+      export comp=gcc@5
+      export syscomp=clang
     fi
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   # The git repo might have been created from the cache
-  # - git clone https://github.com/llnl/spack.git || true
   - rm -rf spack
-  - git clone -b eschnett/cactusext https://github.com/eschnett/spack.git || true
+  - git clone https://github.com/llnl/spack.git || true
+  # - git clone -b eschnett/cactusext https://github.com/eschnett/spack.git || true
   - cd spack
-  - git pull
+  - git fetch origin && git reset --hard origin/master
+  - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/spack-package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
   - which $CC || true
   - which $CXX || true
   - which $FC || true
   - cat $HOME/.spack/*/compilers.yaml
-  - travis_wait 40 spack install -j2 cereal %gcc@5
-  - travis_wait spack install -j2 cmake %gcc@5
-  - travis_wait spack install -j2 hwloc %gcc@5
-  - travis_wait spack install -j2 jemalloc %gcc@5
-  - travis_wait 60 spack install -j2 openmpi %gcc@5
-  - travis_wait spack install -j2 qthreads %gcc@5
+  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^pkg-config %"$syscomp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake

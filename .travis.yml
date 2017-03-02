@@ -56,7 +56,7 @@ install:
   # - git clone -b eschnett/cactusext https://github.com/eschnett/spack.git || true
   - cd spack
   - git fetch origin && git reset --hard origin/develop
-  - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/py var/spack/repos/builtin/packages/funhpc/package.py
+  - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
   - which $CC || true

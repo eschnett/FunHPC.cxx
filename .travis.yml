@@ -56,14 +56,14 @@ install:
   # - git clone -b eschnett/cactusext https://github.com/eschnett/spack.git || true
   - cd spack
   - git fetch origin && git reset --hard origin/develop
-  - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/spack-package.py var/spack/repos/builtin/packages/funhpc/package.py
+  - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
   - which $CC || true
   - which $CXX || true
   - which $FC || true
   - cat $HOME/.spack/*/compilers.yaml
-  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^pkg-config %"$syscomp"
+  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake

@@ -58,12 +58,12 @@ install:
   - which $CXX || true
   - which $FC || true
   - cat $HOME/.spack/*/compilers.yaml
-  - travis_wait 40 spack install -j2 cereal
-  - travis_wait spack install -j2 cmake
-  - travis_wait spack install -j2 hwloc
-  - travis_wait spack install -j2 jemalloc
-  - travis_wait 60 spack install -j2 openmpi
-  - travis_wait spack install -j2 qthreads
+  - travis_wait 40 spack install -j2 cereal %gcc@5
+  - travis_wait spack install -j2 cmake %gcc@5
+  - travis_wait spack install -j2 hwloc %gcc@5
+  - travis_wait spack install -j2 jemalloc %gcc@5
+  - travis_wait 60 spack install -j2 openmpi %gcc@5
+  - travis_wait spack install -j2 qthreads %gcc@5
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake

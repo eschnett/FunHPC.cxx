@@ -34,8 +34,8 @@ install:
       export CXX=g++-5;
       export FC=gfortran-5;
       export GCOV=gcov-5;
-      export comp=gcc@5
-      export syscomp="$comp"
+      export comp=gcc@5;
+      export syscomp="$comp";
     fi
   - if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update;
@@ -45,8 +45,8 @@ install:
       export CXX=g++-5;
       export FC=gfortran-5;
       export GCOV=gcov-5;
-      export comp=gcc@5
-      export syscomp=clang
+      export comp=gcc@5;
+      export syscomp=clang;
     fi
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"

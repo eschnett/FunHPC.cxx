@@ -12,9 +12,11 @@ set(PROJECT_URL "https://github.com/eschnett/FunHPC.cxx")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules")
 
+option(COVERALLS "Generate coveralls data" OFF)
+
 # External dependencies
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Drestrict=__restrict__")
+add_definitions(-Drestrict=__restrict__)
 
 find_package(Cereal REQUIRED)
 include_directories(${CEREAL_INCLUDE_DIRS})
@@ -41,6 +43,11 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 set(LIBS ${LIBS} Threads::Threads)
 
+if(COVERALLS)
+  include(Coveralls)
+  coveralls_turn_on_coverage()
+endif()
+
 # Main project
 
 configure_file(
@@ -48,9 +55,82 @@ configure_file(
   "${PROJECT_BINARY_DIR}/funhpc/config.hpp"
   )
 
-include_directories(
-  "${PROJECT_SOURCE_DIR}"
-  "${PROJECT_BINARY_DIR}"
+include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
+set(HEADERS
+  adt/arith.hpp
+  adt/dummy.hpp
+  adt/either.hpp
+  adt/empty.hpp
+  adt/extra.hpp
+  adt/grid_decl.hpp
+  adt/grid_impl.hpp
+  adt/grid2_decl.hpp
+  adt/grid2_impl.hpp
+  adt/idtype.hpp
+  adt/index.hpp
+  adt/maxarray.hpp
+  adt/maybe.hpp
+  adt/nested_decl.hpp
+  adt/nested_impl.hpp
+  adt/par_decl.hpp
+  adt/par_impl.hpp
+  adt/seq_decl.hpp
+  adt/seq_impl.hpp
+  adt/tree_decl.hpp
+  adt/tree_impl.hpp
+  cxx/apply.hpp
+  cxx/cassert.hpp
+  cxx/cstdlib.hpp
+  cxx/funobj.hpp
+  cxx/invoke.hpp
+  cxx/serialize.hpp
+  cxx/task.hpp
+  cxx/tuple.hpp
+  cxx/type_traits.hpp
+  cxx/utility.hpp
+  fun/array.hpp
+  fun/dummy.hpp
+  fun/either.hpp
+  fun/empty.hpp
+  fun/extra.hpp
+  fun/fun_decl.hpp
+  fun/fun_impl.hpp
+  fun/function.hpp
+  fun/grid2_decl.hpp
+  fun/grid2_impl.hpp
+  fun/grid_decl.hpp
+  fun/grid_impl.hpp
+  fun/idtype.hpp
+  fun/maxarray.hpp
+  fun/maybe.hpp
+  fun/nested_decl.hpp
+  fun/nested_impl.hpp
+  fun/pair.hpp
+  fun/par_decl.hpp
+  fun/par_impl.hpp
+  fun/proxy.hpp
+  fun/seq_decl.hpp
+  fun/seq_impl.hpp
+  fun/shared_future.hpp
+  fun/shared_ptr.hpp
+  fun/tree_decl.hpp
+  fun/tree_impl.hpp
+  fun/vector.hpp
+  funhpc/async.hpp
+  funhpc/hwloc.hpp
+  funhpc/main.hpp
+  funhpc/proxy.hpp
+  funhpc/rexec.hpp
+  funhpc/rptr.hpp
+  funhpc/serialize_shared_future.hpp
+  funhpc/server.hpp
+  funhpc/shared_rptr.hpp
+  qthread/future.hpp
+  qthread/mutex.hpp
+  qthread/thread.hpp
   )
 
 set(SRCS
@@ -159,6 +239,16 @@ add_test(NAME selftest-funhpc
   ./selftest-funhpc
   ${MPIEXEC_POSTFLAGS})
 
+if(COVERALLS)
+  # Create the coveralls target
+  # ${PROJECT_SOURCE_DIR}
+  set(COVERALLS_SRCS "")
+  foreach(src ${HEADERS} ${SRCS} ${FUNHPC_SRCS})
+    list(APPEND COVERALLS_SRCS "${PROJECT_SOURCE_DIR}/${src}")
+  endforeach()
+  coveralls_setup("${COVERALLS_SRCS}" ON "${PROJECT_SOURCE_DIR}/cmake/Modules")
+endif()
+
 # Examples
 
 add_executable(benchmark EXCLUDE_FROM_ALL examples/benchmark.cpp)
@@ -206,80 +296,6 @@ add_custom_target(examples EXCLUDE_FROM_ALL
   )
 
 # Install
-
-set(HEADERS
-  adt/arith.hpp
-  adt/dummy.hpp
-  adt/either.hpp
-  adt/empty.hpp
-  adt/extra.hpp
-  adt/grid_decl.hpp
-  adt/grid_impl.hpp
-  adt/grid2_decl.hpp
-  adt/grid2_impl.hpp
-  adt/idtype.hpp
-  adt/index.hpp
-  adt/maxarray.hpp
-  adt/maybe.hpp
-  adt/nested_decl.hpp
-  adt/nested_impl.hpp
-  adt/par_decl.hpp
-  adt/par_impl.hpp
-  adt/seq_decl.hpp
-  adt/seq_impl.hpp
-  adt/tree_decl.hpp
-  adt/tree_impl.hpp
-  cxx/apply.hpp
-  cxx/cassert.hpp
-  cxx/cstdlib.hpp
-  cxx/funobj.hpp
-  cxx/invoke.hpp
-  cxx/serialize.hpp
-  cxx/task.hpp
-  cxx/tuple.hpp
-  cxx/type_traits.hpp
-  cxx/utility.hpp
-  fun/array.hpp
-  fun/dummy.hpp
-  fun/either.hpp
-  fun/empty.hpp
-  fun/extra.hpp
-  fun/fun_decl.hpp
-  fun/fun_impl.hpp
-  fun/function.hpp
-  fun/grid2_decl.hpp
-  fun/grid2_impl.hpp
-  fun/grid_decl.hpp
-  fun/grid_impl.hpp
-  fun/idtype.hpp
-  fun/maxarray.hpp
-  fun/maybe.hpp
-  fun/nested_decl.hpp
-  fun/nested_impl.hpp
-  fun/pair.hpp
-  fun/par_decl.hpp
-  fun/par_impl.hpp
-  fun/proxy.hpp
-  fun/seq_decl.hpp
-  fun/seq_impl.hpp
-  fun/shared_future.hpp
-  fun/shared_ptr.hpp
-  fun/tree_decl.hpp
-  fun/tree_impl.hpp
-  fun/vector.hpp
-  funhpc/async.hpp
-  funhpc/hwloc.hpp
-  funhpc/main.hpp
-  funhpc/proxy.hpp
-  funhpc/rexec.hpp
-  funhpc/rptr.hpp
-  funhpc/serialize_shared_future.hpp
-  funhpc/server.hpp
-  funhpc/shared_rptr.hpp
-  qthread/future.hpp
-  qthread/mutex.hpp
-  qthread/thread.hpp
-  )
 
 foreach(DIR adt cxx fun funhpc qthread)
   set(FILES ${HEADERS})

@@ -9,7 +9,8 @@ sudo: false
 # Build matrix
 os:
   - linux                       # This is currently Ubuntu 12.04 LTS
-  - osx
+  # Building for macOS takes too long and times out
+  # - osx
 language: cpp
 
 # Install, build, and test
@@ -51,18 +52,12 @@ install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   # The git repo might have been created from the cache
-  - rm -rf spack
   - git clone https://github.com/llnl/spack.git || true
-  # - git clone -b eschnett/cactusext https://github.com/eschnett/spack.git || true
   - cd spack
   - git fetch origin && git reset --hard origin/develop
   - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
-  - which $CC || true
-  - which $CXX || true
-  - which $FC || true
-  - cat $HOME/.spack/*/compilers.yaml
   - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
@@ -81,18 +76,6 @@ script:
   - make -j2 install
   - popd
 after_success:
-  - which gcc || true
-  - which g++ || true
-  - which gcov || true
-  - gcc --version || true
-  - g++ --version || true
-  - gcov --version || true
-  - which $CC || true
-  - which $CXX || true
-  - which $GCOV || true
-  - $CC --version || true
-  - $CXX --version || true
-  - $GCOV --version || true
   - mkdir -p "$HOME/bin" && ln -s "$(which $GCOV)" "$HOME/bin/gcov" && ls -l "$HOME/bin" && export PATH="$HOME/bin:$PATH" && hash -r
   - mkdir build-coveralls && pushd build-coveralls
   - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..

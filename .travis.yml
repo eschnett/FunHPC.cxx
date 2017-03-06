@@ -9,7 +9,7 @@ sudo: false
 # Build matrix
 os:
   - linux                       # This is currently Ubuntu 12.04 LTS
-  # Building for macOS takes too long and times out
+  # Building the libraries via Spack takes too long for macOS and times out
   # - osx
 language: cpp
 
@@ -30,24 +30,26 @@ cache:
 before_cache:
   - rm -f "$HOME"/spack/travis_wait_*.log
 install:
-  - if [ "$TRAVIS_OS_NAME" = linux ]; then
-      export CC=gcc-5;
-      export CXX=g++-5;
-      export FC=gfortran-5;
-      export GCOV=gcov-5;
-      export comp=gcc@5;
-      export syscomp="$comp";
+  - |
+    if [ "$TRAVIS_OS_NAME" = linux ]; then
+      export CC=gcc-5
+      export CXX=g++-5
+      export FC=gfortran-5
+      export GCOV=gcov-5
+      export comp=gcc@5
+      export syscomp="$comp"
     fi
-  - if [ "$TRAVIS_OS_NAME" = osx ]; then
-      brew update;
-      brew install gcc@5;
-      brew install gfortran@5;
-      export CC=gcc-5;
-      export CXX=g++-5;
-      export FC=gfortran-5;
-      export GCOV=gcov-5;
-      export comp=gcc@5;
-      export syscomp=clang;
+  - |
+    if [ "$TRAVIS_OS_NAME" = osx ]; then
+      brew update
+      brew install gcc@5
+      brew install gfortran@5
+      export CC=gcc-5
+      export CXX=g++-5
+      export FC=gfortran-5
+      export GCOV=gcov-5
+      export comp=gcc@5
+      export syscomp=clang
     fi
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"

@@ -16,8 +16,6 @@ option(COVERALLS "Generate coveralls data" OFF)
 
 # External dependencies
 
-add_definitions(-Drestrict=__restrict__)
-
 find_package(Cereal REQUIRED)
 include_directories(${CEREAL_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCEREAL_ENABLE_RAW_POINTER_SERIALIZATION")
@@ -54,6 +52,10 @@ configure_file(
   "${PROJECT_SOURCE_DIR}/funhpc/config.hpp.in"
   "${PROJECT_BINARY_DIR}/funhpc/config.hpp"
   )
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_definitions(-Drestrict=__restrict__)
 
 include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 
@@ -146,8 +148,6 @@ set(FUNHPC_SRCS
 
 add_library(funhpc ${SRCS} ${FUNHPC_SRCS})
 target_link_libraries(funhpc ${LIBS})
-set_property(TARGET funhpc PROPERTY CXX_STANDARD 14)
-set_property(TARGET funhpc PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Self-tests
 
@@ -216,13 +216,9 @@ set(FUNHPC_TEST_SRCS
   )
 
 add_executable(selftest ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
-set_property(TARGET selftest PROPERTY CXX_STANDARD 14)
-set_property(TARGET selftest PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(selftest funhpc)
 
 add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
-set_property(TARGET selftest-funhpc PROPERTY CXX_STANDARD 14)
-set_property(TARGET selftest-funhpc PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(selftest-funhpc funhpc)
 
 enable_testing()
@@ -255,43 +251,27 @@ endif()
 # Examples
 
 add_executable(benchmark EXCLUDE_FROM_ALL examples/benchmark.cpp)
-set_property(TARGET benchmark PROPERTY CXX_STANDARD 14)
-set_property(TARGET benchmark PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(benchmark funhpc)
 
 add_executable(benchmark2 EXCLUDE_FROM_ALL examples/benchmark2.cpp)
-set_property(TARGET benchmark2 PROPERTY CXX_STANDARD 14)
-set_property(TARGET benchmark2 PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(benchmark2 funhpc)
 
 add_executable(fibonacci EXCLUDE_FROM_ALL examples/fibonacci.cpp)
-set_property(TARGET fibonacci PROPERTY CXX_STANDARD 14)
-set_property(TARGET fibonacci PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(fibonacci funhpc)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp funhpc)
-set_property(TARGET hello PROPERTY CXX_STANDARD 14)
-set_property(TARGET hello PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(hello funhpc)
 
 add_executable(loops EXCLUDE_FROM_ALL examples/loops.cpp)
-set_property(TARGET loops PROPERTY CXX_STANDARD 14)
-set_property(TARGET loops PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(loops funhpc)
 
 add_executable(pingpong EXCLUDE_FROM_ALL examples/pingpong.cpp)
-set_property(TARGET pingpong PROPERTY CXX_STANDARD 14)
-set_property(TARGET pingpong PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(pingpong funhpc)
 
 add_executable(wave1d EXCLUDE_FROM_ALL examples/wave1d.cpp)
-set_property(TARGET wave1d PROPERTY CXX_STANDARD 14)
-set_property(TARGET wave1d PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(wave1d funhpc)
 
 add_executable(wave3d EXCLUDE_FROM_ALL examples/wave3d.cpp)
-set_property(TARGET wave3d PROPERTY CXX_STANDARD 14)
-set_property(TARGET wave3d PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(wave3d funhpc)
 
 add_custom_target(examples EXCLUDE_FROM_ALL

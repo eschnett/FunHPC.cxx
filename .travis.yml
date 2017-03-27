@@ -64,6 +64,7 @@ install:
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
+  - spack view -d true hardlink "$HOME/spack-view" googletest
   - spack view -d true hardlink "$HOME/spack-view" hwloc
   - spack view -d true hardlink "$HOME/spack-view" jemalloc
   - spack view -d true hardlink "$HOME/spack-view" openmpi

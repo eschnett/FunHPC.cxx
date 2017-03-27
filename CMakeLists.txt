@@ -151,8 +151,8 @@ target_link_libraries(funhpc ${LIBS})
 
 # Self-tests
 
-set(GOOGLETEST_DIR "googletest-release-1.8.0/googletest")
-include_directories("${GOOGLETEST_DIR}/include" "${GOOGLETEST_DIR}")
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
 
 set(TEST_SRCS
   adt/arith_test.cpp
@@ -215,11 +215,11 @@ set(FUNHPC_TEST_SRCS
   funhpc/test_main.cpp
   )
 
-add_executable(selftest ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
-target_link_libraries(selftest funhpc)
+add_executable(selftest ${TEST_SRCS})
+target_link_libraries(selftest ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES} funhpc)
 
-add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
-target_link_libraries(selftest-funhpc funhpc)
+add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS})
+target_link_libraries(selftest-funhpc ${GTEST_LIBRARIES} funhpc)
 
 enable_testing()
 add_test(NAME selftest COMMAND ./selftest)

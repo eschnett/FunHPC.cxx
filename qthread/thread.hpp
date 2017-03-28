@@ -3,6 +3,7 @@
 
 #include <qthread/future.hpp>
 
+#include <qthread/qloop.h>
 #include <qthread/qt_syscalls.h>
 #include <qthread/qthread.hpp>
 
@@ -32,6 +33,19 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
   timeout.tv_sec = usecs / 1000000;
   timeout.tv_usec = usecs % 1000000;
   qt_select(0, nullptr, nullptr, nullptr, &timeout);
+}
+}
+
+// all_threads /////////////////////////////////////////////////////////////////
+
+namespace all_threads {
+template <typename F> inline void run(F &&f) {
+  typedef std::function<void(thread::id)> fun_t;
+  fun_t fun(std::forward<F>(f));
+  auto worker = [](size_t start, size_t stop, void *arg) {
+    (*(fun_t *)arg)(start);
+  };
+  qt_loop(0, qthread_num_workers(), qt_loop_f(worker), (void *)&fun);
 }
 }
 }

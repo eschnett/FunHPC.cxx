@@ -63,7 +63,8 @@ install:
   - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
-  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
+  # - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
+  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake

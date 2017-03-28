@@ -4,8 +4,10 @@
 #include <string>
 
 namespace funhpc {
-void hwloc_set_affinity();
-std::string hwloc_get_cpu_infos();
+namespace hwloc {
+void set_all_cpu_affinities();
+std::string get_all_cpu_infos();
+}
 }
 
 #define FUNHPC_HWLOC_HPP_DONE

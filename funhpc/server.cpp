@@ -401,23 +401,11 @@ void initialize(int &argc, char **&argv) {
   MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
   qthread_initialize();
   detail::set_rank_size();
-  hwloc_set_affinity();
+  hwloc::set_all_cpu_affinities();
   MPI_Barrier(mpi_comm);
 }
 
 int run_main(mainfunc_t *user_main, int argc, char **argv) {
-  // if (rank() == mpi_root) {
-  //   auto nprocs = local_size();
-  //   {
-  //     std::ostringstream buf;
-  //     buf << "FunHPC thread affinity:\n";
-  //     for (int p = 0; p < nprocs; ++p)
-  //       buf << funhpc::async(funhpc::rlaunch::async, p, hwloc_get_cpu_infos)
-  //                  .get();
-  //     std::cout << buf.str();
-  //   }
-  // }
-
   {
     std::ostringstream buf;
     buf << "FunHPC[" << rank() << "]: begin main\n";
@@ -441,19 +429,13 @@ int eventloop(mainfunc_t *user_main, int argc, char **argv) {
   // Output thread bindings
   {
     if (node_rank() == 0) {
-      // for (int p = 0; p < local_size(); ++p) {
-      //   if (p > 0)
-      //     MPI_Barrier(mpi_node_comm);
-      //   if (local_rank() == p)
-      //     std::cout << hwloc_get_cpu_infos() << std::flush;
-      // }
 
       // Output all CPU infos in order
       for (int p = 0; p < local_size(); ++p) {
         std::string msg;
         // On process p, get the CPU info
         if (local_rank() == p)
-          msg = hwloc_get_cpu_infos();
+          msg = hwloc::get_all_cpu_infos();
         // If necessary, transmit from process p to process 0
         if (p != 0) {
           // Send on process p

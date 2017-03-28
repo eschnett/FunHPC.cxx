@@ -54,11 +54,9 @@ install:
   - pushd "$HOME"
   - curl -O https://curl.haxx.se/ca/cacert.pem && export CURL_CA_BUNDLE="$(pwd)/cacert.pem"
   # The git repo might have been created from the cache
-  #TODO - git clone https://github.com/llnl/spack.git || true
-  - git clone https://github.com/eschnett/spack.git || true
+  - git clone https://github.com/llnl/spack.git || true
   - cd spack
-  #TODO - git fetch origin && git reset --hard origin/develop
-  - git fetch origin && git reset --hard origin/eschnett/cactusext
+  - git fetch origin && git reset --hard origin/develop
   - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers

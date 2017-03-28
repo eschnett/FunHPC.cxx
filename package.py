@@ -17,6 +17,7 @@ class Funhpc(CMakePackage):
             description="Produce position-independent code")
 
     depends_on('cereal')
+    depends_on('googletest')
     depends_on('hwloc')
     depends_on('jemalloc')
     depends_on('mpi')

@@ -24,7 +24,7 @@ addons:
       - g++-5
       - gcc-5
       - gfortran-5
-      - libhwloc
+      - libhwloc-dev
       - libopenmpi-dev
       - openmpi-bin
 cache:

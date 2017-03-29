@@ -141,6 +141,7 @@ set(SRCS
   cxx/cstdlib.cpp
   cxx/serialize.cpp
   funhpc/config.cpp
+  qthread/thread.cpp
   )
 set(FUNHPC_SRCS
   funhpc/hwloc.cpp

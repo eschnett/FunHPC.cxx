@@ -1,3 +1,5 @@
+#include "hwloc.hpp"
+
 #include <cxx/cstdlib.hpp>
 #include <funhpc/rexec.hpp>
 #include <qthread/future.hpp>
@@ -6,9 +8,7 @@
 #include <cereal/types/string.hpp>
 #include <hwloc.h>
 
-#include <atomic>
 #include <cassert>
-#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -171,8 +171,8 @@ struct cpu_info_t {
 cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
   thread_layout tl;
   thread_affinity ta(topology, tl);
-  auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
-  auto get_msg = get_affinity(topology);
+  const auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
+  const auto get_msg = get_affinity(topology);
 
   std::ostringstream os;
   os << "FunHPC[" << rank() << "]: "
@@ -189,56 +189,9 @@ cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
 std::vector<cpu_info_t> cpu_infos;
 
 // This routine is called on each process
-void set_all_cpu_affinities_BROKEN() {
-  bool set_thread_bindings = cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
-
-  hwloc_topology_t topology;
-  int ierr = hwloc_topology_init(&topology);
-  assert(!ierr);
-  ierr = hwloc_topology_load(topology);
-  assert(!ierr);
-
-  for (int i = 0; i < 10; ++i) {
-    int nthreads = qthread::thread::hardware_concurrency();
-    cpu_infos.clear();
-    cpu_infos.resize(nthreads);
-    std::atomic<int> counter{0}, fail{0};
-    qthread::all_threads::run([&](int) {
-      ++counter;
-      auto t1 = std::chrono::high_resolution_clock::now() +
-                std::chrono::milliseconds(1);
-      while (counter != nthreads) {
-        if (std::chrono::high_resolution_clock::now() >= t1) {
-          fail = 1;
-          --counter;
-          return;
-        }
-      }
-      int thread = qthread::this_thread::get_worker_id();
-      cpu_infos.at(thread) = manage_affinity(topology, set_thread_bindings);
-      --counter;
-      while (counter != 0)
-        ;
-    });
-  }
-
-  bool success = true;
-  for (const auto &cpu_info : cpu_infos)
-    success &= !cpu_info.msg.empty();
-  if (!success) {
-    std::cerr << "FunHPC[" << rank()
-              << "]: Could not set CPU affinity on process " << rank() << "\n";
-    for (const auto &cpu_info : cpu_infos)
-      std::cerr << cpu_info.msg << "\n";
-    std::exit(EXIT_FAILURE);
-  }
-
-  hwloc_topology_destroy(topology);
-}
-
-// This routine is called on each process
 void set_all_cpu_affinities() {
-  bool set_thread_bindings = cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
+  const bool set_thread_bindings =
+      cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
 
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
@@ -248,50 +201,10 @@ void set_all_cpu_affinities() {
 
   const int nthreads = qthread::thread::hardware_concurrency();
   cpu_infos.resize(nthreads);
-  const int nattempts = 10;
-  bool success = false;
-  for (int attempt = 1; attempt <= nattempts; ++attempt) {
-    const int nsubmit = 10 * nthreads;
-
-    // Submit threads to manage affinity
-    std::vector<qthread::future<cpu_info_t>> fs(nsubmit);
-    for (auto &f : fs)
-      f = qthread::async([&]() {
-        auto cpu_info = manage_affinity(topology, set_thread_bindings);
-
-        // Busy-wait some time to prevent other threads from being scheduled on
-        // the same core
-        auto t1 = std::chrono::high_resolution_clock::now() +
-                  std::chrono::milliseconds(1);
-        while (std::chrono::high_resolution_clock::now() < t1)
-          ;
-
-        return cpu_info;
-      });
-    qthread::this_thread::yield();
-
-    // Read out results
-    for (auto &cpu_infos : cpu_infos)
-      cpu_infos = {};
-    for (auto &f : fs) {
-      auto cpu_info = f.get();
-      assert(cpu_info.thread >= 0 && cpu_info.thread < nthreads);
-      cpu_infos[cpu_info.thread] = cpu_info;
-    }
-
-    // Did it work?
-    success = true;
-    for (const auto &cpu_infos : cpu_infos)
-      success &= !cpu_infos.msg.empty();
-    if (success)
-      break;
-  }
-
-  if (!success) {
-    std::cerr << "FunHPC[" << rank()
-              << "]: Could not set CPU affinity on process " << rank() << "\n";
-    std::exit(EXIT_FAILURE);
-  }
+  qthread::all_threads::run([&]() {
+    const int thread = qthread::this_thread::get_worker_id();
+    cpu_infos.at(thread) = manage_affinity(topology, set_thread_bindings);
+  });
 
   hwloc_topology_destroy(topology);
 }

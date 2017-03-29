@@ -30,8 +30,10 @@ include_directories(${JEMALLOC_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${JEMALLOC_LIBRARIES})
 
 find_package(MPI REQUIRED)
-include_directories(${MPI_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${MPI_LIBRARIES})
+# MPI_CXX_COMPILE_FLAGS
+# MPI_CXX_LINK_FLAGS
+include_directories(${MPI_CXX_INCLUDE_PATH})
+set(LIBS ${LIBS} ${MPI_CXX_LIBRARIES})
 
 find_package(Qthread REQUIRED)
 include_directories(${QTHREAD_INCLUDE_DIRS})

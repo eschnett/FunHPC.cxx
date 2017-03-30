@@ -20,9 +20,9 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - g++-6                   # Could also use gcc-6
+      - g++-6
       - gcc-6
-      - gfortran-6
+      # - gfortran-6
       - libhwloc-dev
       # - libopenmpi-dev
       # - openmpi-bin
@@ -38,19 +38,19 @@ install:
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       export CC=gcc-6
       export CXX=g++-6
-      export FC=gfortran-6
+      # export FC=gfortran-6
       export GCOV=gcov-6
-      export comp=gcc@5
+      export comp=gcc@6
       export syscomp="$comp"
     fi
   - |
     if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update
       brew install gcc@5
-      brew install gfortran@5
+      # brew install gfortran@5
       export CC=gcc-5
       export CXX=g++-5
-      export FC=gfortran-5
+      # export FC=gfortran-5
       export GCOV=gcov-5
       export comp=gcc@5
       export syscomp=clang

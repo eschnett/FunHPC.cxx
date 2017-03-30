@@ -2,14 +2,15 @@
 notifications:
   email: false
 sudo: false
+dist: trusty
 
 # TODO:
 # - build with Clang
 
 # Build matrix
 os:
-  - linux                       # This is currently Ubuntu 12.04 LTS
-  # Building the libraries via Spack takes too long for macOS and times out
+  - linux
+  # Building libraries via Spack takes too long for macOS and times out
   # - osx
 language: cpp
 
@@ -17,13 +18,16 @@ language: cpp
 addons:
   apt:
     sources:
-      # - h-rayflood/llvm
       - ubuntu-toolchain-r-test
     packages:
-      # - llvm-toolchain-3.6
-      - g++-5
-      - gcc-5
-      - gfortran-5
+      - g++-6
+      - gcc-6
+      # - gfortran-6
+      - libhwloc-dev
+      # - libopenmpi-dev
+      # - openmpi-bin
+      - libmpich-dev
+      - mpich
 cache:
   directories:
     - $HOME/spack
@@ -32,21 +36,21 @@ before_cache:
 install:
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
-      export CC=gcc-5
-      export CXX=g++-5
-      export FC=gfortran-5
-      export GCOV=gcov-5
-      export comp=gcc@5
+      export CC=gcc-6
+      export CXX=g++-6
+      # export FC=gfortran-6
+      export GCOV=gcov-6
+      export comp=gcc@6
       export syscomp="$comp"
     fi
   - |
     if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update
       brew install gcc@5
-      brew install gfortran@5
+      # brew install gfortran@5
       export CC=gcc-5
       export CXX=g++-5
-      export FC=gfortran-5
+      # export FC=gfortran-5
       export GCOV=gcov-5
       export comp=gcc@5
       export syscomp=clang
@@ -60,19 +64,22 @@ install:
   - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
-  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
+  # - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
+  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
-  - spack view -d true hardlink "$HOME/spack-view" hwloc
+  - spack view -d true hardlink "$HOME/spack-view" googletest
+  # - spack view -d true hardlink "$HOME/spack-view" hwloc
   - spack view -d true hardlink "$HOME/spack-view" jemalloc
-  - spack view -d true hardlink "$HOME/spack-view" openmpi
+  # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"
   - popd
 script:
   - mkdir build && pushd build
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
+  # - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
+  - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2
   - make -j2 test CTEST_OUTPUT_ON_FAILURE=1
   - make -j2 install
@@ -80,7 +87,7 @@ script:
 after_success:
   - mkdir -p "$HOME/bin" && ln -s "$(which $GCOV)" "$HOME/bin/gcov" && ls -l "$HOME/bin" && export PATH="$HOME/bin:$PATH" && hash -r
   - mkdir build-coveralls && pushd build-coveralls
-  - cmake -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..
+  - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..
   - make -j2
   - make -j2 coveralls CTEST_OUTPUT_ON_FAILURE=1
   - popd

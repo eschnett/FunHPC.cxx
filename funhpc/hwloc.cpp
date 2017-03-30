@@ -1,3 +1,5 @@
+#include "hwloc.hpp"
+
 #include <cxx/cstdlib.hpp>
 #include <funhpc/rexec.hpp>
 #include <qthread/future.hpp>
@@ -7,7 +9,6 @@
 #include <hwloc.h>
 
 #include <cassert>
-#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -170,16 +171,8 @@ struct cpu_info_t {
 cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
   thread_layout tl;
   thread_affinity ta(topology, tl);
-  auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
-  auto get_msg = get_affinity(topology);
-
-  // Busy-wait some time to prevent other threads from being scheduled on the
-  // same core
-  auto t0 = std::chrono::high_resolution_clock::now();
-  while (std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::high_resolution_clock::now() - t0)
-             .count() < 10)
-    ;
+  const auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
+  const auto get_msg = get_affinity(topology);
 
   std::ostringstream os;
   os << "FunHPC[" << rank() << "]: "
@@ -194,13 +187,11 @@ cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
 }
 
 std::vector<cpu_info_t> cpu_infos;
-}
 
 // This routine is called on each process
-void hwloc_set_affinity() {
-  bool set_thread_bindings = cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
-  if (!set_thread_bindings)
-    return;
+void set_all_cpu_affinities() {
+  const bool set_thread_bindings =
+      cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
 
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
@@ -208,48 +199,21 @@ void hwloc_set_affinity() {
   ierr = hwloc_topology_load(topology);
   assert(!ierr);
 
-  auto &infos = hwloc::cpu_infos;
-
   const int nthreads = qthread::thread::hardware_concurrency();
-  infos.clear();
-  infos.resize(nthreads);
-  const int nattempts = 10;
-  bool success = false;
-  for (int attempt = 1; attempt <= nattempts; ++attempt) {
-    const int nsubmit = 10 * nthreads;
-
-    std::vector<qthread::future<hwloc::cpu_info_t>> fs(nsubmit);
-    for (auto &f : fs)
-      f = qthread::async(hwloc::manage_affinity, topology, set_thread_bindings);
-
-    for (auto &info : infos)
-      info = {};
-    for (auto &f : fs) {
-      auto info = f.get();
-      assert(info.thread >= 0 && info.thread < nthreads);
-      infos[info.thread] = info;
-    }
-
-    success = true;
-    for (const auto &info : infos)
-      success &= !info.msg.empty();
-    if (success)
-      break;
-  }
-
-  if (!success) {
-    std::cerr << "FunHPC[" << rank()
-              << "]: Could not set CPU affinity on process " << rank() << "\n";
-    std::exit(EXIT_FAILURE);
-  }
+  cpu_infos.resize(nthreads);
+  qthread::all_threads::run([&]() {
+    const int thread = qthread::this_thread::get_worker_id();
+    cpu_infos.at(thread) = manage_affinity(topology, set_thread_bindings);
+  });
 
   hwloc_topology_destroy(topology);
 }
 
-std::string hwloc_get_cpu_infos() {
+std::string get_all_cpu_infos() {
   std::ostringstream os;
-  for (const auto &info : hwloc::cpu_infos)
-    os << info.msg << "\n";
+  for (const auto &cpu_info : cpu_infos)
+    os << cpu_info.msg << "\n";
   return os.str();
+}
 }
 }

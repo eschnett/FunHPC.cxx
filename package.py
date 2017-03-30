@@ -17,9 +17,10 @@ class Funhpc(CMakePackage):
             description="Produce position-independent code")
 
     depends_on('cereal')
-    depends_on('hwloc')
+    depends_on('googletest')
+    # depends_on('hwloc')
     depends_on('jemalloc')
-    depends_on('mpi')
+    # depends_on('mpi')
     depends_on('qthreads')
 
     def cmake_args(self):

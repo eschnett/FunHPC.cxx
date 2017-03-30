@@ -30,8 +30,10 @@ include_directories(${JEMALLOC_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${JEMALLOC_LIBRARIES})
 
 find_package(MPI REQUIRED)
-include_directories(${MPI_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${MPI_LIBRARIES})
+# MPI_CXX_COMPILE_FLAGS
+# MPI_CXX_LINK_FLAGS
+include_directories(${MPI_CXX_INCLUDE_PATH})
+set(LIBS ${LIBS} ${MPI_CXX_LIBRARIES})
 
 find_package(Qthread REQUIRED)
 include_directories(${QTHREAD_INCLUDE_DIRS})
@@ -139,6 +141,7 @@ set(SRCS
   cxx/cstdlib.cpp
   cxx/serialize.cpp
   funhpc/config.cpp
+  qthread/thread.cpp
   )
 set(FUNHPC_SRCS
   funhpc/hwloc.cpp
@@ -151,8 +154,8 @@ target_link_libraries(funhpc ${LIBS})
 
 # Self-tests
 
-set(GOOGLETEST_DIR "googletest-release-1.8.0/googletest")
-include_directories("${GOOGLETEST_DIR}/include" "${GOOGLETEST_DIR}")
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
 
 set(TEST_SRCS
   adt/arith_test.cpp
@@ -215,11 +218,11 @@ set(FUNHPC_TEST_SRCS
   funhpc/test_main.cpp
   )
 
-add_executable(selftest ${TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc" "${GOOGLETEST_DIR}/src/gtest_main.cc")
-target_link_libraries(selftest funhpc)
+add_executable(selftest ${TEST_SRCS})
+target_link_libraries(selftest ${GTEST_MAIN_LIBRARIES} ${GTEST_LIBRARIES} funhpc)
 
-add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS} "${GOOGLETEST_DIR}/src/gtest-all.cc")
-target_link_libraries(selftest-funhpc funhpc)
+add_executable(selftest-funhpc ${FUNHPC_TEST_SRCS})
+target_link_libraries(selftest-funhpc ${GTEST_LIBRARIES} funhpc)
 
 enable_testing()
 add_test(NAME selftest COMMAND ./selftest)

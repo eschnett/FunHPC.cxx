@@ -7,7 +7,6 @@
 #include <qthread/qthread.hpp>
 
 #include <chrono>
-#include <tuple>
 #include <type_traits>
 
 namespace qthread {
@@ -33,6 +32,12 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
   timeout.tv_usec = usecs % 1000000;
   qt_select(0, nullptr, nullptr, nullptr, &timeout);
 }
+}
+
+// all_threads /////////////////////////////////////////////////////////////////
+
+namespace all_threads {
+void run(const std::function<void()> &f);
 }
 }
 

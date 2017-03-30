@@ -79,7 +79,8 @@ install:
 script:
   - mkdir build && pushd build
   - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
-  - make -j2
+  # - make -j2
+  - make -j1
   - make -j2 test CTEST_OUTPUT_ON_FAILURE=1
   - make -j2 install
   - popd

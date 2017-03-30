@@ -24,8 +24,10 @@ addons:
       - gcc-5
       - gfortran-5
       - libhwloc-dev
-      - libopenmpi-dev
-      - openmpi-bin
+      # - libopenmpi-dev
+      # - openmpi-bin
+      - libmpich-dev
+      - mpich
 cache:
   directories:
     - $HOME/spack

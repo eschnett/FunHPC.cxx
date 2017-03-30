@@ -2,14 +2,15 @@
 notifications:
   email: false
 sudo: false
+dist: trusty
 
 # TODO:
 # - build with Clang
 
 # Build matrix
 os:
-  - linux                       # This is currently Ubuntu 12.04 LTS
-  # Building the libraries via Spack takes too long for macOS and times out
+  - linux
+  # Building libraries via Spack takes too long for macOS and times out
   # - osx
 language: cpp
 
@@ -17,11 +18,9 @@ language: cpp
 addons:
   apt:
     sources:
-      # - h-rayflood/llvm
       - ubuntu-toolchain-r-test
     packages:
-      # - llvm-toolchain-3.6
-      - g++-5
+      - g++-5                   # Could also use gcc-6
       - gcc-5
       - gfortran-5
       - libhwloc-dev

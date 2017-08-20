@@ -86,12 +86,13 @@ adt::dummy fmapStencilMulti(F &&f, G &&g, adt::dummy xs, std::size_t bmask,
 
 // head, last
 
-template <typename> adt::dummy head(adt::dummy xs);
-template <typename> adt::dummy last(adt::dummy xs);
+template <void * = nullptr> adt::dummy head(adt::dummy xs);
+template <void * = nullptr> adt::dummy last(adt::dummy xs);
 
 // boundary
 
-template <typename> adt::dummy boundary(const adt::dummy &xs, std::ptrdiff_t i);
+template <void * = nullptr>
+adt::dummy boundary(const adt::dummy &xs, std::ptrdiff_t i);
 
 // boundaryMap
 
@@ -103,7 +104,8 @@ adt::dummy boundaryMap(F &&f, const adt::dummy &xs, std::ptrdiff_t i,
 
 // indexing
 
-template <typename> adt::dummy getIndex(adt::dummy xs, std::ptrdiff_t i);
+template <void * = nullptr>
+adt::dummy getIndex(adt::dummy xs, std::ptrdiff_t i);
 
 template <typename> class accumulator;
 template <> class accumulator<adt::dummy> {
@@ -127,7 +129,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, adt::dummy xs, adt::dummy ys,
 
 // dump
 
-template <typename> ostreamer dump(adt::dummy xs) {
+template <void * = nullptr> ostreamer dump(adt::dummy xs) {
   return ostreamer("dummy{}");
 }
 
@@ -138,7 +140,7 @@ adt::dummy munit(adt::dummy x);
 
 // mjoin
 
-template <typename> adt::dummy mjoin(adt::dummy xss);
+template <void * = nullptr> adt::dummy mjoin(adt::dummy xss);
 
 // mbind
 
@@ -149,7 +151,7 @@ CR mbind(F &&f, adt::dummy xs, Args &&... args);
 
 // mextract
 
-template <typename> adt::dummy mextract(adt::dummy xs);
+template <void * = nullptr> adt::dummy mextract(adt::dummy xs);
 
 // mfoldMap
 
@@ -175,11 +177,11 @@ adt::dummy msome(adt::dummy x, Ts... ys);
 
 // mempty
 
-template <typename> bool mempty(adt::dummy xs);
+template <void * = nullptr> bool mempty(adt::dummy xs);
 
 // msize
 
-template <typename> std::size_t msize(adt::dummy xs);
+template <void * = nullptr> std::size_t msize(adt::dummy xs);
 }
 
 #define FUN_DUMMY_HPP_DONE

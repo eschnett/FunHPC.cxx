@@ -4,15 +4,19 @@ notifications:
 sudo: false
 dist: trusty
 
-# TODO:
-# - build with Clang
-
 # Build matrix
 os:
   - linux
   # Building libraries via Spack takes too long for macOS and times out
   # - osx
 language: cpp
+compiler:
+  # - clang
+  - gcc
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
 
 # Install, build, and test
 addons:
@@ -22,8 +26,8 @@ addons:
     packages:
       - g++-6
       - gcc-6
-      # - gfortran-6
       - libhwloc-dev
+      # The OpenMP version is not recent enough
       # - libopenmpi-dev
       # - openmpi-bin
       - libmpich-dev
@@ -38,7 +42,6 @@ install:
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       export CC=gcc-6
       export CXX=g++-6
-      # export FC=gfortran-6
       export GCOV=gcov-6
       export comp=gcc@6
       export syscomp="$comp"
@@ -47,10 +50,8 @@ install:
     if [ "$TRAVIS_OS_NAME" = osx ]; then
       brew update
       brew install gcc@5
-      # brew install gfortran@5
       export CC=gcc-5
       export CXX=g++-5
-      # export FC=gfortran-5
       export GCOV=gcov-5
       export comp=gcc@5
       export syscomp=clang
@@ -64,20 +65,18 @@ install:
   - mkdir -p var/spack/repos/builtin/packages/funhpc && cp "$TRAVIS_BUILD_DIR"/package.py var/spack/repos/builtin/packages/funhpc/package.py
   - source share/spack/setup-env.sh
   - spack compilers
-  # - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
   - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp"
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
   - spack view -d true hardlink "$HOME/spack-view" googletest
-  # - spack view -d true hardlink "$HOME/spack-view" hwloc
   - spack view -d true hardlink "$HOME/spack-view" jemalloc
-  # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads
   - export PATH="$HOME/spack-view/bin:$PATH"
   - popd
 script:
   - mkdir build && pushd build
+  # TODO: Switch back to RelWithDebInfo mode once the gcc ICE is fixed
   # - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - cmake -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_FIND_ROOT_PATH="$HOME/spack-view" -DGTEST_ROOT="$HOME/spack-view" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="$HOME/install" ..
   - make -j2

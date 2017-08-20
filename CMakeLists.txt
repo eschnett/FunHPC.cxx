@@ -241,9 +241,10 @@ add_test(NAME selftest-funhpc
   ./selftest-funhpc
   ${MPIEXEC_POSTFLAGS})
 
+# Coverage
+
 if(COVERALLS)
   # Create the coveralls target
-  # ${PROJECT_SOURCE_DIR}
   set(COVERALLS_SRCS "")
   foreach(src ${HEADERS} ${SRCS} ${FUNHPC_SRCS})
     list(APPEND COVERALLS_SRCS "${PROJECT_SOURCE_DIR}/${src}")

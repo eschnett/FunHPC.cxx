@@ -109,7 +109,8 @@ std::string set_affinity(hwloc_topology_t topology, const thread_affinity &ta) {
   const hwloc_obj_t pu_obj =
       hwloc_get_obj_by_depth(topology, pu_depth, ta.thread_pu);
   assert(pu_obj);
-  const hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
+  // const hwloc_cpuset_t cpuset = hwloc_bitmap_dup(pu_obj->cpuset);
+  const hwloc_cpuset_t cpuset = pu_obj->cpuset;
 
   int ierr = hwloc_set_cpubind(topology, cpuset,
                                HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
@@ -118,7 +119,27 @@ std::string set_affinity(hwloc_topology_t topology, const thread_affinity &ta) {
   if (ierr)
     return {" [cannot set CPU bindings]"};
 
-  hwloc_bitmap_free(cpuset);
+  // hwloc_bitmap_free(cpuset);
+  return {};
+}
+
+std::string unset_affinity(hwloc_topology_t topology,
+                           const thread_affinity &ta) {
+  const int machine_depth =
+      hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_MACHINE);
+  assert(machine_depth >= 0);
+  const hwloc_obj_t machine_obj =
+      hwloc_get_obj_by_depth(topology, machine_depth, 0);
+  assert(machine_obj);
+  const hwloc_cpuset_t cpuset = machine_obj->cpuset;
+
+  int ierr = hwloc_set_cpubind(topology, cpuset,
+                               HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
+  if (ierr)
+    ierr = hwloc_set_cpubind(topology, cpuset, HWLOC_CPUBIND_THREAD);
+  if (ierr)
+    return {" [cannot set CPU bindings]"};
+
   return {};
 }
 
@@ -168,10 +189,12 @@ struct cpu_info_t {
   }
 };
 
-cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity) {
+cpu_info_t manage_affinity(hwloc_topology_t topology, bool do_set_affinity,
+                           bool do_unset_affinity) {
   thread_layout tl;
   thread_affinity ta(topology, tl);
   const auto set_msg = do_set_affinity ? set_affinity(topology, ta) : "";
+  const auto unset_msg = do_unset_affinity ? unset_affinity(topology, ta) : "";
   const auto get_msg = get_affinity(topology);
 
   std::ostringstream os;
@@ -192,6 +215,8 @@ std::vector<cpu_info_t> cpu_infos;
 void set_all_cpu_affinities() {
   const bool set_thread_bindings =
       cxx::envtol("FUNHPC_SET_THREAD_BINDINGS", "1");
+  const bool unset_thread_bindings =
+      cxx::envtol("FUNHPC_UNSET_THREAD_BINDINGS", "0");
 
   hwloc_topology_t topology;
   int ierr = hwloc_topology_init(&topology);
@@ -201,9 +226,11 @@ void set_all_cpu_affinities() {
 
   const int nthreads = qthread::thread::hardware_concurrency();
   cpu_infos.resize(nthreads);
+
   qthread::all_threads::run([&]() {
     const int thread = qthread::this_thread::get_worker_id();
-    cpu_infos.at(thread) = manage_affinity(topology, set_thread_bindings);
+    cpu_infos.at(thread) =
+        manage_affinity(topology, set_thread_bindings, unset_thread_bindings);
   });
 
   hwloc_topology_destroy(topology);
@@ -215,5 +242,5 @@ std::string get_all_cpu_infos() {
     os << cpu_info.msg << "\n";
   return os.str();
 }
-}
-}
+} // namespace hwloc
+} // namespace funhpc

@@ -389,12 +389,12 @@ void initialize(int &argc, char **&argv) {
   MPI_Initialized(&flag);
   int provided;
   if (!flag) {
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     did_initialize_mpi = true;
   } else {
     MPI_Query_thread(&provided);
   }
-  if (provided != MPI_THREAD_SERIALIZED && provided != MPI_THREAD_MULTIPLE) {
+  if (provided != MPI_THREAD_MULTIPLE) {
     std::cerr << "MPI does not support multi-threading\n";
     std::exit(EXIT_FAILURE);
   }

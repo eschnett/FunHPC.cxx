@@ -201,7 +201,7 @@ int recurse(int count) {
 }
 
 TEST(std_future, async_many) {
-  int maxcount = 1000;
+  int maxcount = 100; //TODO 1000
   auto res = recurse(maxcount);
   EXPECT_EQ(maxcount, res);
 }
@@ -220,7 +220,7 @@ future<int> recurse2(int count) {
 }
 
 TEST(std_future, async_many2) {
-  int maxcount = 1000;
+  int maxcount = 100; //TODO 1000
   auto res = recurse2(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }
@@ -241,7 +241,7 @@ future<int> recurse3(int count) {
 }
 
 TEST(std_future, async_many3) {
-  int maxcount = 1000;
+  int maxcount = 100; //TODO 1000
   auto res = recurse3(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }

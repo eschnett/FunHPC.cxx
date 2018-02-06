@@ -316,7 +316,7 @@ int recurse(int count) {
 }
 
 TEST(qthread_future, async_many) {
-  int maxcount = 10000;
+  int maxcount = 1000; //TODO 10000
   auto res = recurse(maxcount);
   EXPECT_EQ(maxcount, res);
 }
@@ -332,7 +332,7 @@ future<int> recurse2(int count) {
 }
 
 TEST(qthread_future, async_many2) {
-  int maxcount = 10000;
+  int maxcount = 1000; //TODO 10000
   auto res = recurse2(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }
@@ -353,7 +353,7 @@ future<int> recurse3(int count) {
 }
 
 TEST(qthread_future, async_many3) {
-  int maxcount = 10000;
+  int maxcount = 1000; //TODO 10000
   auto res = recurse3(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }

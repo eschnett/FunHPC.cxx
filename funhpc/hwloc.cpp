@@ -65,6 +65,21 @@ struct thread_layout {
     node_thread = node_proc * proc_nthreads + proc_thread;
     node_nthreads = node_nprocs * proc_nthreads;
 
+    const bool verbose = cxx::envtol("FUNHPC_VERBOSE", "0");
+    if (verbose)
+      if (proc == 0 && proc_thread == 0) {
+        std::ostringstream os;
+        os << "FunHPC thread layout:\n";
+        os << "  proc: " << proc << " / " << nprocs << "\n";
+        os << "  node_proc: " << node_proc << " / " << node_nprocs << "\n";
+        os << "  node: " << node << " / " << nnodes << "\n";
+        os << "  proc_thread: " << proc_thread << " / " << proc_nthreads
+           << "\n";
+        os << "  node_thread: " << node_thread << " / " << node_nthreads
+           << "\n";
+        std::cout << os.str() << std::flush;
+      }
+
     assert(invariant());
   }
 };
@@ -96,8 +111,24 @@ struct thread_affinity {
         oversubscribing
             ? cxx::div_floor(tl.node_thread * node_npus, tl.node_nthreads).quot
             : cxx::div_exact(tl.node_thread * node_npus, tl.node_nthreads).quot;
-    assert(thread_pu + thread_npus <= node_npus);
 
+    const bool verbose = cxx::envtol("FUNHPC_VERBOSE", "0");
+    if (verbose)
+      if (tl.proc == 0 && tl.proc_thread == 0) {
+        std::ostringstream os;
+        os << "FunHPC thread affinity:\n";
+        os << "  node_npus: " << node_npus << "\n";
+        os << "  undersubscribing: " << undersubscribing << "\n";
+        os << "  oversubscribing: " << oversubscribing << "\n";
+        os << "  thread_pu: " << thread_pu << " / " << thread_npus << "\n";
+        std::cout << os.str() << std::flush;
+      }
+
+    if (!oversubscribing) {
+      assert(cxx::div_floor(node_npus, tl.node_nthreads).rem == 0);
+      assert(cxx::div_floor(tl.node_thread * node_npus, tl.node_nthreads).rem ==
+             0);
+    }
     assert(invariant());
   }
 };

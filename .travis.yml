@@ -23,7 +23,7 @@ addons:
       - g++-6
       - gcc-6
       # - gfortran-6
-      - libhwloc-dev
+      # - libhwloc-dev
       # - libopenmpi-dev
       # - openmpi-bin
       - libmpich-dev
@@ -70,7 +70,7 @@ install:
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
   - spack view -d true hardlink "$HOME/spack-view" googletest
-  # - spack view -d true hardlink "$HOME/spack-view" hwloc
+  - spack view -d true hardlink "$HOME/spack-view" hwloc @:1.999.999
   - spack view -d true hardlink "$HOME/spack-view" jemalloc
   # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads

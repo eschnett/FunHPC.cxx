@@ -65,12 +65,12 @@ install:
   - source share/spack/setup-env.sh
   - spack compilers
   # - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^openmpi ^pkg-config %"$syscomp"
-  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp"
+  - travis_wait 60 spack install -j2 --only dependencies funhpc %"$comp" ^hwloc  @:1.999.999
   - spack find
   - spack view -d true hardlink "$HOME/spack-view" cereal
   - spack view -d true hardlink "$HOME/spack-view" cmake
   - spack view -d true hardlink "$HOME/spack-view" googletest
-  - spack view -d true hardlink "$HOME/spack-view" hwloc @:1.999.999
+  - spack view -d true hardlink "$HOME/spack-view" hwloc
   - spack view -d true hardlink "$HOME/spack-view" jemalloc
   # - spack view -d true hardlink "$HOME/spack-view" openmpi
   - spack view -d true hardlink "$HOME/spack-view" qthreads

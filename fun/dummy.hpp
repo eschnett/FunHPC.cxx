@@ -16,7 +16,7 @@ namespace fun {
 namespace detail {
 template <typename> struct is_dummy : std::false_type {};
 template <> struct is_dummy<adt::dummy> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 

@@ -47,7 +47,7 @@ using future_vector =
     adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
 template <typename T, std::size_t D>
 using fvgrid = adt::grid2<future_vector<adt::dummy>, T, D>;
-}
+} // namespace
 
 namespace {
 std::ptrdiff_t get_size(std::size_t D, std::size_t max_size,
@@ -65,7 +65,7 @@ std::ptrdiff_t get_size(std::size_t D, std::size_t max_size,
   cxx_assert(size > 0);
   return s;
 }
-}
+} // namespace
 
 namespace {
 template <template <typename, std::size_t> typename grid, std::size_t D>
@@ -81,7 +81,7 @@ void test_iotaMap() {
   EXPECT_EQ(std::pow(s, D), xs.size());
   EXPECT_EQ(D * (s - 1), xs.last());
 }
-}
+} // namespace
 
 TEST(fun_grid2, iotaMap) {
   {
@@ -132,7 +132,7 @@ template <std::size_t D> void test_fmap() {
   EXPECT_EQ(0, ps.head());
   EXPECT_EQ(D * (3 * (s - 1)), ps.last());
 }
-}
+} // namespace
 
 TEST(fun_grid2, fmap) {
   test_fmap<0>();
@@ -162,7 +162,7 @@ template <std::size_t D> void test_boundary() {
     }
   }
 }
-}
+} // namespace
 
 TEST(fun_grid2, boundary) {
   test_boundary<1>();
@@ -235,7 +235,7 @@ template <std::size_t D> void test_foldMap() {
   static_assert(std::is_same<decltype(r), double>::value, "");
   EXPECT_EQ(D == 0 ? 0 : D * std::pow(s, D - 1) * s * (s - 1) / 2, r);
 }
-}
+} // namespace
 
 TEST(fun_grid2, foldMap) {
   test_foldMap<0>();

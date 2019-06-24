@@ -78,7 +78,7 @@ R foldMap(F &&f, Op &&op, Z &&z, const adt::grid2<C, T, D> &xs,
   return xs.foldMap(std::forward<F>(f), std::forward<Op>(op),
                     std::forward<Z>(z), std::forward<Args>(args)...);
 }
-}
+} // namespace fun
 
 #define FUN_GRID2_IMPL_HPP_DONE
 #endif // #ifdef FUN_GRID2_IMPL_HPP

@@ -40,7 +40,7 @@ template <typename T, const std::remove_reference_t<T> *F> struct objref_impl {
   constexpr decltype(auto) operator()() const { return value; }
 };
 // template <typename T, T F> constexpr T objref_impl<T, F>::value;
-}
+} // namespace detail
 
 #define CXX_FUNOBJ(...)                                                        \
   (cxx::detail::funobj_impl<std::decay_t<decltype(__VA_ARGS__)>, __VA_ARGS__>())
@@ -50,7 +50,7 @@ template <typename T, const std::remove_reference_t<T> *F> struct objref_impl {
 #define CXX_OBJREF(...)                                                        \
   (cxx::detail::objref_impl<                                                   \
       std::add_lvalue_reference_t<decltype(__VA_ARGS__)>, &__VA_ARGS__>())
-}
+} // namespace cxx
 
 #define CXX_FUNOBJ_HPP_DONE
 #endif // #ifdef CXX_FUNOBJ_HPP

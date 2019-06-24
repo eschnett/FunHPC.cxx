@@ -22,7 +22,7 @@ namespace detail {
 template <typename> struct is_extra : std::false_type {};
 template <typename E, typename T>
 struct is_extra<adt::extra<E, T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -152,7 +152,7 @@ template <typename T, typename E>
 constexpr std::size_t msize(const adt::extra<E, T> &xs) {
   return 0;
 }
-}
+} // namespace fun
 
 #define FUN_EXTRA_HPP_DONE
 #endif // #ifdef FUN_EXTRA_HPP

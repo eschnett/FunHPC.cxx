@@ -212,7 +212,7 @@ template <typename A, typename B, typename T>
 std::size_t msize(const adt::seq<A, B, T> &xs) {
   return msize(xs.data.first) + msize(xs.data.second);
 }
-}
+} // namespace fun
 
 #define FUN_SEQ_IMPL_HPP_DONE
 #endif // #ifdef FUN_SEQ_IMPL_HPP

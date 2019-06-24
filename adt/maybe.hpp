@@ -60,7 +60,7 @@ template <typename T, typename... Args> maybe<T> make_just(Args &&... args) {
   res.elt = make_right<std::tuple<>, T>(std::forward<Args>(args)...);
   return res;
 }
-}
+} // namespace adt
 
 #define ADT_MAYBE_HPP_DONE
 #endif // #ifdef ADT_MAYBE_HPP

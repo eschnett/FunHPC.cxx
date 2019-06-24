@@ -25,7 +25,7 @@ namespace fun {
 namespace detail {
 template <typename> struct is_proxy : std::false_type {};
 template <typename T> struct is_proxy<funhpc::proxy<T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -88,7 +88,7 @@ struct proxy_fmap : std::tuple<> {
     return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename T, typename... Args,
           typename C = funhpc::proxy<T>,
@@ -113,7 +113,7 @@ struct proxy_fmap2 : std::tuple<> {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename T, typename T2, typename... Args,
           typename C = funhpc::proxy<T>,
@@ -144,7 +144,7 @@ struct proxy_fmap3 : std::tuple<> {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename T, typename T2, typename T3, typename... Args,
           typename C = funhpc::proxy<T>,
@@ -182,7 +182,7 @@ struct proxy_fmap5 : std::tuple<> {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 // TODO: Introduce fmapSome (?), where one can indicate in some way
 // which arguments are mapped over. Pass a tied tuple? Use wrappers to
@@ -218,7 +218,7 @@ struct proxy_fmapStencil : std::tuple<> {
                        std::forward<BP>(bp), std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename G, typename T, typename BM, typename BP,
           typename... Args, typename CT = funhpc::proxy<T>,
@@ -258,7 +258,7 @@ template <> struct proxy_fmapStencilMulti<1> : std::tuple<> {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename T, typename... Args,
           std::enable_if_t<D == 1> * = nullptr, typename CT = funhpc::proxy<T>,
@@ -298,7 +298,7 @@ template <> struct proxy_fmapStencilMulti<2> : std::tuple<> {
                        *bp1l, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename T, typename... Args,
           std::enable_if_t<D == 2> * = nullptr, typename CT = funhpc::proxy<T>,
@@ -361,7 +361,7 @@ struct proxy_foldMap : std::tuple<> {
     return cxx::invoke(std::forward<F>(f), *xs, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename T, typename... Args,
           typename R = cxx::invoke_of_t<F, T, Args...>>
@@ -387,7 +387,7 @@ struct proxy_foldMap2 : std::tuple<> {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename T, typename T2,
           typename... Args, typename R = cxx::invoke_of_t<F, T, T2, Args...>>
@@ -409,7 +409,7 @@ namespace detail {
 struct proxy_dump : std::tuple<> {
   template <typename T> auto operator()(const T &x) { return ostreamer(x); }
 };
-}
+} // namespace detail
 
 template <typename T> ostreamer dump(const funhpc::proxy<T> &xs) {
   bool s = bool(xs);
@@ -489,7 +489,7 @@ template <typename T> constexpr bool mempty(const funhpc::proxy<T> &xs) {
 template <typename T> constexpr std::size_t msize(const funhpc::proxy<T> &xs) {
   return !mempty(xs);
 }
-}
+} // namespace fun
 
 #define FUN_PROXY_HPP_DONE
 #endif // #ifdef FUN_PROXY_HPP

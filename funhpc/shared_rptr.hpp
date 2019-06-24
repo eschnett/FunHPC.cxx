@@ -119,7 +119,7 @@ public:
            bool(owner) && owner.get_proc() == robj.get_proc() && refcount >= 1;
   }
 };
-}
+} // namespace detail
 
 // shared_rptr /////////////////////////////////////////////////////////////////
 
@@ -241,7 +241,7 @@ template <typename T>
 std::shared_ptr<T> shared_rptr_get_shared_ptr(const shared_rptr<T> &rptr) {
   return rptr.get_shared_ptr();
 }
-}
+} // namespace detail
 
 template <typename T>
 qthread::future<std::shared_ptr<T>>
@@ -252,7 +252,7 @@ make_local_shared_ptr(const shared_rptr<T> &rptr) {
   return async(rlaunch::async | rlaunch::deferred, rptr.get_proc(),
                detail::shared_rptr_get_shared_ptr<T>, rptr);
 }
-}
+} // namespace funhpc
 
 #define FUNHPC_SHARED_RPTR_HPP_DONE
 #endif // #ifdef FUNHPC_SHARED_RPTR_HPP

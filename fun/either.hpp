@@ -24,7 +24,7 @@ namespace detail {
 template <typename> struct is_either : std::false_type {};
 template <typename L, typename R>
 struct is_either<adt::either<L, R>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -269,7 +269,7 @@ template <typename T, typename L>
 std::size_t msize(const adt::either<L, T> &xs) {
   return !mempty(xs);
 }
-}
+} // namespace fun
 
 #define FUN_EITHER_HPP_DONE
 #endif // #ifdef FUN_EITHER_HPP

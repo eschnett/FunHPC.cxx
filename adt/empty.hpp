@@ -21,7 +21,7 @@ public:
   bool operator>=(const empty &other) const { return !(*this < other); }
 };
 template <typename T> void swap(empty<T> &x, empty<T> &y) { x.swap(y); }
-}
+} // namespace adt
 
 #define ADT_EMPTY_HPP_DONE
 #endif // #ifdef ADT_EMPTY_HPP

@@ -38,7 +38,7 @@ double gettime() {
 bool run_main_everywhere() {
   return cxx::envtol("FUNHPC_MAIN_EVERYWHERE", "0");
 }
-}
+} // namespace detail
 
 // Enable/disable communication
 
@@ -61,7 +61,7 @@ namespace detail {
 bool threading_disabled = false;
 pthread_rwlock_t threads_disable;
 std::atomic<int> threads_counter;
-}
+} // namespace detail
 bool threading_disabled() { return detail::threading_disabled; }
 void threading_disable() {
   if (threading_disabled()) {
@@ -230,7 +230,7 @@ void set_rank_size() {
     std::exit(EXIT_FAILURE);
   }
 }
-}
+} // namespace detail
 
 struct mpi_req_t {
   mpi_req_t() {}
@@ -499,4 +499,4 @@ void finalize() {
     }
   }
 }
-}
+} // namespace funhpc

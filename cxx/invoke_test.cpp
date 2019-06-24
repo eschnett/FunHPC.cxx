@@ -51,7 +51,7 @@ int ffo1m(o1 &&fo1) { return std::move(fo1)(1); }
 int ffo0nc(o0nc &&fo0nc) { return std::move(fo0nc)(1); }
 int ffo1nc(o1nc &&fo1nc) { return std::move(fo1nc)(1); }
 int ffo1nm(const o1nm &fo1nm) { return fo1nm(1); }
-}
+} // namespace
 
 TEST(cxx_invoke, invoke) {
   EXPECT_EQ(1, invoke(f0, 1));

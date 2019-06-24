@@ -20,7 +20,7 @@ namespace detail {
 template <typename> struct is_par : std::false_type {};
 template <typename A, typename B, typename T>
 struct is_par<adt::par<A, B, T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -171,7 +171,7 @@ bool mempty(const adt::par<A, B, T> &xs);
 
 template <typename A, typename B, typename T>
 std::size_t msize(const adt::par<A, B, T> &xs);
-}
+} // namespace fun
 
 #define FUN_PAR_DECL_HPP_DONE
 #endif // #ifdef FUN_PAR_DECL_HPP

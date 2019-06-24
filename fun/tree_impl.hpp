@@ -28,7 +28,7 @@ constexpr std::ptrdiff_t max_tree_size = 16;
 template <std::size_t D>
 const std::ptrdiff_t
     max_tree_linear_size = std::rint(std::pow(double(max_tree_size), 1.0 / D));
-}
+} // namespace detail
 
 namespace detail {
 template <typename C> struct tree_iotaMap : std::tuple<> {
@@ -41,7 +41,7 @@ template <typename C> struct tree_iotaMap : std::tuple<> {
                       std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_tree<C>::value> *, typename R,
@@ -145,7 +145,7 @@ template <typename C> struct tree_iotaMapMulti_branch : std::tuple<> {
                         std::forward<F>(f), std::forward<Args>(args)...))};
   }
 };
-}
+} // namespace detail
 
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_tree<C>::value> *, typename R,
@@ -181,7 +181,7 @@ struct tree_fmap : std::tuple<> {
     return fmap(std::forward<F>(f), xs, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename A, typename T, typename... Args, typename CT,
           typename R, typename CR>
@@ -204,7 +204,7 @@ struct tree_fmap2 : std::tuple<> {
     return fmap2(std::forward<F>(f), xs, ys, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename A, typename T, typename T2, typename... Args,
           typename CT, typename R, typename CR>
@@ -230,7 +230,7 @@ struct tree_fmap3 : std::tuple<> {
     return fmap3(std::forward<F>(f), xs, ys, zs, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename A, typename T, typename T2, typename T3,
           typename... Args, typename CT, typename R, typename CR>
@@ -272,7 +272,7 @@ struct tree_boundary : std::tuple<> {
     return boundary(xs, i);
   }
 };
-}
+} // namespace detail
 
 template <typename A, typename T, typename CT, typename BC, typename BCT>
 BCT boundary(const adt::tree<A, T> &xs, std::ptrdiff_t i) {
@@ -294,7 +294,7 @@ struct tree_boundaryMap : std::tuple<> {
     return boundaryMap(std::forward<F>(f), xs, i, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename A, typename T, typename... Args, typename CT,
           typename BC, typename R, typename BCR>
@@ -331,7 +331,7 @@ template <typename G> struct tree_fmapStencil_g {
     return i == 0 ? cxx::invoke(g, head(xs), i) : cxx::invoke(g, last(xs), i);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename G, typename A, typename T, typename BM,
           typename BP, typename... Args, typename CT, typename B, typename R,
@@ -355,7 +355,7 @@ CR fmapStencil(F &&f, const G &g, const adt::tree<A, T> &xs, std::size_t bmask,
 namespace detail {
 template <std::size_t D> struct tree_fmapStencilMulti_f;
 template <std::size_t D, typename G> struct tree_fmapStencilMulti_g;
-}
+} // namespace detail
 
 namespace detail {
 template <> struct tree_fmapStencilMulti_f<1> : std::tuple<> {
@@ -377,7 +377,7 @@ template <typename G> struct tree_fmapStencilMulti_g<1, G> {
     return boundaryMap(g, xs, i);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename A, typename T,
           typename... Args, std::enable_if_t<D == 1> *, typename CT,
@@ -424,7 +424,7 @@ template <typename G> struct tree_fmapStencilMulti_g<2, G> {
     return boundaryMap(g, xs, i);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename A, typename T,
           typename... Args, std::enable_if_t<D == 2> *, typename CT,
@@ -465,7 +465,7 @@ struct tree_foldMap {
                    xs, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename A, typename T,
           typename... Args, typename R>
@@ -489,7 +489,7 @@ struct tree_foldMap2 : std::tuple<> {
                     std::forward<Z>(z), xs, ys, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename A, typename T,
           typename T2, typename... Args, typename R>
@@ -521,7 +521,7 @@ template <typename A, typename T> ostreamer dump(const adt::tree<A, T> &xs) {
                  ostreamer(), xs.subtrees.get_right()) +
          ostreamer("},");
 }
-}
+} // namespace detail
 
 template <typename A, typename T> ostreamer dump(const adt::tree<A, T> &xs) {
   return ostreamer("tree{") + detail::dump(xs) + ostreamer("}");
@@ -553,7 +553,7 @@ struct tree_mjoin {
     return mjoin(xs);
   }
 };
-}
+} // namespace detail
 
 template <typename A, typename T, typename CT>
 CT mjoin(const adt::tree<A, adt::tree<A, T>> &xss) {
@@ -625,7 +625,7 @@ struct tree_msize : std::tuple<> {
     return msize(xs);
   }
 };
-}
+} // namespace detail
 
 template <typename A, typename T> std::size_t msize(const adt::tree<A, T> &xs) {
   bool s = xs.subtrees.right();
@@ -634,7 +634,7 @@ template <typename A, typename T> std::size_t msize(const adt::tree<A, T> &xs) {
   return foldMap(detail::tree_msize(), std::plus<std::size_t>(), 0,
                  xs.subtrees.get_right());
 }
-}
+} // namespace fun
 
 #define FUN_TREE_IMPL_HPP_DONE
 #endif // #ifdef FUN_TREE_IMPL_HPP

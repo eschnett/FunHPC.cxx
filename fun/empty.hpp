@@ -19,7 +19,7 @@ namespace fun {
 namespace detail {
 template <typename> struct is_empty : std::false_type {};
 template <typename T> struct is_empty<adt::empty<T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -135,7 +135,7 @@ template <typename T> constexpr bool mempty(const adt::empty<T> &xs) {
 template <typename T> constexpr std::size_t msize(const adt::empty<T> &xs) {
   return 0;
 }
-}
+} // namespace fun
 
 #define FUN_EMPTY_HPP_DONE
 #endif // #ifdef FUN_EMPTY_HPP

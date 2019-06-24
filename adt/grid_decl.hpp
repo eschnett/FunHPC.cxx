@@ -8,7 +8,7 @@ namespace adt {
 template <typename C, typename T, std::size_t D> class grid;
 template <typename C, typename T, std::size_t D>
 void swap(grid<C, T, D> &x, grid<C, T, D> &y);
-}
+} // namespace adt
 
 #define ADT_GRID_DECL_HPP_DONE
 #endif // #ifdef ADT_GRID_DECL_HPP

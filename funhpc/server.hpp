@@ -11,7 +11,7 @@ void comm_unlock();
 bool threading_disabled();
 void threading_disable();
 void threading_enable();
-}
+} // namespace funhpc
 
 #define FUNHPC_SERVER_HPP_DONE
 #endif // #ifdef FUNHPC_SERVER_HPP

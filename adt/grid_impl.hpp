@@ -220,7 +220,7 @@ public:
 template <std::size_t D> void swap(index_space<D> &x, index_space<D> &y) {
   x.swap(y);
 }
-}
+} // namespace detail
 
 template <typename C, typename T, std::size_t D> class grid {
 public:
@@ -576,7 +576,7 @@ template <typename C, typename T, std::size_t D>
 void swap(grid<C, T, D> &x, grid<C, T, D> &y) {
   x.swap(y);
 }
-}
+} // namespace adt
 
 #define ADT_GRID_IMPL_HPP_DONE
 #endif // #ifdef ADT_GRID_IMPL_HPP

@@ -14,7 +14,7 @@ decltype(auto) apply_impl(F &&f, Tuple &&t, std::index_sequence<I...>) {
   return cxx::invoke(std::forward<F>(f),
                      std::get<I>(std::forward<Tuple>(t))...);
 }
-}
+} // namespace detail
 
 template <typename F, typename Tuple> decltype(auto) apply(F &&f, Tuple &&t) {
   using Indices =
@@ -22,7 +22,7 @@ template <typename F, typename Tuple> decltype(auto) apply(F &&f, Tuple &&t) {
   return detail::apply_impl(std::forward<F>(f), std::forward<Tuple>(t),
                             Indices{});
 }
-}
+} // namespace cxx
 
 #define CXX_APPLY_HPP_DONE
 #endif // #ifdef CXX_APPLY_HPP

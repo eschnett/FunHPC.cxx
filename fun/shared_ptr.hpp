@@ -23,7 +23,7 @@ namespace detail {
 template <typename> struct is_shared_ptr : std::false_type {};
 template <typename T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -347,7 +347,7 @@ template <typename T>
 constexpr std::size_t msize(const std::shared_ptr<T> &xs) {
   return !mempty(xs);
 }
-}
+} // namespace fun
 
 #define FUN_SHARED_PTR_HPP_DONE
 #endif // #ifdef FUN_SHARED_PTR_HPP

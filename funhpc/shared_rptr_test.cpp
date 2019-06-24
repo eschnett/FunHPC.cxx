@@ -12,7 +12,7 @@ struct s {
 };
 
 int f(int x) { return x; }
-}
+} // namespace
 
 TEST(funhpc_shared_rptr, empty) {
   auto pi = shared_rptr<int>();
@@ -45,7 +45,7 @@ template <typename T> shared_rptr<T> bounce(const shared_rptr<T> &p) {
     EXPECT_FALSE(p.local());
   return p;
 }
-}
+} // namespace
 
 TEST(funhpc_shared_rptr, remote) {
   auto pi = make_shared_rptr<int>(1);
@@ -81,7 +81,7 @@ template <typename T> void check(const shared_rptr<T> &p, const T &x) {
       "");
   EXPECT_EQ(x, *fp.get());
 }
-}
+} // namespace
 
 TEST(funhpc_shared_rptr, get) {
   auto pi = make_shared_rptr<int>(1);

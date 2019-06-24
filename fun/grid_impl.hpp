@@ -230,7 +230,7 @@ template <typename C, typename T, std::size_t D>
 std::size_t msize(const adt::grid<C, T, D> &xs) {
   return xs.size();
 }
-}
+} // namespace fun
 
 #define FUN_GRID_IMPL_HPP_DONE
 #endif // #ifdef FUN_GRID_IMPL_HPP

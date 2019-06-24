@@ -201,7 +201,7 @@ template <typename L, typename R, typename... Args>
 either<L, R> make_right(Args &&... args) {
   return either<L, R>::make_right(std::forward<Args>(args)...);
 }
-}
+} // namespace adt
 
 #define ADT_EITHER_HPP_DONE
 #endif // #ifdef ADT_EITHER_HPP

@@ -71,7 +71,7 @@ public:
   bool operator>(const rptr &other) const noexcept { return !(*this <= other); }
 };
 template <typename T> void swap(rptr<T> &lhs, rptr<T> &rhs) { lhs.swap(rhs); }
-}
+} // namespace funhpc
 
 #define FUNHPC_RPTR_HPP_DONE
 #endif // #ifdef FUNHPC_RPTR_HPP

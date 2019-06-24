@@ -81,7 +81,7 @@ int frci(const int &rci) { return rci; }
 
 int frfi(int (&rfi)(int i), int i) { return rfi(i); }
 int fpfi(int (*pfi)(int i), int i) { return pfi(i); }
-}
+} // namespace
 
 namespace {
 // Perfect forwarding
@@ -121,7 +121,7 @@ template <typename F, typename... Args> auto wrap_call(F &&f, Args &&... args) {
   auto c = call<F &&, Args &&...>;
   return wrap(c, std::forward<F>(f), std::forward<Args>(args)...);
 }
-}
+} // namespace
 
 TEST(cxx_utility, std_forward) {
   fi(1);

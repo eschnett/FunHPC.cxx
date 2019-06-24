@@ -25,7 +25,7 @@ template <typename T> class proxy;
 namespace detail {
 template <typename T> struct is_proxy : std::false_type {};
 template <typename T> struct is_proxy<proxy<T>> : std::true_type {};
-}
+} // namespace detail
 
 namespace detail {
 template <typename T>
@@ -202,7 +202,7 @@ private:
         if (proc >= 0)
           cxx_assert(proc == robj.get().get_proc());
       } else {
-        robj = qthread::async([ proc, fptr = std::move(fptr) ]() {
+        robj = qthread::async([proc, fptr = std::move(fptr)]() {
           auto ptr = fptr.get();
           if (proc >= 0)
             cxx_assert(proc == ptr.get_proc());
@@ -221,7 +221,7 @@ private:
         if (proc >= 0)
           cxx_assert(proc == robj.get().get_proc());
       } else {
-        robj = qthread::async([ proc, fptr = std::move(fptr) ]() mutable {
+        robj = qthread::async([proc, fptr = std::move(fptr)]() mutable {
           auto ptr = fptr.get();
           if (proc >= 0)
             cxx_assert(proc == ptr.get_proc());
@@ -262,9 +262,8 @@ public:
                         }));
         }
       } else {
-        *this = proxy(qthread::async([other = std::move(other)]() {
-          return *other.make_local();
-        }));
+        *this = proxy(qthread::async(
+            [other = std::move(other)]() { return *other.make_local(); }));
       }
     }
   }
@@ -320,9 +319,8 @@ public:
     cxx_assert(bool(*this));
     if (proc_ready())
       return qthread::make_ready_future(proc);
-    return qthread::async([robj = this->robj]() {
-      return robj.get().get_proc();
-    });
+    return qthread::async(
+        [robj = this->robj]() { return robj.get().get_proc(); });
   }
   bool local() const {
     cxx_assert(bool(*this));
@@ -392,7 +390,7 @@ proxy<T> make_proxy_with_proc(std::ptrdiff_t proc,
                               qthread::future<proxy<T>> &&fptr) {
   return proxy<T>(proc, std::move(fptr));
 }
-}
+} // namespace detail
 
 // make_proxy //////////////////////////////////////////////////////////////////
 
@@ -460,7 +458,7 @@ template <typename T>
 std::shared_ptr<T> proxy_get_shared_ptr(const proxy<T> &rptr) {
   return rptr.get_shared_ptr();
 }
-}
+} // namespace detail
 
 template <typename T>
 qthread::future<std::shared_ptr<T>>
@@ -486,7 +484,7 @@ template <typename T> proxy<T> proxy<T>::make_local() const {
   cxx_assert(bool(*this));
   return proxy(make_local_shared_ptr(*this));
 }
-}
+} // namespace funhpc
 
 #define FUNHPC_PROXY_HPP_DONE
 #endif // #ifdef FUNHPC_PROXY_HPP

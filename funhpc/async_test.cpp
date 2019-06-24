@@ -8,7 +8,7 @@ using namespace qthread;
 
 namespace {
 int add(int x, int y) { return x + y; }
-}
+} // namespace
 
 TEST(funhpc_async, local1) {
   auto fres = async(add, 1, 2);
@@ -38,7 +38,7 @@ int fii(int x) { return x; }
 int frrii(int &&x) { return x; }
 // int frii(int &x) { return x; }
 int fcrii(const int &x) { return x; }
-}
+} // namespace
 
 TEST(funhpc_async, types) {
   auto p = 1 % size();
@@ -66,7 +66,7 @@ int idelay() {
   qthread::this_thread::sleep_for(std::chrono::milliseconds(100));
   return 1;
 }
-}
+} // namespace
 
 TEST(funhpc_async, async) {
   auto fres = async(rlaunch::async, 1 % size(), delay);

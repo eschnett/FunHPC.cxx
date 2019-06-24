@@ -36,7 +36,7 @@ template <typename F, typename... Args> auto make_task(F &&f, Args &&... args) {
   return task<std::decay_t<F>, std::decay_t<Args>...>(
       std::forward<F>(f), std::forward<Args>(args)...);
 }
-}
+} // namespace
 
 TEST(cxx_apply, apply) {
   std::tuple<int> t(1);

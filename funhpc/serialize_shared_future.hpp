@@ -17,7 +17,7 @@ T shared_future_get(const funhpc::rptr<shared_future<T>> &pf) {
   delete pf.get_ptr();
   return val;
 }
-}
+} // namespace detail
 
 template <typename Archive, typename T>
 void save(Archive &ar, const shared_future<T> &f) {
@@ -54,7 +54,7 @@ void load(Archive &ar, shared_future<T> &f) {
     }
   }
 }
-}
+} // namespace qthread
 
 #define SERIALIZE_SHARED_FUTURE_HPP_DONE
 #endif // #ifndef SERIALIZE_SHARED_FUTURE_HPP

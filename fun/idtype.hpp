@@ -24,7 +24,7 @@ namespace fun {
 namespace detail {
 template <typename> struct is_idtype : std::false_type {};
 template <typename T> struct is_idtype<adt::idtype<T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -207,7 +207,7 @@ template <typename T> constexpr bool mempty(const adt::idtype<T> &xs) {
 template <typename T> constexpr std::size_t msize(const adt::idtype<T> &xs) {
   return 1;
 }
-}
+} // namespace fun
 
 #define FUN_IDTYPE_HPP_DONE
 #endif // #ifdef FUN_IDTYPE_HPP

@@ -20,7 +20,7 @@ namespace detail {
 template <typename> struct is_function : std::false_type {};
 template <typename R, typename A>
 struct is_function<std::function<R(A)>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -51,7 +51,7 @@ CR iotaMap(F &&f, const adt::irange_t &inds, Args &&... args) {
   if (inds.empty())
     return CR();
   // TODO: Make this serializable
-  CR rs = [ f = std::forward<F>(f), i = inds[0], args... ](const A &) {
+  CR rs = [f = std::forward<F>(f), i = inds[0], args...](const A &) {
     return cxx::invoke(f, i, args...);
   };
   return rs;
@@ -67,7 +67,7 @@ CR fmap(F &&f, const std::function<T(A)> &xs, Args &&... args) {
   bool s = bool(xs);
   if (!s)
     return CR();
-  CR rs = [ f = std::forward<F>(f), xs, args... ](const A &a) {
+  CR rs = [f = std::forward<F>(f), xs, args...](const A &a) {
     return cxx::invoke(f, cxx::invoke(xs, a), args...);
   };
   return rs;
@@ -83,7 +83,7 @@ CR fmap2(F &&f, const std::function<T(A)> &xs, const std::function<T2(A)> &ys,
   cxx_assert(bool(ys) == s);
   if (!s)
     return CR();
-  CR rs = [ f = std::forward<F>(f), xs, ys, args... ](const A &a) {
+  CR rs = [f = std::forward<F>(f), xs, ys, args...](const A &a) {
     return cxx::invoke(f, cxx::invoke(xs, a), cxx::invoke(ys, a), args...);
   };
   return rs;
@@ -110,7 +110,7 @@ CR mbind(F &&f, const std::function<T(A)> &xs, Args &&... args) {
   if (!bool(xs))
     return CR();
   // TODO: allow empty f?
-  CR rs = [ f = std::forward<F>(f), xs, args... ](const A &a) {
+  CR rs = [f = std::forward<F>(f), xs, args...](const A &a) {
     return cxx::invoke(cxx::invoke(f, cxx::invoke(xs, a), args...), a);
   };
   return rs;
@@ -135,7 +135,7 @@ template <typename F, typename Op, typename Z, typename T, typename A,
           typename CR = typename fun_traits<C>::template constructor<R>>
 CR mfoldMap(F &&f, Op &&op, Z &&z, const std::function<T(A)> &xs,
             Args &&... args) {
-  return CR([ f = std::forward<F>(f), xs, args... ](const A &a) {
+  return CR([f = std::forward<F>(f), xs, args...](const A &a) {
     return cxx::invoke(f, xs(a), args...);
   });
 }
@@ -173,7 +173,7 @@ template <typename T> bool mempty(const std::function<T> &xs) {
 template <typename T> std::size_t msize(const std::function<T> &xs) {
   return !mempty(xs);
 }
-}
+} // namespace fun
 
 #define FUN_FUNCTION_HPP_DONE
 #endif // #ifdef FUN_FUNCTION_HPP

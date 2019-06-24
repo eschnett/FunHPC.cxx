@@ -239,7 +239,7 @@ std::size_t msize(const adt::par<A, B, T> &xs) {
     return msize(xs.data.get_left());
   return msize(xs.data.get_right());
 }
-}
+} // namespace fun
 
 #define FUN_PAR_IMPL_HPP_DONE
 #endif // #ifdef FUN_PAR_IMPL_HPP

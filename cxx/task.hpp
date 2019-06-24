@@ -29,7 +29,7 @@ template <typename T> cereal_register_t<T> cereal_register_init() {
              cereal::detail::bind_to_archives<T>>::getInstance()
       .bind();
 }
-}
+} // namespace detail
 
 // task ////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +91,7 @@ template <typename R, typename F, typename... Args>
 cereal_register_t<concrete_task<R, F, Args...>>
     concrete_task<R, F, Args...>::cereal_register =
         cereal_register_init<concrete_task<R, F, Args...>>();
-}
+} // namespace detail
 
 template <typename R> class task {
   std::unique_ptr<detail::abstract_task<R>> ptask;
@@ -124,7 +124,7 @@ public:
   }
 };
 template <typename R> void swap(task<R> &lhs, task<R> &rhs) { lhs.swap(rhs); }
-}
+} // namespace cxx
 
 namespace cereal {
 namespace detail {
@@ -140,8 +140,8 @@ struct binding_name<::cxx::detail::concrete_task<R, F, Args...>> {
     return typeid(::cxx::detail::concrete_task<R, F, Args...>).name();
   }
 };
-}
-}
+} // namespace detail
+} // namespace cereal
 
 #define CXX_TASK_HPP_DONE
 #endif // #ifndef CXX_TASK_HPP

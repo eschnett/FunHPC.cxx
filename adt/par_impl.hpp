@@ -40,7 +40,7 @@ template <typename A, typename B, typename T>
 void swap(par<A, B, T> &x, par<A, B, T> &y) {
   swap(x.data, y.data);
 }
-}
+} // namespace adt
 
 #define ADT_PAR_IMPL_HPP_DONE
 #endif // #ifdef ADT_PAR_IMPL_HPP

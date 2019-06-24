@@ -18,7 +18,7 @@ namespace detail {
 template <typename> struct is_grid : std::false_type {};
 template <typename C, typename T, std::size_t D>
 struct is_grid<adt::grid<C, T, D>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -228,7 +228,7 @@ bool mempty(const adt::grid<C, T, D> &xs);
 
 template <typename C, typename T, std::size_t D>
 std::size_t msize(const adt::grid<C, T, D> &xs);
-}
+} // namespace fun
 
 #define FUN_GRID_DECL_HPP_DONE
 #endif // #ifdef FUN_GRID_DECL_HPP

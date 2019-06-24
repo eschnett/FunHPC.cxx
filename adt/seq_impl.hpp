@@ -40,7 +40,7 @@ template <typename A, typename B, typename T>
 void swap(seq<A, B, T> &x, seq<A, B, T> &y) {
   swap(x.data, y.data);
 }
-}
+} // namespace adt
 
 #define ADT_SEQ_IMPL_HPP_DONE
 #endif // #ifdef ADT_SEQ_IMPL_HPP

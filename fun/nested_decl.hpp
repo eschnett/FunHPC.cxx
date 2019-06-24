@@ -20,7 +20,7 @@ namespace detail {
 template <typename> struct is_nested : std::false_type {};
 template <typename P, typename A, typename T, typename Policy>
 struct is_nested<adt::nested<P, A, T, Policy>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -296,7 +296,7 @@ bool mempty(const adt::nested<P, A, T, Policy> &xss);
 
 template <typename P, typename A, typename T, typename Policy>
 std::size_t msize(const adt::nested<P, A, T, Policy> &xss);
-}
+} // namespace fun
 
 #define FUN_NESTED_DECL_HPP_DONE
 #endif // #ifdef FUN_NESTED_DECL_HPP

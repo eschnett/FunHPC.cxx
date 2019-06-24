@@ -109,12 +109,13 @@ public:
   template <typename F, typename... Args, std::size_t D1 = D,
             std::enable_if_t<D1 == 1> * = nullptr>
   grid2(iotaMap, F &&f, const adt::irange_t &inds, Args &&... args)
-      : grid2(iotaMap(),
-              [&](const index_type &ipos) {
-                return cxx::invoke(std::forward<F>(f), ipos[0],
-                                   std::forward<Args>(args)...);
-              },
-              adt::range_t<D>(inds)) {}
+      : grid2(
+            iotaMap(),
+            [&](const index_type &ipos) {
+              return cxx::invoke(std::forward<F>(f), ipos[0],
+                                 std::forward<Args>(args)...);
+            },
+            adt::range_t<D>(inds)) {}
 
   template <typename F, typename... Args>
   grid2(iotaMap, F &&f, const adt::range_t<D> &inds, Args &&... args)
@@ -295,7 +296,7 @@ template <typename C, typename T, std::size_t D>
 void swap(grid2<C, T, D> &x, grid2<C, T, D> &y) {
   x.swap(y);
 }
-}
+} // namespace adt
 
 #define ADT_GRID2_IMPL_HPP_DONE
 #endif // #ifdef ADT_GRID2_IMPL_HPP

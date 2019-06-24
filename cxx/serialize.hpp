@@ -29,7 +29,7 @@ void serialize_anchor_f();
 inline std::uintptr_t serialize_anchor() {
   return fptr2uint(&serialize_anchor_f) & ~std::uintptr_t(1);
 }
-}
+} // namespace detail
 
 // This exists only to throw a static_assert to let users know we
 // don't support raw pointers
@@ -127,7 +127,7 @@ void load(Archive &ar, T &m) {
   ar(buf);
   std::memcpy(&m, &buf, sizeof buf);
 }
-}
+} // namespace cereal
 
 #if 0
 namespace cxx {

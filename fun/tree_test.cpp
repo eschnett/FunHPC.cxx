@@ -25,7 +25,7 @@ template <typename T>
 using shared_tree = adt::tree<shared_vector<adt::dummy>, T>;
 template <typename T>
 using future_tree = adt::tree<future_vector<adt::dummy>, T>;
-}
+} // namespace
 
 // TODO: Test trees of grids
 

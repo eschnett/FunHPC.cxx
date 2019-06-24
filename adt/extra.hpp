@@ -32,7 +32,7 @@ public:
 template <typename E, typename T> void swap(extra<E, T> &x, extra<E, T> &y) {
   x.swap(y);
 }
-}
+} // namespace adt
 
 #define ADT_EXTRA_HPP_DONE
 #endif // #ifdef ADT_EXTRA_HPP

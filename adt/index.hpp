@@ -268,7 +268,7 @@ public:
               << inds.istep_ << ")";
   }
 };
-}
+} // namespace adt
 
 #define ADT_INDEX_HPP_DONE
 #endif // #ifdef ADT_INDEX_HPP

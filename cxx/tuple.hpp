@@ -50,7 +50,7 @@ template <typename T, std::size_t N, typename Tuple, std::size_t... Indices>
 auto to_array(Tuple &&tuple, std::index_sequence<Indices...>) {
   return std::array<T, N>{{std::get<Indices>(std::forward<Tuple>(tuple))...}};
 }
-}
+} // namespace detail
 
 template <typename Tuple> auto to_array(Tuple &&tuple) {
   constexpr size_t N = std::tuple_size<Tuple>::value;
@@ -59,7 +59,7 @@ template <typename Tuple> auto to_array(Tuple &&tuple) {
   return detail::to_array<T, N>(std::forward<Tuple>(tuple),
                                 std::make_index_sequence<N>());
 }
-}
+} // namespace cxx
 
 #define CXX_TUPLE_HPP_DONE
 #endif // #ifdef CXX_TUPLE_HPP

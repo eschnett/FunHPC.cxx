@@ -22,7 +22,7 @@ namespace detail {
 template <typename> struct is_pair : std::false_type {};
 template <typename L, typename R>
 struct is_pair<std::pair<L, R>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -199,7 +199,7 @@ template <typename T, typename L>
 constexpr std::size_t msize(const std::pair<L, T> &xs) {
   return 1;
 }
-}
+} // namespace fun
 
 #define FUN_PAIR_HPP_DONE
 #endif // #ifdef FUN_PAIR_HPP

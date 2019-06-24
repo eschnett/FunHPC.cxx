@@ -40,7 +40,7 @@ template <typename T> void swap(idtype<T> &x, idtype<T> &y) { x.swap(y); }
 template <typename T> auto make_id(T &&x) {
   return idtype<std::decay_t<T>>(std::forward<T>(x));
 }
-}
+} // namespace adt
 
 #define ADT_IDTYPE_HPP_DONE
 #endif // #ifdef ADT_IDTYPE_HPP

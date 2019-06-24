@@ -33,7 +33,7 @@ template <typename A, typename T> struct tree {
 template <typename A, typename T> void swap(tree<A, T> &x, tree<A, T> &y) {
   swap(x.subtrees, y.subtrees);
 }
-}
+} // namespace adt
 
 #define ADT_TREE_IMPL_HPP_DONE
 #endif // #ifdef ADT_TREE_IMPL_HPP

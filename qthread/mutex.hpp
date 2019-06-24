@@ -111,7 +111,7 @@ public:
   lock_guard &operator=(const lock_guard &) = delete;
   lock_guard &operator=(lock_guard &&) = delete;
 };
-}
+} // namespace qthread
 
 #define QTHREAD_MUTEX_HPP_DONE
 #endif // #ifndef QTHREAD_MUTEX_HPP

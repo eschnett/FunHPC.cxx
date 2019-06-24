@@ -115,7 +115,7 @@ template <typename T> void test_serialize(const T &x) {
   }
   EXPECT_EQ(x, y);
 }
-}
+} // namespace
 
 TEST(adt_maybe, serialize) {
   test_serialize(adt::make_nothing<int>());

@@ -23,7 +23,7 @@ namespace detail {
 template <typename> struct is_shared_future : std::false_type {};
 template <typename T>
 struct is_shared_future<qthread::shared_future<T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -88,8 +88,8 @@ CR fmap(F &&f, const qthread::shared_future<T> &xs, Args &&... args) {
   if (!s)
     return CR();
   return xs
-      .then([ f = std::forward<F>(f),
-              args... ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f),
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), std::move(args)...);
       })
       .share();
@@ -106,8 +106,8 @@ CR fmap2(F &&f, const qthread::shared_future<T> &xs,
   if (!s)
     return CR();
   return xs
-      .then([ f = std::forward<F>(f), ys,
-              args... ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f), ys,
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), ys.get(),
                            std::move(args)...);
       })
@@ -127,8 +127,8 @@ CR fmap3(F &&f, const qthread::shared_future<T> &xs,
   if (!s)
     return CR();
   return xs
-      .then([ f = std::forward<F>(f), ys, zs,
-              args... ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f), ys, zs,
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), ys.get(), zs.get(),
                            std::move(args)...);
       })
@@ -150,10 +150,9 @@ CR fmapStencil(F &&f, G &&g, const qthread::shared_future<T> &xs,
   if (__builtin_expect(!s, false))
     return CR();
   return xs
-      .then([
-        f = std::forward<F>(f), bmask, bm = std::forward<BM>(bm),
-        bp = std::forward<BP>(bp), args...
-      ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f), bmask, bm = std::forward<BM>(bm),
+             bp = std::forward<BP>(bp),
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm),
                            std::move(bp), std::move(args)...);
       })
@@ -177,8 +176,8 @@ CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
   if (__builtin_expect(!s, false))
     return CR();
   return xs
-      .then([ f = std::forward<F>(f), bmask, bm0, bp0,
-              args... ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f), bmask, bm0, bp0,
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
                            std::move(bp0).get(), std::move(args)...);
       })
@@ -201,8 +200,8 @@ CR fmapStencilMulti(F &&f, G &&g, const qthread::shared_future<T> &xs,
   if (__builtin_expect(!s, false))
     return CR();
   return xs
-      .then([ f = std::forward<F>(f), bmask, bm0, bm1, bp0, bp1,
-              args... ](const qthread::shared_future<T> &xs) mutable {
+      .then([f = std::forward<F>(f), bmask, bm0, bm1, bp0, bp1,
+             args...](const qthread::shared_future<T> &xs) mutable {
         return cxx::invoke(std::move(f), xs.get(), bmask, std::move(bm0).get(),
                            std::move(bm1).get(), std::move(bp0).get(),
                            std::move(bp1).get(), std::move(args)...);
@@ -359,7 +358,7 @@ template <typename T>
 constexpr std::size_t msize(const qthread::shared_future<T> &xs) {
   return !mempty(xs);
 }
-}
+} // namespace fun
 
 #define FUN_SHARED_FUTURE_HPP_DONE
 #endif // #ifdef FUN_SHARED_FUTURE_HPP

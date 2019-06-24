@@ -32,14 +32,14 @@ void sleep_for(const std::chrono::duration<Rep, Period> &duration) {
   timeout.tv_usec = usecs % 1000000;
   qt_select(0, nullptr, nullptr, nullptr, &timeout);
 }
-}
+} // namespace this_thread
 
 // all_threads /////////////////////////////////////////////////////////////////
 
 namespace all_threads {
 void run(const std::function<void()> &f);
 }
-}
+} // namespace qthread
 
 #define QTHREAD_HPP_THREAD_HPP_DONE
 #endif // #ifndef QTHREAD_HPP_THREAD_HPP

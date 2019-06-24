@@ -33,7 +33,7 @@ template <typename T> struct nested_default_policy : std::tuple<> {
   template <typename U>
   nested_default_policy(const nested_default_policy<U> &other) {}
 };
-}
+} // namespace detail
 
 template <typename P, typename A, typename T, typename Policy> struct nested {
   // nested<P,A,T> = P<A<T>>
@@ -73,7 +73,7 @@ template <typename P, typename A, typename T, typename Policy>
 void swap(nested<P, A, T, Policy> &x, nested<P, A, T, Policy> &y) {
   swap(x.data, y.data);
 }
-}
+} // namespace adt
 
 #define ADT_NESTED_IMPL_HPP_DONE
 #endif // #ifdef ADT_NESTED_IMPL_HPP

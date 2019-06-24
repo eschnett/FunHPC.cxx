@@ -17,7 +17,7 @@ namespace detail {
 template <typename> struct is_tree : std::false_type {};
 template <typename A, typename T>
 struct is_tree<adt::tree<A, T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -205,7 +205,7 @@ template <typename A, typename T> bool mempty(const adt::tree<A, T> &xs);
 // msize
 
 template <typename A, typename T> std::size_t msize(const adt::tree<A, T> &xs);
-}
+} // namespace fun
 
 #define FUN_TREE_DECL_HPP_DONE
 #endif // #ifdef FUN_TREE_DECL_HPP

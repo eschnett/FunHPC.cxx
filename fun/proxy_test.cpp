@@ -44,7 +44,7 @@ auto call_accumulate(int i, funhpc::rptr<std::atomic<int>> accum) {
                        accum)
       .get();
 }
-}
+} // namespace
 
 TEST(fun_proxy, fmap) {
   auto xs = funhpc::make_local_proxy<int>(0);
@@ -69,7 +69,7 @@ TEST(fun_proxy, fmap) {
 namespace {
 int id(int x) { return x; }
 int sq(int x) { return x * x; }
-}
+} // namespace
 
 TEST(fun_proxy, foldMap) {
   std::ptrdiff_t s = 1;
@@ -93,7 +93,7 @@ namespace {
 auto mkproxy_add(int x, int y) {
   return munit<funhpc::proxy<adt::dummy>>(x + y);
 }
-}
+} // namespace
 
 TEST(fun_proxy, monad) {
   auto x1 = munit<funhpc::proxy<adt::dummy>>(1);

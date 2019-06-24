@@ -20,11 +20,11 @@ template <typename T> T deserialize(const std::string &str) {
   { (cereal::BinaryInputArchive(buf))(obj); }
   return obj;
 }
-}
+} // namespace
 
 namespace {
 int fun() { return 1; }
-}
+} // namespace
 
 TEST(cxx_serialize, function) {
   auto orig = &fun;
@@ -38,7 +38,7 @@ namespace {
 struct funobj {
   int operator()() { return 1; }
 };
-}
+} // namespace
 
 TEST(cxx_serialize, function_object) {
   auto orig = funobj();
@@ -55,7 +55,7 @@ struct obj {
   virtual int virtmemfun() { return 3; }
   obj() : mem(1) {}
 };
-}
+} // namespace
 
 TEST(cxx_serialize, member_function) {
   auto orig = &obj::memfun;

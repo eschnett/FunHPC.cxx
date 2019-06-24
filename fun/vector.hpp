@@ -26,7 +26,7 @@ namespace detail {
 template <typename> struct is_vector : std::false_type {};
 template <typename T, typename Allocator>
 struct is_vector<std::vector<T, Allocator>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -73,7 +73,7 @@ struct vector_iotaMapMulti {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_vector<C>::value> * = nullptr,
@@ -298,9 +298,10 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
   std::ptrdiff_t s = xs.size();
   R r(z);
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -316,9 +317,10 @@ R foldMap(F &&f, Op &&op, Z &&z, std::vector<T, Allocator> &&xs,
   std::ptrdiff_t s = xs.size();
   R r(z);
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -337,9 +339,10 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::vector<T, Allocator> &xs,
   cxx_assert(std::ptrdiff_t(ys.size()) == s);
   R r(z);
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -486,7 +489,7 @@ template <typename T, typename Allocator>
 std::size_t msize(const std::vector<T, Allocator> &xs) {
   return xs.size();
 }
-}
+} // namespace fun
 
 #define FUN_VECTOR_HPP_DONE
 #endif // #ifdef FUN_VECTOR_HPP

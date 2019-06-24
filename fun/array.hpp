@@ -26,7 +26,7 @@ namespace detail {
 template <typename> struct is_array : std::false_type {};
 template <typename T, std::size_t N>
 struct is_array<std::array<T, N>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -70,7 +70,7 @@ struct array_iotaMapMulti {
                        std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <
     typename C, std::size_t D, typename F, typename... Args,
@@ -265,9 +265,10 @@ R foldMap(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs, Args &&... args) {
   constexpr std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -282,9 +283,10 @@ R foldMap(F &&f, Op &&op, Z &&z, std::array<T, N> &&xs, Args &&... args) {
   constexpr std::ptrdiff_t s = N;
   R r(std::forward<Z>(z));
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -303,9 +305,10 @@ R foldMap2(F &&f, Op &&op, Z &&z, const std::array<T, N> &xs,
   static_assert(N2 == s, "");
   R r(std::forward<Z>(z));
 #if 0
-#pragma omp declare reduction(red : R : (                                      \
-    omp_out = cxx::invoke(op, std::move(omp_out),                              \
-                                        omp_in))) initializer(omp_priv(z))
+#pragma omp declare reduction(                                                 \
+    red:R                                                                      \
+    : (omp_out = cxx::invoke(op, std::move(omp_out), omp_in)))                 \
+    initializer(omp_priv(z))
 #pragma omp simd reduction(red : r)
 #endif
   for (std::ptrdiff_t i = 0; i < s; ++i)
@@ -425,7 +428,7 @@ template <typename T, std::size_t N>
 constexpr std::size_t msize(const std::array<T, N> &xs) {
   return xs.size();
 }
-}
+} // namespace fun
 
 #define FUN_ARRAY_HPP_DONE
 #endif // #ifdef FUN_ARRAY_HPP

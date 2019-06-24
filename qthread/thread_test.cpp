@@ -10,7 +10,7 @@ using namespace qthread;
 namespace {
 int fi(int x) { return x; }
 void fv(int) {}
-}
+} // namespace
 
 TEST(qthread_thread, basic) {
   qthread_initialize();
@@ -54,7 +54,7 @@ void recurse(int count, std::atomic<int> *pcounter) {
   thread(recurse, count / 2, pcounter).detach();
   thread(recurse, count - count / 2, pcounter).detach();
 }
-}
+} // namespace
 
 TEST(qthread_thread, many) {
   int maxcount{10};

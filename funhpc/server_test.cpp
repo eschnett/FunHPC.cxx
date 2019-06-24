@@ -38,7 +38,7 @@ int count_threads() {
   }
   return max_active;
 }
-}
+} // namespace
 
 TEST(funhpc_server, disable_threading) {
   comm_lock();

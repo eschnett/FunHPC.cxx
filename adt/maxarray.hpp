@@ -101,7 +101,7 @@ template <typename T, std::size_t N>
 void swap(maxarray<T, N> &x, maxarray<T, N> &y) noexcept {
   x.swap(y);
 }
-}
+} // namespace adt
 
 #define ADT_MAXARRAY_HPP_DONE
 #endif // #ifdef ADT_MAXARRAY_HPP

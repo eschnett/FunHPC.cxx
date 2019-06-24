@@ -51,7 +51,7 @@ C1T convert(const C2T &xs) {
   };
   return foldMap(f(), op(), mzero<C1, T>(), xs);
 }
-}
+} // namespace fun
 
 #define FUN_FUN_IMPL_HPP_DONE
 #endif // #ifdef FUN_FUN_IMPL_HPP

@@ -62,7 +62,7 @@ namespace detail {
 constexpr qthread::launch local_policy(rlaunch policy) {
   return static_cast<qthread::launch>(policy);
 }
-}
+} // namespace detail
 
 // async ///////////////////////////////////////////////////////////////////////
 
@@ -96,7 +96,7 @@ template <> struct continued<void> : std::tuple<> {
     rexec(rpres.get_proc(), set_result<void>(), rpres);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename... Args,
           typename R = std::decay_t<
@@ -119,13 +119,13 @@ qthread::future<R> async(rlaunch policy, std::ptrdiff_t dest, F &&f,
     return fres;
   }
   case rlaunch::deferred: {
-    return qthread::async(qthread::launch::deferred,
-                          [dest](auto &&f, auto &&... args) {
-                            return async(rlaunch::async, dest, std::move(f),
-                                         std::move(args)...)
-                                .get();
-                          },
-                          std::forward<F>(f), std::forward<Args>(args)...);
+    return qthread::async(
+        qthread::launch::deferred,
+        [dest](auto &&f, auto &&... args) {
+          return async(rlaunch::async, dest, std::move(f), std::move(args)...)
+              .get();
+        },
+        std::forward<F>(f), std::forward<Args>(args)...);
   }
   case rlaunch::detached: {
     rexec(dest, std::forward<F>(f), std::forward<Args>(args)...);
@@ -154,7 +154,7 @@ qthread::future<R> async(rlaunch policy,
       },
       std::forward<F>(f), std::forward<Args>(args)...);
 }
-}
+} // namespace funhpc
 
 #define FUNHPC_ASYNC_HPP_DONE
 #endif // #ifdef FUNHPC_ASYNC_HPP

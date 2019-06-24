@@ -58,7 +58,6 @@ void vdiff_funhpc(double *y, const double *x, int n) {
   std::vector<qthread::future<void>> fs;
   for (int i0 = 1; i0 < n - 1; i0 += blocksize) {
     fs.push_back(qthread::async(qthread::launch::async, [=]() {
-
       // loop over the work of a single thread
       const int imin = i0;
       const int imax = std::min(i0 + blocksize, n - 1);

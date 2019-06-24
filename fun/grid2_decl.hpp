@@ -16,7 +16,7 @@ namespace detail {
 template <typename> struct is_grid2 : std::false_type {};
 template <typename C, typename T, std::size_t D>
 struct is_grid2<adt::grid2<C, T, D>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -94,7 +94,7 @@ template <typename F, typename Op, typename Z, typename C, typename T,
           typename R = cxx::invoke_of_t<F, T, Args...>>
 R foldMap(F &&f, Op &&op, Z &&z, const adt::grid2<C, T, D> &xs,
           Args &&... args);
-}
+} // namespace fun
 
 #define FUN_GRID2_DECL_HPP_DONE
 #endif // #ifdef FUN_GRID2_DECL_HPP

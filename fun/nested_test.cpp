@@ -28,7 +28,7 @@ using nested1 =
 template <typename T>
 using nested2 =
     adt::nested<qthread::shared_future<adt::dummy>, std::vector<adt::dummy>, T>;
-}
+} // namespace
 
 // TODO: Test more types
 
@@ -259,6 +259,6 @@ template <typename T> void test_serialize(const T &x) {
   }
   EXPECT_EQ(*x.data, *y.data);
 }
-}
+} // namespace
 
 TEST(fun_nested, serialize) { test_serialize(munit<nested1<adt::dummy>>(1)); }

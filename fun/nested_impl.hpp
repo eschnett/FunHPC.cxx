@@ -208,7 +208,7 @@ template <typename CR> struct nested_iotaMap : std::tuple<> {
     return iotaMap<A>(std::forward<F>(f), iinds, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename C, typename F, typename... Args,
           std::enable_if_t<detail::is_nested<C>::value> *, typename R,
@@ -330,7 +330,7 @@ template <typename CR> struct nested_iotaMapMulti : std::tuple<> {
                            std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename C, std::size_t D, typename F, typename... Args,
           std::enable_if_t<detail::is_nested<C>::value> *, typename R,
@@ -356,7 +356,7 @@ struct nested_fmap : std::tuple<> {
                 std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename P, typename A, typename T, typename Policy,
           typename... Args, typename C, typename R, typename CR>
@@ -374,7 +374,7 @@ struct nested_fmap2 : std::tuple<> {
                  std::forward<AT2>(ys), std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename P, typename A, typename T, typename Policy,
           typename T2, typename Policy2, typename... Args, typename C,
@@ -396,7 +396,7 @@ struct nested_fmap3 : std::tuple<> {
                  std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename P, typename A, typename T, typename Policy,
           typename T2, typename Policy2, typename T3, typename Policy3,
@@ -431,7 +431,7 @@ template <typename G> struct nested_fmapStencil_g {
                   : cxx::invoke(g, last(std::forward<AT>(xs)), i);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename G, typename P, typename A, typename T,
           typename Policy, typename BM, typename BP, typename... Args,
@@ -452,7 +452,7 @@ namespace detail {
 template <std::size_t> struct nested_fmapStencilMulti;
 template <std::size_t> struct nested_fmapStencilMulti_f;
 template <std::size_t, typename G> struct nested_fmapStencilMulti_g;
-}
+} // namespace detail
 
 namespace detail {
 template <> struct nested_fmapStencilMulti<0> : std::tuple<> {
@@ -464,7 +464,7 @@ template <> struct nested_fmapStencilMulti<0> : std::tuple<> {
                                std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename P, typename A,
           typename T, typename Policy, typename... Args,
@@ -498,7 +498,7 @@ template <typename G> struct nested_fmapStencilMulti_g<1, G> {
     return boundaryMap(g, std::forward<AT>(xs), i);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename P, typename A,
           typename T, typename Policy, typename... Args,
@@ -534,7 +534,7 @@ template <typename G> struct nested_fmapStencilMulti_g<2, G> {
     return boundaryMap(g, std::forward<AT>(xs), i);
   }
 };
-}
+} // namespace detail
 
 template <std::size_t D, typename F, typename G, typename P, typename A,
           typename T, typename Policy, typename... Args,
@@ -566,7 +566,7 @@ struct nested_last : std::tuple<> {
     return last(std::forward<AT>(xs));
   }
 };
-}
+} // namespace detail
 
 // Note: The call to fmap is necessary in case we use a proxy; calling
 // head or mextract on the proxy would copy the whole data structure
@@ -592,7 +592,7 @@ struct nested_boundary {
     return boundary(std::forward<AT>(xs), i);
   }
 };
-}
+} // namespace detail
 
 template <typename P, typename A, typename T, typename Policy, typename CT,
           typename BC, typename BCT>
@@ -623,7 +623,7 @@ struct nested_getIndex : std::tuple<> {
     return getIndex(std::forward<AT>(xs), i);
   }
 };
-}
+} // namespace detail
 
 template <typename P, typename A, typename T, typename Policy>
 // Cannot use decltype(auto) here, since we call mextract on a temporary
@@ -661,7 +661,7 @@ struct nested_foldMap : std::tuple<> {
                    std::forward<AT>(xs), std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename P, typename A,
           typename T, typename Policy, typename... Args, typename R>
@@ -682,7 +682,7 @@ struct nested_foldMap2 : std::tuple<> {
                     std::forward<Z>(z), xs, ys, std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename P, typename A,
           typename T, typename Policy, typename T2, typename Policy2,
@@ -740,7 +740,7 @@ struct nested_mjoin : std::tuple<> {
     return mjoin(fmap(nested_mextract(), std::forward<ANPAT>(xsss)));
   }
 };
-}
+} // namespace detail
 
 template <typename P, typename A, typename T, typename Policy, typename Policy2,
           typename CT>
@@ -778,7 +778,7 @@ struct nested_mfoldMap : std::tuple<> {
                     std::forward<Args>(args)...);
   }
 };
-}
+} // namespace detail
 
 template <typename F, typename Op, typename Z, typename P, typename A,
           typename T, typename Policy, typename... Args, typename C, typename R,
@@ -842,10 +842,11 @@ template <typename P, typename A, typename T, typename Policy>
 std::size_t msize(const adt::nested<P, A, T, Policy> &xss) {
   typedef typename adt::nested<P, A, T, Policy>::template array_constructor<T>
       AT;
-  return mempty(xss.data) ? 0 : foldMap((std::size_t(*)(const AT &))msize,
-                                        std::plus<std::size_t>(), 0, xss.data);
+  return mempty(xss.data) ? 0
+                          : foldMap((std::size_t(*)(const AT &))msize,
+                                    std::plus<std::size_t>(), 0, xss.data);
 }
-}
+} // namespace fun
 
 #define FUN_NESTED_IMPL_HPP_DONE
 #endif // #ifdef FUN_NESTED_IMPL_HPP

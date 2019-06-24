@@ -341,7 +341,7 @@ inline auto invoke(_Fp &&__f, _Args &&... __args)
     -> decltype(std::forward<_Fp>(__f)(std::forward<_Args>(__args)...)) {
   return std::forward<_Fp>(__f)(std::forward<_Args>(__args)...);
 }
-}
+} // namespace cxx
 
 #define CXX_INVOKE_HPP_DONE
 #endif // #ifdef CXX_INVOKE_HPP

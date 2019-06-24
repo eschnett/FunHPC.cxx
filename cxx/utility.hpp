@@ -65,7 +65,7 @@ template <typename... Ts>
 struct has_any_function_arguments
     : cxx::any_of_type<detail::has_function_argument<Ts>::value...> {};
 #endif
-}
+} // namespace cxx
 
 #define CXX_UTILITY_HPP_DONE
 #endif // #ifdef CXX_UTILITY_HPP

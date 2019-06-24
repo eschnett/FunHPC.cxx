@@ -22,7 +22,7 @@ struct s {
   // member object
   int memobj;
 };
-}
+} // namespace
 
 TEST(cxx_funobj, funobj) {
   auto fun1 = CXX_FUNOBJ(fun);
@@ -48,7 +48,7 @@ TEST(cxx_funobj, funobj) {
 namespace {
 const int cobj = 4;
 int obj = 5;
-}
+} // namespace
 
 TEST(cxx_funobj, obj) {
   auto cobj0 = cxx::detail::obj_impl<int, cobj>();

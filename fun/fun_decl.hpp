@@ -48,7 +48,7 @@ class ostreamer {
   template <typename Archive> void load(Archive &ar) {
     std::string str;
     ar(str);
-    impl = [str = std::move(str)](std::ostream & os) { os << str; };
+    impl = [str = std::move(str)](std::ostream &os) { os << str; };
   }
 
 public:
@@ -72,20 +72,20 @@ public:
     impl = [str](std::ostream &os) { os << str; };
   }
   ostreamer(std::string &&str) {
-    impl = [str = std::move(str)](std::ostream & os) { os << str; };
+    impl = [str = std::move(str)](std::ostream &os) { os << str; };
   }
   template <typename T> ostreamer(T &&x) {
     std::ostringstream os;
     os.precision(std::numeric_limits<std::decay_t<T>>::max_digits10);
     os << std::forward<T>(x);
     auto str = std::move(os).str();
-    impl = [str = std::move(str)](std::ostream & os) { os << str; };
+    impl = [str = std::move(str)](std::ostream &os) { os << str; };
   }
 
   ostreamer &operator+=(const ostreamer &other) {
     ostreamer self;
     swap(self);
-    impl = [ self = std::move(self), other ](std::ostream & os) {
+    impl = [self = std::move(self), other](std::ostream &os) {
       os << self << other;
     };
     return *this;
@@ -93,10 +93,8 @@ public:
   ostreamer &operator+=(ostreamer &&other) {
     ostreamer self;
     swap(self);
-    impl = [ self = std::move(self),
-             other = std::move(other) ](std::ostream & os) {
-      os << self << other;
-    };
+    impl = [self = std::move(self), other = std::move(other)](
+               std::ostream &os) { os << self << other; };
     return *this;
   }
 
@@ -164,7 +162,7 @@ ostreamer to_ostreamer(const CT &xs) {
          foldMap(with_comma(), combine_ostreamers(), ostreamer(), xs) +
          make_ostreamer("]");
 }
-}
+} // namespace fun
 
 namespace std {
 
@@ -192,7 +190,7 @@ std::string to_string(const CT &xs) {
   os << xs;
   return std::move(os).str();
 }
-}
+} // namespace std
 
 #define FUN_FUN_DECL_HPP_DONE
 #endif // #ifdef FUN_FUN_DECL_HPP

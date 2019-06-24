@@ -15,15 +15,15 @@ namespace detail {
 template <typename> struct is_std_array : std::false_type {};
 template <typename T, std::size_t N>
 struct is_std_array<std::array<T, N>> : std::true_type {};
-}
+} // namespace detail
 
 namespace detail {
 // See also detail::is_vector in <fun/vector.hpp>
 template <typename> struct is_vector : std::false_type {};
 template <typename T, typename Allocator>
 struct is_vector<std::vector<T, Allocator>> : std::true_type {};
-}
-}
+} // namespace detail
+} // namespace adt
 
 namespace std {
 
@@ -84,7 +84,7 @@ MAKEOP(/)
 MAKEOP(%)
 MAKEOP(&)
 MAKEOP(|)
-MAKEOP (^)
+MAKEOP(^)
 MAKEOP(<<)
 MAKEOP(>>)
 MAKEOP(&&)
@@ -187,7 +187,7 @@ MAKEOP(/)
 MAKEOP(%)
 MAKEOP(&)
 MAKEOP(|)
-MAKEOP (^)
+MAKEOP(^)
 MAKEOP(<<)
 MAKEOP(>>)
 MAKEOP(&&)
@@ -229,7 +229,7 @@ MAKEOP(^=)
 MAKEOP(<<=)
 MAKEOP(>>=)
 #undef MAKEOP
-}
+} // namespace std
 
 namespace adt {
 
@@ -614,7 +614,7 @@ MAKELIM(float)
 MAKELIM(double)
 MAKELIM(long double)
 #undef MAKELIM
-}
+} // namespace detail
 
 #define MAKEREDOP(name, op, z)                                                 \
   template <typename T, std::size_t N,                                         \
@@ -645,7 +645,7 @@ MAKEREDOP(any, ||, false)
 MAKEREDFUN(maxval, std::max, detail::numeric_limits<R>::min())
 MAKEREDFUN(minval, std::min, detail::numeric_limits<R>::max())
 #undef MAKEREDFUN
-}
+} // namespace adt
 
 namespace std {
 template <typename T, std::size_t N>
@@ -669,7 +669,7 @@ std::string to_string(const std::array<T, N> &x) {
   os << x;
   return std::move(os).str();
 }
-}
+} // namespace std
 
 #define ADT_ARITH_HPP_DONE
 #endif // #ifdef ADT_ARITH_HPP

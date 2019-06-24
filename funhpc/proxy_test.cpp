@@ -16,7 +16,7 @@ struct s {
 s make_s() { return {int(rank())}; }
 
 int f(int x) { return x; }
-}
+} // namespace
 
 TEST(funhpc_proxy, empty) {
   auto pi = proxy<int>();
@@ -128,7 +128,7 @@ int getvalue(const std::vector<proxy<s1>> &all_p1) {
   EXPECT_TRUE(bool(pi.local()));
   return pi->i;
 }
-}
+} // namespace
 
 TEST(funhpc_proxy, nested) {
   auto p1 = make_local_proxy<s1>();

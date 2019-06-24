@@ -13,7 +13,7 @@ struct nested;
 
 template <typename P, typename A, typename T, typename Policy>
 void swap(nested<P, A, T, Policy> &x, nested<P, A, T, Policy> &y);
-}
+} // namespace adt
 
 #define ADT_NESTED_DECL_HPP_DONE
 #endif // #ifdef ADT_NESTED_DECL_HPP

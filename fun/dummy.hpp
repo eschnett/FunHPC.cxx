@@ -16,7 +16,7 @@ namespace fun {
 namespace detail {
 template <typename> struct is_dummy : std::false_type {};
 template <> struct is_dummy<adt::dummy> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -86,12 +86,13 @@ adt::dummy fmapStencilMulti(F &&f, G &&g, adt::dummy xs, std::size_t bmask,
 
 // head, last
 
-template <typename> adt::dummy head(adt::dummy xs);
-template <typename> adt::dummy last(adt::dummy xs);
+template <typename = void> adt::dummy head(adt::dummy xs);
+template <typename = void> adt::dummy last(adt::dummy xs);
 
 // boundary
 
-template <typename> adt::dummy boundary(const adt::dummy &xs, std::ptrdiff_t i);
+template <typename = void>
+adt::dummy boundary(const adt::dummy &xs, std::ptrdiff_t i);
 
 // boundaryMap
 
@@ -103,7 +104,7 @@ adt::dummy boundaryMap(F &&f, const adt::dummy &xs, std::ptrdiff_t i,
 
 // indexing
 
-template <typename> adt::dummy getIndex(adt::dummy xs, std::ptrdiff_t i);
+template <typename = void> adt::dummy getIndex(adt::dummy xs, std::ptrdiff_t i);
 
 template <typename> class accumulator;
 template <> class accumulator<adt::dummy> {
@@ -127,7 +128,7 @@ R foldMap2(F &&f, Op &&op, Z &&z, adt::dummy xs, adt::dummy ys,
 
 // dump
 
-template <typename> ostreamer dump(adt::dummy xs) {
+template <typename = void> ostreamer dump(adt::dummy xs) {
   return ostreamer("dummy{}");
 }
 
@@ -138,7 +139,7 @@ adt::dummy munit(adt::dummy x);
 
 // mjoin
 
-template <typename> adt::dummy mjoin(adt::dummy xss);
+template <typename = void> adt::dummy mjoin(adt::dummy xss);
 
 // mbind
 
@@ -149,7 +150,7 @@ CR mbind(F &&f, adt::dummy xs, Args &&... args);
 
 // mextract
 
-template <typename> adt::dummy mextract(adt::dummy xs);
+template <typename = void> adt::dummy mextract(adt::dummy xs);
 
 // mfoldMap
 
@@ -175,12 +176,12 @@ adt::dummy msome(adt::dummy x, Ts... ys);
 
 // mempty
 
-template <typename> bool mempty(adt::dummy xs);
+template <typename = void> bool mempty(adt::dummy xs);
 
 // msize
 
-template <typename> std::size_t msize(adt::dummy xs);
-}
+template <typename = void> std::size_t msize(adt::dummy xs);
+} // namespace fun
 
 #define FUN_DUMMY_HPP_DONE
 #endif // #ifdef FUN_DUMMY_HPP

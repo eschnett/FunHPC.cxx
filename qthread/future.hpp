@@ -157,7 +157,7 @@ public:
     // Note: The value is now not available any more
   }
 };
-}
+} // namespace detail
 
 // future //////////////////////////////////////////////////////////////////////
 
@@ -172,7 +172,7 @@ template <typename T> struct is_future<future<T>> : std::true_type {};
 template <typename T> struct is_shared_future : std::false_type {};
 template <typename T>
 struct is_shared_future<shared_future<T>> : std::true_type {};
-}
+} // namespace detail
 
 enum class launch : unsigned;
 
@@ -286,7 +286,7 @@ future<T> make_future_with_shared_state(
     std::shared_ptr<detail::shared_state<T>> &&shared_state) {
   return future<T>(std::move(shared_state));
 }
-}
+} // namespace detail
 
 // make_ready_future ///////////////////////////////////////////////////////////
 
@@ -625,7 +625,7 @@ template <typename R>
 void swap(async_thread<R> &lhs, async_thread<R> &rhs) noexcept {
   lhs.swap(rhs);
 }
-}
+} // namespace detail
 
 // launch //////////////////////////////////////////////////////////////////////
 
@@ -670,7 +670,7 @@ namespace detail {
     return launch::detached;
   return launch::async;
 }
-}
+} // namespace detail
 
 // async ///////////////////////////////////////////////////////////////////////
 
@@ -693,7 +693,7 @@ async_make_ready_future(F &&f, Args &&... args) {
               cxx::decay_copy(std::forward<Args>(args))...);
   return make_ready_future();
 }
-}
+} // namespace detail
 
 template <typename F, typename... Args,
           typename R = std::decay_t<
@@ -740,12 +740,13 @@ future<R> future<T>::then(launch policy, F &&cont) {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(policy,
-               [ftr = std::move(*this)](auto &&cont) mutable {
-                 ftr.wait();
-                 return cxx::invoke(std::move(cont), std::move(ftr));
-               },
-               std::forward<F>(cont));
+  return async(
+      policy,
+      [ftr = std::move(*this)](auto &&cont) mutable {
+        ftr.wait();
+        return cxx::invoke(std::move(cont), std::move(ftr));
+      },
+      std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>
@@ -775,12 +776,13 @@ future<R> shared_future<T>::then(launch policy, F &&cont) const {
   if (!valid())
     return future<R>();
   // TODO: if *this is deferred, wait immediately
-  return async(policy,
-               [ftr = *this](auto &&cont) {
-                 ftr.wait();
-                 return cxx::invoke(std::move(cont), std::move(ftr));
-               },
-               std::forward<F>(cont));
+  return async(
+      policy,
+      [ftr = *this](auto &&cont) {
+        ftr.wait();
+        return cxx::invoke(std::move(cont), std::move(ftr));
+      },
+      std::forward<F>(cont));
 }
 template <typename T>
 template <typename F, typename R>
@@ -801,7 +803,7 @@ template <typename U, std::enable_if_t<std::is_same<U, T>::value &&
 future<typename U::element_type> shared_future<T>::unwrap() const {
   return async([ftr = *this]() { return ftr.get().get(); });
 }
-}
+} // namespace qthread
 
 #define QTHREAD_FUTURE_HPP_DONE
 #endif // #ifndef QTHREAD_FUTURE_HPP

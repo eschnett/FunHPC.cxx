@@ -10,7 +10,7 @@ namespace {
 // Cannot have global variables with qthread:: types, since Qthreads
 // is initialized too late and finalized too early
 std::unique_ptr<qthread::promise<void>> p;
-}
+} // namespace
 
 void set_value() { p->set_value(); }
 
@@ -23,7 +23,7 @@ TEST(funhpc_rexec, local) {
 
 namespace {
 void reflect() { funhpc::rexec(0, set_value); }
-}
+} // namespace
 
 TEST(funhpc_rexec, pingpong) {
   p = std::make_unique<qthread::promise<void>>();
@@ -40,7 +40,7 @@ class reflect_obj {
 public:
   void operator()() { reflect(); }
 };
-}
+} // namespace
 
 TEST(funhpc_rexec, function_object) {
   p = std::make_unique<qthread::promise<void>>();
@@ -65,7 +65,7 @@ public:
   int m;
   void operator()() { reflect(); }
 };
-}
+} // namespace
 
 TEST(funhpc_rexec, function_object1) {
   p = std::make_unique<qthread::promise<void>>();
@@ -87,7 +87,7 @@ void daisy_chain(std::ptrdiff_t ttl) {
     return reflect();
   funhpc::rexec((funhpc::rank() + 1) % funhpc::size(), daisy_chain, ttl - 1);
 }
-}
+} // namespace
 
 TEST(funhpc_rexec, daisy_chaining) {
   p = std::make_unique<qthread::promise<void>>();

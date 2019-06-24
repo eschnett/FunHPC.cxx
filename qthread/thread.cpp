@@ -39,5 +39,5 @@ void run(const std::function<void()> &f) {
 
   assert(count_done == nthreads);
 }
-}
-}
+} // namespace all_threads
+} // namespace qthread

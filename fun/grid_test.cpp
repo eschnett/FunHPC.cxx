@@ -23,7 +23,7 @@ template <typename T> using grid0 = adt::grid<std::vector<adt::dummy>, T, 0>;
 template <typename T> using grid1 = adt::grid<std::vector<adt::dummy>, T, 1>;
 template <typename T> using grid2 = adt::grid<std::vector<adt::dummy>, T, 2>;
 template <typename T> using grid3 = adt::grid<std::vector<adt::dummy>, T, 3>;
-}
+} // namespace
 
 TEST(fun_grid, iotaMap) {
   std::ptrdiff_t s = 10;

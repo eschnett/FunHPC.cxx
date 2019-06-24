@@ -25,4 +25,4 @@ long envtol(const char *var, const char *defaultvalue) {
   }
   return res;
 }
-}
+} // namespace cxx

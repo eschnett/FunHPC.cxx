@@ -23,7 +23,7 @@ namespace detail {
 template <typename> struct is_seq : std::false_type {};
 template <typename A, typename B, typename T>
 struct is_seq<adt::seq<A, B, T>> : std::true_type {};
-}
+} // namespace detail
 
 // traits
 
@@ -177,7 +177,7 @@ bool mempty(const adt::seq<A, B, T> &xs);
 
 template <typename A, typename B, typename T>
 std::size_t msize(const adt::seq<A, B, T> &xs);
-}
+} // namespace fun
 
 #define FUN_SEQ_DECL_HPP_DONE
 #endif // #ifdef FUN_SEQ_DECL_HPP

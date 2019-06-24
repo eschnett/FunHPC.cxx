@@ -24,4 +24,4 @@ void check_version(const char *header_version) {
     std::exit(EXIT_FAILURE);
   }
 }
-}
+} // namespace funhpc

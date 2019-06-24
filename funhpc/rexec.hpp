@@ -14,7 +14,7 @@ extern std::ptrdiff_t the_local_rank;
 extern std::ptrdiff_t the_local_size;
 extern std::ptrdiff_t the_node_rank;
 extern std::ptrdiff_t the_node_size;
-}
+} // namespace detail
 // Processes
 inline std::ptrdiff_t rank() { return detail::the_rank; }
 inline std::ptrdiff_t size() { return detail::the_size; }
@@ -37,7 +37,7 @@ void rexec(std::ptrdiff_t dest, F &&f, Args &&... args) {
   task_t::register_type<std::decay_t<F>, std::decay_t<Args>...>();
   enqueue_task(dest, task_t(std::forward<F>(f), std::forward<Args>(args)...));
 }
-}
+} // namespace funhpc
 
 #define FUNHPC_REXEC_HPP_DONE
 #endif // #ifdef FUNHPC_REXEC_HPP

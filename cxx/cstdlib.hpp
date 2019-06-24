@@ -97,7 +97,7 @@ template <typename T, typename U> constexpr T ipow_impl(T x, U y) {
   }
   return r;
 }
-}
+} // namespace detail
 
 template <typename T, typename U> constexpr T ipow(T x, U y) {
   if (y < 0)
@@ -106,7 +106,7 @@ template <typename T, typename U> constexpr T ipow(T x, U y) {
 }
 
 long envtol(const char *var, const char *defaultvalue = nullptr);
-}
+} // namespace cxx
 
 #define CXX_CSTDLIB_HPP_DONE
 #endif // #ifdef CXX_CSTDLIB_HPP

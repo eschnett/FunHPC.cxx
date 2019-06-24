@@ -36,7 +36,7 @@ template <typename T> void test_future(T value) {
   EXPECT_TRUE(f3.wait_for(std::chrono::seconds(0)) == future_status::ready);
   f3.share();
 }
-}
+} // namespace
 
 TEST(std_future, future) {
   int i{};
@@ -85,7 +85,7 @@ template <typename T> void test_shared_future(T value) {
   EXPECT_EQ(decay_T(value), decay_T(f4.get()));
   EXPECT_EQ(decay_T(value), decay_T(f4.get()));
 }
-}
+} // namespace
 
 TEST(std_future, shared_future) {
   int i{};
@@ -106,7 +106,7 @@ template <typename T> void test_promise(T value) {
   typedef std::decay_t<T> decay_T; // avoid function references
   EXPECT_EQ(decay_T(value), decay_T(p1.get_future().get()));
 }
-}
+} // namespace
 
 TEST(std_future, promise) {
   int i{};
@@ -148,7 +148,7 @@ void test_packaged_task(F &&f, Args... args) {
   // EXPECT_EQ(1,f1.get());
   f1.get();
 }
-}
+} // namespace
 
 TEST(std_future, packaged_task) {
   test_packaged_task<int, int>(fi, 0);
@@ -161,7 +161,7 @@ TEST(std_future, packaged_task) {
   test_packaged_task<void, int>([](int) {}, 0);
   test_packaged_task<void, int>([](int) mutable {}, 0);
   // test_packaged_task<void, int>([f = future<void>()](int)mutable {}, 0);
-  test_packaged_task<void, int>([f = shared_future<void>()](int){}, 0);
+  test_packaged_task<void, int>([f = shared_future<void>()](int) {}, 0);
   test_packaged_task<void, int>([f = shared_future<void>()](int) mutable {}, 0);
 }
 
@@ -198,10 +198,10 @@ int recurse(int count) {
   auto t1 = async(recurse, count - count / 2);
   return t0.get() + t1.get();
 }
-}
+} // namespace
 
 TEST(std_future, async_many) {
-  int maxcount = 100; //TODO 1000
+  int maxcount = 100; // TODO 1000
   auto res = recurse(maxcount);
   EXPECT_EQ(maxcount, res);
 }
@@ -217,10 +217,10 @@ future<int> recurse2(int count) {
   auto t1 = recurse2(count - count / 2).share();
   return async([=]() { return t0.get() + t1.get(); });
 }
-}
+} // namespace
 
 TEST(std_future, async_many2) {
-  int maxcount = 100; //TODO 1000
+  int maxcount = 100; // TODO 1000
   auto res = recurse2(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }
@@ -234,14 +234,14 @@ future<int> recurse3(int count) {
   }
   auto t0 = recurse2(count / 2);
   auto t1 = recurse2(count - count / 2);
-  return async([ t0 = std::move(t0), t1 = std::move(t1) ]() mutable {
+  return async([t0 = std::move(t0), t1 = std::move(t1)]() mutable {
     return t0.get() + t1.get();
   });
 }
-}
+} // namespace
 
 TEST(std_future, async_many3) {
-  int maxcount = 100; //TODO 1000
+  int maxcount = 100; // TODO 1000
   auto res = recurse3(maxcount);
   EXPECT_EQ(maxcount, res.get());
 }

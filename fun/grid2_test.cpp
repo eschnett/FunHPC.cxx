@@ -146,7 +146,7 @@ namespace {
 template <std::size_t D> void test_boundary() {
   std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
   auto g = iotaMap<vgrid<adt::dummy, D>>(
-      [](auto i) { return double(adt::sum(i)); },
+      [](const adt::index_t<D> &i) { return double(adt::sum(i)); },
       adt::range_t<D>(adt::set<adt::index_t<D>>(s)));
   for (int f = 0; f < 2; ++f) {
     for (int d = 0; d < int(D); ++d) {
@@ -175,7 +175,7 @@ namespace {
 template <std::size_t D> void test_fmapStencil() {
   std::ptrdiff_t s = std::lrint(std::fmax(2.0, std::pow(1000.0, 1.0 / D)));
   auto g = iotaMap<vgrid<adt::dummy, D>>(
-      [](auto i) { return double(adt::sum(i)); },
+      [](const adt::index_t<D> &i) { return double(adt::sum(i)); },
       adt::range_t<D>(adt::set<adt::index_t<D>>(s)));
   std::array<std::array<vgrid<double, D>, D>, 2> bss;
   for (int f = 0; f < 2; ++f) {
@@ -190,7 +190,7 @@ template <std::size_t D> void test_fmapStencil() {
         bmax[d] = s + 1;
       }
       bss[f][d] = iotaMap<vgrid<adt::dummy, D>>(
-          [](auto i) { return double(adt::sum(i)); },
+          [](const adt::index_t<D> &i) { return double(adt::sum(i)); },
           adt::range_t<D>(bmin, bmax));
     }
   }
@@ -207,14 +207,14 @@ template <std::size_t D> void test_fmapStencil() {
   EXPECT_EQ(x.active(), g.active());
   double maxabs = 0.0;
   fmap(
-      [&](auto x) {
+      [&](double x) {
         maxabs = std::fmax(maxabs, std::fabs(x));
         return std::tuple<>();
       },
       x);
   EXPECT_EQ(0.0, maxabs);
 }
-}
+} // namespace
 
 TEST(fun_grid2, fmapStencil) {
   test_fmapStencil<0>();
